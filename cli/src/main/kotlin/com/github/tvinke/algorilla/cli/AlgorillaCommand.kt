@@ -3,7 +3,7 @@ package com.github.tvinke.algorilla.cli
 import com.github.tvinke.algorilla.config.AnalysisConfig
 import com.github.tvinke.algorilla.engine.AnalysisEngine
 import com.github.tvinke.algorilla.lang.groovy.parser.GroovyParser
-import com.github.tvinke.algorilla.lang.java.parser.JavaParser
+import com.github.tvinke.algorilla.lang.java.parser.JavaLanguageParser
 import com.github.tvinke.algorilla.lang.javascript.parser.JavaScriptParser
 import com.github.tvinke.algorilla.lang.kotlin.parser.KotlinParser
 import com.github.tvinke.algorilla.model.Language
@@ -71,7 +71,7 @@ internal class AlgorillaCommand : Callable<Int> {
 
     private fun runAnalysis(): com.github.tvinke.algorilla.engine.AnalysisResult {
         val config = buildConfig()
-        val parsers = listOf(JavaParser(), GroovyParser(), KotlinParser(), JavaScriptParser())
+        val parsers = listOf(JavaLanguageParser(), GroovyParser(), KotlinParser(), JavaScriptParser())
         val engine = AnalysisEngine(parsers = parsers, rules = emptyList(), config = config, verbose = verbose)
         return engine.analyze(collectSourceFiles(paths))
     }
