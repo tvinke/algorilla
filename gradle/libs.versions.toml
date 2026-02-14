@@ -1,0 +1,37 @@
+[versions]
+kotlin = "2.1.10"
+picocli = "4.7.6"
+sarif4k = "0.5.0"
+kaml = "0.67.0"
+kotlinx-serialization = "1.7.3"
+kotlin-logging = "7.0.3"
+logback = "1.5.15"
+junit = "5.11.4"
+kotest = "5.9.1"
+detekt = "1.23.7"
+ktlint-plugin = "12.1.2"
+shadow = "8.1.1"
+treesitter = "0.24.1"
+antlr = "4.13.2"
+
+[libraries]
+picocli = { module = "info.picocli:picocli", version.ref = "picocli" }
+picocli-codegen = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
+sarif4k = { module = "io.github.detekt.sarif4k:sarif4k", version.ref = "sarif4k" }
+kaml = { module = "com.charleskorn.kaml:kaml", version.ref = "kaml" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
+kotlin-logging = { module = "io.github.oshai:kotlin-logging-jvm", version.ref = "kotlin-logging" }
+logback = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+kotest-assertions = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest" }
+antlr-runtime = { module = "org.antlr:antlr4-runtime", version.ref = "antlr" }
+antlr-tool = { module = "org.antlr:antlr4", version.ref = "antlr" }
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+shadow = { id = "com.github.johnrengelman.shadow", version.ref = "shadow" }
+detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
+ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint-plugin" }
