@@ -9,6 +9,7 @@ import com.github.tvinke.algorilla.lang.kotlin.parser.KotlinParser
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.reporting.ConsoleReporter
+import com.github.tvinke.algorilla.rules.builtin.NestedLookupRule
 import picocli.CommandLine
 import picocli.CommandLine.Command
 import picocli.CommandLine.Option
@@ -64,15 +65,24 @@ internal class AlgorillaCommand : Callable<Int> {
     private var excludePatterns: List<String> = emptyList()
 
     override fun call(): Int {
+        configureLogging()
         val result = runAnalysis()
         writeReport(result)
         return exitCodeFor(result)
     }
 
+    private fun configureLogging() {
+        if (verbose) {
+            val loggerContext = org.slf4j.LoggerFactory.getILoggerFactory() as ch.qos.logback.classic.LoggerContext
+            loggerContext.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME).level = ch.qos.logback.classic.Level.DEBUG
+        }
+    }
+
     private fun runAnalysis(): com.github.tvinke.algorilla.engine.AnalysisResult {
         val config = buildConfig()
         val parsers = listOf(JavaLanguageParser(), GroovyParser(), KotlinParser(), JavaScriptParser())
-        val engine = AnalysisEngine(parsers = parsers, rules = emptyList(), config = config, verbose = verbose)
+        val rules = listOf(NestedLookupRule())
+        val engine = AnalysisEngine(parsers = parsers, rules = rules, config = config, verbose = verbose)
         return engine.analyze(collectSourceFiles(paths))
     }
 
