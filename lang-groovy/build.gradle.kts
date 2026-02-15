@@ -4,5 +4,6 @@ plugins {
 
 dependencies {
     api(project(":core"))
+    implementation(project(":lang-java"))
     implementation(libs.antlr.runtime)
 }

@@ -13,7 +13,7 @@ import com.github.tvinke.algorilla.model.SortKind
 import com.github.tvinke.algorilla.model.SourceLocation
 
 @Suppress("CyclomaticComplexMethod")
-internal fun classifyChainedCall(
+public fun classifyChainedCall(
     methodName: String,
     targetText: String,
     targetVar: String?,
@@ -52,7 +52,7 @@ internal fun classifyChainedCall(
     )
 }
 
-internal fun classifyStandaloneCall(
+public fun classifyStandaloneCall(
     name: String,
     loc: SourceLocation,
     argNodes: List<IRNode>,
@@ -68,7 +68,7 @@ internal fun classifyStandaloneCall(
     )
 }
 
-internal fun lookupKindFor(methodName: String): LookupKind? =
+public fun lookupKindFor(methodName: String): LookupKind? =
     when (methodName) {
         "contains" -> LookupKind.CONTAINS
         "containsKey", "containsValue" -> LookupKind.CONTAINS
@@ -82,7 +82,7 @@ internal fun lookupKindFor(methodName: String): LookupKind? =
         else -> null
     }
 
-internal fun sortKindFor(methodName: String): SortKind? =
+public fun sortKindFor(methodName: String): SortKind? =
     when (methodName) {
         "sort" -> SortKind.SORT
         "sorted" -> SortKind.SORTED
@@ -91,7 +91,7 @@ internal fun sortKindFor(methodName: String): SortKind? =
         else -> null
     }
 
-internal fun accessKindFor(methodName: String): AccessKind? =
+public fun accessKindFor(methodName: String): AccessKind? =
     when (methodName) {
         "first" -> AccessKind.FIRST
         "last" -> AccessKind.LAST
@@ -100,7 +100,7 @@ internal fun accessKindFor(methodName: String): AccessKind? =
         else -> null
     }
 
-internal fun extractVariableName(expr: String?): String? {
+public fun extractVariableName(expr: String?): String? {
     if (expr == null) return null
     val cleaned =
         expr
@@ -122,4 +122,4 @@ private val O1_INDICATORS =
         "LinkedHashSet",
     )
 
-internal fun isO1Type(targetText: String): Boolean = O1_INDICATORS.any { targetText.contains(it) }
+public fun isO1Type(targetText: String): Boolean = O1_INDICATORS.any { targetText.contains(it) }
