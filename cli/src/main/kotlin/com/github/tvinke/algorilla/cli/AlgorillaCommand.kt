@@ -9,7 +9,13 @@ import com.github.tvinke.algorilla.lang.kotlin.parser.KotlinParser
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.reporting.ConsoleReporter
+import com.github.tvinke.algorilla.rules.builtin.DateInSortRule
+import com.github.tvinke.algorilla.rules.builtin.ExpensiveSortComparatorRule
+import com.github.tvinke.algorilla.rules.builtin.FullScanForSingleLookupRule
+import com.github.tvinke.algorilla.rules.builtin.HeavyweightObjectPerInvocationRule
 import com.github.tvinke.algorilla.rules.builtin.NestedLookupRule
+import com.github.tvinke.algorilla.rules.builtin.RepeatedLinearScanRule
+import com.github.tvinke.algorilla.rules.builtin.SortForLastRule
 import picocli.CommandLine
 import picocli.CommandLine.Command
 import picocli.CommandLine.Option
@@ -81,7 +87,16 @@ internal class AlgorillaCommand : Callable<Int> {
     private fun runAnalysis(): com.github.tvinke.algorilla.engine.AnalysisResult {
         val config = buildConfig()
         val parsers = listOf(JavaLanguageParser(), GroovyParser(), KotlinParser(), JavaScriptParser())
-        val rules = listOf(NestedLookupRule())
+        val rules =
+            listOf(
+                NestedLookupRule(),
+                SortForLastRule(),
+                ExpensiveSortComparatorRule(),
+                DateInSortRule(),
+                RepeatedLinearScanRule(),
+                FullScanForSingleLookupRule(),
+                HeavyweightObjectPerInvocationRule(),
+            )
         val engine = AnalysisEngine(parsers = parsers, rules = rules, config = config, verbose = verbose)
         return engine.analyze(collectSourceFiles(paths))
     }

@@ -1,6 +1,7 @@
 package com.github.tvinke.algorilla.rules.builtin
 
 import com.github.tvinke.algorilla.model.ExecutionContext
+import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LookupCall
@@ -10,6 +11,7 @@ import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
+import com.github.tvinke.algorilla.util.hasO1Type
 
 /**
  * Detects linear lookup operations (contains, indexOf, find, filter, etc.) inside loop bodies.
@@ -25,32 +27,39 @@ public class NestedLookupRule : Rule {
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
-            scanNode(fileRoot, emptyList(), findings)
+            scanNode(fileRoot, null, emptyList(), findings)
         }
         return findings
     }
 
     private fun scanNode(
         node: IRNode,
+        enclosingFn: FunctionDecl?,
         loopStack: List<LoopNode>,
         findings: MutableList<Finding>,
     ) {
+        val fn = if (node is FunctionDecl) node else enclosingFn
+
         if (node is LoopNode) {
-            val newStack = loopStack + node
             for (child in node.children) {
-                scanNode(child, newStack, findings)
+                scanNode(child, fn, loopStack + node, findings)
             }
             return
         }
 
-        if (node is LookupCall && loopStack.isNotEmpty() && !node.isO1) {
+        if (node is LookupCall && loopStack.isNotEmpty() && !isO1Lookup(node, fn)) {
             findings.add(buildFinding(node, loopStack))
         }
 
         for (child in node.children) {
-            scanNode(child, loopStack, findings)
+            scanNode(child, fn, loopStack, findings)
         }
     }
+
+    private fun isO1Lookup(
+        lookup: LookupCall,
+        fn: FunctionDecl?,
+    ): Boolean = lookup.isO1 || (fn != null && fn.hasO1Type(lookup.targetVariable))
 
     private fun buildFinding(
         lookup: LookupCall,
