@@ -9,6 +9,8 @@ import com.github.tvinke.algorilla.lang.kotlin.parser.KotlinParser
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.reporting.ConsoleReporter
+import com.github.tvinke.algorilla.reporting.JsonReporter
+import com.github.tvinke.algorilla.reporting.SarifReporter
 import com.github.tvinke.algorilla.rules.builtin.DateInSortRule
 import com.github.tvinke.algorilla.rules.builtin.ExpensiveSortComparatorRule
 import com.github.tvinke.algorilla.rules.builtin.FullScanForSingleLookupRule
@@ -114,6 +116,8 @@ internal class AlgorillaCommand : Callable<Int> {
     private fun writeReport(result: com.github.tvinke.algorilla.engine.AnalysisResult) {
         val reporter =
             when (format.lowercase()) {
+                "sarif" -> SarifReporter()
+                "json" -> JsonReporter()
                 else -> ConsoleReporter()
             }
         val output = outputFile?.bufferedWriter() ?: System.out.bufferedWriter()
