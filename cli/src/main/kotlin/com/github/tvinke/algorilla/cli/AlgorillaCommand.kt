@@ -103,6 +103,12 @@ internal class AlgorillaCommand : Callable<Int> {
     )
     private var saveBaselineFile: File? = null
 
+    @Option(
+        names = ["--include-tests"],
+        description = ["Include test source files in the analysis"],
+    )
+    private var includeTests: Boolean = false
+
     override fun call(): Int {
         configureLogging()
         val result = runAnalysis()
@@ -189,6 +195,9 @@ internal class AlgorillaCommand : Callable<Int> {
         paths: List<File>,
         effectiveExcludePatterns: List<String>,
     ): List<String> {
+        val detector = ProjectStructureDetector()
+        val testFilter = detector.buildTestExcludeFilter(paths, includeTests)
+        val defaultExcludes = detector.defaultExcludePatterns()
         val files = mutableListOf<String>()
         for (path in paths) {
             if (path.isFile) {
@@ -197,6 +206,8 @@ internal class AlgorillaCommand : Callable<Int> {
                 path
                     .walkTopDown()
                     .filter { it.isFile && isSupportedFile(it) }
+                    .filter { file -> defaultExcludes.none { excl -> file.path.contains(excl) } }
+                    .filter(testFilter)
                     .filter { file -> effectiveExcludePatterns.none { pattern -> matchGlob(pattern, file.path) } }
                     .forEach { files.add(it.absolutePath) }
             }
