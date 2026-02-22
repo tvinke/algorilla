@@ -1,5 +1,8 @@
 package com.github.tvinke.algorilla.engine
 
+import com.github.tvinke.algorilla.cache.AnalysisCache
+import com.github.tvinke.algorilla.cache.CachedFileEntry
+import com.github.tvinke.algorilla.cache.CachedFinding
 import com.github.tvinke.algorilla.config.AnalysisConfig
 import com.github.tvinke.algorilla.graph.CallGraph
 import com.github.tvinke.algorilla.graph.SymbolTable
@@ -15,12 +18,14 @@ private val logger = KotlinLogging.logger {}
 
 /**
  * Orchestrates the four-pass analysis pipeline: parse, call graph construction,
- * complexity annotation, and rule evaluation.
+ * complexity annotation, and rule evaluation. Supports incremental analysis
+ * via file content hashing and an on-disk cache.
  */
 public class AnalysisEngine(
     private val parsers: List<LanguageParser>,
     private val rules: List<Rule>,
     private val config: AnalysisConfig,
+    private val cache: AnalysisCache? = null,
     @Suppress("UNUSED_PARAMETER") verbose: Boolean = false,
 ) {
     /**
@@ -30,20 +35,77 @@ public class AnalysisEngine(
         logger.info { "Starting analysis of ${sourceFiles.size} files" }
         val startTime = System.currentTimeMillis()
 
-        val (irTrees, symbolTable, errors) = parseFiles(sourceFiles)
+        val cachedEntries = cache?.load() ?: emptyMap()
+        val (filesToParse, cachedFindings) = partitionByCache(sourceFiles, cachedEntries)
+
+        logger.info { "Cache: ${sourceFiles.size - filesToParse.size} files unchanged, ${filesToParse.size} to analyze" }
+
+        val (irTrees, symbolTable, errors) = parseFiles(filesToParse)
         val callGraph = buildCallGraph()
         val rawFindings = evaluateRules(irTrees, symbolTable, callGraph)
-        val findings = SuppressionFilter().filter(rawFindings, irTrees)
+        val freshFindings = SuppressionFilter().filter(rawFindings, irTrees)
+
+        val allFindings = freshFindings + cachedFindings
+        saveCache(sourceFiles, filesToParse, freshFindings, cachedEntries)
 
         val elapsed = System.currentTimeMillis() - startTime
-        logger.info { "Analysis complete: ${findings.size} findings in ${elapsed}ms" }
+        logger.info { "Analysis complete: ${allFindings.size} findings in ${elapsed}ms" }
 
         return AnalysisResult(
-            findings = findings.sortedWith(compareBy({ it.location.file }, { it.location.line })),
-            filesAnalyzed = irTrees.size,
+            findings = allFindings.sortedWith(compareBy({ it.location.file }, { it.location.line })),
+            filesAnalyzed = sourceFiles.size,
             errors = errors,
             elapsedMs = elapsed,
         )
+    }
+
+    private fun partitionByCache(
+        sourceFiles: List<String>,
+        cachedEntries: Map<String, CachedFileEntry>,
+    ): Pair<List<String>, List<Finding>> {
+        if (cachedEntries.isEmpty()) return Pair(sourceFiles, emptyList())
+
+        val filesToParse = mutableListOf<String>()
+        val cachedFindings = mutableListOf<Finding>()
+
+        for (file in sourceFiles) {
+            val entry = cachedEntries[file]
+            if (entry != null && entry.contentHash == AnalysisCache.hashFile(file)) {
+                cachedFindings.addAll(entry.findings.map { it.toFinding() })
+            } else {
+                filesToParse.add(file)
+            }
+        }
+        return Pair(filesToParse, cachedFindings)
+    }
+
+    private fun saveCache(
+        allFiles: List<String>,
+        freshFiles: List<String>,
+        freshFindings: List<Finding>,
+        previousCache: Map<String, CachedFileEntry>,
+    ) {
+        if (cache == null) return
+
+        val freshSet = freshFiles.toSet()
+        val freshFindingsByFile = freshFindings.groupBy { it.location.file }
+        val entries =
+            allFiles.map { file ->
+                if (file in freshSet) {
+                    CachedFileEntry(
+                        filePath = file,
+                        contentHash = AnalysisCache.hashFile(file),
+                        findings = (freshFindingsByFile[file] ?: emptyList()).map { CachedFinding.fromFinding(it) },
+                    )
+                } else {
+                    previousCache[file] ?: CachedFileEntry(
+                        filePath = file,
+                        contentHash = AnalysisCache.hashFile(file),
+                        findings = emptyList(),
+                    )
+                }
+            }
+        cache.save(entries)
     }
 
     private fun parseFiles(sourceFiles: List<String>): ParseResult {

@@ -1,5 +1,7 @@
 package com.github.tvinke.algorilla.cli
 
+import com.github.tvinke.algorilla.baseline.Baseline
+import com.github.tvinke.algorilla.cache.AnalysisCache
 import com.github.tvinke.algorilla.config.AnalysisConfig
 import com.github.tvinke.algorilla.engine.AnalysisEngine
 import com.github.tvinke.algorilla.lang.groovy.parser.GroovyParser
@@ -83,11 +85,30 @@ internal class AlgorillaCommand : Callable<Int> {
     )
     private var configFile: File? = null
 
+    @Option(
+        names = ["--no-cache"],
+        description = ["Disable incremental analysis caching"],
+    )
+    private var noCache: Boolean = false
+
+    @Option(
+        names = ["--baseline"],
+        description = ["Baseline file to compare against (only report new findings)"],
+    )
+    private var baselineFile: File? = null
+
+    @Option(
+        names = ["--save-baseline"],
+        description = ["Save current findings as a baseline to the specified file"],
+    )
+    private var saveBaselineFile: File? = null
+
     override fun call(): Int {
         configureLogging()
         val result = runAnalysis()
-        writeReport(result)
-        return exitCodeFor(result)
+        val filteredResult = applyBaseline(result)
+        writeReport(filteredResult)
+        return exitCodeFor(filteredResult)
     }
 
     private fun configureLogging() {
@@ -110,7 +131,8 @@ internal class AlgorillaCommand : Callable<Int> {
                 FullScanForSingleLookupRule(),
                 HeavyweightObjectPerInvocationRule(),
             )
-        val engine = AnalysisEngine(parsers = parsers, rules = rules, config = config, verbose = verbose)
+        val cache = if (noCache) null else AnalysisCache(paths.first())
+        val engine = AnalysisEngine(parsers = parsers, rules = rules, config = config, cache = cache, verbose = verbose)
         return engine.analyze(collectSourceFiles(paths, config.excludePatterns))
     }
 
@@ -130,6 +152,19 @@ internal class AlgorillaCommand : Callable<Int> {
     private fun cliSeverityProvided(): Boolean {
         // picocli sets the default; check if the user explicitly passed --severity
         return spec.commandLine().parseResult.hasMatchedOption("severity")
+    }
+
+    private fun applyBaseline(result: com.github.tvinke.algorilla.engine.AnalysisResult): com.github.tvinke.algorilla.engine.AnalysisResult {
+        if (saveBaselineFile != null) {
+            Baseline.save(result.findings, saveBaselineFile!!)
+        }
+        val baseline = baselineFile?.let { Baseline.load(it) }
+        return if (baseline != null) {
+            val newFindings = baseline.filterNew(result.findings)
+            result.copy(findings = newFindings)
+        } else {
+            result
+        }
     }
 
     private fun writeReport(result: com.github.tvinke.algorilla.engine.AnalysisResult) {
