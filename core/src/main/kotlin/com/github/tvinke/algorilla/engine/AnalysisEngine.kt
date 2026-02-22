@@ -32,7 +32,8 @@ public class AnalysisEngine(
 
         val (irTrees, symbolTable, errors) = parseFiles(sourceFiles)
         val callGraph = buildCallGraph()
-        val findings = evaluateRules(irTrees, symbolTable, callGraph)
+        val rawFindings = evaluateRules(irTrees, symbolTable, callGraph)
+        val findings = SuppressionFilter().filter(rawFindings, irTrees)
 
         val elapsed = System.currentTimeMillis() - startTime
         logger.info { "Analysis complete: ${findings.size} findings in ${elapsed}ms" }

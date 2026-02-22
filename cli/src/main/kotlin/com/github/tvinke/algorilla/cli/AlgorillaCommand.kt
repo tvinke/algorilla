@@ -20,8 +20,10 @@ import com.github.tvinke.algorilla.rules.builtin.RepeatedLinearScanRule
 import com.github.tvinke.algorilla.rules.builtin.SortForLastRule
 import picocli.CommandLine
 import picocli.CommandLine.Command
+import picocli.CommandLine.Model.CommandSpec
 import picocli.CommandLine.Option
 import picocli.CommandLine.Parameters
+import picocli.CommandLine.Spec
 import java.io.File
 import java.util.concurrent.Callable
 import kotlin.system.exitProcess
@@ -33,6 +35,9 @@ import kotlin.system.exitProcess
     description = ["Detects algorithmic complexity anti-patterns in source code."],
 )
 internal class AlgorillaCommand : Callable<Int> {
+    @Spec
+    private lateinit var spec: CommandSpec
+
     @Parameters(
         index = "0..*",
         description = ["Files or directories to analyze (default: current directory)"],
@@ -72,6 +77,12 @@ internal class AlgorillaCommand : Callable<Int> {
     )
     private var excludePatterns: List<String> = emptyList()
 
+    @Option(
+        names = ["-c", "--config"],
+        description = ["Path to .algorilla.yml config file"],
+    )
+    private var configFile: File? = null
+
     override fun call(): Int {
         configureLogging()
         val result = runAnalysis()
@@ -100,17 +111,25 @@ internal class AlgorillaCommand : Callable<Int> {
                 HeavyweightObjectPerInvocationRule(),
             )
         val engine = AnalysisEngine(parsers = parsers, rules = rules, config = config, verbose = verbose)
-        return engine.analyze(collectSourceFiles(paths))
+        return engine.analyze(collectSourceFiles(paths, config.excludePatterns))
     }
 
     private fun buildConfig(): AnalysisConfig {
+        val fileConfig = loadConfig(configFile)
         val minSeverity =
             when (severity.lowercase()) {
                 "info" -> Severity.INFO
                 "error" -> Severity.ERROR
                 else -> Severity.WARNING
             }
-        return AnalysisConfig(excludePatterns = excludePatterns, minSeverity = minSeverity)
+        val mergedExclude = if (excludePatterns.isNotEmpty()) excludePatterns else fileConfig.excludePatterns
+        val mergedSeverity = if (cliSeverityProvided()) minSeverity else fileConfig.minSeverity
+        return fileConfig.copy(excludePatterns = mergedExclude, minSeverity = mergedSeverity)
+    }
+
+    private fun cliSeverityProvided(): Boolean {
+        // picocli sets the default; check if the user explicitly passed --severity
+        return spec.commandLine().parseResult.hasMatchedOption("severity")
     }
 
     private fun writeReport(result: com.github.tvinke.algorilla.engine.AnalysisResult) {
@@ -131,7 +150,10 @@ internal class AlgorillaCommand : Callable<Int> {
             else -> EXIT_OK
         }
 
-    private fun collectSourceFiles(paths: List<File>): List<String> {
+    private fun collectSourceFiles(
+        paths: List<File>,
+        effectiveExcludePatterns: List<String>,
+    ): List<String> {
         val files = mutableListOf<String>()
         for (path in paths) {
             if (path.isFile) {
@@ -140,7 +162,7 @@ internal class AlgorillaCommand : Callable<Int> {
                 path
                     .walkTopDown()
                     .filter { it.isFile && isSupportedFile(it) }
-                    .filter { file -> excludePatterns.none { pattern -> matchGlob(pattern, file.path) } }
+                    .filter { file -> effectiveExcludePatterns.none { pattern -> matchGlob(pattern, file.path) } }
                     .forEach { files.add(it.absolutePath) }
             }
         }
