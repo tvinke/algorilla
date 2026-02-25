@@ -137,8 +137,10 @@ internal class AlgorillaCommand : Callable<Int> {
                 FullScanForSingleLookupRule(),
                 HeavyweightObjectPerInvocationRule(),
             )
+        val customRules = CustomRuleLoader.loadRules(paths.first())
+        val allRules = rules + customRules
         val cache = if (noCache) null else AnalysisCache(paths.first())
-        val engine = AnalysisEngine(parsers = parsers, rules = rules, config = config, cache = cache, verbose = verbose)
+        val engine = AnalysisEngine(parsers = parsers, rules = allRules, config = config, cache = cache, verbose = verbose)
         return engine.analyze(collectSourceFiles(paths, config.excludePatterns))
     }
 

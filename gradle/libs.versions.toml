@@ -28,6 +28,7 @@ junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher
 kotest-assertions = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest" }
 antlr-runtime = { module = "org.antlr:antlr4-runtime", version.ref = "antlr" }
 antlr-tool = { module = "org.antlr:antlr4", version.ref = "antlr" }
+kotlin-scripting-jsr223 = { module = "org.jetbrains.kotlin:kotlin-scripting-jsr223", version.ref = "kotlin" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

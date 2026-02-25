@@ -19,6 +19,7 @@ dependencies {
     implementation(libs.kaml)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.logback)
+    implementation(libs.kotlin.scripting.jsr223)
     annotationProcessor(libs.picocli.codegen)
 }
 
