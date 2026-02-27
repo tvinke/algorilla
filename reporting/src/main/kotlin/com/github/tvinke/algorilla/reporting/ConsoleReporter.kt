@@ -30,6 +30,7 @@ public class ConsoleReporter : Reporter {
         output.appendLine("  ${finding.ruleId} ${finding.ruleName}$complexity")
         output.appendLine("  ${finding.message}")
         output.appendLine("  → ${finding.suggestion}")
+        output.appendLine("  Details: $DOCS_BASE_URL${finding.ruleId}")
         formatEvidence(finding, output)
     }
 
@@ -75,5 +76,6 @@ public class ConsoleReporter : Reporter {
         const val LOC_PAD = 30
         const val LABEL_PAD = 35
         const val MS_PER_SECOND = 1000.0
+        const val DOCS_BASE_URL = "https://tvinke.github.io/algorilla/rules/"
     }
 }

@@ -68,6 +68,7 @@ public class SarifReporter : Reporter {
                     id = ruleId,
                     name = sample.ruleName,
                     shortDescription = MultiformatMessageString(text = sample.ruleName),
+                    helpURI = "$DOCS_BASE_URL$ruleId",
                 )
             }
 
@@ -101,6 +102,7 @@ public class SarifReporter : Reporter {
             "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json"
         const val TOOL_NAME = "algorilla"
         const val TOOL_VERSION = "0.1.0-SNAPSHOT"
+        const val DOCS_BASE_URL = "https://tvinke.github.io/algorilla/rules/"
     }
 }
 

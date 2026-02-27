@@ -1,0 +1,75 @@
+site_name: Algorilla
+site_description: Detect algorithmic complexity anti-patterns in your codebase
+site_url: https://tvinke.github.io/algorilla/
+repo_url: https://github.com/tvinke/algorilla
+repo_name: tvinke/algorilla
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - content.code.copy
+    - search.highlight
+  icon:
+    repo: fontawesome/brands/github
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - admonitions
+  - pymdownx.details
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: getting-started/installation.md
+    - Quick Start: getting-started/quickstart.md
+    - Configuration: getting-started/configuration.md
+  - Rules:
+    - Overview: rules/index.md
+    - Nested Lookup: rules/nested-lookup.md
+    - Sort for Last: rules/sort-for-last.md
+    - Expensive Sort Comparator: rules/expensive-sort-comparator.md
+    - Date in Sort: rules/date-in-sort.md
+    - Repeated Linear Scan: rules/repeated-linear-scan.md
+    - Full Scan for Single Lookup: rules/full-scan-for-single-lookup.md
+    - Heavyweight Object per Invocation: rules/heavyweight-object-per-invocation.md
+  - Guide:
+    - Understanding Output: guide/understanding-output.md
+    - CLI Reference: guide/cli-reference.md
+    - Baseline Workflow: guide/baseline-workflow.md
+    - Incremental Analysis: guide/incremental-analysis.md
+    - Custom Rules: guide/custom-rules.md
+    - Multi-Language Support: guide/multi-language.md
+    - Suppression: guide/suppression.md
+  - Concepts:
+    - Big-O Primer: concepts/big-o-primer.md
+    - How Detection Works: concepts/how-detection-works.md
+    - Cross-File Analysis: concepts/cross-file-analysis.md
+  - Developer:
+    - Building: developer/building.md
+    - Architecture: developer/architecture.md
+    - Adding Rules: developer/adding-rules.md
+    - Adding Languages: developer/adding-languages.md
+    - Testing: developer/testing.md
