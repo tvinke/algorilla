@@ -48,7 +48,7 @@ public class ExpensiveSortComparatorRule : Rule {
         findings: MutableList<Finding>,
     ) {
         val body = sort.comparatorBody ?: return
-        val lookups = body.flatMap { it.findDescendants<LookupCall>() }
+        val lookups = body.filterIsInstance<LookupCall>() + body.flatMap { it.findDescendants<LookupCall>() }
         for (lookup in lookups) {
             findings.add(buildFinding(sort, lookup))
         }

@@ -5,6 +5,8 @@ import com.github.tvinke.algorilla.cache.CachedFileEntry
 import com.github.tvinke.algorilla.cache.CachedFinding
 import com.github.tvinke.algorilla.config.AnalysisConfig
 import com.github.tvinke.algorilla.graph.CallGraph
+import com.github.tvinke.algorilla.graph.CallGraphBuilder
+import com.github.tvinke.algorilla.graph.ComplexityAnnotator
 import com.github.tvinke.algorilla.graph.SymbolTable
 import com.github.tvinke.algorilla.model.FileRoot
 import com.github.tvinke.algorilla.model.FunctionDecl
@@ -41,7 +43,8 @@ public class AnalysisEngine(
         logger.info { "Cache: ${sourceFiles.size - filesToParse.size} files unchanged, ${filesToParse.size} to analyze" }
 
         val (irTrees, symbolTable, errors) = parseFiles(filesToParse)
-        val callGraph = buildCallGraph()
+        val callGraph = buildCallGraph(irTrees, symbolTable)
+        annotateComplexity(symbolTable, callGraph)
         val rawFindings = evaluateRules(irTrees, symbolTable, callGraph)
         val freshFindings = SuppressionFilter().filter(rawFindings, irTrees)
 
@@ -128,7 +131,17 @@ public class AnalysisEngine(
         return ParseResult(irTrees, symbolTable, errors)
     }
 
-    private fun buildCallGraph(): CallGraph = CallGraph()
+    private fun buildCallGraph(
+        irTrees: Map<String, FileRoot>,
+        symbolTable: SymbolTable,
+    ): CallGraph = CallGraphBuilder(symbolTable).build(irTrees)
+
+    private fun annotateComplexity(
+        symbolTable: SymbolTable,
+        callGraph: CallGraph,
+    ) {
+        ComplexityAnnotator(symbolTable, callGraph, config.maxCallDepth).annotate()
+    }
 
     private fun evaluateRules(
         irTrees: Map<String, FileRoot>,

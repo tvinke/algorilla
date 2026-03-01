@@ -47,7 +47,7 @@ public class DateInSortRule : Rule {
         findings: MutableList<Finding>,
     ) {
         val body = sort.comparatorBody ?: return
-        val creations = body.flatMap { it.findDescendants<ObjectCreation>() }
+        val creations = body.filterIsInstance<ObjectCreation>() + body.flatMap { it.findDescendants<ObjectCreation>() }
         val dateCreations = creations.filter { isDateType(it.typeName) }
         for (creation in dateCreations) {
             findings.add(buildFinding(sort, creation))

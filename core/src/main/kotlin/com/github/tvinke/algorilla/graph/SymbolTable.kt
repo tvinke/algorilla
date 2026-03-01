@@ -8,12 +8,14 @@ import com.github.tvinke.algorilla.model.FunctionDecl
  */
 public class SymbolTable {
     private val symbols: MutableMap<String, MutableList<FunctionDecl>> = mutableMapOf()
+    private val bySimpleName: MutableMap<String, MutableList<FunctionDecl>> = mutableMapOf()
 
     /**
-     * Registers a function declaration under its qualified name.
+     * Registers a function declaration under its qualified name and simple name index.
      */
     public fun register(decl: FunctionDecl) {
         symbols.getOrPut(decl.qualifiedName) { mutableListOf() }.add(decl)
+        bySimpleName.getOrPut(decl.name) { mutableListOf() }.add(decl)
     }
 
     /**
@@ -24,7 +26,7 @@ public class SymbolTable {
     /**
      * Looks up function declarations by simple name (unqualified). Returns all matches.
      */
-    public fun lookupBySimpleName(name: String): List<FunctionDecl> = symbols.values.flatten().filter { it.name == name }
+    public fun lookupBySimpleName(name: String): List<FunctionDecl> = bySimpleName[name] ?: emptyList()
 
     /**
      * Returns all registered function declarations.

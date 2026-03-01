@@ -33,4 +33,30 @@ public class CallGraph {
      * Returns the total number of call edges.
      */
     public fun edgeCount(): Int = edges.values.sumOf { it.size }
+
+    /**
+     * Returns all transitive callees reachable from [qualifiedName], bounded by [maxDepth].
+     * Handles cycles by tracking visited nodes.
+     */
+    public fun transitiveCallees(
+        qualifiedName: String,
+        maxDepth: Int,
+    ): Set<String> {
+        val visited = mutableSetOf<String>()
+        collectCallees(qualifiedName, maxDepth, visited)
+        return visited
+    }
+
+    private fun collectCallees(
+        current: String,
+        remaining: Int,
+        visited: MutableSet<String>,
+    ) {
+        if (remaining <= 0) return
+        for (callee in callees(current)) {
+            if (visited.add(callee)) {
+                collectCallees(callee, remaining - 1, visited)
+            }
+        }
+    }
 }
