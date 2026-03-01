@@ -2,6 +2,7 @@ package com.github.tvinke.algorilla.rules.builtin
 
 import com.github.tvinke.algorilla.model.CollectionAccess
 import com.github.tvinke.algorilla.model.ExecutionContext
+import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.Severity
@@ -34,15 +35,37 @@ public class SortForLastRule : Rule {
         node: IRNode,
         findings: MutableList<Finding>,
     ) {
-        if (node is SortCall) {
-            val accessNodes = node.findDescendants<CollectionAccess>()
-            for (access in accessNodes) {
-                findings.add(buildFinding(node, access))
-            }
+        if (node is FunctionDecl) {
+            checkFunction(node, findings)
         }
         for (child in node.children) {
             scanNode(child, findings)
         }
+    }
+
+    private fun checkFunction(
+        fn: FunctionDecl,
+        findings: MutableList<Finding>,
+    ) {
+        val sorts = fn.findDescendants<SortCall>()
+        val accesses = fn.findDescendants<CollectionAccess>()
+        if (sorts.isEmpty() || accesses.isEmpty()) return
+
+        for (sort in sorts) {
+            for (access in accesses) {
+                if (isNearby(sort, access)) {
+                    findings.add(buildFinding(sort, access))
+                }
+            }
+        }
+    }
+
+    private fun isNearby(
+        sort: SortCall,
+        access: CollectionAccess,
+    ): Boolean {
+        val lineDiff = access.location.line - sort.location.line
+        return lineDiff in 0..MAX_LINE_DISTANCE
     }
 
     private fun buildFinding(
@@ -73,5 +96,9 @@ public class SortForLastRule : Rule {
             suggestedComplexity = "O(n)",
             evidence = evidence,
         )
+    }
+
+    private companion object {
+        const val MAX_LINE_DISTANCE = 5
     }
 }
