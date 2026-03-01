@@ -6,6 +6,8 @@ import com.github.tvinke.algorilla.graph.SymbolTable
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
+import com.github.tvinke.algorilla.rules.builtin.DateInSortRule
+import com.github.tvinke.algorilla.rules.builtin.ExpensiveSortComparatorRule
 import com.github.tvinke.algorilla.rules.builtin.FullScanForSingleLookupRule
 import com.github.tvinke.algorilla.rules.builtin.HeavyweightObjectPerInvocationRule
 import com.github.tvinke.algorilla.rules.builtin.RepeatedLinearScanRule
@@ -110,6 +112,49 @@ internal class RulesIntegrationTest {
                     "repeated-linear-scan/negative/single-lookup.java",
                     rule,
                 )
+
+            findings.shouldBeEmpty()
+        }
+    }
+
+    @Nested
+    inner class ExpensiveSortComparatorTests {
+        private val rule = ExpensiveSortComparatorRule()
+
+        @Test
+        fun `should detect lookup inside sort comparator`() {
+            val findings = analyzeFixture("expensive-sort-comparator/positive/lookup-in-comparator.java", rule)
+
+            findings.size shouldBe 2
+            findings.all { it.ruleId == "expensive-sort-comparator" } shouldBe true
+            findings.first().currentComplexity shouldBe "O(n^2 log n)"
+            findings.first().suggestedComplexity shouldBe "O(n log n)"
+        }
+
+        @Test
+        fun `should not flag simple comparator`() {
+            val findings = analyzeFixture("expensive-sort-comparator/negative/simple-comparator.java", rule)
+
+            findings.shouldBeEmpty()
+        }
+    }
+
+    @Nested
+    inner class DateInSortTests {
+        private val rule = DateInSortRule()
+
+        @Test
+        fun `should detect Date creation inside sort comparator`() {
+            val findings = analyzeFixture("date-in-sort/positive/date-creation-in-comparator.java", rule)
+
+            findings.size shouldBe 2
+            findings.all { it.ruleId == "date-in-sort" } shouldBe true
+            findings.first().message shouldContain "Date"
+        }
+
+        @Test
+        fun `should not flag comparator without date creation`() {
+            val findings = analyzeFixture("date-in-sort/negative/no-date-in-comparator.java", rule)
 
             findings.shouldBeEmpty()
         }
