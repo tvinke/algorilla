@@ -1,73 +1,83 @@
 # Algorilla
 
-A static analysis tool that detects algorithmic complexity anti-patterns in source code.
+**Find the hidden O(n^2) in your codebase before your users do.**
 
-Algorilla identifies places where runtime complexity is unnecessarily high — O(n^2) nested lookups, sort-for-last, expensive sort comparators, repeated linear scans — and provides concrete suggestions to reduce complexity.
+Algorilla is a static analysis tool that detects algorithmic complexity anti-patterns in Java, Groovy, Kotlin, and JavaScript/TypeScript code. It spots the kind of performance bugs that pass code review, work fine in tests, and then bring production to its knees when real data hits.
 
-## What does it find?
+## The Problem
 
-Consider this Java code that looks reasonable at first glance:
+This code looks fine. It passes every code review. It works perfectly in your test suite with 10 items:
 
 ```java
 void processOrders(List<Order> orders, List<String> priorityIds) {
     for (Order order : orders) {
-        if (priorityIds.contains(order.getId())) {  // O(n) lookup on every iteration
+        if (priorityIds.contains(order.getId())) {
             ship(order);
         }
     }
 }
 ```
 
-Algorilla detects that `priorityIds.contains()` performs a linear scan inside a loop, making this O(n*m):
+But `List.contains()` is O(n) — it scans the entire list on every call. Inside that loop, the real complexity is **O(n * m)**. With 10 orders and 5 priority IDs, that's 50 operations. Nobody notices.
+
+With 10,000 orders and 8,000 priority IDs? That's **80 million comparisons**. Your API timeout just went from 12ms to 4 seconds. Good luck finding that in a stack trace.
+
+**These patterns are everywhere.** They hide inside innocent-looking stream chains, get buried three method calls deep across files, and only surface under production load. By then, you're firefighting instead of shipping.
+
+## What Algorilla finds
+
+Run it on the code above:
 
 ```
-src/main/java/com/example/OrderService.java:3:5
-  nested-lookup Nested Lookup (O(n*m) → O(n+m))
+OrderService.java:2:5
+  nested-lookup (O(n*m) → O(n+m))
   Linear contains on 'priorityIds' inside for-each loop
   → Build a HashSet/Map from 'priorityIds' before the loop
   Evidence:
-    1. OrderService.java:3  for-each loop over orders       [INSIDE_LOOP]
-    2. OrderService.java:4  contains on 'priorityIds'       [INSIDE_LOOP]
+    1. OrderService.java:2  for-each loop over orders       [INSIDE_LOOP]
+    2. OrderService.java:3  contains on 'priorityIds'       [INSIDE_LOOP]
 ```
 
-The fix is simple — convert to a `HashSet` before the loop:
+The fix takes 30 seconds:
 
 ```java
 void processOrders(List<Order> orders, List<String> priorityIds) {
-    Set<String> prioritySet = new HashSet<>(priorityIds);  // O(m) one-time cost
+    Set<String> prioritySet = new HashSet<>(priorityIds);
     for (Order order : orders) {
-        if (prioritySet.contains(order.getId())) {  // O(1) lookup
+        if (prioritySet.contains(order.getId())) {  // O(1)
             ship(order);
         }
     }
 }
 ```
+
+80 million operations become 10,000. Same result, three orders of magnitude faster.
 
 ## Features
 
 - **Multi-language**: Java, Groovy, Kotlin, JavaScript/TypeScript (including Vue SFC)
-- **Cross-file analysis**: Follows call chains across files and languages via call graph construction
-- **7 built-in rules**: Covering the most common algorithmic complexity anti-patterns
-- **Evidence chains**: Every finding explains *why* the pattern is problematic with a traceable chain
-- **SARIF output**: Native support for GitHub Code Scanning and VS Code integration
-- **Incremental analysis**: Caches results per file — only re-analyzes changed files
-- **Baseline mode**: Track new findings only, ignore known issues
-- **Configurable**: `.algorilla.yml` for project-specific rules, type hints, and exclusions
-- **Custom rules**: Define your own rules via Kotlin Script DSL
-- **Project-aware**: Automatically detects Gradle/Maven structure and excludes test code
-- **Deterministic**: No AI/ML — pure pattern matching on AST level, fully reproducible
+- **Cross-file analysis**: Follows call chains across files and languages — catches patterns buried in helper methods
+- **7 built-in rules**: The most impactful algorithmic anti-patterns, from nested lookups to sort-for-last
+- **Evidence chains**: Every finding shows *exactly* why it's a problem, with a traceable path
+- **SARIF output**: Plugs into GitHub Code Scanning and VS Code
+- **Incremental**: Caches results per file — re-analyzes only what changed
+- **Baseline mode**: Adopt incrementally — suppress existing findings, catch only new ones
+- **Configurable**: `.algorilla.yml` for rules, type hints, exclusions
+- **Custom rules**: Extend with your own patterns via Kotlin Script DSL
+- **Project-aware**: Detects Gradle/Maven layout, auto-excludes test code
+- **Deterministic**: No AI/ML — pure AST pattern matching, fully reproducible
 
 ## Rules
 
-| Rule | Detects | Complexity |
-|------|---------|------------|
-| `nested-lookup` | find/filter/contains inside loop | O(n*m) → O(n+m) |
-| `sort-for-last` | sort() followed by first()/last() | O(n log n) → O(n) |
-| `expensive-sort-comparator` | Linear search in sort comparator | O(n^2 log n) → O(n log n) |
-| `date-in-sort` | Date parsing in sort comparator | Object churn |
-| `repeated-linear-scan` | Same collection scanned multiple times | k*O(n) → O(n) |
-| `full-scan-for-single-lookup` | Load-all followed by filter | O(n) → O(1) |
-| `heavyweight-object-per-invocation` | new ObjectMapper() in method body | Unnecessary allocation |
+| Rule | What it catches | Impact |
+|------|----------------|--------|
+| `nested-lookup` | `contains()`/`filter()`/`find()` inside a loop | O(n*m) → O(n+m) |
+| `sort-for-last` | `sort()` just to get `first()`/`last()` | O(n log n) → O(n) |
+| `expensive-sort-comparator` | Linear search inside a sort comparator | O(n^2 log n) → O(n log n) |
+| `date-in-sort` | `new Date()` / date parsing per comparison | Heap churn per comparison |
+| `repeated-linear-scan` | Same collection scanned 2+ times in one method | k * O(n) → O(n) |
+| `full-scan-for-single-lookup` | `findAll()` + filter when a targeted query would do | O(n) → O(1) |
+| `heavyweight-object-per-invocation` | `new ObjectMapper()` inside a method body | ~1ms allocation per call |
 
 ## Requirements
 
@@ -76,19 +86,15 @@ void processOrders(List<Order> orders, List<String> priorityIds) {
 ## Quick Start
 
 ```bash
-# Build
 git clone https://github.com/tvinke/algorilla.git
 cd algorilla
 ./gradlew shadowJar
 
-# Analyze a project
+# Scan a project
 java -jar cli/build/libs/algorilla-0.1.0-SNAPSHOT.jar src/main
 
-# Analyze with SARIF output
+# SARIF for CI integration
 java -jar cli/build/libs/algorilla-0.1.0-SNAPSHOT.jar --format sarif --output report.sarif src/
-
-# JSON output
-java -jar cli/build/libs/algorilla-0.1.0-SNAPSHOT.jar --format json src/
 ```
 
 ## Usage
@@ -119,19 +125,19 @@ Options:
 
 ### Baseline Workflow
 
-Save a baseline of current findings, then only report new issues going forward:
+Adopt Algorilla in an existing project without fixing everything at once:
 
 ```bash
-# Save current state as baseline
+# Capture current state
 java -jar cli/build/libs/algorilla-0.1.0-SNAPSHOT.jar --save-baseline .algorilla/baseline.json src/
 
-# Later: only show NEW findings
+# From now on, only fail on NEW findings
 java -jar cli/build/libs/algorilla-0.1.0-SNAPSHOT.jar --baseline .algorilla/baseline.json src/
 ```
 
 ### Inline Suppression
 
-Suppress specific findings with comments in your source code:
+Suppress specific findings with a comment:
 
 ```java
 // algorilla:ignore nested-lookup
@@ -175,7 +181,7 @@ heavyweight-types:
 ./gradlew build
 ```
 
-This compiles all modules, runs Detekt and ktlint checks, and executes all tests.
+Compiles all modules, runs Detekt and ktlint checks, and executes all tests.
 
 ### Create Executable JAR
 
@@ -183,38 +189,38 @@ This compiles all modules, runs Detekt and ktlint checks, and executes all tests
 ./gradlew shadowJar
 ```
 
-The JAR is created at `cli/build/libs/algorilla-0.1.0-SNAPSHOT.jar`.
+Creates `cli/build/libs/algorilla-0.1.0-SNAPSHOT.jar`.
 
 ### Run Tests
 
 ```bash
-# Run all tests
+# All tests
 ./gradlew test
 
-# Run tests for a specific module
+# Single module
 ./gradlew :core:test
 ./gradlew :lang-java:test
 ./gradlew :lang-groovy:test
 ./gradlew :lang-javascript:test
 ./gradlew :lang-kotlin:test
 
-# Run a specific test class
+# Specific test class
 ./gradlew :lang-java:test --tests "com.github.tvinke.algorilla.lang.java.parser.JavaLanguageParserTest"
 ```
 
 ### Code Quality
 
 ```bash
-# Run Detekt static analysis
+# Static analysis
 ./gradlew detekt
 
-# Run ktlint formatting check
+# Formatting check
 ./gradlew ktlintCheck
 
-# Auto-fix formatting issues
+# Auto-fix formatting
 ./gradlew ktlintFormat
 
-# Run everything (compile + test + detekt + ktlint)
+# Everything: compile + test + detekt + ktlint
 ./gradlew check
 ```
 
@@ -235,12 +241,12 @@ algorilla/
 
 ### Architecture
 
-Algorilla uses a four-pass analysis pipeline:
+Four-pass analysis pipeline:
 
-1. **Parse**: Source files → language-agnostic Intermediate Representation (IR)
-2. **Call Graph**: Build caller-callee relationships across all files
-3. **Annotate**: Estimate complexity and propagate execution context bottom-up
-4. **Evaluate**: Run rules against the annotated IR, produce findings
+1. **Parse** — Source files → language-agnostic Intermediate Representation (IR)
+2. **Call Graph** — Build caller-callee relationships across all files and languages
+3. **Annotate** — Estimate complexity per function, propagate execution context bottom-up
+4. **Evaluate** — Run rules against annotated IR, produce findings with evidence chains
 
 ## Author
 

@@ -4,6 +4,7 @@ import com.github.tvinke.algorilla.baseline.Baseline
 import com.github.tvinke.algorilla.cache.AnalysisCache
 import com.github.tvinke.algorilla.config.AnalysisConfig
 import com.github.tvinke.algorilla.engine.AnalysisEngine
+import com.github.tvinke.algorilla.engine.AnalysisResult
 import com.github.tvinke.algorilla.lang.groovy.parser.GroovyParser
 import com.github.tvinke.algorilla.lang.java.parser.JavaLanguageParser
 import com.github.tvinke.algorilla.lang.javascript.parser.JavaScriptParser
@@ -162,7 +163,7 @@ internal class AlgorillaCommand : Callable<Int> {
         return spec.commandLine().parseResult.hasMatchedOption("severity")
     }
 
-    private fun applyBaseline(result: com.github.tvinke.algorilla.engine.AnalysisResult): com.github.tvinke.algorilla.engine.AnalysisResult {
+    private fun applyBaseline(result: AnalysisResult): AnalysisResult {
         if (saveBaselineFile != null) {
             Baseline.save(result.findings, saveBaselineFile!!)
         }
