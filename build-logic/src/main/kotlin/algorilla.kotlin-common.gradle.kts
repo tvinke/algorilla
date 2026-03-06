@@ -9,10 +9,15 @@ plugins {
 group = "com.github.tvinke.algorilla"
 version = "0.1.0-SNAPSHOT"
 
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
+
 kotlin {
     jvmToolchain(21)
     compilerOptions {
-        jvmTarget.set(JvmTarget.JVM_21)
+        jvmTarget.set(JvmTarget.JVM_11)
         allWarningsAsErrors.set(true)
         freeCompilerArgs.addAll(
             "-Xjsr305=strict",
