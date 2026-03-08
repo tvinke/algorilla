@@ -99,6 +99,7 @@ private val SIDE_EFFECT_PREFIXES = listOf(
     "send", "emit", "publish", "notify", "dispatch",
     "register", "subscribe", "on",
     "path", "header", "param", "query", "body", "accept", "contentType",
+    "assert", "verify", "expect", "should",
 )
 
 private val SIDE_EFFECT_TARGETS = listOf(

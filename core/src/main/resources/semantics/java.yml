@@ -45,6 +45,11 @@ heavyweight-types:
   - DocumentBuilderFactory
   - TransformerFactory
   - Pattern
+  - DecimalFormat
+  - SimpleDateFormat
+  - Collator
+  - RuleBasedCollator
+  - MessageDigest
 
 o1-types:
   - Set
