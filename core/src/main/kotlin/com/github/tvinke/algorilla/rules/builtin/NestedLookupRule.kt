@@ -5,6 +5,7 @@ import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LookupCall
+import com.github.tvinke.algorilla.model.LookupKind
 import com.github.tvinke.algorilla.model.LoopNode
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.rules.AnalysisContext
@@ -14,8 +15,10 @@ import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.util.hasO1Type
 
 /**
- * Detects linear lookup operations (contains, indexOf, find, filter, etc.) inside loop bodies.
- * When a collection is searched linearly on every iteration of a loop, the combined complexity
+ * Detects linear lookup operations (contains, indexOf, find, filter, etc.) inside loop bodies
+ * or inside iterating higher-order functions (findAll, any, every, etc.).
+ *
+ * When a collection is searched linearly on every iteration, the combined complexity
  * becomes O(n*m) or O(n^2) where O(n) would suffice with a pre-built Set or Map.
  */
 public class NestedLookupRule : Rule {
@@ -35,24 +38,35 @@ public class NestedLookupRule : Rule {
     private fun scanNode(
         node: IRNode,
         enclosingFn: FunctionDecl?,
-        loopStack: List<LoopNode>,
+        iterationStack: List<IRNode>,
         findings: MutableList<Finding>,
     ) {
         val fn = if (node is FunctionDecl) node else enclosingFn
 
         if (node is LoopNode) {
             for (child in node.children) {
-                scanNode(child, fn, loopStack + node, findings)
+                scanNode(child, fn, iterationStack + node, findings)
             }
             return
         }
 
-        if (node is LookupCall && loopStack.isNotEmpty() && !isO1Lookup(node, fn)) {
-            findings.add(buildFinding(node, loopStack))
+        if (node is LookupCall) {
+            // If this lookup is inside an iteration context and is not O(1), report it
+            if (iterationStack.isNotEmpty() && !isO1Lookup(node, fn)) {
+                findings.add(buildFinding(node, iterationStack))
+            }
+
+            // If this lookup itself iterates (has children = closure body), treat as iteration context
+            if (node.children.isNotEmpty() && isIteratingLookup(node.kind)) {
+                for (child in node.children) {
+                    scanNode(child, fn, iterationStack + node, findings)
+                }
+                return
+            }
         }
 
         for (child in node.children) {
-            scanNode(child, fn, loopStack, findings)
+            scanNode(child, fn, iterationStack, findings)
         }
     }
 
@@ -63,18 +77,18 @@ public class NestedLookupRule : Rule {
 
     private fun buildFinding(
         lookup: LookupCall,
-        loopStack: List<LoopNode>,
+        iterationStack: List<IRNode>,
     ): Finding {
         val targetVar = lookup.targetVariable ?: "collection"
-        val outerLoop = loopStack.first()
-        val evidence = buildEvidence(loopStack, lookup, targetVar)
+        val outerIteration = iterationStack.first()
+        val evidence = buildEvidence(iterationStack, lookup, targetVar)
 
         return Finding(
             ruleId = id,
             ruleName = name,
             severity = severity,
-            location = outerLoop.location,
-            message = "Linear ${lookup.kind.name.lowercase()} on '$targetVar' inside ${outerLoop.kind.label()}",
+            location = outerIteration.location,
+            message = "Linear ${lookup.kind.name.lowercase()} on '$targetVar' inside ${iterationLabel(outerIteration)}",
             suggestion = "Build a HashSet/Map from '$targetVar' before the loop",
             currentComplexity = "O(n*m)",
             suggestedComplexity = "O(n+m)",
@@ -83,15 +97,15 @@ public class NestedLookupRule : Rule {
     }
 
     private fun buildEvidence(
-        loopStack: List<LoopNode>,
+        iterationStack: List<IRNode>,
         lookup: LookupCall,
         targetVar: String,
     ): List<Evidence> {
         val evidence =
-            loopStack.map { loop ->
+            iterationStack.map { node ->
                 Evidence(
-                    location = loop.location,
-                    label = "${loop.kind.label()} over ${loop.iteratedVariable ?: "items"}",
+                    location = node.location,
+                    label = "${iterationLabel(node)} over ${iteratedVar(node)}",
                     executionContext = ExecutionContext.INSIDE_LOOP,
                 )
             }
@@ -103,6 +117,35 @@ public class NestedLookupRule : Rule {
             )
     }
 }
+
+/**
+ * LookupKinds that iterate over a collection (their closure body runs per element).
+ */
+private val ITERATING_LOOKUP_KINDS = setOf(
+    LookupKind.FIND,
+    LookupKind.FILTER,
+    LookupKind.ANY_MATCH,
+    LookupKind.ALL_MATCH,
+    LookupKind.NONE_MATCH,
+    LookupKind.SOME,
+    LookupKind.COUNT,
+)
+
+private fun isIteratingLookup(kind: LookupKind): Boolean = kind in ITERATING_LOOKUP_KINDS
+
+private fun iterationLabel(node: IRNode): String =
+    when (node) {
+        is LoopNode -> node.kind.label()
+        is LookupCall -> "${node.kind.name.lowercase()}()"
+        else -> "iteration"
+    }
+
+private fun iteratedVar(node: IRNode): String =
+    when (node) {
+        is LoopNode -> node.iteratedVariable ?: "items"
+        is LookupCall -> node.targetVariable ?: "collection"
+        else -> "items"
+    }
 
 internal fun com.github.tvinke.algorilla.model.LoopKind.label(): String =
     when (this) {
