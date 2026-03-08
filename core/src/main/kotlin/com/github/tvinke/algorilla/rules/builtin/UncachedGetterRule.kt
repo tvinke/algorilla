@@ -75,8 +75,13 @@ public class UncachedGetterRule : Rule {
 
 private val GETTER_PREFIXES = listOf("get", "find", "load", "fetch", "lookup", "resolve")
 
-private fun isGetterPattern(call: FunctionCall): Boolean =
-    GETTER_PREFIXES.any { call.name.startsWith(it, ignoreCase = true) }
+/** Short method names that are too generic to flag (Map.get, List.get, etc.) */
+private val EXCLUDED_NAMES = setOf("get", "getOrDefault", "getOrElse")
+
+private fun isGetterPattern(call: FunctionCall): Boolean {
+    if (call.name in EXCLUDED_NAMES) return false
+    return GETTER_PREFIXES.any { call.name.startsWith(it, ignoreCase = true) }
+}
 
 private fun argKey(call: FunctionCall): String =
     call.arguments.joinToString(",") { it.toString().take(80) }

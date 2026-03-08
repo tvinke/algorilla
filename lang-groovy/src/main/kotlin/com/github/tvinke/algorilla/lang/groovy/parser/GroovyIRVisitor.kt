@@ -34,12 +34,15 @@ internal class GroovyIRVisitor(
         val name = ctx.identifier().text
         val params = extractParameters(ctx.formalParameters())
         val body = ctx.methodBody()?.let { visitChildren(it) } ?: emptyList()
+        // Groovy constructors parsed as methods: name starts with uppercase, no explicit return type
+        val isCtor = name.first().isUpperCase() && ctx.typeTypeOrVoid()?.text?.let { it == "void" || it == name } != true
 
         return listOf(
             FunctionDecl(
                 name = name,
                 qualifiedName = name,
                 parameters = params,
+                isConstructor = isCtor,
                 location = locationOf(ctx),
                 children = body,
             ),

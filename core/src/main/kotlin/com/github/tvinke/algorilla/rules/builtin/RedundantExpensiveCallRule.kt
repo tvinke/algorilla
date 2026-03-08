@@ -42,7 +42,7 @@ public class RedundantExpensiveCallRule : Rule {
     private fun checkFunction(fn: FunctionDecl, findings: MutableList<Finding>) {
         val calls = fn.findDescendants<FunctionCall>()
         val grouped = calls
-            .filter { it.arguments.isNotEmpty() }
+            .filter { it.arguments.isNotEmpty() && !isSideEffectCall(it) }
             .groupBy { callSignature(it) }
 
         for ((sig, duplicates) in grouped) {
@@ -88,3 +88,27 @@ private fun argFingerprint(node: IRNode): String =
         is FunctionCall -> "${node.qualifiedTarget}.${node.name}"
         else -> node.toString().take(100)
     }
+
+/**
+ * Methods that are meant to be called for side effects rather than return values.
+ * These should never be flagged as "redundant" even with same arguments.
+ */
+private val SIDE_EFFECT_PREFIXES = listOf(
+    "set", "add", "put", "remove", "delete", "insert", "append", "write", "print",
+    "log", "debug", "info", "warn", "error", "trace",
+    "send", "emit", "publish", "notify", "dispatch",
+    "register", "subscribe", "on",
+    "path", "header", "param", "query", "body", "accept", "contentType",
+)
+
+private val SIDE_EFFECT_TARGETS = listOf(
+    "log", "logger", "console", "system.out", "system.err",
+    "builder", "uriBuilder", "response", "request",
+)
+
+private fun isSideEffectCall(call: FunctionCall): Boolean {
+    val name = call.name.lowercase()
+    if (SIDE_EFFECT_PREFIXES.any { name.startsWith(it) }) return true
+    val target = call.qualifiedTarget?.lowercase() ?: return false
+    return SIDE_EFFECT_TARGETS.any { target.contains(it) }
+}
