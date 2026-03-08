@@ -76,13 +76,20 @@ private val SINGLE_FETCH_METHOD_PREFIXES = listOf(
     "findByKey", "getByKey", "loadByKey",
 )
 
+/** Patterns like getAnimalByAnimalId, findUserByEmail — strong signal for single-record fetch */
+private val SINGLE_FETCH_METHOD_REGEX = Regex("""^(?:get|find|load|fetch|lookup)\w+By\w+(?:Id|Key|Name|Code|Identifier)$""", RegexOption.IGNORE_CASE)
+
 private val REPO_TARGET_PATTERNS = listOf(
     "repository", "repo", "dao", "store", "service", "client", "proxy",
 )
 
 private fun isSingleRecordFetch(call: FunctionCall): Boolean {
     val matchesMethod = SINGLE_FETCH_METHOD_PREFIXES.any { call.name.startsWith(it, ignoreCase = true) }
-    if (!matchesMethod) return false
-    val target = call.qualifiedTarget?.lowercase() ?: return false
-    return REPO_TARGET_PATTERNS.any { target.contains(it) }
+    if (matchesMethod) {
+        val target = call.qualifiedTarget?.lowercase()
+        if (target == null || REPO_TARGET_PATTERNS.any { target.contains(it) }) return true
+    }
+    // Also match strong naming patterns like getAnimalByAnimalId, findUserByEmail
+    if (SINGLE_FETCH_METHOD_REGEX.matches(call.name)) return true
+    return false
 }

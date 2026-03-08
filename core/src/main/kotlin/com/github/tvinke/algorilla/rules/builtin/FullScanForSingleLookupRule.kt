@@ -48,7 +48,7 @@ public class FullScanForSingleLookupRule : Rule {
         fn: FunctionDecl,
         findings: MutableList<Finding>,
     ) {
-        val bulkCalls = fn.findDescendants<FunctionCall>().filter { isBulkLoadCall(it.name) }
+        val bulkCalls = fn.findDescendants<FunctionCall>().filter { isBulkLoadCall(it) }
         if (bulkCalls.isEmpty()) return
         val hasFilter =
             fn.findDescendants<LookupCall>().isNotEmpty() ||
@@ -90,7 +90,13 @@ public class FullScanForSingleLookupRule : Rule {
     }
 }
 
-internal fun isBulkLoadCall(name: String): Boolean = BULK_LOAD_PREFIXES.any { name.startsWith(it, ignoreCase = true) }
+internal fun isBulkLoadCall(call: FunctionCall): Boolean {
+    if (!BULK_LOAD_PREFIXES.any { call.name.startsWith(it, ignoreCase = true) }) return false
+    // Exclude DOM/test framework targets (e.g., wrapper.findAll in Vue test utils)
+    val target = call.qualifiedTarget?.lowercase()
+    if (target != null && DOM_TARGETS.any { target.contains(it) }) return false
+    return true
+}
 
 private val BULK_LOAD_PREFIXES: List<String> =
     listOf(
@@ -100,3 +106,5 @@ private val BULK_LOAD_PREFIXES: List<String> =
         "loadAll",
         "fetchAll",
     )
+
+private val DOM_TARGETS = setOf("wrapper", "document", "element", "el", "node", "dom", "selector")
