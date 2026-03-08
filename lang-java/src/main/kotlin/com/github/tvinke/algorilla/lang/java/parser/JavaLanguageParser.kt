@@ -128,7 +128,7 @@ internal class JavaIRVisitor(
             val methodName = methodCall.identifier()?.text ?: return visitChildren(ctx)
             val targetExpr = ctx.expression()
             val targetText = targetExpr?.text ?: return visitChildren(ctx)
-            val loc = locationOf(ctx)
+            val loc = locationOf(methodCall)
 
             return handleChainedMethodCall(methodName, targetText, methodCall, targetExpr, loc)
         }
