@@ -14,6 +14,7 @@ import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
+import com.github.tvinke.algorilla.semantics.CollectionSemanticsRegistry
 import io.github.oshai.kotlinlogging.KotlinLogging
 
 private val logger = KotlinLogging.logger {}
@@ -29,6 +30,7 @@ public class AnalysisEngine(
     private val config: AnalysisConfig,
     private val cache: AnalysisCache? = null,
     @Suppress("UNUSED_PARAMETER") verbose: Boolean = false,
+    private val registry: CollectionSemanticsRegistry = createRegistry(config),
 ) {
     /**
      * Runs the full analysis pipeline on the given source files and returns all findings.
@@ -148,7 +150,7 @@ public class AnalysisEngine(
         symbolTable: SymbolTable,
         callGraph: CallGraph,
     ): List<Finding> {
-        val context = AnalysisContext(irTrees, symbolTable, callGraph, config)
+        val context = AnalysisContext(irTrees, symbolTable, callGraph, config, registry)
         return rules
             .filter { rule -> config.ruleOverrides[rule.id]?.enabled != false }
             .flatMap { it.evaluate(context) }
@@ -203,3 +205,8 @@ public class ParseException(
     message: String,
     cause: Throwable? = null,
 ) : RuntimeException(message, cause)
+
+private fun createRegistry(config: AnalysisConfig): CollectionSemanticsRegistry {
+    val base = CollectionSemanticsRegistry.loadDefaults()
+    return CollectionSemanticsRegistry.withOverrides(base, config.heavyweightTypes)
+}

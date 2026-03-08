@@ -1,0 +1,142 @@
+package com.github.tvinke.algorilla.semantics
+
+import com.github.tvinke.algorilla.model.Language
+import com.github.tvinke.algorilla.model.LookupKind
+import com.github.tvinke.algorilla.model.SortKind
+import io.kotest.matchers.booleans.shouldBeFalse
+import io.kotest.matchers.booleans.shouldBeTrue
+import io.kotest.matchers.nulls.shouldBeNull
+import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.shouldBe
+import org.junit.jupiter.api.Test
+
+internal class CollectionSemanticsRegistryTest {
+    private val registry = CollectionSemanticsRegistry.loadDefaults()
+
+    @Test
+    fun `should classify Java contains as lookup`() {
+        val semantics = registry.classify(Language.JAVA, "contains")
+        semantics.shouldNotBeNull()
+        semantics.category shouldBe SemanticCategory.LOOKUP
+        semantics.lookupKind shouldBe LookupKind.CONTAINS
+    }
+
+    @Test
+    fun `should classify Java sorted as sort`() {
+        val semantics = registry.classify(Language.JAVA, "sorted")
+        semantics.shouldNotBeNull()
+        semantics.category shouldBe SemanticCategory.SORT
+        semantics.sortKind shouldBe SortKind.SORTED
+    }
+
+    @Test
+    fun `should classify Groovy each as iteration`() {
+        val semantics = registry.classify(Language.GROOVY, "each")
+        semantics.shouldNotBeNull()
+        semantics.category shouldBe SemanticCategory.ITERATION
+    }
+
+    @Test
+    fun `should classify Groovy collect as iteration`() {
+        val semantics = registry.classify(Language.GROOVY, "collect")
+        semantics.shouldNotBeNull()
+        semantics.category shouldBe SemanticCategory.ITERATION
+    }
+
+    @Test
+    fun `should classify Groovy find as lookup`() {
+        val semantics = registry.classify(Language.GROOVY, "find")
+        semantics.shouldNotBeNull()
+        semantics.category shouldBe SemanticCategory.LOOKUP
+        semantics.lookupKind shouldBe LookupKind.FIND
+    }
+
+    @Test
+    fun `should classify Groovy any as lookup`() {
+        val semantics = registry.classify(Language.GROOVY, "any")
+        semantics.shouldNotBeNull()
+        semantics.category shouldBe SemanticCategory.LOOKUP
+        semantics.lookupKind shouldBe LookupKind.ANY_MATCH
+    }
+
+    @Test
+    fun `should classify Groovy unique as quadratic`() {
+        val semantics = registry.classify(Language.GROOVY, "unique")
+        semantics.shouldNotBeNull()
+        semantics.category shouldBe SemanticCategory.QUADRATIC
+        semantics.complexity shouldBe "O(n^2)"
+    }
+
+    @Test
+    fun `should classify JavaScript forEach as iteration`() {
+        val semantics = registry.classify(Language.JAVASCRIPT, "forEach")
+        semantics.shouldNotBeNull()
+        semantics.category shouldBe SemanticCategory.ITERATION
+    }
+
+    @Test
+    fun `should classify JavaScript includes as lookup`() {
+        val semantics = registry.classify(Language.JAVASCRIPT, "includes")
+        semantics.shouldNotBeNull()
+        semantics.category shouldBe SemanticCategory.LOOKUP
+        semantics.lookupKind shouldBe LookupKind.INCLUDES
+    }
+
+    @Test
+    fun `should resolve TypeScript to JavaScript`() {
+        val semantics = registry.classify(Language.TYPESCRIPT, "filter")
+        semantics.shouldNotBeNull()
+        semantics.category shouldBe SemanticCategory.LOOKUP
+        semantics.lookupKind shouldBe LookupKind.FILTER
+    }
+
+    @Test
+    fun `should return null for unknown method`() {
+        registry.classify(Language.JAVA, "unknownMethod").shouldBeNull()
+    }
+
+    @Test
+    fun `should detect heavyweight types`() {
+        registry.isHeavyweight(Language.JAVA, "ObjectMapper").shouldBeTrue()
+        registry.isHeavyweight(Language.GROOVY, "JsonSlurper").shouldBeTrue()
+        registry.isHeavyweight(Language.JAVA, "String").shouldBeFalse()
+    }
+
+    @Test
+    fun `should detect O1 types`() {
+        registry.isO1Type("HashSet").shouldBeTrue()
+        registry.isO1Type("HashMap").shouldBeTrue()
+        registry.isO1Type("TreeMap").shouldBeTrue()
+        registry.isO1Type("ArrayList").shouldBeFalse()
+    }
+
+    @Test
+    fun `should merge user heavyweight types`() {
+        val merged = CollectionSemanticsRegistry.withOverrides(registry, setOf("CustomMapper"))
+        merged.isHeavyweight(Language.JAVA, "CustomMapper").shouldBeTrue()
+        // original types still present
+        merged.isHeavyweight(Language.JAVA, "ObjectMapper").shouldBeTrue()
+    }
+
+    @Test
+    fun `should classify Kotlin filter as lookup`() {
+        val semantics = registry.classify(Language.KOTLIN, "filter")
+        semantics.shouldNotBeNull()
+        semantics.category shouldBe SemanticCategory.LOOKUP
+        semantics.lookupKind shouldBe LookupKind.FILTER
+    }
+
+    @Test
+    fun `should classify serialization methods`() {
+        val semantics = registry.classify(Language.JAVA, "writeValueAsString")
+        semantics.shouldNotBeNull()
+        semantics.category shouldBe SemanticCategory.SERIALIZATION
+    }
+
+    @Test
+    fun `should classify blocking methods`() {
+        val semantics = registry.classify(Language.JAVA, "join")
+        semantics.shouldNotBeNull()
+        semantics.category shouldBe SemanticCategory.BLOCKING
+    }
+}

@@ -40,6 +40,9 @@ public enum class LookupKind {
     ANY,
     INCLUDES,
     ANY_MATCH,
+    ALL_MATCH,
+    NONE_MATCH,
+    COUNT,
     INDEX_OF,
 }
 
@@ -109,6 +112,7 @@ public data class FunctionDecl(
     val name: String,
     val qualifiedName: String,
     val parameters: List<Parameter>,
+    val isConstructor: Boolean = false,
     var estimatedComplexity: Complexity? = null,
     var executionContext: ExecutionContext = ExecutionContext.SINGLE,
     override val location: SourceLocation,

@@ -1,0 +1,58 @@
+methods:
+  # Iteration
+  forEach:      { semantics: iteration }
+  forEachOrdered: { semantics: iteration }
+  stream:       { semantics: iteration, note: "creates stream pipeline" }
+  parallelStream: { semantics: iteration, note: "creates parallel stream pipeline" }
+
+  # Lookup
+  contains:     { semantics: lookup, kind: CONTAINS }
+  containsKey:  { semantics: lookup, kind: CONTAINS }
+  containsValue: { semantics: lookup, kind: CONTAINS }
+  indexOf:      { semantics: lookup, kind: INDEX_OF }
+  lastIndexOf:  { semantics: lookup, kind: INDEX_OF }
+  find:         { semantics: lookup, kind: FIND }
+  filter:       { semantics: lookup, kind: FILTER }
+  anyMatch:     { semantics: lookup, kind: ANY_MATCH }
+  allMatch:     { semantics: lookup, kind: ALL_MATCH }
+  noneMatch:    { semantics: lookup, kind: NONE_MATCH }
+
+  # Sort
+  sort:    { semantics: sort, kind: SORT }
+  sorted:  { semantics: sort, kind: SORTED }
+
+  # Access
+  first:     { semantics: access, kind: FIRST }
+  last:      { semantics: access, kind: LAST }
+  findFirst: { semantics: access, kind: FIND_FIRST }
+  findAny:   { semantics: access, kind: FIND_ANY }
+
+  # Blocking
+  join: { semantics: blocking, note: "on Future types" }
+  get:  { semantics: blocking, note: "on Future types; also Map.get" }
+
+  # Serialization
+  writeValueAsString: { semantics: serialization }
+  writeValueAsBytes:  { semantics: serialization }
+  readValue:          { semantics: serialization }
+  convertValue:       { semantics: serialization }
+  valueToTree:        { semantics: serialization }
+
+heavyweight-types:
+  - ObjectMapper
+  - Gson
+  - XmlMapper
+  - DocumentBuilderFactory
+  - TransformerFactory
+  - Pattern
+
+o1-types:
+  - Set
+  - HashSet
+  - LinkedHashSet
+  - TreeSet
+  - Map
+  - HashMap
+  - TreeMap
+  - LinkedHashMap
+  - ConcurrentHashMap

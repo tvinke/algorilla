@@ -1,0 +1,45 @@
+methods:
+  # Iteration
+  forEach: { semantics: iteration }
+  map:     { semantics: iteration }
+  flatMap: { semantics: iteration }
+  reduce:  { semantics: iteration }
+  reduceRight: { semantics: iteration }
+
+  # Lookup
+  find:      { semantics: lookup, kind: FIND }
+  findIndex: { semantics: lookup, kind: INDEX_OF }
+  findLast:  { semantics: lookup, kind: FIND }
+  findLastIndex: { semantics: lookup, kind: INDEX_OF }
+  filter:    { semantics: lookup, kind: FILTER }
+  some:      { semantics: lookup, kind: SOME }
+  every:     { semantics: lookup, kind: ALL_MATCH }
+  includes:  { semantics: lookup, kind: INCLUDES }
+  indexOf:   { semantics: lookup, kind: INDEX_OF }
+  lastIndexOf: { semantics: lookup, kind: INDEX_OF }
+
+  # Sort
+  sort:     { semantics: sort, kind: SORT }
+  toSorted: { semantics: sort, kind: SORTED }
+
+  # Access
+  at: { semantics: access, kind: FIRST, note: "depends on index" }
+
+  # Blocking
+  # (no stdlib blocking; userland Promise.await etc.)
+
+  # Serialization
+  stringify: { semantics: serialization, note: "JSON.stringify" }
+  parse:     { semantics: serialization, note: "JSON.parse" }
+
+  # Copy-on-modify
+  concat: { semantics: copy-on-modify }
+
+heavyweight-types:
+  - RegExp
+
+o1-types:
+  - Set
+  - Map
+  - WeakSet
+  - WeakMap

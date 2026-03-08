@@ -1,0 +1,77 @@
+methods:
+  # Iteration (GDK methods)
+  each:           { semantics: iteration }
+  eachWithIndex:  { semantics: iteration }
+  collect:        { semantics: iteration }
+  collectEntries: { semantics: iteration }
+  collectMany:    { semantics: iteration }
+  forEach:        { semantics: iteration }
+
+  # Lookup
+  find:        { semantics: lookup, kind: FIND }
+  findAll:     { semantics: lookup, kind: FILTER, note: "with closure; without = bulk load" }
+  any:         { semantics: lookup, kind: ANY_MATCH }
+  every:       { semantics: lookup, kind: ALL_MATCH }
+  contains:    { semantics: lookup, kind: CONTAINS }
+  indexOf:     { semantics: lookup, kind: INDEX_OF }
+  lastIndexOf: { semantics: lookup, kind: INDEX_OF }
+  count:       { semantics: lookup, kind: COUNT }
+  grep:        { semantics: lookup, kind: FILTER }
+  containsKey:  { semantics: lookup, kind: CONTAINS }
+  containsValue: { semantics: lookup, kind: CONTAINS }
+  filter:      { semantics: lookup, kind: FILTER }
+  anyMatch:    { semantics: lookup, kind: ANY_MATCH }
+  allMatch:    { semantics: lookup, kind: ALL_MATCH }
+  noneMatch:   { semantics: lookup, kind: NONE_MATCH }
+  includes:    { semantics: lookup, kind: INCLUDES }
+  some:        { semantics: lookup, kind: SOME }
+
+  # Sort
+  sort:     { semantics: sort, kind: SORT }
+  toSorted: { semantics: sort, kind: SORTED }
+  sorted:   { semantics: sort, kind: SORTED }
+  sortBy:   { semantics: sort, kind: SORT_BY }
+  orderBy:  { semantics: sort, kind: ORDER_BY }
+
+  # Access
+  first: { semantics: access, kind: FIRST }
+  last:  { semantics: access, kind: LAST }
+  findFirst: { semantics: access, kind: FIND_FIRST }
+  findAny:   { semantics: access, kind: FIND_ANY }
+
+  # Quadratic
+  unique:    { semantics: quadratic, complexity: "O(n^2)", note: "no-arg only" }
+  intersect: { semantics: quadratic, complexity: "O(n*m)" }
+  minus:     { semantics: quadratic, complexity: "O(n*m)" }
+
+  # Blocking
+  join: { semantics: blocking, note: "on Future types" }
+  get:  { semantics: blocking, note: "on Future types; also Map.get" }
+
+  # Serialization
+  writeValueAsString: { semantics: serialization }
+  writeValueAsBytes:  { semantics: serialization }
+  readValue:          { semantics: serialization }
+  convertValue:       { semantics: serialization }
+  valueToTree:        { semantics: serialization }
+
+heavyweight-types:
+  - ObjectMapper
+  - Gson
+  - XmlMapper
+  - DocumentBuilderFactory
+  - TransformerFactory
+  - JsonSlurper
+  - XmlSlurper
+  - Pattern
+
+o1-types:
+  - Set
+  - HashSet
+  - LinkedHashSet
+  - TreeSet
+  - Map
+  - HashMap
+  - TreeMap
+  - LinkedHashMap
+  - ConcurrentHashMap

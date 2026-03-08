@@ -1,0 +1,61 @@
+methods:
+  # Iteration
+  forEach:       { semantics: iteration }
+  forEachIndexed: { semantics: iteration }
+  map:           { semantics: iteration }
+  flatMap:       { semantics: iteration }
+  fold:          { semantics: iteration }
+  reduce:        { semantics: iteration }
+  onEach:        { semantics: iteration }
+
+  # Lookup
+  find:          { semantics: lookup, kind: FIND }
+  findLast:      { semantics: lookup, kind: FIND }
+  first:         { semantics: lookup, kind: FIND, note: "with predicate = lookup" }
+  last:          { semantics: lookup, kind: FIND, note: "with predicate = lookup" }
+  filter:        { semantics: lookup, kind: FILTER }
+  filterNot:     { semantics: lookup, kind: FILTER }
+  any:           { semantics: lookup, kind: ANY_MATCH }
+  all:           { semantics: lookup, kind: ALL_MATCH }
+  none:          { semantics: lookup, kind: NONE_MATCH }
+  contains:      { semantics: lookup, kind: CONTAINS }
+  indexOf:       { semantics: lookup, kind: INDEX_OF }
+  lastIndexOf:   { semantics: lookup, kind: INDEX_OF }
+  indexOfFirst:  { semantics: lookup, kind: INDEX_OF }
+  indexOfLast:   { semantics: lookup, kind: INDEX_OF }
+  count:         { semantics: lookup, kind: COUNT }
+
+  # Sort
+  sorted:        { semantics: sort, kind: SORTED }
+  sortedBy:      { semantics: sort, kind: SORT_BY }
+  sortedByDescending: { semantics: sort, kind: SORT_BY }
+  sortedWith:    { semantics: sort, kind: SORTED }
+
+  # Access
+  firstOrNull: { semantics: access, kind: FIRST }
+  lastOrNull:  { semantics: access, kind: LAST }
+
+  # Blocking
+  join: { semantics: blocking }
+
+  # Serialization
+  writeValueAsString: { semantics: serialization }
+  readValue:          { semantics: serialization }
+
+heavyweight-types:
+  - ObjectMapper
+  - Gson
+  - XmlMapper
+  - Pattern
+
+o1-types:
+  - Set
+  - HashSet
+  - LinkedHashSet
+  - TreeSet
+  - Map
+  - HashMap
+  - TreeMap
+  - LinkedHashMap
+  - MutableSet
+  - MutableMap

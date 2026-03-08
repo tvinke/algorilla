@@ -76,7 +76,8 @@ public fun lookupKindFor(methodName: String): LookupKind? =
         "find" -> LookupKind.FIND
         "filter" -> LookupKind.FILTER
         "anyMatch" -> LookupKind.ANY_MATCH
-        "allMatch", "noneMatch" -> LookupKind.ANY
+        "allMatch" -> LookupKind.ALL_MATCH
+        "noneMatch" -> LookupKind.NONE_MATCH
         "some" -> LookupKind.SOME
         "includes" -> LookupKind.INCLUDES
         else -> null
