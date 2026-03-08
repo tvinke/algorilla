@@ -72,12 +72,20 @@ void processOrders(List<Order> orders, List<String> priorityIds) {
 | Rule | What it catches | Impact |
 |------|----------------|--------|
 | `nested-lookup` | `contains()`/`filter()`/`find()` inside a loop | O(n*m) → O(n+m) |
-| `sort-for-last` | `sort()` just to get `first()`/`last()` | O(n log n) → O(n) |
-| `expensive-sort-comparator` | Linear search inside a sort comparator | O(n^2 log n) → O(n log n) |
-| `date-in-sort` | `new Date()` / date parsing per comparison | Heap churn per comparison |
 | `repeated-linear-scan` | Same collection scanned 2+ times in one method | k * O(n) → O(n) |
+| `sort-for-last` | `sort()` just to get `first()`/`last()` | O(n log n) → O(n) |
+| `expensive-sort-comparator` | Linear search inside a sort comparator | O(n² log n) → O(n log n) |
+| `date-in-sort` | `new Date()` / date parsing per comparison | Heap churn per comparison |
 | `full-scan-for-single-lookup` | `findAll()` + filter when a targeted query would do | O(n) → O(1) |
 | `heavyweight-object-per-invocation` | `new ObjectMapper()` inside a method body | ~1ms allocation per call |
+| `n-plus-one-repository-call` | `findById()`/`countBy*` inside a loop | O(n * IO) → O(1 * IO) |
+| `repeated-regex-in-loop` | `Pattern.compile()` / `new RegExp()` inside loop | Recompilation per iteration |
+| `expensive-serialization-in-loop` | `writeValueAsString()`/`JSON.parse()` inside loop | O(n * serialize) |
+| `sequential-async-join-in-loop` | `.join()`/`.get()` on futures in loop | Sequential I/O instead of parallel |
+| `in-loop-collection-building` | `addAll()`/`concat()` inside loop | O(n*m) copying per iteration |
+| `redundant-expensive-call` | Same call with same args invoked multiple times | k * O(f) → O(f) |
+| `uncached-getter` | `getXxx(id)` called repeatedly with same argument | Cache in local variable |
+| `chained-getters` | Cascading getter chain: `a=get(x)` → `b=get(a)` → `c=get(b)` | Compound lookup cost |
 
 ## Requirements
 

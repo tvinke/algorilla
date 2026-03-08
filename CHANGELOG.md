@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.1 (unreleased)
+
+### Rule improvements
+
+- **n-plus-one-repository-call** — Now detects Spring Data `countBy*` query methods inside loops, and `getXxxByYyyId` patterns without requiring a known repository target (catches Vuex store getter N+1 patterns)
+- **redundant-expensive-call** — No longer flags trivially cheap methods like `equals()`, `Character.isDigit()`, `Math.toIntExact()` as redundant
+- **full-scan-for-single-lookup** — Excludes DOM/test framework targets (`wrapper.findAll()` from Vue Test Utils no longer triggers false positives)
+
+### Parser improvements
+
+- **JavaScript/TypeScript** — Rewrote regex-based scanner with scope-tracking tree builder. Previously produced flat IR trees with empty children, causing all rules that need parent-child relationships (nested-lookup, N+1, etc.) to miss JS/TS patterns entirely. Now correctly builds nested IR trees from brace-depth tracking.
+
 ## 0.1.0 (2026-03-08)
 
 First public release of algorilla.
