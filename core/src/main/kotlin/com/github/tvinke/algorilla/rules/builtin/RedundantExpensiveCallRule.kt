@@ -106,9 +106,20 @@ private val SIDE_EFFECT_TARGETS = listOf(
     "builder", "uriBuilder", "response", "request",
 )
 
+/** Trivially cheap methods that are never worth caching */
+private val TRIVIAL_METHODS = setOf(
+    "equals", "hashCode", "toString", "valueOf", "compareTo",
+    "isDigit", "isLetter", "isUpperCase", "isLowerCase", "isWhitespace",
+    "toIntExact", "abs", "min", "max", "ceil", "floor", "round",
+    "isEmpty", "isBlank", "isPresent", "isNull", "isNotNull",
+    "size", "length", "trim", "lowercase", "uppercase",
+    "charAt", "codePointAt", "getClass", "name", "ordinal",
+)
+
 private fun isSideEffectCall(call: FunctionCall): Boolean {
     val name = call.name.lowercase()
     if (SIDE_EFFECT_PREFIXES.any { name.startsWith(it) }) return true
+    if (call.name in TRIVIAL_METHODS) return true
     val target = call.qualifiedTarget?.lowercase() ?: return false
     return SIDE_EFFECT_TARGETS.any { target.contains(it) }
 }
