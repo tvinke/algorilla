@@ -46,6 +46,23 @@ internal class GroovyIRVisitor(
         )
     }
 
+    override fun visitConstructorDeclaration(ctx: JavaParser.ConstructorDeclarationContext): List<IRNode> {
+        val name = ctx.identifier()?.text ?: "<init>"
+        val params = extractParameters(ctx.formalParameters())
+        val body = ctx.block()?.let { visitChildren(it) } ?: emptyList()
+
+        return listOf(
+            FunctionDecl(
+                name = name,
+                qualifiedName = name,
+                parameters = params,
+                isConstructor = true,
+                location = locationOf(ctx),
+                children = body,
+            ),
+        )
+    }
+
     override fun visitStatement(ctx: JavaParser.StatementContext): List<IRNode> {
         if (ctx.FOR() != null) return handleForStatement(ctx)
         if (ctx.WHILE() != null || ctx.DO() != null) return handleWhileStatement(ctx)

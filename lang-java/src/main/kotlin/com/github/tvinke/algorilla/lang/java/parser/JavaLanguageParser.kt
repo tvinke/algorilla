@@ -81,6 +81,24 @@ internal class JavaIRVisitor(
         )
     }
 
+    override fun visitConstructorDeclaration(ctx: JavaParser.ConstructorDeclarationContext): List<IRNode> {
+        val name = ctx.identifier()?.text ?: "<init>"
+        val params = extractParameters(ctx.formalParameters())
+        val body = ctx.block()?.let { visitChildren(it) } ?: emptyList()
+        val loc = locationOf(ctx)
+
+        return listOf(
+            FunctionDecl(
+                name = name,
+                qualifiedName = name,
+                parameters = params,
+                isConstructor = true,
+                location = loc,
+                children = body,
+            ),
+        )
+    }
+
     override fun visitStatement(ctx: JavaParser.StatementContext): List<IRNode> {
         if (ctx.FOR() != null) {
             return handleForStatement(ctx)

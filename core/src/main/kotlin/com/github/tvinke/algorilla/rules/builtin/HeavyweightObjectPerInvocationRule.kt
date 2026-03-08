@@ -16,6 +16,8 @@ import com.github.tvinke.algorilla.util.findDescendants
  * Detects creation of heavyweight objects (e.g. ObjectMapper, Gson) inside method bodies.
  * These objects are expensive to instantiate and should be reused as static fields
  * or injected via dependency injection.
+ *
+ * Constructors are excluded — it's normal to initialize heavyweight objects in a constructor.
  */
 public class HeavyweightObjectPerInvocationRule : Rule {
     override val id: String = "heavyweight-object-per-invocation"
@@ -24,7 +26,7 @@ public class HeavyweightObjectPerInvocationRule : Rule {
     override val languages: Set<Language> = Language.entries.toSet()
 
     override fun evaluate(context: AnalysisContext): List<Finding> {
-        val heavyTypes = context.config.heavyweightTypes
+        val heavyTypes = context.registry.allHeavyweightTypes()
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
             scanNode(fileRoot, heavyTypes, findings)
@@ -37,7 +39,7 @@ public class HeavyweightObjectPerInvocationRule : Rule {
         heavyTypes: Set<String>,
         findings: MutableList<Finding>,
     ) {
-        if (node is FunctionDecl) {
+        if (node is FunctionDecl && !node.isConstructor) {
             checkFunction(node, heavyTypes, findings)
         }
         for (child in node.children) {
