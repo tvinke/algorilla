@@ -58,6 +58,7 @@ nav:
   - Guide:
     - Understanding Output: guide/understanding-output.md
     - CLI Reference: guide/cli-reference.md
+    - Project Detection: guide/project-detection.md
     - Baseline Workflow: guide/baseline-workflow.md
     - Incremental Analysis: guide/incremental-analysis.md
     - Custom Rules: guide/custom-rules.md
@@ -68,6 +69,8 @@ nav:
     - How Detection Works: concepts/how-detection-works.md
     - Cross-File Analysis: concepts/cross-file-analysis.md
   - Developer:
+    - Development Guidelines: developer/guidelines.md
+    - Coding Conventions: developer/coding-conventions.md
     - Building: developer/building.md
     - Architecture: developer/architecture.md
     - Adding Rules: developer/adding-rules.md
