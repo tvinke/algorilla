@@ -74,6 +74,7 @@ public class NPlusOneRepositoryCallRule : Rule {
 private val SINGLE_FETCH_METHOD_PREFIXES = listOf(
     "findById", "getById", "findOne", "getOne", "loadById",
     "findByKey", "getByKey", "loadByKey",
+    "countBy",
 )
 
 /** Patterns like getAnimalByAnimalId, findUserByEmail — strong signal for single-record fetch */
