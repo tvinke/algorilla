@@ -14,13 +14,21 @@ import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.reporting.ConsoleReporter
 import com.github.tvinke.algorilla.reporting.JsonReporter
 import com.github.tvinke.algorilla.reporting.SarifReporter
+import com.github.tvinke.algorilla.rules.builtin.ChainedGettersRule
 import com.github.tvinke.algorilla.rules.builtin.DateInSortRule
+import com.github.tvinke.algorilla.rules.builtin.ExpensiveSerializationInLoopRule
 import com.github.tvinke.algorilla.rules.builtin.ExpensiveSortComparatorRule
 import com.github.tvinke.algorilla.rules.builtin.FullScanForSingleLookupRule
 import com.github.tvinke.algorilla.rules.builtin.HeavyweightObjectPerInvocationRule
+import com.github.tvinke.algorilla.rules.builtin.InLoopCollectionBuildingRule
+import com.github.tvinke.algorilla.rules.builtin.NPlusOneRepositoryCallRule
 import com.github.tvinke.algorilla.rules.builtin.NestedLookupRule
+import com.github.tvinke.algorilla.rules.builtin.RedundantExpensiveCallRule
 import com.github.tvinke.algorilla.rules.builtin.RepeatedLinearScanRule
+import com.github.tvinke.algorilla.rules.builtin.RepeatedRegexInLoopRule
+import com.github.tvinke.algorilla.rules.builtin.SequentialAsyncJoinInLoopRule
 import com.github.tvinke.algorilla.rules.builtin.SortForLastRule
+import com.github.tvinke.algorilla.rules.builtin.UncachedGetterRule
 import picocli.CommandLine
 import picocli.CommandLine.Command
 import picocli.CommandLine.Model.CommandSpec
@@ -141,6 +149,14 @@ internal class AlgorillaCommand : Callable<Int> {
                 RepeatedLinearScanRule(),
                 FullScanForSingleLookupRule(),
                 HeavyweightObjectPerInvocationRule(),
+                RepeatedRegexInLoopRule(),
+                ExpensiveSerializationInLoopRule(),
+                SequentialAsyncJoinInLoopRule(),
+                InLoopCollectionBuildingRule(),
+                NPlusOneRepositoryCallRule(),
+                RedundantExpensiveCallRule(),
+                UncachedGetterRule(),
+                ChainedGettersRule(),
             )
         val customRules = CustomRuleLoader.loadRules(projectRoot)
         val allRules = rules + customRules
