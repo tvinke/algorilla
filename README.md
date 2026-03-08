@@ -57,7 +57,6 @@ void processOrders(List<Order> orders, List<String> priorityIds) {
 
 - **Multi-language**: Java, Groovy, Kotlin, JavaScript/TypeScript (including Vue SFC)
 - **Cross-file analysis**: Follows call chains across files and languages — catches patterns buried in helper methods
-- **7 built-in rules**: The most impactful algorithmic anti-patterns, from nested lookups to sort-for-last
 - **Evidence chains**: Every finding shows *exactly* why it's a problem, with a traceable path
 - **SARIF output**: Plugs into GitHub Code Scanning and VS Code
 - **Incremental**: Caches results per file — re-analyzes only what changed
@@ -65,6 +64,7 @@ void processOrders(List<Order> orders, List<String> priorityIds) {
 - **Configurable**: `.algorilla.yml` for rules, type hints, exclusions
 - **Custom rules**: Extend with your own patterns via Kotlin Script DSL
 - **Project-aware**: Detects Gradle/Maven layout, auto-excludes test code
+- **16 built-in rules**: The most impactful algorithmic anti-patterns, from nested lookups to stream ordering
 - **Deterministic**: No AI/ML — pure AST pattern matching, fully reproducible
 
 ## Rules
@@ -86,6 +86,7 @@ void processOrders(List<Order> orders, List<String> priorityIds) {
 | `redundant-expensive-call` | Same call with same args invoked multiple times | k * O(f) → O(f) |
 | `uncached-getter` | `getXxx(id)` called repeatedly with same argument | Cache in local variable |
 | `chained-getters` | Cascading getter chain: `a=get(x)` → `b=get(a)` → `c=get(b)` | Compound lookup cost |
+| `filter-after-sort` | `sorted().filter()` — filtering after sorting wastes sort effort | O(n log n) → O(k log k) |
 
 ## Requirements
 
