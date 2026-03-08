@@ -8,13 +8,38 @@ Point Algorilla at your project root:
 java -jar algorilla.jar /path/to/your/project
 ```
 
-Algorilla automatically detects the project structure, scans source files, and excludes test code and build output.
+Algorilla automatically detects the build system (Gradle, Maven, or JS/TS), resolves where source code lives, and excludes test code and build output. There is no need to point at `src/main` — just pass the project root.
 
-## Scan Specific Files
+For example, for a Gradle project:
 
 ```bash
-java -jar algorilla.jar src/main/java/com/example/OrderService.java
+java -jar algorilla.jar .
 ```
+
+This detects all modules from `settings.gradle.kts` and scans their `src/main/{java,kotlin,groovy}` directories.
+
+## Scan Specific Files or Directories
+
+You can also point at a specific file or subdirectory for a targeted scan:
+
+```bash
+# Single file
+java -jar algorilla.jar src/main/java/com/example/OrderService.java
+
+# Specific subdirectory
+java -jar algorilla.jar src/main/groovy
+```
+
+When targeting a subdirectory, Algorilla still resolves the project root upwards and places its `.algorilla/` cache there.
+
+## Supported Build Systems
+
+| Build system | Detection | Source roots scanned |
+|---|---|---|
+| Gradle | `build.gradle(.kts)` or `settings.gradle(.kts)` | `src/main/{java,kotlin,groovy}` per module |
+| Maven | `pom.xml` | `src/main/java` per module |
+| JS/TS | `package.json` | Project root (with `node_modules/` excluded) |
+| None detected | — | The given path as-is |
 
 ## Output Formats
 

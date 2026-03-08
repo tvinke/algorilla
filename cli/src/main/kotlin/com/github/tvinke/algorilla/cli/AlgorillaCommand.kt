@@ -127,6 +127,10 @@ internal class AlgorillaCommand : Callable<Int> {
 
     private fun runAnalysis(): com.github.tvinke.algorilla.engine.AnalysisResult {
         val config = buildConfig()
+        val detector = ProjectStructureDetector()
+        val projectRoot = detector.resolveProjectRoot(paths.first())
+        val scanRoots = paths.flatMap { detector.resolveSourceRoots(projectRoot, it) }
+
         val parsers = listOf(JavaLanguageParser(), GroovyParser(), KotlinParser(), JavaScriptParser())
         val rules =
             listOf(
@@ -138,11 +142,11 @@ internal class AlgorillaCommand : Callable<Int> {
                 FullScanForSingleLookupRule(),
                 HeavyweightObjectPerInvocationRule(),
             )
-        val customRules = CustomRuleLoader.loadRules(paths.first())
+        val customRules = CustomRuleLoader.loadRules(projectRoot)
         val allRules = rules + customRules
-        val cache = if (noCache) null else AnalysisCache(paths.first())
+        val cache = if (noCache) null else AnalysisCache(projectRoot)
         val engine = AnalysisEngine(parsers = parsers, rules = allRules, config = config, cache = cache, verbose = verbose)
-        return engine.analyze(collectSourceFiles(paths, config.excludePatterns))
+        return engine.analyze(collectSourceFiles(detector, scanRoots, config.excludePatterns))
     }
 
     private fun buildConfig(): AnalysisConfig {
@@ -195,10 +199,10 @@ internal class AlgorillaCommand : Callable<Int> {
         }
 
     private fun collectSourceFiles(
+        detector: ProjectStructureDetector,
         paths: List<File>,
         effectiveExcludePatterns: List<String>,
     ): List<String> {
-        val detector = ProjectStructureDetector()
         val testFilter = detector.buildTestExcludeFilter(paths, includeTests)
         val defaultExcludes = detector.defaultExcludePatterns()
         val files = mutableListOf<String>()

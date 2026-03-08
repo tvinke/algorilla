@@ -1,6 +1,12 @@
 # Configuration
 
-Algorilla works without any configuration. For customization, create a `.algorilla.yml` file in your project root.
+Algorilla works without any configuration. For customization, create a `.algorilla.yml` file in your project root (next to `build.gradle.kts`, `pom.xml`, or `package.json`).
+
+Algorilla also stores its analysis cache in a `.algorilla/` directory in the project root. You may want to add this to your `.gitignore`:
+
+```gitignore
+.algorilla/
+```
 
 ## Example Configuration
 

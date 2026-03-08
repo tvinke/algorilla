@@ -8,7 +8,17 @@ algorilla [OPTIONS] [PATHS...]
 
 | Argument | Description |
 |----------|-------------|
-| `PATHS` | Files or directories to analyze. Default: current directory. |
+| `PATHS` | Files or directories to analyze. Default: current directory. When pointing at a project root, Algorilla auto-detects source directories based on the build system (Gradle, Maven, JS/TS). |
+
+## Project Root Detection
+
+Algorilla walks up from the given path to find the project root by looking for build-system markers (`build.gradle.kts`, `pom.xml`, `package.json`, etc.). This determines:
+
+- **Where to scan**: source directories are resolved from project conventions (e.g. `src/main/java` per Gradle module).
+- **Where `.algorilla/` lives**: the cache directory is always placed in the project root, not in the scan target.
+- **Where to look for config**: `.algorilla.yml` is loaded from the project root.
+
+If no build system is detected, the given path is used as-is.
 
 ## Options
 
@@ -30,11 +40,14 @@ algorilla [OPTIONS] [PATHS...]
 ## Examples
 
 ```bash
-# Scan current directory
+# Scan current directory (auto-detects project structure)
 java -jar algorilla.jar
 
 # Scan specific project
 java -jar algorilla.jar /path/to/project
+
+# Targeted scan of a single module
+java -jar algorilla.jar /path/to/project/api/src/main/java
 
 # SARIF output for CI
 java -jar algorilla.jar --format sarif -o results.sarif .
