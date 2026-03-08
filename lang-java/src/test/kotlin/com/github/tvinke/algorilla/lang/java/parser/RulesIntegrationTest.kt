@@ -8,6 +8,7 @@ import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.builtin.DateInSortRule
 import com.github.tvinke.algorilla.rules.builtin.ExpensiveSortComparatorRule
+import com.github.tvinke.algorilla.rules.builtin.FilterAfterSortRule
 import com.github.tvinke.algorilla.rules.builtin.FullScanForSingleLookupRule
 import com.github.tvinke.algorilla.rules.builtin.HeavyweightObjectPerInvocationRule
 import com.github.tvinke.algorilla.rules.builtin.RepeatedLinearScanRule
@@ -155,6 +156,42 @@ internal class RulesIntegrationTest {
         @Test
         fun `should not flag comparator without date creation`() {
             val findings = analyzeFixture("date-in-sort/negative/no-date-in-comparator.java", rule)
+
+            findings.shouldBeEmpty()
+        }
+    }
+
+    @Nested
+    inner class FilterAfterSortTests {
+        private val rule = FilterAfterSortRule()
+
+        @Test
+        fun `should detect filter after sort in stream pipeline`() {
+            val findings = analyzeFixture("filter-after-sort/positive/sort-then-filter.java", rule)
+
+            findings shouldHaveSize 1
+            findings.first().ruleId shouldBe "filter-after-sort"
+            findings.first().message shouldContain "filter"
+            findings.first().message shouldContain "sorted"
+        }
+
+        @Test
+        fun `should not flag correct filter-then-sort order`() {
+            val findings = analyzeFixture("filter-after-sort/negative/filter-then-sort.java", rule)
+
+            findings.shouldBeEmpty()
+        }
+
+        @Test
+        fun `should not flag separate stream chains`() {
+            val findings = analyzeFixture("filter-after-sort/negative/separate-chains.java", rule)
+
+            findings.shouldBeEmpty()
+        }
+
+        @Test
+        fun `should not flag sort and filter in separate chains with if block`() {
+            val findings = analyzeFixture("filter-after-sort/negative/separate-chains-with-if.java", rule)
 
             findings.shouldBeEmpty()
         }

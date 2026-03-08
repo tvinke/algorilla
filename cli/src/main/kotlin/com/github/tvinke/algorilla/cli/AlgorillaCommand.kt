@@ -14,10 +14,12 @@ import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.reporting.ConsoleReporter
 import com.github.tvinke.algorilla.reporting.JsonReporter
 import com.github.tvinke.algorilla.reporting.SarifReporter
+import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.builtin.ChainedGettersRule
 import com.github.tvinke.algorilla.rules.builtin.DateInSortRule
 import com.github.tvinke.algorilla.rules.builtin.ExpensiveSerializationInLoopRule
 import com.github.tvinke.algorilla.rules.builtin.ExpensiveSortComparatorRule
+import com.github.tvinke.algorilla.rules.builtin.FilterAfterSortRule
 import com.github.tvinke.algorilla.rules.builtin.FullScanForSingleLookupRule
 import com.github.tvinke.algorilla.rules.builtin.HeavyweightObjectPerInvocationRule
 import com.github.tvinke.algorilla.rules.builtin.InLoopCollectionBuildingRule
@@ -140,30 +142,33 @@ internal class AlgorillaCommand : Callable<Int> {
         val scanRoots = paths.flatMap { detector.resolveSourceRoots(projectRoot, it) }
 
         val parsers = listOf(JavaLanguageParser(), GroovyParser(), KotlinParser(), JavaScriptParser())
-        val rules =
-            listOf(
-                NestedLookupRule(),
-                SortForLastRule(),
-                ExpensiveSortComparatorRule(),
-                DateInSortRule(),
-                RepeatedLinearScanRule(),
-                FullScanForSingleLookupRule(),
-                HeavyweightObjectPerInvocationRule(),
-                RepeatedRegexInLoopRule(),
-                ExpensiveSerializationInLoopRule(),
-                SequentialAsyncJoinInLoopRule(),
-                InLoopCollectionBuildingRule(),
-                NPlusOneRepositoryCallRule(),
-                RedundantExpensiveCallRule(),
-                UncachedGetterRule(),
-                ChainedGettersRule(),
-            )
+        val rules = builtinRules()
         val customRules = CustomRuleLoader.loadRules(projectRoot)
         val allRules = rules + customRules
         val cache = if (noCache) null else AnalysisCache(projectRoot)
         val engine = AnalysisEngine(parsers = parsers, rules = allRules, config = config, cache = cache, verbose = verbose)
         return engine.analyze(collectSourceFiles(detector, scanRoots, config.excludePatterns))
     }
+
+    private fun builtinRules(): List<Rule> =
+        listOf(
+            NestedLookupRule(),
+            SortForLastRule(),
+            ExpensiveSortComparatorRule(),
+            DateInSortRule(),
+            RepeatedLinearScanRule(),
+            FullScanForSingleLookupRule(),
+            HeavyweightObjectPerInvocationRule(),
+            RepeatedRegexInLoopRule(),
+            ExpensiveSerializationInLoopRule(),
+            SequentialAsyncJoinInLoopRule(),
+            InLoopCollectionBuildingRule(),
+            NPlusOneRepositoryCallRule(),
+            RedundantExpensiveCallRule(),
+            UncachedGetterRule(),
+            ChainedGettersRule(),
+            FilterAfterSortRule(),
+        )
 
     private fun buildConfig(): AnalysisConfig {
         val fileConfig = loadConfig(configFile)
