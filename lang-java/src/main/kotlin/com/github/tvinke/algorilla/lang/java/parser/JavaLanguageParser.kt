@@ -4,6 +4,7 @@ import com.github.tvinke.algorilla.engine.LanguageParser
 import com.github.tvinke.algorilla.engine.ParseException
 import com.github.tvinke.algorilla.model.FileRoot
 import com.github.tvinke.algorilla.model.FunctionDecl
+import com.github.tvinke.algorilla.model.GenericNode
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LoopKind
@@ -250,8 +251,14 @@ internal class JavaIRVisitor(
         return params
     }
 
-    private fun visitArgNodes(methodCall: JavaParser.MethodCallContext): List<IRNode> =
-        methodCall.arguments()?.expressionList()?.let { visitChildren(it) } ?: emptyList()
+    private fun visitArgNodes(methodCall: JavaParser.MethodCallContext): List<IRNode> {
+        val expressions = methodCall.arguments()?.expressionList()?.expression() ?: return emptyList()
+        return expressions
+            .map { expr ->
+                val visited = visit(expr)
+                visited.ifEmpty { listOf(GenericNode("arg", locationOf(expr), emptyList())) }
+            }.flatten()
+    }
 
     private fun locationOf(ctx: ParserRuleContext): SourceLocation =
         SourceLocation(
