@@ -139,6 +139,7 @@ internal class AlgorillaCommand :
 
     override fun call(): Int {
         configureLogging()
+        if (outputFile == null) printScanTarget(paths)
         val result = runAnalysis()
         val filteredResult = applyBaseline(result)
         writeReport(filteredResult)
@@ -266,8 +267,14 @@ internal class AlgorillaCommand :
     }
 }
 
+private fun printScanTarget(paths: List<File>) {
+    val targets = paths.joinToString(", ") { it.absoluteFile.normalize().path }
+    System.err.println("Scanning $targets...")
+}
+
 @Suppress("SpreadOperator")
 public fun main(args: Array<String>) {
+    System.setProperty("slf4j.internal.verbosity", "WARN")
     val exitCode = CommandLine(AlgorillaCommand()).execute(*args)
     exitProcess(exitCode)
 }
