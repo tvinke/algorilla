@@ -24,23 +24,15 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build
+      - name: Build and test
         run: ./gradlew build
-
-      - name: Run tests
-        run: ./gradlew test
 
       - name: Build shadow JAR
         run: ./gradlew :cli:shadowJar
 
-      - name: Extract version from tag
-        id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: algorilla ${{ steps.version.outputs.VERSION }}
           generate_release_notes: true
           files: |
             cli/build/libs/algorilla-*.jar

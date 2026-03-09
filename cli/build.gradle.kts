@@ -28,3 +28,22 @@ tasks.shadowJar {
     archiveClassifier.set("")
     mergeServiceFiles()
 }
+
+val generateVersionFile by tasks.registering {
+    val outputDir = layout.buildDirectory.dir("generated/version")
+    val projectVersion = project.version.toString()
+    outputs.dir(outputDir)
+    doLast {
+        val file = outputDir.get().file("algorilla-version.properties").asFile
+        file.parentFile.mkdirs()
+        file.writeText("version=$projectVersion\n")
+    }
+}
+
+sourceSets.main {
+    resources.srcDir(generateVersionFile)
+}
+
+tasks.processResources {
+    dependsOn(generateVersionFile)
+}

@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "com.github.tvinke.algorilla"
-version = "0.1.0-SNAPSHOT"
+version = findProperty("version") as String? ?: "0.0.0-dev"
 
 java {
     sourceCompatibility = JavaVersion.VERSION_11

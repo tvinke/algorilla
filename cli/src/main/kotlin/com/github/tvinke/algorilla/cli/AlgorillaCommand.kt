@@ -43,10 +43,18 @@ import kotlin.system.exitProcess
 @Command(
     name = "algorilla",
     mixinStandardHelpOptions = true,
-    version = ["algorilla 0.1.0-SNAPSHOT"],
+    versionProvider = AlgorillaCommand::class,
     description = ["Detects algorithmic complexity anti-patterns in source code."],
 )
-internal class AlgorillaCommand : Callable<Int> {
+internal class AlgorillaCommand :
+    Callable<Int>,
+    CommandLine.IVersionProvider {
+    override fun getVersion(): Array<String> {
+        val props = java.util.Properties()
+        javaClass.classLoader.getResourceAsStream("algorilla-version.properties")?.use { props.load(it) }
+        return arrayOf("algorilla ${props.getProperty("version", "unknown")}")
+    }
+
     @Spec
     private lateinit var spec: CommandSpec
 

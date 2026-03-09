@@ -1,100 +1,71 @@
 # Releasing
 
-This page describes how to cut a new release of Algorilla.
+This page describes how releases work and how to cut one manually if needed.
 
-## Overview
+## How it works
 
-Releases are automated through GitHub Actions. Pushing a version tag triggers the release workflow, which builds the project, runs tests, assembles the fat JAR, and publishes a GitHub Release with the artifact attached.
+Releases are automated via [Release Please](https://github.com/googleapis/release-please). The process:
 
-## Prerequisites
+1. You merge PRs with [conventional commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`, etc.)
+2. Release Please accumulates changes and opens a "release PR" that bumps the version in `gradle.properties` and updates `CHANGELOG.md`
+3. You review and merge the release PR
+4. Release Please creates a git tag (`v0.2.0`)
+5. The tag triggers the release workflow, which builds the shadow JAR and publishes a GitHub Release
 
-- You are on the `main` branch with a clean working tree
-- All CI checks pass
-- The changelog is up to date
+Your only manual step: **merge the release PR**.
 
-## Step by step
+## Version management
+
+The project version lives in one place: `gradle.properties`.
+
+```properties
+version=0.2.0
+```
+
+All modules read this at build time. The CLI `--version` flag reads it from a generated properties file in the JAR. There is no hardcoded version string anywhere in source code.
+
+Release Please bumps this file automatically. You should not need to edit it by hand.
+
+## Manual release
+
+If you need to release without Release Please (e.g., first release, hotfix):
 
 ### 1. Update the version
 
-Open `build-logic/src/main/kotlin/algorilla.kotlin-common.gradle.kts` and change the version from `SNAPSHOT` to the release version:
+Edit `gradle.properties`:
 
-```kotlin
-// before
-version = "0.2.0-SNAPSHOT"
-
-// after
-version = "0.2.0"
+```properties
+version=0.2.0
 ```
 
 ### 2. Update the changelog
 
-Edit `CHANGELOG.md`. Replace the `(unreleased)` marker with the release date:
+Edit `CHANGELOG.md` and replace the `(unreleased)` marker with the release date.
 
-```markdown
-## 0.2.0 (2026-04-15)
-```
-
-Review the entries and make sure they cover all user-visible changes since the last release.
-
-### 3. Update documentation references
-
-Check these files for version-specific strings:
-
-- `README.md` — Quick Start examples, download links
-- `docs/docs/getting-started/installation.md` — JAR download instructions
-- `docs/docs/getting-started/quickstart.md` — command examples
-
-### 4. Commit the release
+### 3. Commit, tag, push
 
 ```bash
-git add -A
-git commit -m "prepare release 0.2.0"
-```
-
-### 5. Tag and push
-
-```bash
+git add gradle.properties CHANGELOG.md
+git commit -m "chore: release 0.2.0"
 git tag v0.2.0
 git push origin main --tags
 ```
 
-This triggers the [release workflow](https://github.com/tvinke/algorilla/actions/workflows/release.yml), which:
+The tag triggers the [release workflow](https://github.com/tvinke/algorilla/actions/workflows/release.yml), which:
 
-1. Checks out the tagged commit
-2. Builds the project and runs all tests
-3. Assembles the shadow JAR via `./gradlew :cli:shadowJar`
-4. Creates a GitHub Release named `algorilla 0.2.0`
-5. Attaches `algorilla-0.2.0.jar` as a downloadable asset
+1. Builds the project and runs all tests
+2. Assembles the shadow JAR
+3. Creates a GitHub Release with the JAR attached
 
-### 6. Verify the release
+### 4. Bump to next snapshot
 
-Check the [Releases page](https://github.com/tvinke/algorilla/releases) and confirm:
-
-- The release exists with the correct tag
-- The JAR is attached and downloadable
-- Release notes look reasonable (auto-generated from commit history)
-
-Edit the release description if you want to add highlights or context beyond the auto-generated notes.
-
-### 7. Prepare the next development cycle
-
-Bump the version to the next snapshot:
-
-```kotlin
-version = "0.3.0-SNAPSHOT"
+```properties
+version=0.3.0-SNAPSHOT
 ```
-
-Add a new section to `CHANGELOG.md`:
-
-```markdown
-## 0.3.0 (unreleased)
-```
-
-Commit and push:
 
 ```bash
-git add -A
-git commit -m "prepare next development cycle"
+git add gradle.properties
+git commit -m "chore: prepare next development cycle"
 git push origin main
 ```
 
