@@ -47,7 +47,10 @@ public class FilterAfterSortRule : Rule {
      * Recursively scan the IR tree. At each node, check if its direct children
      * contain a sort-then-filter sequence (same chain = same parent's children list).
      */
-    private fun scanNode(node: IRNode, findings: MutableList<Finding>) {
+    private fun scanNode(
+        node: IRNode,
+        findings: MutableList<Finding>,
+    ) {
         checkSiblings(node.children, findings)
         for (child in node.children) {
             scanNode(child, findings)
@@ -60,7 +63,10 @@ public class FilterAfterSortRule : Rule {
      * order (left-to-right), siblings in the same list are part of the same
      * expression/pipeline.
      */
-    private fun checkSiblings(siblings: List<IRNode>, findings: MutableList<Finding>) {
+    private fun checkSiblings(
+        siblings: List<IRNode>,
+        findings: MutableList<Finding>,
+    ) {
         var lastSort: SortCall? = null
         for (node in siblings) {
             if (node is SortCall) {
@@ -72,20 +78,20 @@ public class FilterAfterSortRule : Rule {
         }
     }
 
-    private fun buildFinding(sort: SortCall, filter: LookupCall): Finding {
-        val evidence = listOf(
-            Evidence(
-                location = sort.location,
-                label = "${sort.kind.name.lowercase()} call — sorts all N elements",
-                executionContext = ExecutionContext.SINGLE,
-            ),
-            Evidence(
-                location = filter.location,
-                label = "filter after sort — discards elements after sorting",
-                executionContext = ExecutionContext.SINGLE,
-            ),
+    private fun buildEvidence(
+        sort: SortCall,
+        filter: LookupCall,
+    ): List<Evidence> =
+        listOf(
+            Evidence(sort.location, "${sort.kind.name.lowercase()} call — sorts all N elements", ExecutionContext.SINGLE),
+            Evidence(filter.location, "filter after sort — discards elements after sorting", ExecutionContext.SINGLE),
         )
-        return Finding(
+
+    private fun buildFinding(
+        sort: SortCall,
+        filter: LookupCall,
+    ): Finding =
+        Finding(
             ruleId = id,
             ruleName = name,
             severity = severity,
@@ -94,10 +100,10 @@ public class FilterAfterSortRule : Rule {
             suggestion = "Move filter() before ${sort.kind.name.lowercase()}() to sort fewer elements",
             currentComplexity = "O(n log n + k)",
             suggestedComplexity = "O(k log k + n)",
-            evidence = evidence,
-            suggestedFix = SuggestedFix(
-                description = "Move filter() before ${sort.kind.name.lowercase()}()",
-            ),
+            evidence = buildEvidence(sort, filter),
+            suggestedFix =
+                SuggestedFix(
+                    description = "Move filter() before ${sort.kind.name.lowercase()}()",
+                ),
         )
-    }
 }

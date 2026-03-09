@@ -56,12 +56,9 @@ public class NestedLookupRule : Rule {
         }
 
         if (node is LookupCall) {
-            // If this lookup is inside an iteration context and is not O(1), report it
             if (iterationStack.isNotEmpty() && !isO1Lookup(node, fn)) {
                 findings.add(buildFinding(node, iterationStack))
             }
-
-            // If this lookup itself iterates (has children = closure body), treat as iteration context
             if (node.children.isNotEmpty() && isIteratingLookup(node.kind)) {
                 for (child in node.children) {
                     scanNode(child, fn, iterationStack + node, context, findings)
@@ -70,19 +67,29 @@ public class NestedLookupRule : Rule {
             }
         }
 
-        // Cross-method: if a function call inside a loop resolves to a method containing a linear lookup
-        if (iterationStack.isNotEmpty() && node is FunctionCall) {
-            val maxDepth = context.config.maxCallDepth.coerceAtMost(2)
-            val hiddenLookup = CrossMethodResolver.resolveAndFind<LookupCall>(
-                node, context.symbolTable, maxDepth = maxDepth,
-            ) { !it.isO1 }
-            if (hiddenLookup != null) {
-                findings.add(buildCrossMethodFinding(node, hiddenLookup, iterationStack))
-            }
-        }
+        checkCrossMethod(node, iterationStack, context, findings)
 
         for (child in node.children) {
             scanNode(child, fn, iterationStack, context, findings)
+        }
+    }
+
+    private fun checkCrossMethod(
+        node: IRNode,
+        iterationStack: List<IRNode>,
+        context: AnalysisContext,
+        findings: MutableList<Finding>,
+    ) {
+        if (iterationStack.isEmpty() || node !is FunctionCall) return
+        val maxDepth = context.config.maxCallDepth.coerceAtMost(2)
+        val hiddenLookup =
+            CrossMethodResolver.resolveAndFind<LookupCall>(
+                node,
+                context.symbolTable,
+                maxDepth = maxDepth,
+            ) { !it.isO1 }
+        if (hiddenLookup != null) {
+            findings.add(buildCrossMethodFinding(node, hiddenLookup, iterationStack))
         }
     }
 
@@ -119,36 +126,45 @@ public class NestedLookupRule : Rule {
     ): Finding {
         val outerIteration = iterationStack.first()
         val targetVar = hiddenLookup.targetVariable ?: "collection"
-        val evidence = iterationStack.map { node ->
-            Evidence(
-                location = node.location,
-                label = "${iterationLabel(node)} over ${iteratedVar(node)}",
-                executionContext = ExecutionContext.INSIDE_LOOP,
-            )
-        } + listOf(
-            Evidence(
-                location = call.location,
-                label = "${call.name}() called per iteration",
-                executionContext = ExecutionContext.INSIDE_LOOP,
-            ),
-            Evidence(
-                location = hiddenLookup.location,
-                label = "linear ${hiddenLookup.kind.name.lowercase()} on '$targetVar' inside ${call.name}()",
-                executionContext = ExecutionContext.INSIDE_LOOP,
-            ),
-        )
+        val evidence = buildCrossMethodEvidence(iterationStack, call, hiddenLookup, targetVar)
+        val lookupDesc = hiddenLookup.kind.name.lowercase()
+        val msg =
+            "Linear $lookupDesc on '$targetVar' inside " +
+                "${call.name}() called from ${iterationLabel(outerIteration)}"
         return Finding(
             ruleId = id,
             ruleName = name,
             severity = severity,
             location = outerIteration.location,
-            message = "Linear ${hiddenLookup.kind.name.lowercase()} on '$targetVar' inside ${call.name}() called from ${iterationLabel(outerIteration)}",
+            message = msg,
             suggestion = "Build a HashSet/Map from '$targetVar' before the loop",
             currentComplexity = "O(n*m)",
             suggestedComplexity = "O(n+m)",
             evidence = evidence,
         )
     }
+
+    private fun buildCrossMethodEvidence(
+        iterationStack: List<IRNode>,
+        call: FunctionCall,
+        hiddenLookup: LookupCall,
+        targetVar: String,
+    ): List<Evidence> =
+        iterationStack.map { node ->
+            Evidence(
+                location = node.location,
+                label = "${iterationLabel(node)} over ${iteratedVar(node)}",
+                executionContext = ExecutionContext.INSIDE_LOOP,
+            )
+        } +
+            listOf(
+                Evidence(call.location, "${call.name}() called per iteration", ExecutionContext.INSIDE_LOOP),
+                Evidence(
+                    hiddenLookup.location,
+                    "linear ${hiddenLookup.kind.name.lowercase()} on '$targetVar' inside ${call.name}()",
+                    ExecutionContext.INSIDE_LOOP,
+                ),
+            )
 
     private fun buildEvidence(
         iterationStack: List<IRNode>,
@@ -175,15 +191,16 @@ public class NestedLookupRule : Rule {
 /**
  * LookupKinds that iterate over a collection (their closure body runs per element).
  */
-private val ITERATING_LOOKUP_KINDS = setOf(
-    LookupKind.FIND,
-    LookupKind.FILTER,
-    LookupKind.ANY_MATCH,
-    LookupKind.ALL_MATCH,
-    LookupKind.NONE_MATCH,
-    LookupKind.SOME,
-    LookupKind.COUNT,
-)
+private val ITERATING_LOOKUP_KINDS =
+    setOf(
+        LookupKind.FIND,
+        LookupKind.FILTER,
+        LookupKind.ANY_MATCH,
+        LookupKind.ALL_MATCH,
+        LookupKind.NONE_MATCH,
+        LookupKind.SOME,
+        LookupKind.COUNT,
+    )
 
 private fun isIteratingLookup(kind: LookupKind): Boolean = kind in ITERATING_LOOKUP_KINDS
 

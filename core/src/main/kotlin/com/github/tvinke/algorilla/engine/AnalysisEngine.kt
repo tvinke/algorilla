@@ -35,9 +35,11 @@ public class AnalysisEngine(
     /**
      * Runs the full analysis pipeline on the given source files and returns all findings.
      */
-    private val aliasIndex: Map<String, String> = rules.flatMap { rule ->
-        rule.aliases.map { alias -> alias to rule.id }
-    }.toMap()
+    private val aliasIndex: Map<String, String> =
+        rules
+            .flatMap { rule ->
+                rule.aliases.map { alias -> alias to rule.id }
+            }.toMap()
 
     public fun analyze(sourceFiles: List<String>): AnalysisResult {
         logger.info { "Starting analysis of ${sourceFiles.size} files" }

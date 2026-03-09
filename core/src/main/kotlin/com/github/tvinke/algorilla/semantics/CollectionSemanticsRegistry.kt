@@ -21,7 +21,10 @@ public class CollectionSemanticsRegistry private constructor(
      * Classifies a method name for the given language.
      * Returns null if the method has no known semantics.
      */
-    public fun classify(language: Language, methodName: String): MethodSemantics? {
+    public fun classify(
+        language: Language,
+        methodName: String,
+    ): MethodSemantics? {
         val resolved = resolveLanguage(language)
         return methodsByLanguage[resolved]?.get(methodName)
     }
@@ -29,7 +32,10 @@ public class CollectionSemanticsRegistry private constructor(
     /**
      * Returns true if the given type name is a known heavyweight type for the language.
      */
-    public fun isHeavyweight(language: Language, typeName: String): Boolean {
+    public fun isHeavyweight(
+        language: Language,
+        typeName: String,
+    ): Boolean {
         val resolved = resolveLanguage(language)
         return heavyweightByLanguage[resolved]?.any { typeName.contains(it) } == true
     }
@@ -45,19 +51,20 @@ public class CollectionSemanticsRegistry private constructor(
     /**
      * Returns the merged set of all heavyweight types across all languages.
      */
-    public fun allHeavyweightTypes(): Set<String> =
-        heavyweightByLanguage.values.flatten().toSet()
+    public fun allHeavyweightTypes(): Set<String> = heavyweightByLanguage.values.flatten().toSet()
 
     /**
      * Returns true if the given type name indicates an O(1) lookup type.
      */
-    public fun isO1Type(typeName: String): Boolean =
-        o1ByLanguage.values.any { types -> types.any { typeName.contains(it) } }
+    public fun isO1Type(typeName: String): Boolean = o1ByLanguage.values.any { types -> types.any { typeName.contains(it) } }
 
     /**
      * Returns true if the given type name indicates an O(1) lookup type for the language.
      */
-    public fun isO1Type(language: Language, typeName: String): Boolean {
+    public fun isO1Type(
+        language: Language,
+        typeName: String,
+    ): Boolean {
         val resolved = resolveLanguage(language)
         return o1ByLanguage[resolved]?.any { typeName.contains(it) } == true
     }
@@ -69,12 +76,13 @@ public class CollectionSemanticsRegistry private constructor(
         }
 
     public companion object {
-        private val LANGUAGE_FILES = mapOf(
-            Language.JAVA to "semantics/java.yml",
-            Language.GROOVY to "semantics/groovy.yml",
-            Language.JAVASCRIPT to "semantics/javascript.yml",
-            Language.KOTLIN to "semantics/kotlin.yml",
-        )
+        private val LANGUAGE_FILES =
+            mapOf(
+                Language.JAVA to "semantics/java.yml",
+                Language.GROOVY to "semantics/groovy.yml",
+                Language.JAVASCRIPT to "semantics/javascript.yml",
+                Language.KOTLIN to "semantics/kotlin.yml",
+            )
 
         /**
          * Loads the default registry from classpath YAML resources.
@@ -148,6 +156,7 @@ internal fun parseYaml(text: String): ParsedYaml {
     val o1Types = mutableSetOf<String>()
 
     var currentSection: String? = null
+    @Suppress("LoopWithTooManyJumpStatements")
     for (rawLine in text.lines()) {
         val line = rawLine.trimEnd()
         if (line.isBlank() || line.trimStart().startsWith("#")) continue
@@ -168,7 +177,10 @@ internal fun parseYaml(text: String): ParsedYaml {
     return ParsedYaml(methods, heavyweightTypes, o1Types)
 }
 
-private fun parseMethodLine(line: String, methods: MutableMap<String, MethodSemantics>) {
+private fun parseMethodLine(
+    line: String,
+    methods: MutableMap<String, MethodSemantics>,
+) {
     // Format: "  methodName: { semantics: category, kind: KIND, ... }"
     // or "  methodName: { semantics: category }"
     val colonIdx = line.indexOf(':')
@@ -187,14 +199,15 @@ private fun parseMethodLine(line: String, methods: MutableMap<String, MethodSema
     val complexity = props["complexity"]
     val note = props["note"]
 
-    methods[methodName] = MethodSemantics(
-        category = category,
-        lookupKind = lookupKind,
-        sortKind = sortKind,
-        accessKind = accessKind,
-        complexity = complexity,
-        note = note,
-    )
+    methods[methodName] =
+        MethodSemantics(
+            category = category,
+            lookupKind = lookupKind,
+            sortKind = sortKind,
+            accessKind = accessKind,
+            complexity = complexity,
+            note = note,
+        )
 }
 
 private fun parseBraceProps(value: String): Map<String, String> {

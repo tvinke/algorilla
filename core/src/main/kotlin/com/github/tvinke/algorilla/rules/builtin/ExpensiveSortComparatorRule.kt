@@ -93,85 +93,125 @@ public class ExpensiveSortComparatorRule : Rule {
         findings: MutableList<Finding>,
     ) {
         val maxDepth = context.config.maxCallDepth.coerceAtMost(2)
-        val dateOp = CrossMethodResolver.resolveAndFind<ObjectCreation>(
-            call, context.symbolTable, maxDepth = maxDepth,
-        ) { isDateType(it.typeName) }
+        val dateOp =
+            CrossMethodResolver.resolveAndFind<ObjectCreation>(
+                call,
+                context.symbolTable,
+                maxDepth = maxDepth,
+            ) { isDateType(it.typeName) }
         if (dateOp != null) {
             findings.add(buildIndirectFinding(sort, call, dateOp))
             return
         }
-        val parseOp = CrossMethodResolver.resolveAndFind<FunctionCall>(
-            call, context.symbolTable, maxDepth = maxDepth,
-        ) { isDateParseCall(it) }
+        val parseOp =
+            CrossMethodResolver.resolveAndFind<FunctionCall>(
+                call,
+                context.symbolTable,
+                maxDepth = maxDepth,
+            ) { isDateParseCall(it) }
         if (parseOp != null) {
             findings.add(buildIndirectFinding(sort, call, parseOp))
         }
     }
 
-    private fun buildLookupFinding(sort: SortCall, lookup: LookupCall): Finding {
+    private fun buildLookupFinding(
+        sort: SortCall,
+        lookup: LookupCall,
+    ): Finding {
         val targetVar = lookup.targetVariable ?: "collection"
-        val evidence = listOf(
-            Evidence(sort.location, "${sort.kind.name.lowercase()} with comparator", ExecutionContext.SINGLE),
-            Evidence(lookup.location, "linear ${lookup.kind.name.lowercase()} on '$targetVar' inside comparator", ExecutionContext.INSIDE_LOOP),
-        )
+        val evidence =
+            listOf(
+                Evidence(sort.location, "${sort.kind.name.lowercase()} with comparator", ExecutionContext.SINGLE),
+                Evidence(
+                    lookup.location,
+                    "linear ${lookup.kind.name.lowercase()} on '$targetVar' inside comparator",
+                    ExecutionContext.INSIDE_LOOP,
+                ),
+            )
         return Finding(
-            ruleId = id, ruleName = name, severity = severity,
+            ruleId = id,
+            ruleName = name,
+            severity = severity,
             location = sort.location,
             message = "Linear lookup on '$targetVar' inside sort comparator",
             suggestion = "Build a lookup Map from '$targetVar' before the sort",
-            currentComplexity = "O(n^2 log n)", suggestedComplexity = "O(n log n)",
+            currentComplexity = "O(n^2 log n)",
+            suggestedComplexity = "O(n log n)",
             evidence = evidence,
         )
     }
 
-    private fun buildDateCreationFinding(sort: SortCall, creation: ObjectCreation): Finding {
-        val evidence = listOf(
-            Evidence(sort.location, "${sort.kind.name.lowercase()} with comparator", ExecutionContext.SINGLE),
-            Evidence(creation.location, "new ${creation.typeName}() inside comparator", ExecutionContext.INSIDE_LOOP),
-        )
+    private fun buildDateCreationFinding(
+        sort: SortCall,
+        creation: ObjectCreation,
+    ): Finding {
+        val evidence =
+            listOf(
+                Evidence(sort.location, "${sort.kind.name.lowercase()} with comparator", ExecutionContext.SINGLE),
+                Evidence(creation.location, "new ${creation.typeName}() inside comparator", ExecutionContext.INSIDE_LOOP),
+            )
         return Finding(
-            ruleId = id, ruleName = name, severity = severity,
+            ruleId = id,
+            ruleName = name,
+            severity = severity,
             location = sort.location,
             message = "${creation.typeName} creation inside sort comparator",
             suggestion = "Compare ISO date strings directly, or parse dates once before sorting",
-            currentComplexity = "O(n log n * parse)", suggestedComplexity = "O(n log n)",
+            currentComplexity = "O(n log n * parse)",
+            suggestedComplexity = "O(n log n)",
             evidence = evidence,
         )
     }
 
-    private fun buildDateParseFinding(sort: SortCall, call: FunctionCall): Finding {
+    private fun buildDateParseFinding(
+        sort: SortCall,
+        call: FunctionCall,
+    ): Finding {
         val target = call.qualifiedTarget ?: "Date"
-        val evidence = listOf(
-            Evidence(sort.location, "${sort.kind.name.lowercase()} with comparator", ExecutionContext.SINGLE),
-            Evidence(call.location, "$target.${call.name}() inside comparator", ExecutionContext.INSIDE_LOOP),
-        )
+        val evidence =
+            listOf(
+                Evidence(sort.location, "${sort.kind.name.lowercase()} with comparator", ExecutionContext.SINGLE),
+                Evidence(call.location, "$target.${call.name}() inside comparator", ExecutionContext.INSIDE_LOOP),
+            )
         return Finding(
-            ruleId = id, ruleName = name, severity = severity,
+            ruleId = id,
+            ruleName = name,
+            severity = severity,
             location = sort.location,
             message = "Date parsing (${call.name}) inside sort comparator",
             suggestion = "Parse dates once before sorting into a Map, then compare pre-parsed values",
-            currentComplexity = "O(n log n * parse)", suggestedComplexity = "O(n log n)",
+            currentComplexity = "O(n log n * parse)",
+            suggestedComplexity = "O(n log n)",
             evidence = evidence,
         )
     }
 
-    private fun buildIndirectFinding(sort: SortCall, call: FunctionCall, innerNode: IRNode): Finding {
-        val desc = when (innerNode) {
-            is ObjectCreation -> "new ${innerNode.typeName}()"
-            is FunctionCall -> "${innerNode.qualifiedTarget ?: ""}.${innerNode.name}()"
-            else -> "expensive operation"
-        }
-        val evidence = listOf(
-            Evidence(sort.location, "${sort.kind.name.lowercase()} with comparator", ExecutionContext.SINGLE),
-            Evidence(call.location, "${call.name}() called from comparator", ExecutionContext.INSIDE_LOOP),
-            Evidence(innerNode.location, "$desc inside ${call.name}()", ExecutionContext.INSIDE_LOOP),
-        )
+    private fun buildIndirectFinding(
+        sort: SortCall,
+        call: FunctionCall,
+        innerNode: IRNode,
+    ): Finding {
+        val desc =
+            when (innerNode) {
+                is ObjectCreation -> "new ${innerNode.typeName}()"
+                is FunctionCall -> "${innerNode.qualifiedTarget ?: ""}.${innerNode.name}()"
+                else -> "expensive operation"
+            }
+        val evidence =
+            listOf(
+                Evidence(sort.location, "${sort.kind.name.lowercase()} with comparator", ExecutionContext.SINGLE),
+                Evidence(call.location, "${call.name}() called from comparator", ExecutionContext.INSIDE_LOOP),
+                Evidence(innerNode.location, "$desc inside ${call.name}()", ExecutionContext.INSIDE_LOOP),
+            )
         return Finding(
-            ruleId = id, ruleName = name, severity = severity,
+            ruleId = id,
+            ruleName = name,
+            severity = severity,
             location = sort.location,
             message = "Date operation inside ${call.name}() called from sort comparator",
             suggestion = "Parse dates once before sorting, not inside the comparator call chain",
-            currentComplexity = "O(n log n * parse)", suggestedComplexity = "O(n log n)",
+            currentComplexity = "O(n log n * parse)",
+            suggestedComplexity = "O(n log n)",
             evidence = evidence,
         )
     }
@@ -184,10 +224,16 @@ internal fun isDateType(typeName: String): Boolean = dateTypeNames.any { typeNam
 
 private val DATE_PARSE_METHOD_NAMES = setOf("parse", "from", "ofEpochMilli", "ofEpochSecond")
 
-private val DATE_PARSE_TARGETS = setOf(
-    "LocalDate", "LocalDateTime", "ZonedDateTime", "Instant",
-    "OffsetDateTime", "DateTimeFormatter", "SimpleDateFormat",
-)
+private val DATE_PARSE_TARGETS =
+    setOf(
+        "LocalDate",
+        "LocalDateTime",
+        "ZonedDateTime",
+        "Instant",
+        "OffsetDateTime",
+        "DateTimeFormatter",
+        "SimpleDateFormat",
+    )
 
 internal fun isDateParseCall(call: FunctionCall): Boolean {
     if (call.name !in DATE_PARSE_METHOD_NAMES) return false

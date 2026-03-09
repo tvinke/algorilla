@@ -55,9 +55,12 @@ public class NPlusOneRepositoryCallRule : Rule {
             } else {
                 // Cross-method: check if a helper method internally calls a repository method
                 val maxDepth = context.config.maxCallDepth.coerceAtMost(2)
-                val hiddenFetch = CrossMethodResolver.resolveAndFind<FunctionCall>(
-                    node, context.symbolTable, maxDepth = maxDepth,
-                ) { isSingleRecordFetch(it) }
+                val hiddenFetch =
+                    CrossMethodResolver.resolveAndFind<FunctionCall>(
+                        node,
+                        context.symbolTable,
+                        maxDepth = maxDepth,
+                    ) { isSingleRecordFetch(it) }
                 if (hiddenFetch != null) {
                     findings.add(buildCrossMethodFinding(node, hiddenFetch, loopStack))
                 }
@@ -76,51 +79,80 @@ public class NPlusOneRepositoryCallRule : Rule {
     ): Finding {
         val outerLoop = loopStack.first()
         val target = hiddenFetch.qualifiedTarget ?: "repository"
-        val evidence = listOf(
-            Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP),
-            Evidence(call.location, "${call.name}() called per iteration", ExecutionContext.INSIDE_LOOP),
-            Evidence(hiddenFetch.location, "$target.${hiddenFetch.name}() inside ${call.name}()", ExecutionContext.INSIDE_LOOP),
-        )
+        val evidence =
+            listOf(
+                Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP),
+                Evidence(call.location, "${call.name}() called per iteration", ExecutionContext.INSIDE_LOOP),
+                Evidence(hiddenFetch.location, "$target.${hiddenFetch.name}() inside ${call.name}()", ExecutionContext.INSIDE_LOOP),
+            )
         return Finding(
-            ruleId = id, ruleName = name, severity = severity,
+            ruleId = id,
+            ruleName = name,
+            severity = severity,
             location = call.location,
             message = "Single-record fetch $target.${hiddenFetch.name}() inside ${call.name}() called from ${outerLoop.kind.label()} (N+1)",
             suggestion = "Bulk fetch all needed records before the loop, or build an in-memory Map",
-            currentComplexity = "O(n * IO)", suggestedComplexity = "O(1 * IO + n)",
+            currentComplexity = "O(n * IO)",
+            suggestedComplexity = "O(1 * IO + n)",
             evidence = evidence,
         )
     }
 
-    private fun buildFinding(call: FunctionCall, loopStack: List<LoopNode>): Finding {
+    private fun buildFinding(
+        call: FunctionCall,
+        loopStack: List<LoopNode>,
+    ): Finding {
         val outerLoop = loopStack.first()
         val target = call.qualifiedTarget ?: "repository"
-        val evidence = listOf(
-            Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP),
-            Evidence(call.location, "$target.${call.name}() called per iteration", ExecutionContext.INSIDE_LOOP),
-        )
+        val evidence =
+            listOf(
+                Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP),
+                Evidence(call.location, "$target.${call.name}() called per iteration", ExecutionContext.INSIDE_LOOP),
+            )
         return Finding(
-            ruleId = id, ruleName = name, severity = severity,
+            ruleId = id,
+            ruleName = name,
+            severity = severity,
             location = call.location,
             message = "Single-record fetch $target.${call.name}() inside ${outerLoop.kind.label()} (N+1)",
             suggestion = "Bulk fetch all needed records before the loop, or build an in-memory Map",
-            currentComplexity = "O(n * IO)", suggestedComplexity = "O(1 * IO + n)",
+            currentComplexity = "O(n * IO)",
+            suggestedComplexity = "O(1 * IO + n)",
             evidence = evidence,
         )
     }
 }
 
-private val SINGLE_FETCH_METHOD_PREFIXES = listOf(
-    "findById", "getById", "findOne", "getOne", "loadById",
-    "findByKey", "getByKey", "loadByKey",
-    "countBy",
-)
+private val SINGLE_FETCH_METHOD_PREFIXES =
+    listOf(
+        "findById",
+        "getById",
+        "findOne",
+        "getOne",
+        "loadById",
+        "findByKey",
+        "getByKey",
+        "loadByKey",
+        "countBy",
+    )
 
 /** Patterns like getAnimalByAnimalId, findUserByEmail — strong signal for single-record fetch */
-private val SINGLE_FETCH_METHOD_REGEX = Regex("""^(?:get|find|load|fetch|lookup)\w+By\w+(?:Id|Key|Name|Code|Identifier)$""", RegexOption.IGNORE_CASE)
+private val SINGLE_FETCH_METHOD_REGEX =
+    Regex(
+        """^(?:get|find|load|fetch|lookup)\w+By\w+(?:Id|Key|Name|Code|Identifier)$""",
+        RegexOption.IGNORE_CASE,
+    )
 
-private val REPO_TARGET_PATTERNS = listOf(
-    "repository", "repo", "dao", "store", "service", "client", "proxy",
-)
+private val REPO_TARGET_PATTERNS =
+    listOf(
+        "repository",
+        "repo",
+        "dao",
+        "store",
+        "service",
+        "client",
+        "proxy",
+    )
 
 private fun isSingleRecordFetch(call: FunctionCall): Boolean {
     val matchesMethod = SINGLE_FETCH_METHOD_PREFIXES.any { call.name.startsWith(it, ignoreCase = true) }

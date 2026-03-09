@@ -4,7 +4,6 @@ import com.github.tvinke.algorilla.engine.AnalysisResult
 import com.github.tvinke.algorilla.engine.Reporter
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.rules.Finding
-import com.github.tvinke.algorilla.rules.RuleCategory
 import java.util.Locale
 
 /**
@@ -73,7 +72,11 @@ public class ConsoleReporter : Reporter {
         result: AnalysisResult,
         output: Appendable,
     ) {
-        val fileCount = result.findings.map { it.location.file }.toSet().size
+        val fileCount =
+            result.findings
+                .map { it.location.file }
+                .toSet()
+                .size
         val elapsedStr = String.format(Locale.US, "%.1f", result.elapsedMs / MS_PER_SECOND)
         val errors = result.findings.count { it.severity == Severity.ERROR }
         val warnings = result.findings.count { it.severity == Severity.WARNING }
@@ -92,8 +95,10 @@ public class ConsoleReporter : Reporter {
         )
     }
 
-    private fun pluralize(word: String, count: Int): String =
-        if (count == 1) word else "${word}s"
+    private fun pluralize(
+        word: String,
+        count: Int,
+    ): String = if (count == 1) word else "${word}s"
 
     private companion object {
         const val LOC_PAD = 30

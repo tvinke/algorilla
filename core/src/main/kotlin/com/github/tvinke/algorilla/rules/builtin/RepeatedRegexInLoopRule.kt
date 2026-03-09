@@ -64,24 +64,32 @@ public class RepeatedRegexInLoopRule : Rule {
         desc: String,
     ): Finding {
         val outerLoop = loopStack.first()
-        val evidence = listOf(
-            Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP),
-            Evidence(node.location, "$desc inside loop", ExecutionContext.INSIDE_LOOP),
-        )
+        val evidence =
+            listOf(
+                Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP),
+                Evidence(node.location, "$desc inside loop", ExecutionContext.INSIDE_LOOP),
+            )
         return Finding(
-            ruleId = id, ruleName = name, severity = severity,
+            ruleId = id,
+            ruleName = name,
+            severity = severity,
             location = node.location,
             message = "Regex compilation ($desc) inside ${outerLoop.kind.label()}",
             suggestion = "Compile the pattern once outside the loop and reuse the compiled Pattern",
-            currentComplexity = "O(n * compile)", suggestedComplexity = "O(n)",
+            currentComplexity = "O(n * compile)",
+            suggestedComplexity = "O(n)",
             evidence = evidence,
         )
     }
 }
 
 private val REGEX_TYPES = setOf("Pattern", "RegExp", "Regex")
+
 private fun isRegexType(typeName: String): Boolean = typeName in REGEX_TYPES
 
 private fun isCompileCall(call: FunctionCall): Boolean =
-    call.name == "compile" && (call.qualifiedTarget?.contains("Pattern") == true ||
-        call.qualifiedTarget?.contains("Regex") == true)
+    call.name == "compile" &&
+        (
+            call.qualifiedTarget?.contains("Pattern") == true ||
+                call.qualifiedTarget?.contains("Regex") == true
+        )

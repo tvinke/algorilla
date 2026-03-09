@@ -40,6 +40,7 @@ public object CrossMethodResolver {
 
         // Search direct descendants
         val allDescendants = collectDescendants(resolved)
+
         @Suppress("UNCHECKED_CAST")
         val direct = allDescendants.filter { targetClass.isInstance(it) }.map { it as T }.firstOrNull(predicate)
         if (direct != null) return direct
@@ -58,7 +59,10 @@ public object CrossMethodResolver {
      * Resolves a [FunctionCall] to its [FunctionDecl] via the symbol table.
      * Tries qualified target first, then falls back to simple name lookup.
      */
-    public fun resolve(call: FunctionCall, symbolTable: SymbolTable): FunctionDecl? {
+    public fun resolve(
+        call: FunctionCall,
+        symbolTable: SymbolTable,
+    ): FunctionDecl? {
         if (call.qualifiedTarget != null) {
             val qualified = symbolTable.lookup("${call.qualifiedTarget}.${call.name}")
             if (qualified.isNotEmpty()) return qualified.first()

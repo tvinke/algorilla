@@ -50,7 +50,11 @@ internal class SuppressionFilterTest {
         result.shouldBeEmpty()
     }
 
-    private fun finding(file: String, line: Int, ruleId: String) = Finding(
+    private fun finding(
+        file: String,
+        line: Int,
+        ruleId: String,
+    ) = Finding(
         ruleId = ruleId,
         ruleName = "Test Rule",
         severity = com.github.tvinke.algorilla.model.Severity.WARNING,

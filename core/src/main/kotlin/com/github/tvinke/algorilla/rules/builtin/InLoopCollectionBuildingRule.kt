@@ -55,18 +55,25 @@ public class InLoopCollectionBuildingRule : Rule {
         }
     }
 
-    private fun buildFinding(call: FunctionCall, loopStack: List<LoopNode>): Finding {
+    private fun buildFinding(
+        call: FunctionCall,
+        loopStack: List<LoopNode>,
+    ): Finding {
         val outerLoop = loopStack.first()
-        val evidence = listOf(
-            Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP),
-            Evidence(call.location, "${call.name}() inside loop", ExecutionContext.INSIDE_LOOP),
-        )
+        val evidence =
+            listOf(
+                Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP),
+                Evidence(call.location, "${call.name}() inside loop", ExecutionContext.INSIDE_LOOP),
+            )
         return Finding(
-            ruleId = id, ruleName = name, severity = severity,
+            ruleId = id,
+            ruleName = name,
+            severity = severity,
             location = call.location,
             message = "${call.name}() inside ${outerLoop.kind.label()} repeatedly copies collection",
             suggestion = "Accumulate into a single collection, then call ${call.name}() once after the loop",
-            currentComplexity = "O(n*m)", suggestedComplexity = "O(n+m)",
+            currentComplexity = "O(n*m)",
+            suggestedComplexity = "O(n+m)",
             evidence = evidence,
         )
     }

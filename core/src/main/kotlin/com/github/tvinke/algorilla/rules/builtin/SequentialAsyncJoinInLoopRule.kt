@@ -59,26 +59,39 @@ public class SequentialAsyncJoinInLoopRule : Rule {
         }
     }
 
-    private fun buildFinding(call: FunctionCall, loopStack: List<LoopNode>): Finding {
+    private fun buildFinding(
+        call: FunctionCall,
+        loopStack: List<LoopNode>,
+    ): Finding {
         val outerLoop = loopStack.first()
-        val evidence = listOf(
-            Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP),
-            Evidence(call.location, ".${call.name}() blocks on each iteration", ExecutionContext.INSIDE_LOOP),
-        )
+        val evidence =
+            listOf(
+                Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP),
+                Evidence(call.location, ".${call.name}() blocks on each iteration", ExecutionContext.INSIDE_LOOP),
+            )
         return Finding(
-            ruleId = id, ruleName = name, severity = severity,
+            ruleId = id,
+            ruleName = name,
+            severity = severity,
             location = call.location,
             message = "Blocking .${call.name}() on future inside ${outerLoop.kind.label()}",
             suggestion = "Collect all futures first, then call .join()/.get() outside the loop (e.g. CompletableFuture.allOf)",
-            currentComplexity = "O(n * wait)", suggestedComplexity = "O(max-wait)",
+            currentComplexity = "O(n * wait)",
+            suggestedComplexity = "O(max-wait)",
             evidence = evidence,
         )
     }
 }
 
-private val FUTURE_INDICATORS = setOf(
-    "future", "promise", "async", "completable", "deferred", "task",
-)
+private val FUTURE_INDICATORS =
+    setOf(
+        "future",
+        "promise",
+        "async",
+        "completable",
+        "deferred",
+        "task",
+    )
 
 /**
  * Heuristic: the call target variable name hints at a Future type.

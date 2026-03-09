@@ -34,7 +34,7 @@ markdown_extensions:
   - pymdownx.superfences
   - pymdownx.tabbed:
       alternate_style: true
-  - admonitions
+  - admonition
   - pymdownx.details
   - tables
   - toc:
@@ -78,3 +78,4 @@ nav:
     - Adding Rules: developer/adding-rules.md
     - Adding Languages: developer/adding-languages.md
     - Testing: developer/testing.md
+    - Releasing: developer/releasing.md

@@ -85,9 +85,10 @@ public class HeavyweightObjectPerInvocationRule : Rule {
             currentComplexity = "O(n * init)",
             suggestedComplexity = "O(1)",
             evidence = evidence,
-            suggestedFix = SuggestedFix(
-                description = "Move ${creation.typeName} to a private static final field",
-            ),
+            suggestedFix =
+                SuggestedFix(
+                    description = "Move ${creation.typeName} to a private static final field",
+                ),
         )
     }
 }

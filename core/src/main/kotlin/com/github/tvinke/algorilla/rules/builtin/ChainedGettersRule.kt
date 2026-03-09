@@ -39,7 +39,11 @@ public class ChainedGettersRule : Rule {
         return findings
     }
 
-    private fun checkFunction(fn: FunctionDecl, context: AnalysisContext, findings: MutableList<Finding>) {
+    private fun checkFunction(
+        fn: FunctionDecl,
+        context: AnalysisContext,
+        findings: MutableList<Finding>,
+    ) {
         val varDecls = fn.findDescendants<VariableDecl>()
         val calls = fn.findDescendants<FunctionCall>()
 
@@ -58,11 +62,15 @@ public class ChainedGettersRule : Rule {
             val chain = buildChain(call, producedBy)
             if (chain.size >= MIN_CHAIN_LENGTH) {
                 // Check if any getter in the chain resolves to a function with linear lookups
-                val hasLinear = chain.any { c ->
-                    val resolved = CrossMethodResolver.resolve(c, context.symbolTable)
-                    resolved != null && (resolved.findDescendants<LookupCall>().isNotEmpty() ||
-                        resolved.findDescendants<LoopNode>().isNotEmpty())
-                }
+                val hasLinear =
+                    chain.any { c ->
+                        val resolved = CrossMethodResolver.resolve(c, context.symbolTable)
+                        resolved != null &&
+                            (
+                                resolved.findDescendants<LookupCall>().isNotEmpty() ||
+                                    resolved.findDescendants<LoopNode>().isNotEmpty()
+                            )
+                    }
                 if (hasLinear) {
                     findings.add(buildFinding(fn, chain))
                 }
@@ -77,6 +85,7 @@ public class ChainedGettersRule : Rule {
     ): List<FunctionCall> {
         val chain = mutableListOf(call)
         // Walk backward through the arg -> produced-by chain
+        @Suppress("LoopWithTooManyJumpStatements")
         for (arg in call.arguments) {
             val argName = simpleVarName(arg) ?: continue
             if (argName in visited) continue
@@ -86,18 +95,25 @@ public class ChainedGettersRule : Rule {
         return chain
     }
 
-    private fun buildFinding(fn: FunctionDecl, chain: List<FunctionCall>): Finding {
-        val evidence = chain.mapIndexed { idx, call ->
-            val label = if (idx == 0) "${call.name}() starts the chain" else "${call.name}() uses result of previous"
-            Evidence(call.location, label, ExecutionContext.SINGLE)
-        }
+    private fun buildFinding(
+        fn: FunctionDecl,
+        chain: List<FunctionCall>,
+    ): Finding {
+        val evidence =
+            chain.mapIndexed { idx, call ->
+                val label = if (idx == 0) "${call.name}() starts the chain" else "${call.name}() uses result of previous"
+                Evidence(call.location, label, ExecutionContext.SINGLE)
+            }
         val chainDesc = chain.joinToString(" → ") { it.name }
         return Finding(
-            ruleId = id, ruleName = name, severity = severity,
+            ruleId = id,
+            ruleName = name,
+            severity = severity,
             location = chain.first().location,
             message = "Chained getter cascade in ${fn.name}(): $chainDesc",
             suggestion = "Pre-build lookup maps or use a join query to avoid cascading lookups",
-            currentComplexity = "O(n^${chain.size})", suggestedComplexity = "O(n)",
+            currentComplexity = "O(n^${chain.size})",
+            suggestedComplexity = "O(n)",
             evidence = evidence,
         )
     }
@@ -109,14 +125,15 @@ public class ChainedGettersRule : Rule {
 
 private val GETTER_PREFIXES = listOf("get", "find", "load", "fetch", "lookup", "resolve")
 
-private fun isGetterPattern(call: FunctionCall): Boolean =
-    GETTER_PREFIXES.any { call.name.startsWith(it, ignoreCase = true) }
+private fun isGetterPattern(call: FunctionCall): Boolean = GETTER_PREFIXES.any { call.name.startsWith(it, ignoreCase = true) }
+
+private const val MAX_VAR_NAME_LENGTH = 60
 
 private fun simpleVarName(node: IRNode): String? =
     when (node) {
         is FunctionCall -> null
         else -> {
             val text = node.toString()
-            if (text.length < 60 && text.matches(Regex("[a-zA-Z_][a-zA-Z0-9_]*"))) text else null
+            if (text.length < MAX_VAR_NAME_LENGTH && text.matches(Regex("[a-zA-Z_][a-zA-Z0-9_]*"))) text else null
         }
     }

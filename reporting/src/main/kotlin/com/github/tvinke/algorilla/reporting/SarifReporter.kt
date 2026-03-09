@@ -95,19 +95,22 @@ public class SarifReporter : Reporter {
     ): Fix =
         Fix(
             description = Message(text = suggestedFix.description),
-            artifactChanges = listOf(
-                ArtifactChange(
-                    artifactLocation = ArtifactLocation(uri = finding.location.file),
-                    replacements = listOf(
-                        Replacement(
-                            deletedRegion = Region(
-                                startLine = finding.location.line.toLong(),
-                                startColumn = finding.location.column.toLong(),
+            artifactChanges =
+                listOf(
+                    ArtifactChange(
+                        artifactLocation = ArtifactLocation(uri = finding.location.file),
+                        replacements =
+                            listOf(
+                                Replacement(
+                                    deletedRegion =
+                                        Region(
+                                            startLine = finding.location.line.toLong(),
+                                            startColumn = finding.location.column.toLong(),
+                                        ),
+                                ),
                             ),
-                        ),
                     ),
                 ),
-            ),
         )
 
     private fun buildMessage(finding: Finding): Message {

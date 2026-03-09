@@ -121,8 +121,10 @@ internal class AlgorillaCommand : Callable<Int> {
 
     @Option(
         names = ["-l", "--language"],
-        description = ["Only analyze specified language(s). Comma-separated or repeated: --language java,groovy or -l java -l groovy. " +
-            "Available: java, groovy, kotlin, javascript, typescript, vue"],
+        description = [
+            "Only analyze specified language(s). Comma-separated or repeated: --language java,groovy or -l java -l groovy. " +
+                "Available: java, groovy, kotlin, javascript, typescript, vue",
+        ],
         split = ",",
     )
     private var languages: List<String> = emptyList()
@@ -152,16 +154,19 @@ internal class AlgorillaCommand : Callable<Int> {
         val parsers = listOf(JavaLanguageParser(), GroovyParser(), KotlinParser(), JavaScriptParser())
         val rules = builtinRules()
         val customRules = CustomRuleLoader.loadRules(projectRoot)
-        val allRules = (rules + customRules).let { ruleList ->
-            if (languageFilter != null) {
-                ruleList.filter { rule -> rule.languages.any { it in languageFilter } }
-            } else {
-                ruleList
+        val allRules =
+            (rules + customRules).let { ruleList ->
+                if (languageFilter != null) {
+                    ruleList.filter { rule -> rule.languages.any { it in languageFilter } }
+                } else {
+                    ruleList
+                }
             }
-        }
         val cache = if (noCache) null else AnalysisCache(projectRoot)
+        val collector = SourceFileCollector(detector)
+        val sourceFiles = collector.collect(scanRoots, config.excludePatterns, includeTests, languageFilter)
         val engine = AnalysisEngine(parsers = parsers, rules = allRules, config = config, cache = cache, verbose = verbose)
-        return engine.analyze(collectSourceFiles(detector, scanRoots, config.excludePatterns, languageFilter))
+        return engine.analyze(sourceFiles)
     }
 
     private fun builtinRules(): List<Rule> =
@@ -234,63 +239,16 @@ internal class AlgorillaCommand : Callable<Int> {
 
     private fun resolveLanguageFilter(): Set<Language>? {
         if (languages.isEmpty()) return null
-        val resolved = languages.map { name ->
-            Language.fromName(name)
-                ?: throw CommandLine.ParameterException(
-                    spec.commandLine(),
-                    "Unknown language '$name'. Available: ${Language.entries.joinToString { it.displayName.lowercase() }}",
-                )
-        }.toSet()
+        val resolved =
+            languages
+                .map { name ->
+                    Language.fromName(name)
+                        ?: throw CommandLine.ParameterException(
+                            spec.commandLine(),
+                            "Unknown language '$name'. Available: ${Language.entries.joinToString { it.displayName.lowercase() }}",
+                        )
+                }.toSet()
         return resolved
-    }
-
-    private fun collectSourceFiles(
-        detector: ProjectStructureDetector,
-        paths: List<File>,
-        effectiveExcludePatterns: List<String>,
-        languageFilter: Set<Language>? = null,
-    ): List<String> {
-        val testFilter = detector.buildTestExcludeFilter(paths, includeTests)
-        val defaultExcludes = detector.defaultExcludePatterns()
-        val langFilter: (File) -> Boolean = if (languageFilter != null) {
-            { file -> Language.fromExtension(file.extension.lowercase())?.let { it in languageFilter } == true }
-        } else {
-            { true }
-        }
-        val files = mutableListOf<String>()
-        for (path in paths) {
-            if (path.isFile) {
-                if (isSupportedFile(path) && langFilter(path)) files.add(path.absolutePath)
-            } else if (path.isDirectory) {
-                path
-                    .walkTopDown()
-                    .filter { it.isFile && isSupportedFile(it) }
-                    .filter(langFilter)
-                    .filter { file -> defaultExcludes.none { excl -> file.path.contains(excl) } }
-                    .filter(testFilter)
-                    .filter { file -> effectiveExcludePatterns.none { pattern -> matchGlob(pattern, file.path) } }
-                    .forEach { files.add(it.absolutePath) }
-            }
-        }
-        return files
-    }
-
-    private fun isSupportedFile(file: File): Boolean {
-        val ext = file.extension.lowercase()
-        return Language.fromExtension(ext) != null
-    }
-
-    private fun matchGlob(
-        pattern: String,
-        path: String,
-    ): Boolean {
-        val regex =
-            pattern
-                .replace(".", "\\.")
-                .replace("**", "\u00A7\u00A7")
-                .replace("*", "[^/]*")
-                .replace("\u00A7\u00A7", ".*")
-        return Regex(regex).containsMatchIn(path)
     }
 
     internal companion object {

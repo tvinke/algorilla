@@ -71,24 +71,20 @@ public class SortForLastRule : Rule {
         return lineDiff in 0..MAX_LINE_DISTANCE
     }
 
+    private fun buildEvidence(
+        sort: SortCall,
+        access: CollectionAccess,
+    ): List<Evidence> =
+        listOf(
+            Evidence(sort.location, "${sort.kind.name.lowercase()} call", ExecutionContext.SINGLE),
+            Evidence(access.location, ".${access.kind.name.lowercase()} after sort", ExecutionContext.SINGLE),
+        )
+
     private fun buildFinding(
         sort: SortCall,
         access: CollectionAccess,
-    ): Finding {
-        val evidence =
-            listOf(
-                Evidence(
-                    location = sort.location,
-                    label = "${sort.kind.name.lowercase()} call",
-                    executionContext = ExecutionContext.SINGLE,
-                ),
-                Evidence(
-                    location = access.location,
-                    label = ".${access.kind.name.lowercase()} after sort",
-                    executionContext = ExecutionContext.SINGLE,
-                ),
-            )
-        return Finding(
+    ): Finding =
+        Finding(
             ruleId = id,
             ruleName = name,
             severity = severity,
@@ -97,12 +93,12 @@ public class SortForLastRule : Rule {
             suggestion = "Use .max(Comparator.comparing(...)) or .min(...) instead of sorting",
             currentComplexity = "O(n log n)",
             suggestedComplexity = "O(n)",
-            evidence = evidence,
-            suggestedFix = SuggestedFix(
-                description = "Replace sorted().findFirst() with min(Comparator.comparing(...))",
-            ),
+            evidence = buildEvidence(sort, access),
+            suggestedFix =
+                SuggestedFix(
+                    description = "Replace sorted().findFirst() with min(Comparator.comparing(...))",
+                ),
         )
-    }
 
     private companion object {
         const val MAX_LINE_DISTANCE = 5

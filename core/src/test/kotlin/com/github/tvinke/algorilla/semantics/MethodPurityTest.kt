@@ -4,7 +4,6 @@ import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 
 internal class MethodPurityTest {
-
     @Test
     fun `getter methods are pure`() {
         MethodPurity.classify("getName") shouldBe Purity.PURE

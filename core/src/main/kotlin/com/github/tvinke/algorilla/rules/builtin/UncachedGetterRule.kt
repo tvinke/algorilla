@@ -33,7 +33,10 @@ public class UncachedGetterRule : Rule {
         return findings
     }
 
-    private fun scanNode(node: IRNode, findings: MutableList<Finding>) {
+    private fun scanNode(
+        node: IRNode,
+        findings: MutableList<Finding>,
+    ) {
         if (node is FunctionDecl) {
             checkFunction(node, findings)
         }
@@ -42,7 +45,10 @@ public class UncachedGetterRule : Rule {
         }
     }
 
-    private fun checkFunction(fn: FunctionDecl, findings: MutableList<Finding>) {
+    private fun checkFunction(
+        fn: FunctionDecl,
+        findings: MutableList<Finding>,
+    ) {
         val calls = fn.findDescendants<FunctionCall>()
         val getterCalls = calls.filter { isGetterPattern(it) && it.arguments.isNotEmpty() }
         val grouped = getterCalls.groupBy { "${it.qualifiedTarget}.${it.name}(${argKey(it)})" }
@@ -54,18 +60,25 @@ public class UncachedGetterRule : Rule {
         }
     }
 
-    private fun buildFinding(fn: FunctionDecl, calls: List<FunctionCall>): Finding {
+    private fun buildFinding(
+        fn: FunctionDecl,
+        calls: List<FunctionCall>,
+    ): Finding {
         val first = calls.first()
         val callDesc = "${first.qualifiedTarget ?: ""}${if (first.qualifiedTarget != null) "." else ""}${first.name}()"
-        val evidence = calls.map {
-            Evidence(it.location, "$callDesc called again with same arg", ExecutionContext.SINGLE)
-        }
+        val evidence =
+            calls.map {
+                Evidence(it.location, "$callDesc called again with same arg", ExecutionContext.SINGLE)
+            }
         return Finding(
-            ruleId = id, ruleName = name, severity = severity,
+            ruleId = id,
+            ruleName = name,
+            severity = severity,
             location = first.location,
             message = "$callDesc called ${calls.size} times with same argument in ${fn.name}()",
             suggestion = "Cache the result in a local variable: val x = $callDesc",
-            currentComplexity = "${calls.size}x lookup", suggestedComplexity = "1x lookup",
+            currentComplexity = "${calls.size}x lookup",
+            suggestedComplexity = "1x lookup",
             evidence = evidence,
         )
     }
@@ -85,5 +98,6 @@ private fun isGetterPattern(call: FunctionCall): Boolean {
     return GETTER_PREFIXES.any { call.name.startsWith(it, ignoreCase = true) }
 }
 
-private fun argKey(call: FunctionCall): String =
-    call.arguments.joinToString(",") { it.toString().take(80) }
+private const val MAX_ARG_LENGTH = 80
+
+private fun argKey(call: FunctionCall): String = call.arguments.joinToString(",") { it.toString().take(MAX_ARG_LENGTH) }

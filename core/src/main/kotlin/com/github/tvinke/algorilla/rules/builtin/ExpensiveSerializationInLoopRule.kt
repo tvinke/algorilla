@@ -27,7 +27,7 @@ public class ExpensiveSerializationInLoopRule : Rule {
 
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
-        for ((filePath, fileRoot) in context.irTrees) {
+        for ((_, fileRoot) in context.irTrees) {
             val lang = fileRoot.language
             scanNode(fileRoot, emptyList(), lang, context, findings)
         }
@@ -60,18 +60,25 @@ public class ExpensiveSerializationInLoopRule : Rule {
         }
     }
 
-    private fun buildFinding(call: FunctionCall, loopStack: List<LoopNode>): Finding {
+    private fun buildFinding(
+        call: FunctionCall,
+        loopStack: List<LoopNode>,
+    ): Finding {
         val outerLoop = loopStack.first()
-        val evidence = listOf(
-            Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP),
-            Evidence(call.location, "${call.name}() inside loop", ExecutionContext.INSIDE_LOOP),
-        )
+        val evidence =
+            listOf(
+                Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP),
+                Evidence(call.location, "${call.name}() inside loop", ExecutionContext.INSIDE_LOOP),
+            )
         return Finding(
-            ruleId = id, ruleName = name, severity = severity,
+            ruleId = id,
+            ruleName = name,
+            severity = severity,
             location = call.location,
             message = "Serialization call ${call.name}() inside ${outerLoop.kind.label()}",
             suggestion = "Move serialization outside the loop, or use batch serialization",
-            currentComplexity = "O(n * serialize)", suggestedComplexity = "O(n)",
+            currentComplexity = "O(n * serialize)",
+            suggestedComplexity = "O(n)",
             evidence = evidence,
         )
     }

@@ -10,7 +10,6 @@ import com.github.tvinke.algorilla.model.LookupKind
 import com.github.tvinke.algorilla.model.LoopKind
 import com.github.tvinke.algorilla.model.LoopNode
 import com.github.tvinke.algorilla.model.ObjectCreation
-import com.github.tvinke.algorilla.model.Parameter
 import com.github.tvinke.algorilla.model.SortCall
 import com.github.tvinke.algorilla.model.SortKind
 import com.github.tvinke.algorilla.model.SourceLocation
@@ -31,95 +30,101 @@ internal class JsRegexScanner(
         for ((index, rawLine) in lines.withIndex()) {
             val lineNum = index + 1
             val line = stripComments(rawLine)
-
-            // Detect structural nodes that open a new scope
-            val structuralNode = detectStructuralNode(line, lineNum)
-            if (structuralNode != null) {
-                val openBraces = countChar(line, '{')
-                val closeBraces = countChar(line, '}')
-                val frame = ScopeFrame(structuralNode, openBraces - closeBraces, mutableListOf())
-                scopeStack.last().children.add(frame)
-                if (openBraces > closeBraces) {
-                    scopeStack.addLast(frame)
-                }
-                // Also scan for leaf nodes on the same line
-                scanLeafNodes(line, lineNum, frame.children)
-            } else {
-                // Scan for leaf nodes (lookups, sorts, object creation, generic calls)
-                scanLeafNodes(line, lineNum, scopeStack.last().children)
-
-                // Track brace depth changes
-                val openBraces = countChar(line, '{')
-                val closeBraces = countChar(line, '}')
-                val delta = openBraces - closeBraces
-                if (delta < 0) {
-                    // Closing braces — pop scopes
-                    var remaining = -delta
-                    while (remaining > 0 && scopeStack.size > 1) {
-                        val top = scopeStack.last()
-                        if (top.unclosedBraces <= remaining) {
-                            remaining -= top.unclosedBraces
-                            scopeStack.removeLast()
-                        } else {
-                            top.unclosedBraces -= remaining
-                            remaining = 0
-                        }
-                    }
-                } else if (delta > 0 && scopeStack.size > 1) {
-                    scopeStack.last().unclosedBraces += delta
-                }
-            }
+            processLine(line, lineNum, scopeStack)
         }
 
         return buildTree(scopeStack.first())
     }
 
-    private fun detectStructuralNode(line: String, lineNum: Int): IRNode? {
-        // Function declarations
-        for (pattern in FUNCTION_PATTERNS) {
-            val match = pattern.find(line)
-            if (match != null) {
-                val name = match.groupValues[1]
-                if (name.isNotBlank()) {
-                    return FunctionDecl(
-                        name = name, qualifiedName = name,
-                        parameters = emptyList(),
-                        location = SourceLocation(filePath, lineNum, match.range.first + 1),
-                        children = emptyList(),
-                    )
+    private fun processLine(
+        line: String,
+        lineNum: Int,
+        scopeStack: ArrayDeque<ScopeFrame>,
+    ) {
+        val structuralNode = detectStructuralNode(line, lineNum)
+        if (structuralNode != null) {
+            pushStructuralNode(structuralNode, line, lineNum, scopeStack)
+        } else {
+            scanLeafNodes(line, lineNum, scopeStack.last().children)
+            adjustBraceDepth(line, scopeStack)
+        }
+    }
+
+    private fun pushStructuralNode(
+        node: IRNode,
+        line: String,
+        lineNum: Int,
+        scopeStack: ArrayDeque<ScopeFrame>,
+    ) {
+        val openBraces = countChar(line, '{')
+        val closeBraces = countChar(line, '}')
+        val frame = ScopeFrame(node, openBraces - closeBraces, mutableListOf())
+        scopeStack.last().children.add(frame)
+        if (openBraces > closeBraces) {
+            scopeStack.addLast(frame)
+        }
+        scanLeafNodes(line, lineNum, frame.children)
+    }
+
+    private fun adjustBraceDepth(
+        line: String,
+        scopeStack: ArrayDeque<ScopeFrame>,
+    ) {
+        val delta = countChar(line, '{') - countChar(line, '}')
+        if (delta < 0) {
+            var remaining = -delta
+            while (remaining > 0 && scopeStack.size > 1) {
+                val top = scopeStack.last()
+                if (top.unclosedBraces <= remaining) {
+                    remaining -= top.unclosedBraces
+                    scopeStack.removeLast()
+                } else {
+                    top.unclosedBraces -= remaining
+                    remaining = 0
                 }
+            }
+        } else if (delta > 0 && scopeStack.size > 1) {
+            scopeStack.last().unclosedBraces += delta
+        }
+    }
+
+    private fun detectStructuralNode(
+        line: String,
+        lineNum: Int,
+    ): IRNode? =
+        detectFunctionOrMethod(line, lineNum)
+            ?: detectLoop(line, lineNum)
+            ?: detectIterationCall(line, lineNum)
+
+    private fun detectFunctionOrMethod(
+        line: String,
+        lineNum: Int,
+    ): IRNode? {
+        for (pattern in FUNCTION_PATTERNS) {
+            val match = pattern.find(line) ?: continue
+            val name = match.groupValues[1]
+            if (name.isNotBlank()) {
+                return makeFunctionDecl(name, lineNum, match.range.first)
             }
         }
         // Object method shorthand: methodName(...) { or methodName: function
-        OBJECT_METHOD_PATTERN.find(line)?.let { match ->
-            val name = match.groupValues[1]
-            if (name.isNotBlank() && name !in KEYWORDS) {
-                return FunctionDecl(
-                    name = name, qualifiedName = name,
-                    parameters = emptyList(),
-                    location = SourceLocation(filePath, lineNum, match.range.first + 1),
-                    children = emptyList(),
-                )
-            }
+        val match = OBJECT_METHOD_PATTERN.find(line) ?: return null
+        val name = match.groupValues[1]
+        if (name.isNotBlank() && name !in KEYWORDS) {
+            return makeFunctionDecl(name, lineNum, match.range.first)
         }
-        // Loops
+        return null
+    }
+
+    private fun detectLoop(
+        line: String,
+        lineNum: Int,
+    ): IRNode? {
         for (pattern in LOOP_PATTERNS) {
-            val match = pattern.find(line)
-            if (match != null) {
-                return LoopNode(
-                    kind = classifyLoopText(match.value),
-                    iteratedVariable = extractIteratedVar(line),
-                    location = SourceLocation(filePath, lineNum, match.range.first + 1),
-                    children = emptyList(),
-                )
-            }
-        }
-        // Higher-order iteration methods that open a callback scope
-        ITERATION_CALL_PATTERN.find(line)?.let { match ->
-            val methodName = match.groupValues[1]
+            val match = pattern.find(line) ?: continue
             return LoopNode(
-                kind = LoopKind.HIGHER_ORDER,
-                iteratedVariable = extractChainTarget(line, match.range.first),
+                kind = classifyLoopText(match.value),
+                iteratedVariable = extractIteratedVar(line),
                 location = SourceLocation(filePath, lineNum, match.range.first + 1),
                 children = emptyList(),
             )
@@ -127,7 +132,36 @@ internal class JsRegexScanner(
         return null
     }
 
-    private fun scanLeafNodes(line: String, lineNum: Int, target: MutableList<Any>) {
+    private fun detectIterationCall(
+        line: String,
+        lineNum: Int,
+    ): IRNode? {
+        val match = ITERATION_CALL_PATTERN.find(line) ?: return null
+        return LoopNode(
+            kind = LoopKind.HIGHER_ORDER,
+            iteratedVariable = extractChainTarget(line, match.range.first),
+            location = SourceLocation(filePath, lineNum, match.range.first + 1),
+            children = emptyList(),
+        )
+    }
+
+    private fun makeFunctionDecl(
+        name: String,
+        lineNum: Int,
+        col: Int,
+    ) = FunctionDecl(
+        name = name,
+        qualifiedName = name,
+        parameters = emptyList(),
+        location = SourceLocation(filePath, lineNum, col + 1),
+        children = emptyList(),
+    )
+
+    private fun scanLeafNodes(
+        line: String,
+        lineNum: Int,
+        target: MutableList<Any>,
+    ) {
         for (match in CHAINED_CALL_PATTERN.findAll(line)) {
             val methodName = match.groupValues[1]
             val loc = SourceLocation(filePath, lineNum, match.range.first + 1)
@@ -135,6 +169,15 @@ internal class JsRegexScanner(
             val node = classifyJsCall(methodName, targetVar, loc)
             if (node != null) target.add(LeafNode(node))
         }
+        scanObjectCreations(line, lineNum, target)
+        scanGenericCalls(line, lineNum, target)
+    }
+
+    private fun scanObjectCreations(
+        line: String,
+        lineNum: Int,
+        target: MutableList<Any>,
+    ) {
         for (match in OBJECT_CREATION_PATTERN.findAll(line)) {
             val typeName = match.groupValues[1]
             target.add(
@@ -147,18 +190,23 @@ internal class JsRegexScanner(
                 ),
             )
         }
-        // Generic function calls (for cross-method analysis, serialization detection, etc.)
+    }
+
+    private fun scanGenericCalls(
+        line: String,
+        lineNum: Int,
+        target: MutableList<Any>,
+    ) {
         for (match in GENERIC_CALL_PATTERN.findAll(line)) {
-            val target2 = match.groupValues[1]
+            val qualifiedTarget = match.groupValues[1]
             val name = match.groupValues[2]
             if (name !in STRUCTURAL_NAMES && name !in LOOKUP_NAMES) {
-                val loc = SourceLocation(filePath, lineNum, match.range.first + 1)
                 target.add(
                     LeafNode(
                         FunctionCall(
                             name = name,
-                            qualifiedTarget = target2.ifBlank { null },
-                            location = loc,
+                            qualifiedTarget = qualifiedTarget.ifBlank { null },
+                            location = SourceLocation(filePath, lineNum, match.range.first + 1),
                             children = emptyList(),
                         ),
                     ),
@@ -167,8 +215,7 @@ internal class JsRegexScanner(
         }
     }
 
-    private fun buildTree(root: ScopeFrame): List<IRNode> =
-        root.children.map { buildNode(it) }
+    private fun buildTree(root: ScopeFrame): List<IRNode> = root.children.map { buildNode(it) }
 
     private fun buildNode(item: Any): IRNode =
         when (item) {
@@ -191,33 +238,92 @@ private data class ScopeFrame(
     val children: MutableList<Any>,
 )
 
-private data class LeafNode(val node: IRNode)
-
-private val FUNCTION_PATTERNS = listOf(
-    Regex("""function\s+(\w+)"""),
-    Regex("""(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?function"""),
-    Regex("""(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?\([^)]*\)\s*=>"""),
-    Regex("""(?:export\s+(?:default\s+)?)?(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?\w+\s*=>\s*\{"""),
+private data class LeafNode(
+    val node: IRNode,
 )
+
+private val FUNCTION_PATTERNS =
+    listOf(
+        Regex("""function\s+(\w+)"""),
+        Regex("""(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?function"""),
+        Regex("""(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?\([^)]*\)\s*=>"""),
+        Regex("""(?:export\s+(?:default\s+)?)?(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?\w+\s*=>\s*\{"""),
+    )
 
 private val OBJECT_METHOD_PATTERN = Regex("""^\s*(\w+)\s*(?:\([^)]*\))?\s*(?::\s*function)?\s*\(""")
 
-private val LOOP_PATTERNS = listOf(
-    Regex("""\bfor\s*\("""),
-    Regex("""\bwhile\s*\("""),
-)
+private val LOOP_PATTERNS =
+    listOf(
+        Regex("""\bfor\s*\("""),
+        Regex("""\bwhile\s*\("""),
+    )
 
 private val ITERATION_CALL_PATTERN = Regex("""\.(forEach|map|flatMap|reduce|reduceRight)\s*\(""")
 
-private val CHAINED_CALL_PATTERN = Regex("""\.(contains|includes|indexOf|findIndex|find|findLast|filter|some|every|sort|toSorted|first|last|concat)\s*\(""")
+private val CHAINED_CALL_PATTERN =
+    Regex("""\.(contains|includes|indexOf|findIndex|find|findLast|filter|some|every|sort|toSorted|first|last|concat)\s*\(""")
 
 private val OBJECT_CREATION_PATTERN = Regex("""\bnew\s+(\w+)\s*\(""")
 
 private val GENERIC_CALL_PATTERN = Regex("""(?:(\w+(?:\.\w+)*)\.)?(\w+)\s*\(""")
 
-private val LOOKUP_NAMES = setOf("contains", "includes", "indexOf", "findIndex", "find", "findLast", "filter", "some", "every", "sort", "toSorted", "first", "last", "concat")
-private val STRUCTURAL_NAMES = setOf("function", "if", "else", "for", "while", "switch", "catch", "forEach", "map", "flatMap", "reduce", "reduceRight", "require", "import")
-private val KEYWORDS = setOf("if", "else", "for", "while", "switch", "case", "catch", "try", "return", "new", "do", "class", "export", "import", "default", "const", "let", "var", "async", "await")
+private val LOOKUP_NAMES =
+    setOf(
+        "contains",
+        "includes",
+        "indexOf",
+        "findIndex",
+        "find",
+        "findLast",
+        "filter",
+        "some",
+        "every",
+        "sort",
+        "toSorted",
+        "first",
+        "last",
+        "concat",
+    )
+private val STRUCTURAL_NAMES =
+    setOf(
+        "function",
+        "if",
+        "else",
+        "for",
+        "while",
+        "switch",
+        "catch",
+        "forEach",
+        "map",
+        "flatMap",
+        "reduce",
+        "reduceRight",
+        "require",
+        "import",
+    )
+private val KEYWORDS =
+    setOf(
+        "if",
+        "else",
+        "for",
+        "while",
+        "switch",
+        "case",
+        "catch",
+        "try",
+        "return",
+        "new",
+        "do",
+        "class",
+        "export",
+        "import",
+        "default",
+        "const",
+        "let",
+        "var",
+        "async",
+        "await",
+    )
 
 private fun classifyLoopText(text: String): LoopKind =
     when {
@@ -234,13 +340,20 @@ private fun extractIteratedVar(line: String): String? {
     return inMatch?.groupValues?.get(1)
 }
 
-private fun extractChainTarget(line: String, callPos: Int): String? {
+private fun extractChainTarget(
+    line: String,
+    callPos: Int,
+): String? {
     val prefix = line.substring(0, callPos.coerceAtMost(line.length))
     val match = Regex("""(\w+)\s*$""").find(prefix)
     return match?.groupValues?.get(1)
 }
 
-private fun classifyJsCall(methodName: String, targetVar: String?, loc: SourceLocation): IRNode? =
+private fun classifyJsCall(
+    methodName: String,
+    targetVar: String?,
+    loc: SourceLocation,
+): IRNode? =
     when (methodName) {
         "contains" -> LookupCall(LookupKind.CONTAINS, targetVar, false, loc, emptyList())
         "includes" -> LookupCall(LookupKind.INCLUDES, targetVar, false, loc, emptyList())
@@ -261,4 +374,7 @@ private fun stripComments(line: String): String {
     return if (singleLine >= 0) line.substring(0, singleLine) else line
 }
 
-private fun countChar(line: String, ch: Char): Int = line.count { it == ch }
+private fun countChar(
+    line: String,
+    ch: Char,
+): Int = line.count { it == ch }

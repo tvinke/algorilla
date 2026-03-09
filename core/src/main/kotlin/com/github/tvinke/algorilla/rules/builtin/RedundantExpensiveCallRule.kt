@@ -33,7 +33,10 @@ public class RedundantExpensiveCallRule : Rule {
         return findings
     }
 
-    private fun scanNode(node: IRNode, findings: MutableList<Finding>) {
+    private fun scanNode(
+        node: IRNode,
+        findings: MutableList<Finding>,
+    ) {
         if (node is FunctionDecl) {
             checkFunction(node, findings)
         }
@@ -42,11 +45,15 @@ public class RedundantExpensiveCallRule : Rule {
         }
     }
 
-    private fun checkFunction(fn: FunctionDecl, findings: MutableList<Finding>) {
+    private fun checkFunction(
+        fn: FunctionDecl,
+        findings: MutableList<Finding>,
+    ) {
         val calls = fn.findDescendants<FunctionCall>()
-        val grouped = calls
-            .filter { it.arguments.isNotEmpty() && !isSideEffectCall(it) }
-            .groupBy { callSignature(it) }
+        val grouped =
+            calls
+                .filter { it.arguments.isNotEmpty() && !isSideEffectCall(it) }
+                .groupBy { callSignature(it) }
 
         for ((sig, duplicates) in grouped) {
             if (duplicates.size >= MIN_DUPLICATES && sig.isNotBlank()) {
@@ -55,18 +62,25 @@ public class RedundantExpensiveCallRule : Rule {
         }
     }
 
-    private fun buildFinding(fn: FunctionDecl, calls: List<FunctionCall>): Finding {
+    private fun buildFinding(
+        fn: FunctionDecl,
+        calls: List<FunctionCall>,
+    ): Finding {
         val first = calls.first()
         val callDesc = "${first.qualifiedTarget ?: ""}${if (first.qualifiedTarget != null) "." else ""}${first.name}()"
-        val evidence = calls.map { call ->
-            Evidence(call.location, "$callDesc (duplicate)", ExecutionContext.SINGLE)
-        }
+        val evidence =
+            calls.map { call ->
+                Evidence(call.location, "$callDesc (duplicate)", ExecutionContext.SINGLE)
+            }
         return Finding(
-            ruleId = id, ruleName = name, severity = severity,
+            ruleId = id,
+            ruleName = name,
+            severity = severity,
             location = first.location,
             message = "$callDesc called ${calls.size} times with same arguments in ${fn.name}()",
             suggestion = "Cache the result in a local variable",
-            currentComplexity = "O(${calls.size}x)", suggestedComplexity = "O(1x)",
+            currentComplexity = "O(${calls.size}x)",
+            suggestedComplexity = "O(1x)",
             evidence = evidence,
         )
     }
@@ -86,29 +100,65 @@ private fun callSignature(call: FunctionCall): String {
     return "$target.${call.name}($argsKey)"
 }
 
+private const val MAX_FINGERPRINT_LENGTH = 100
+
 private fun argFingerprint(node: IRNode): String =
     when (node) {
         is FunctionCall -> "${node.qualifiedTarget}.${node.name}"
-        else -> node.toString().take(100)
+        else -> node.toString().take(MAX_FINGERPRINT_LENGTH)
     }
 
 /** Trivially cheap methods that are never worth caching */
-private val TRIVIAL_METHODS = setOf(
-    "equals", "hashCode", "toString", "valueOf", "compareTo",
-    "isDigit", "isLetter", "isUpperCase", "isLowerCase", "isWhitespace",
-    "toIntExact", "abs", "min", "max", "ceil", "floor", "round",
-    "isEmpty", "isBlank", "isPresent", "isNull", "isNotNull",
-    "size", "length", "trim", "lowercase", "uppercase",
-    "charAt", "codePointAt", "getClass", "name", "ordinal",
-)
+private val TRIVIAL_METHODS =
+    setOf(
+        "equals",
+        "hashCode",
+        "toString",
+        "valueOf",
+        "compareTo",
+        "isDigit",
+        "isLetter",
+        "isUpperCase",
+        "isLowerCase",
+        "isWhitespace",
+        "toIntExact",
+        "abs",
+        "min",
+        "max",
+        "ceil",
+        "floor",
+        "round",
+        "isEmpty",
+        "isBlank",
+        "isPresent",
+        "isNull",
+        "isNotNull",
+        "size",
+        "length",
+        "trim",
+        "lowercase",
+        "uppercase",
+        "charAt",
+        "codePointAt",
+        "getClass",
+        "name",
+        "ordinal",
+    )
 
 /**
  * Builder-style method names that are called for chaining rather than return value.
  * These overlap with pure prefixes but are side-effectful in builder context.
  */
-private val BUILDER_METHODS = setOf(
-    "path", "header", "param", "query", "body", "accept", "contentType",
-)
+private val BUILDER_METHODS =
+    setOf(
+        "path",
+        "header",
+        "param",
+        "query",
+        "body",
+        "accept",
+        "contentType",
+    )
 
 private fun isSideEffectCall(call: FunctionCall): Boolean {
     if (call.name in TRIVIAL_METHODS) return true
