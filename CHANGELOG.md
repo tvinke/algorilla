@@ -4,6 +4,7 @@
 
 ### Features
 
+- **Suggested fixes** — Findings can now carry an optional `SuggestedFix` with a description (and optional old/new text for future diff support). Console output shows `-> Suggested fix: ...` below the finding, and SARIF output includes the `fixes` property. Currently enabled for sort-for-last, expensive-construction, and filter-after-sort.
 - **Rule categories** — Every rule now belongs to a category (Loop amplifiers, Sort abuse, Redundancy, Construction cost, Query patterns). Console output prefixes each finding with its category tag, e.g. `[Loop amplifiers]`. Custom DSL rules can set `category` in the builder (defaults to Redundancy).
 
 ### New rules
@@ -24,6 +25,7 @@
 
 ### Documentation
 
+- **GitHub Pages deployment** — Added GitHub Actions workflow to build and publish docs site on pushes to `docs/`.
 - **Pre-commit hook guide** — New guide covering Git hook setup, pre-commit framework integration, and tips for fast incremental checks on staged files.
 
 ### Rule improvements
