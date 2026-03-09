@@ -99,10 +99,10 @@ cd algorilla
 ./gradlew shadowJar
 
 # Scan a project
-java -jar cli/build/libs/algorilla-0.1.0-SNAPSHOT.jar src/main
+java -jar cli/build/libs/algorilla-<version>.jar src/main
 
 # SARIF for CI integration
-java -jar cli/build/libs/algorilla-0.1.0-SNAPSHOT.jar --format sarif --output report.sarif src/
+java -jar cli/build/libs/algorilla-<version>.jar --format sarif --output report.sarif src/
 ```
 
 ## Usage
@@ -137,10 +137,10 @@ Adopt Algorilla in an existing project without fixing everything at once:
 
 ```bash
 # Capture current state
-java -jar cli/build/libs/algorilla-0.1.0-SNAPSHOT.jar --save-baseline .algorilla/baseline.json src/
+java -jar cli/build/libs/algorilla-<version>.jar --save-baseline .algorilla/baseline.json src/
 
 # From now on, only fail on NEW findings
-java -jar cli/build/libs/algorilla-0.1.0-SNAPSHOT.jar --baseline .algorilla/baseline.json src/
+java -jar cli/build/libs/algorilla-<version>.jar --baseline .algorilla/baseline.json src/
 ```
 
 ### Inline Suppression
@@ -197,7 +197,7 @@ Compiles all modules, runs Detekt and ktlint checks, and executes all tests.
 ./gradlew shadowJar
 ```
 
-Creates `cli/build/libs/algorilla-0.1.0-SNAPSHOT.jar`.
+Creates `cli/build/libs/algorilla-<version>.jar`.
 
 ### Run Tests
 

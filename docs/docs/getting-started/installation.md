@@ -25,5 +25,5 @@ java -jar algorilla.jar --version
 ```
 
 ```
-algorilla 0.1.0-SNAPSHOT
+algorilla 0.1.0
 ```
