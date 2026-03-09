@@ -68,6 +68,8 @@ private fun com.github.tvinke.algorilla.rules.Evidence.toJsonEvidence(): JsonEvi
         location = location.toJsonLocation(),
         label = label,
         executionContext = executionContext.name,
+        depth = depth,
+        complexity = complexity,
     )
 
 @Serializable
@@ -113,4 +115,6 @@ internal data class JsonEvidence(
     val label: String,
     @SerialName("executionContext")
     val executionContext: String,
+    val depth: Int = 0,
+    val complexity: String? = null,
 )
