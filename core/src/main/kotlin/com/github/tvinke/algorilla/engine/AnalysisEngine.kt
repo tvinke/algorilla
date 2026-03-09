@@ -157,7 +157,7 @@ public class AnalysisEngine(
         val context = AnalysisContext(irTrees, symbolTable, callGraph, config, registry)
         return rules
             .filter { rule -> isRuleEnabled(rule) }
-            .flatMap { it.evaluate(context) }
+            .flatMap { rule -> rule.evaluate(context).map { it.copy(category = rule.category) } }
     }
 
     private fun isRuleEnabled(rule: Rule): Boolean {

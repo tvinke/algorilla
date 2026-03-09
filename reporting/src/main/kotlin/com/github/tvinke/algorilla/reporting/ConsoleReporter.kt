@@ -4,6 +4,7 @@ import com.github.tvinke.algorilla.engine.AnalysisResult
 import com.github.tvinke.algorilla.engine.Reporter
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.rules.Finding
+import com.github.tvinke.algorilla.rules.RuleCategory
 import java.util.Locale
 
 /**
@@ -38,7 +39,8 @@ public class ConsoleReporter : Reporter {
         output: Appendable,
     ) {
         val complexity = formatComplexity(finding)
-        output.appendLine("  :${finding.location.line} ${finding.ruleId}$complexity")
+        val categoryTag = finding.category?.let { "[${it.displayName}] " } ?: ""
+        output.appendLine("  :${finding.location.line} $categoryTag${finding.ruleId}$complexity")
         output.appendLine("    ${finding.message}")
         output.appendLine("    → ${finding.suggestion}")
         formatEvidence(finding, output)

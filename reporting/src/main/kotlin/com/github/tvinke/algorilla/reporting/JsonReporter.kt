@@ -27,6 +27,7 @@ public class JsonReporter : Reporter {
                 JsonFinding(
                     ruleId = finding.ruleId,
                     ruleName = finding.ruleName,
+                    category = finding.category?.name,
                     severity = finding.severity.name,
                     location = finding.location.toJsonLocation(),
                     message = finding.message,
@@ -89,6 +90,7 @@ internal data class JsonSummary(
 internal data class JsonFinding(
     val ruleId: String,
     val ruleName: String,
+    val category: String? = null,
     val severity: String,
     val location: JsonLocation,
     val message: String,

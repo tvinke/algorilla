@@ -20,6 +20,9 @@ public interface Rule {
     /** Set of languages this rule applies to. */
     public val languages: Set<Language>
 
+    /** Category that this rule belongs to. */
+    public val category: RuleCategory
+
     /**
      * Previous rule IDs that this rule was known by. Used to keep suppress comments
      * and config overrides working after a rule is renamed or merged.

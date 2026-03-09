@@ -10,6 +10,7 @@ import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
+import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.util.findDescendants
 
 /**
@@ -22,6 +23,7 @@ public class UncachedGetterRule : Rule {
     override val name: String = "Uncached Getter"
     override val severity: Severity = Severity.INFO
     override val languages: Set<Language> = Language.entries.toSet()
+    override val category: RuleCategory = RuleCategory.REDUNDANCY
 
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()

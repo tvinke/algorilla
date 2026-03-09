@@ -11,6 +11,7 @@ import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
+import com.github.tvinke.algorilla.rules.RuleCategory
 
 /**
  * Detects regex pattern compilation inside loops. Compiling a regex is expensive;
@@ -21,6 +22,7 @@ public class RepeatedRegexInLoopRule : Rule {
     override val name: String = "Repeated Regex In Loop"
     override val severity: Severity = Severity.WARNING
     override val languages: Set<Language> = Language.entries.toSet()
+    override val category: RuleCategory = RuleCategory.LOOP_AMPLIFIER
 
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()

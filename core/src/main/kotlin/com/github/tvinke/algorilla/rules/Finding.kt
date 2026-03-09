@@ -16,4 +16,5 @@ public data class Finding(
     val currentComplexity: String? = null,
     val suggestedComplexity: String? = null,
     val evidence: List<Evidence> = emptyList(),
+    val category: RuleCategory? = null,
 )

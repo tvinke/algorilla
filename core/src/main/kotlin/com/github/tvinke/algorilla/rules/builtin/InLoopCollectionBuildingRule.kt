@@ -10,6 +10,7 @@ import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
+import com.github.tvinke.algorilla.rules.RuleCategory
 
 /**
  * Detects patterns that repeatedly copy or rebuild collections inside loops:
@@ -23,6 +24,7 @@ public class InLoopCollectionBuildingRule : Rule {
     override val name: String = "In Loop Collection Building"
     override val severity: Severity = Severity.WARNING
     override val languages: Set<Language> = Language.entries.toSet()
+    override val category: RuleCategory = RuleCategory.LOOP_AMPLIFIER
 
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()

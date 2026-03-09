@@ -10,6 +10,7 @@ import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
+import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.util.CrossMethodResolver
 
 /**
@@ -25,6 +26,7 @@ public class NPlusOneRepositoryCallRule : Rule {
     override val aliases: List<String> = listOf("n-plus-one-repository-call")
     override val severity: Severity = Severity.WARNING
     override val languages: Set<Language> = Language.entries.toSet()
+    override val category: RuleCategory = RuleCategory.QUERY_PATTERN
 
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()

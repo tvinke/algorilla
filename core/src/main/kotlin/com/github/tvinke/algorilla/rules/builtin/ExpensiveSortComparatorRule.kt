@@ -12,6 +12,7 @@ import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
+import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.util.CrossMethodResolver
 import com.github.tvinke.algorilla.util.findDescendants
 
@@ -27,6 +28,7 @@ public class ExpensiveSortComparatorRule : Rule {
     override val name: String = "Expensive Sort Comparator"
     override val severity: Severity = Severity.WARNING
     override val languages: Set<Language> = Language.entries.toSet()
+    override val category: RuleCategory = RuleCategory.SORT_ABUSE
     override val aliases: List<String> = listOf("date-in-sort")
 
     override fun evaluate(context: AnalysisContext): List<Finding> {

@@ -10,6 +10,7 @@ import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
+import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.util.findDescendants
 import com.github.tvinke.algorilla.util.hasO1Type
 
@@ -22,6 +23,7 @@ public class RepeatedLinearScanRule : Rule {
     override val name: String = "Repeated Linear Scan"
     override val severity: Severity = Severity.WARNING
     override val languages: Set<Language> = Language.entries.toSet()
+    override val category: RuleCategory = RuleCategory.REDUNDANCY
 
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()

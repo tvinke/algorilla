@@ -11,6 +11,7 @@ import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
+import com.github.tvinke.algorilla.rules.RuleCategory
 
 /**
  * Detects stream/collection pipelines where filter() comes after sort().
@@ -28,6 +29,7 @@ import com.github.tvinke.algorilla.rules.Rule
  */
 public class FilterAfterSortRule : Rule {
     override val id: String = "filter-after-sort"
+    override val category: RuleCategory = RuleCategory.SORT_ABUSE
     override val name: String = "Filter After Sort"
     override val severity: Severity = Severity.INFO
     override val languages: Set<Language> = Language.entries.toSet()

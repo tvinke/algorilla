@@ -7,6 +7,7 @@ import com.github.tvinke.algorilla.model.SourceLocation
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
+import com.github.tvinke.algorilla.rules.RuleCategory
 
 /**
  * DSL builder for defining custom analysis rules in `.kts` script files.
@@ -29,6 +30,7 @@ public class RuleBuilder(
 ) {
     public var name: String = ruleId
     public var severity: Severity = Severity.WARNING
+    public var category: RuleCategory = RuleCategory.REDUNDANCY
     public var suggestion: String = ""
     public var languages: Set<Language> = Language.entries.toSet()
 
@@ -52,6 +54,7 @@ public class RuleBuilder(
             id = ruleId,
             name = name,
             severity = severity,
+            category = category,
             languages = languages,
             nodeVisitor = nodeVisitor,
         )
@@ -100,6 +103,7 @@ private class DslRule(
     override val id: String,
     override val name: String,
     override val severity: Severity,
+    override val category: RuleCategory,
     override val languages: Set<Language>,
     private val nodeVisitor: ((IRNode, String, MutableList<Finding>) -> Unit)?,
 ) : Rule {

@@ -10,6 +10,7 @@ import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
+import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.util.findDescendants
 
 /**
@@ -25,6 +26,7 @@ public class HeavyweightObjectPerInvocationRule : Rule {
     override val aliases: List<String> = listOf("heavyweight-object-per-invocation")
     override val severity: Severity = Severity.INFO
     override val languages: Set<Language> = Language.entries.toSet()
+    override val category: RuleCategory = RuleCategory.CONSTRUCTION_COST
 
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val heavyTypes = context.registry.allHeavyweightTypes()
