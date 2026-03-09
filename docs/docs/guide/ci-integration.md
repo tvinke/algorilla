@@ -1,0 +1,151 @@
+# CI/CD Integration
+
+Run Algorilla as part of your pipeline to catch algorithmic complexity issues before they reach production.
+
+**Exit codes:** `0` = clean, `1` = findings detected, `2` = analysis error.
+
+## GitHub Actions
+
+### Basic workflow
+
+```yaml
+# .github/workflows/algorilla.yml
+name: Algorilla
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  algorilla:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Run Algorilla
+        run: |
+          java -jar algorilla.jar \
+            --no-cache \
+            --format sarif \
+            --output results.sarif \
+            .
+
+      - name: Upload SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results.sarif
+```
+
+This uploads findings to GitHub Code Scanning, so they show up as annotations on the PR diff.
+
+!!! note
+    The `if: always()` on the upload step is important — Algorilla exits with `1` when it finds issues, which would skip the upload otherwise.
+
+### With baseline (PR-only findings)
+
+To only flag findings introduced in the PR, maintain a baseline on `main`:
+
+```yaml
+      - name: Run Algorilla
+        run: |
+          java -jar algorilla.jar \
+            --no-cache \
+            --baseline .algorilla/baseline.json \
+            --format sarif \
+            --output results.sarif \
+            .
+```
+
+See [Baseline Workflow](#baseline-workflow) below for how to keep the baseline up to date.
+
+## GitLab CI
+
+```yaml
+# .gitlab-ci.yml
+algorilla:
+  stage: test
+  image: eclipse-temurin:17-jdk
+  script:
+    - java -jar algorilla.jar
+        --no-cache
+        --format json
+        --output algorilla-report.json
+        .
+  artifacts:
+    paths:
+      - algorilla-report.json
+    when: always
+  allow_failure:
+    exit_codes:
+      - 1
+```
+
+Setting `allow_failure` for exit code `1` lets the pipeline continue when findings exist, while still failing on actual errors (exit code `2`).
+
+## Baseline Workflow
+
+Baselines let you avoid drowning in existing findings and focus on what the PR introduces.
+
+### 1. Generate baseline on main
+
+Run this once (or in a scheduled job) on your default branch:
+
+```bash
+java -jar algorilla.jar --save-baseline .algorilla/baseline.json .
+```
+
+Commit `.algorilla/baseline.json` to the repo.
+
+### 2. Compare in PRs
+
+Pass `--baseline` in your CI job so only new findings are reported:
+
+```bash
+java -jar algorilla.jar \
+  --baseline .algorilla/baseline.json \
+  --format sarif \
+  --output results.sarif \
+  .
+```
+
+The exit code will be `0` if all findings were already in the baseline.
+
+### 3. Refresh after fixes
+
+When you fix findings or intentionally accept them, regenerate:
+
+```bash
+java -jar algorilla.jar --save-baseline .algorilla/baseline.json .
+git add .algorilla/baseline.json
+git commit -m "update algorilla baseline"
+```
+
+## Tips
+
+**Use `--no-cache` in CI.** CI runners typically don't preserve the `.algorilla/cache/` directory between runs, so the cache check is wasted work. Skip it.
+
+**Focus on specific languages** with `--language` if your repo is multi-language but you only care about a subset:
+
+```bash
+java -jar algorilla.jar --no-cache --language java,kotlin .
+```
+
+**Control noise with `--severity`.** Start with `--severity error` to surface only the worst offenders, then lower it as you clean up:
+
+```bash
+java -jar algorilla.jar --no-cache --severity error .
+```
+
+**Fail fast on errors.** If your CI treats any non-zero exit as failure, wrap the command to distinguish findings from errors:
+
+```bash
+java -jar algorilla.jar --no-cache . || [ $? -eq 1 ]
+```
+
+This passes when exit code is `0` (clean) or `1` (findings), but fails on `2` (error).
