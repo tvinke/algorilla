@@ -52,7 +52,7 @@ internal class AlgorillaCommand :
     override fun getVersion(): Array<String> {
         val props = java.util.Properties()
         javaClass.classLoader.getResourceAsStream("algorilla-version.properties")?.use { props.load(it) }
-        return arrayOf("algorilla ${props.getProperty("version", "unknown")}")
+        return arrayOf("\uD83E\uDD8D algorilla ${props.getProperty("version", "unknown")}")
     }
 
     @Spec
@@ -137,12 +137,23 @@ internal class AlgorillaCommand :
     )
     private var languages: List<String> = emptyList()
 
+    @Option(
+        names = ["--color"],
+        description = ["Color output: auto, always, never (default: auto)"],
+        defaultValue = "auto",
+    )
+    private var color: String = "auto"
+
+    private var projectRoot: File = File(".")
+    private var scanRoots: List<File> = emptyList()
+
     override fun call(): Int {
         configureLogging()
-        if (outputFile == null) printScanTarget(paths)
+        val useColor = resolveColor(color, outputFile)
+        if (outputFile == null) printScanTarget(paths, useColor)
         val result = runAnalysis()
         val filteredResult = applyBaseline(result)
-        writeReport(filteredResult)
+        writeReport(filteredResult, format, outputFile, useColor, projectRoot, scanRoots)
         return exitCodeFor(filteredResult)
     }
 
@@ -156,8 +167,8 @@ internal class AlgorillaCommand :
     private fun runAnalysis(): com.github.tvinke.algorilla.engine.AnalysisResult {
         val config = buildConfig()
         val detector = ProjectStructureDetector()
-        val projectRoot = detector.resolveProjectRoot(paths.first())
-        val scanRoots = paths.flatMap { detector.resolveSourceRoots(projectRoot, it) }
+        projectRoot = detector.resolveProjectRoot(paths.first())
+        scanRoots = paths.flatMap { detector.resolveSourceRoots(projectRoot, it) }
 
         val languageFilter = resolveLanguageFilter()
         val parsers = listOf(JavaLanguageParser(), GroovyParser(), KotlinParser(), JavaScriptParser())
@@ -228,24 +239,6 @@ internal class AlgorillaCommand :
         }
     }
 
-    private fun writeReport(result: com.github.tvinke.algorilla.engine.AnalysisResult) {
-        val reporter =
-            when (format.lowercase()) {
-                "sarif" -> SarifReporter()
-                "json" -> JsonReporter()
-                else -> ConsoleReporter()
-            }
-        val output = outputFile?.bufferedWriter() ?: System.out.bufferedWriter()
-        output.use { reporter.report(result, it) }
-    }
-
-    private fun exitCodeFor(result: com.github.tvinke.algorilla.engine.AnalysisResult): Int =
-        when {
-            result.errors.isNotEmpty() && result.findings.isEmpty() -> EXIT_ERROR
-            result.findings.isNotEmpty() -> EXIT_FINDINGS
-            else -> EXIT_OK
-        }
-
     private fun resolveLanguageFilter(): Set<Language>? {
         if (languages.isEmpty()) return null
         val resolved =
@@ -267,9 +260,52 @@ internal class AlgorillaCommand :
     }
 }
 
-private fun printScanTarget(paths: List<File>) {
+private fun writeReport(
+    result: com.github.tvinke.algorilla.engine.AnalysisResult,
+    format: String,
+    outputFile: File?,
+    useColor: Boolean,
+    projectRoot: File,
+    scanRoots: List<File> = emptyList(),
+) {
+    val baseDir = projectRoot.absoluteFile.normalize().path
+    val sourceRootPaths = scanRoots.map { it.absoluteFile.normalize().path }
+    val reporter =
+        when (format.lowercase()) {
+            "sarif" -> SarifReporter()
+            "json" -> JsonReporter()
+            else -> ConsoleReporter(color = useColor, baseDir = baseDir, sourceRoots = sourceRootPaths)
+        }
+    val output = outputFile?.bufferedWriter() ?: System.out.bufferedWriter()
+    output.use { reporter.report(result, it) }
+}
+
+private fun exitCodeFor(result: com.github.tvinke.algorilla.engine.AnalysisResult): Int =
+    when {
+        result.errors.isNotEmpty() && result.findings.isEmpty() -> AlgorillaCommand.EXIT_ERROR
+        result.findings.isNotEmpty() -> AlgorillaCommand.EXIT_FINDINGS
+        else -> AlgorillaCommand.EXIT_OK
+    }
+
+private fun resolveColor(
+    color: String,
+    outputFile: File?,
+): Boolean =
+    when (color.lowercase()) {
+        "always" -> true
+        "never" -> false
+        else -> outputFile == null && System.console() != null
+    }
+
+private fun printScanTarget(
+    paths: List<File>,
+    color: Boolean,
+) {
     val targets = paths.joinToString(", ") { it.absoluteFile.normalize().path }
-    System.err.println("Scanning $targets...")
+    System.err.println(
+        com.github.tvinke.algorilla.reporting.Ansi
+            .dim("\uD83E\uDD8D Scanning $targets...", color),
+    )
 }
 
 @Suppress("SpreadOperator")

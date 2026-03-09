@@ -46,9 +46,13 @@ Algorilla is a static analysis tool that finds hidden O(n²) and O(n·m) perform
 
 ## Quick example
 
+Point algorilla at your project:
+
 ```bash
 java -jar algorilla.jar /path/to/your/project
 ```
+
+Algorilla scans your source files and reports what it finds. Here it detected a `List.contains()` call inside a for-each loop — meaning every iteration does a linear scan of `eligibleIds`, making the whole method O(n²):
 
 ```
 ⏺ src/main/java/com/example/shop/service/OrderService.java (1 finding)
@@ -70,6 +74,8 @@ java -jar algorilla.jar /path/to/your/project
 
 Scanned 127 files in 0.4s. Found 1 issues (0 errors, 1 warnings) across 1 files.
 ```
+
+Reading from top to bottom: the **severity**, **rule name**, **category**, and **complexity trade-off** are on the first line. Below that, a **description** explains the problem in plain language, followed by a concrete **suggestion**. The **code snippet** shows the exact lines involved, and the **evidence chain** (the `⎿` tree at the bottom) traces the path from outer loop to bottleneck. The fix here: convert `eligibleIds` to a `HashSet` before the loop for O(1) lookups.
 
 ## What it finds
 
