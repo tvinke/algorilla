@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.1.0 (unreleased)
+## 0.1.0 (2026-03-09)
 
-First public release of algorilla.
+First release of algorilla.
 
 ### Rules
 
