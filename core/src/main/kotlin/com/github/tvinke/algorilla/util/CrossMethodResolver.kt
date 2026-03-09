@@ -78,7 +78,9 @@ public object CrossMethodResolver {
         while (stack.isNotEmpty()) {
             val current = stack.removeFirst()
             results.add(current)
-            stack.addAll(0, current.children)
+            for (child in current.children.asReversed()) {
+                stack.addFirst(child)
+            }
         }
         return results
     }
