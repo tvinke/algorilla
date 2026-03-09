@@ -11,11 +11,20 @@ private val logger = KotlinLogging.logger {}
 /**
  * Data-driven registry that maps method names to their collection semantics per language.
  * Loaded from YAML resource files at startup, with optional user overrides from `.algorilla.yml`.
+ *
+ * This is the single source of truth for method classification. All hardcoded method name sets
+ * in the codebase should derive from this registry instead of maintaining their own lists.
  */
+@Suppress("TooManyFunctions")
 public class CollectionSemanticsRegistry private constructor(
     private val methodsByLanguage: Map<Language, Map<String, MethodSemantics>>,
     private val heavyweightByLanguage: Map<Language, Set<String>>,
     private val o1ByLanguage: Map<Language, Set<String>>,
+    private val streamOpsByLanguage: Map<Language, Set<String>>,
+    private val scopeOpsByLanguage: Map<Language, Set<String>>,
+    private val trivialByLanguage: Map<Language, Set<String>>,
+    private val builderByLanguage: Map<Language, Set<String>>,
+    private val getterPrefixesByLanguage: Map<Language, List<String>>,
 ) {
     /**
      * Classifies a method name for the given language.
@@ -69,6 +78,109 @@ public class CollectionSemanticsRegistry private constructor(
         return o1ByLanguage[resolved]?.any { typeName.contains(it) } == true
     }
 
+    /**
+     * Returns true if the method is a stream/collection pipeline operation that should be
+     * stripped from variable names and not cross-method resolved.
+     *
+     * A method is a stream op if it appears in the `stream-ops` section OR has a semantic
+     * category (any classified method is part of a collection pipeline).
+     */
+    public fun isStreamOp(
+        language: Language,
+        methodName: String,
+    ): Boolean {
+        val resolved = resolveLanguage(language)
+        if (streamOpsByLanguage[resolved]?.contains(methodName) == true) return true
+        if (scopeOpsByLanguage[resolved]?.contains(methodName) == true) return true
+        return methodsByLanguage[resolved]?.containsKey(methodName) == true
+    }
+
+    /**
+     * Returns the union of all stream ops and classified methods across all languages.
+     * Useful when the language is not known (e.g. in extractVariableName).
+     */
+    public fun allStreamOps(): Set<String> {
+        val result = mutableSetOf<String>()
+        for (ops in streamOpsByLanguage.values) result.addAll(ops)
+        for (ops in scopeOpsByLanguage.values) result.addAll(ops)
+        for (methods in methodsByLanguage.values) result.addAll(methods.keys)
+        return result
+    }
+
+    /**
+     * Returns the union of all method names that should not be cross-method resolved.
+     * This includes stream ops, scope functions, and all classified methods.
+     */
+    public fun allUnresolvableNames(): Set<String> = allStreamOps()
+
+    /**
+     * Returns true if the method is too cheap to flag as a redundant expensive call.
+     */
+    public fun isTrivial(
+        language: Language,
+        methodName: String,
+    ): Boolean {
+        val resolved = resolveLanguage(language)
+        return trivialByLanguage[resolved]?.contains(methodName) == true
+    }
+
+    /**
+     * Returns the union of all trivial methods across all languages.
+     */
+    public fun allTrivialMethods(): Set<String> = trivialByLanguage.values.flatten().toSet()
+
+    /**
+     * Returns true if the method is a builder-pattern method.
+     */
+    public fun isBuilder(
+        language: Language,
+        methodName: String,
+    ): Boolean {
+        val resolved = resolveLanguage(language)
+        return builderByLanguage[resolved]?.contains(methodName) == true
+    }
+
+    /**
+     * Returns the union of all builder methods across all languages.
+     */
+    public fun allBuilderMethods(): Set<String> = builderByLanguage.values.flatten().toSet()
+
+    /**
+     * Returns true if the method only exists on O(1) types (e.g. containsKey, containsValue).
+     */
+    public fun isImplicitlyO1(
+        language: Language,
+        methodName: String,
+    ): Boolean {
+        val resolved = resolveLanguage(language)
+        return methodsByLanguage[resolved]?.get(methodName)?.isImplicitlyO1 == true
+    }
+
+    /**
+     * Returns the union of all implicitly-O(1) method names across all languages.
+     */
+    public fun allImplicitlyO1Methods(): Set<String> =
+        methodsByLanguage.values
+            .flatMap { methods ->
+                methods.filter { it.value.isImplicitlyO1 }.map { it.key }
+            }.toSet()
+
+    /**
+     * Returns getter prefixes for the given language.
+     */
+    public fun getterPrefixes(language: Language): List<String> {
+        val resolved = resolveLanguage(language)
+        return getterPrefixesByLanguage[resolved] ?: emptyList()
+    }
+
+    /**
+     * Returns the union of all getter prefixes across all languages.
+     */
+    public fun allGetterPrefixes(): List<String> =
+        getterPrefixesByLanguage.values
+            .flatten()
+            .distinct()
+
     private fun resolveLanguage(language: Language): Language =
         when (language) {
             Language.TYPESCRIPT, Language.VUE -> Language.JAVASCRIPT
@@ -91,6 +203,11 @@ public class CollectionSemanticsRegistry private constructor(
             val methods = mutableMapOf<Language, Map<String, MethodSemantics>>()
             val heavyweight = mutableMapOf<Language, Set<String>>()
             val o1 = mutableMapOf<Language, Set<String>>()
+            val streamOps = mutableMapOf<Language, Set<String>>()
+            val scopeOps = mutableMapOf<Language, Set<String>>()
+            val trivial = mutableMapOf<Language, Set<String>>()
+            val builder = mutableMapOf<Language, Set<String>>()
+            val getterPrefixes = mutableMapOf<Language, List<String>>()
 
             for ((lang, resource) in LANGUAGE_FILES) {
                 val text = loadResource(resource) ?: continue
@@ -98,6 +215,11 @@ public class CollectionSemanticsRegistry private constructor(
                 methods[lang] = parsed.methods
                 heavyweight[lang] = parsed.heavyweightTypes
                 o1[lang] = parsed.o1Types
+                streamOps[lang] = parsed.streamOps
+                scopeOps[lang] = parsed.scopeOps
+                trivial[lang] = parsed.trivialMethods
+                builder[lang] = parsed.builderMethods
+                getterPrefixes[lang] = parsed.getterPrefixes
             }
 
             logger.info {
@@ -105,7 +227,7 @@ public class CollectionSemanticsRegistry private constructor(
                 "Collection semantics registry loaded: $total methods across ${methods.size} languages"
             }
 
-            return CollectionSemanticsRegistry(methods, heavyweight, o1)
+            return CollectionSemanticsRegistry(methods, heavyweight, o1, streamOps, scopeOps, trivial, builder, getterPrefixes)
         }
 
         /**
@@ -126,7 +248,16 @@ public class CollectionSemanticsRegistry private constructor(
                     merged[lang] = userHeavyweightTypes
                 }
             }
-            return CollectionSemanticsRegistry(base.methodsByLanguage, merged, base.o1ByLanguage)
+            return CollectionSemanticsRegistry(
+                methodsByLanguage = base.methodsByLanguage,
+                heavyweightByLanguage = merged,
+                o1ByLanguage = base.o1ByLanguage,
+                streamOpsByLanguage = base.streamOpsByLanguage,
+                scopeOpsByLanguage = base.scopeOpsByLanguage,
+                trivialByLanguage = base.trivialByLanguage,
+                builderByLanguage = base.builderByLanguage,
+                getterPrefixesByLanguage = base.getterPrefixesByLanguage,
+            )
         }
 
         private fun loadResource(path: String): String? {
@@ -144,6 +275,11 @@ internal data class ParsedYaml(
     val methods: Map<String, MethodSemantics>,
     val heavyweightTypes: Set<String>,
     val o1Types: Set<String>,
+    val streamOps: Set<String>,
+    val scopeOps: Set<String>,
+    val trivialMethods: Set<String>,
+    val builderMethods: Set<String>,
+    val getterPrefixes: List<String>,
 )
 
 /**
@@ -151,31 +287,45 @@ internal data class ParsedYaml(
  * structure so we avoid pulling in a full YAML library dependency for core.
  */
 internal fun parseYaml(text: String): ParsedYaml {
+    val sections = splitSections(text)
     val methods = mutableMapOf<String, MethodSemantics>()
-    val heavyweightTypes = mutableSetOf<String>()
-    val o1Types = mutableSetOf<String>()
+    sections["methods"]?.forEach { parseMethodLine(it, methods) }
 
+    return ParsedYaml(
+        methods = methods,
+        heavyweightTypes = collectListItems(sections["heavyweight-types"]),
+        o1Types = collectListItems(sections["o1-types"]),
+        streamOps = collectListItems(sections["stream-ops"]),
+        scopeOps = collectListItems(sections["scope-ops"]),
+        trivialMethods = collectListItems(sections["trivial-methods"]),
+        builderMethods = collectListItems(sections["builder-methods"]),
+        getterPrefixes = collectListItems(sections["getter-prefixes"]).toList(),
+    )
+}
+
+@Suppress("LoopWithTooManyJumpStatements")
+private fun splitSections(text: String): Map<String, List<String>> {
+    val sections = mutableMapOf<String, MutableList<String>>()
     var currentSection: String? = null
-    @Suppress("LoopWithTooManyJumpStatements")
     for (rawLine in text.lines()) {
         val line = rawLine.trimEnd()
         if (line.isBlank() || line.trimStart().startsWith("#")) continue
-
-        // Top-level section detection
         if (!line.startsWith(" ") && !line.startsWith("\t") && line.endsWith(":")) {
             currentSection = line.removeSuffix(":").trim()
             continue
         }
-
-        when (currentSection) {
-            "methods" -> parseMethodLine(line, methods)
-            "heavyweight-types" -> parseListItem(line)?.let { heavyweightTypes.add(it) }
-            "o1-types" -> parseListItem(line)?.let { o1Types.add(it) }
+        if (currentSection != null) {
+            sections.getOrPut(currentSection) { mutableListOf() }.add(line)
         }
     }
-
-    return ParsedYaml(methods, heavyweightTypes, o1Types)
+    return sections
 }
+
+private fun collectListItems(lines: List<String>?): Set<String> =
+    lines
+        ?.mapNotNull { parseListItem(it) }
+        ?.toSet()
+        ?: emptySet()
 
 private fun parseMethodLine(
     line: String,
@@ -198,6 +348,7 @@ private fun parseMethodLine(
     val accessKind = props["kind"]?.let { parseAccessKind(it) }
     val complexity = props["complexity"]
     val note = props["note"]
+    val implicitlyO1 = props["implicitly-o1"]?.lowercase() == "true"
 
     methods[methodName] =
         MethodSemantics(
@@ -207,6 +358,7 @@ private fun parseMethodLine(
             accessKind = accessKind,
             complexity = complexity,
             note = note,
+            isImplicitlyO1 = implicitlyO1,
         )
 }
 

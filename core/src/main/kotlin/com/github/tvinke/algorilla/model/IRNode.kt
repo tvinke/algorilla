@@ -32,18 +32,20 @@ public data class LoopNode(
 ) : IRNode
 
 /** The kind of lookup operation on a collection. */
-public enum class LookupKind {
-    FIND,
-    FILTER,
-    CONTAINS,
-    SOME,
-    ANY,
-    INCLUDES,
-    ANY_MATCH,
-    ALL_MATCH,
-    NONE_MATCH,
-    COUNT,
-    INDEX_OF,
+public enum class LookupKind(
+    public val label: String,
+) {
+    FIND("find"),
+    FILTER("filter"),
+    CONTAINS("contains"),
+    SOME("some"),
+    ANY("any"),
+    INCLUDES("includes"),
+    ANY_MATCH("anyMatch"),
+    ALL_MATCH("allMatch"),
+    NONE_MATCH("noneMatch"),
+    COUNT("count"),
+    INDEX_OF("indexOf"),
 }
 
 /**
@@ -58,11 +60,13 @@ public data class LookupCall(
 ) : IRNode
 
 /** The kind of sort operation. */
-public enum class SortKind {
-    SORT,
-    SORTED,
-    ORDER_BY,
-    SORT_BY,
+public enum class SortKind(
+    public val label: String,
+) {
+    SORT("sort"),
+    SORTED("sorted"),
+    ORDER_BY("orderBy"),
+    SORT_BY("sortBy"),
 }
 
 /**
@@ -86,14 +90,16 @@ public data class ObjectCreation(
 ) : IRNode
 
 /** The kind of indexed or positional access on a collection. */
-public enum class AccessKind {
-    FIRST,
-    LAST,
-    INDEX_ZERO,
-    POP,
-    GET_SIZE_MINUS_1,
-    FIND_FIRST,
-    FIND_ANY,
+public enum class AccessKind(
+    public val label: String,
+) {
+    FIRST("first"),
+    LAST("last"),
+    INDEX_ZERO("get(0)"),
+    POP("pop"),
+    GET_SIZE_MINUS_1("get(size-1)"),
+    FIND_FIRST("findFirst"),
+    FIND_ANY("findAny"),
 }
 
 /**

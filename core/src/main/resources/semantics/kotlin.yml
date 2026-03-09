@@ -23,8 +23,8 @@ methods:
   all:           { semantics: lookup, kind: ALL_MATCH }
   none:          { semantics: lookup, kind: NONE_MATCH }
   contains:      { semantics: lookup, kind: CONTAINS }
-  containsKey:   { semantics: lookup, kind: CONTAINS }
-  containsValue: { semantics: lookup, kind: CONTAINS }
+  containsKey:   { semantics: lookup, kind: CONTAINS, implicitly-o1: true }
+  containsValue: { semantics: lookup, kind: CONTAINS, implicitly-o1: true }
   indexOf:       { semantics: lookup, kind: INDEX_OF }
   lastIndexOf:   { semantics: lookup, kind: INDEX_OF }
   indexOfFirst:  { semantics: lookup, kind: INDEX_OF }
@@ -50,6 +50,72 @@ methods:
   writeValueAsString: { semantics: serialization }
   readValue:          { semantics: serialization }
 
+stream-ops:
+  - map
+  - flatMap
+  - mapNotNull
+  - flatMapTo
+  - zip
+  - chunked
+  - windowed
+  - associate
+  - associateBy
+  - associateWith
+  - groupBy
+  - partition
+  - toList
+  - toSet
+  - toMap
+  - toMutableList
+  - toMutableSet
+  - distinct
+  - distinctBy
+  - drop
+  - dropWhile
+  - take
+  - takeWhile
+  - filterIsInstance
+  - filterNotNull
+
+scope-ops:
+  - apply
+  - also
+  - let
+  - run
+  - takeIf
+  - takeUnless
+  - with
+
+trivial-methods:
+  - equals
+  - hashCode
+  - toString
+  - compareTo
+  - isEmpty
+  - isBlank
+  - isNullOrEmpty
+  - isNullOrBlank
+  - size
+  - length
+  - trim
+  - lowercase
+  - uppercase
+  - get
+  - getOrDefault
+  - getOrElse
+  - containsKey
+  - containsValue
+  - contains
+
+builder-methods:
+  - path
+  - header
+  - param
+  - query
+  - body
+  - accept
+  - contentType
+
 heavyweight-types:
   - ObjectMapper
   - Gson
@@ -67,3 +133,11 @@ o1-types:
   - LinkedHashMap
   - MutableSet
   - MutableMap
+
+getter-prefixes:
+  - get
+  - find
+  - load
+  - fetch
+  - lookup
+  - resolve

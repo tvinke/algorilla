@@ -139,4 +139,71 @@ internal class CollectionSemanticsRegistryTest {
         semantics.shouldNotBeNull()
         semantics.category shouldBe SemanticCategory.BLOCKING
     }
+
+    @Test
+    fun `should detect stream ops from stream-ops section`() {
+        registry.isStreamOp(Language.JAVA, "map").shouldBeTrue()
+        registry.isStreamOp(Language.JAVA, "flatMap").shouldBeTrue()
+        registry.isStreamOp(Language.JAVA, "collect").shouldBeTrue()
+    }
+
+    @Test
+    fun `should detect stream ops from methods section`() {
+        registry.isStreamOp(Language.JAVA, "filter").shouldBeTrue()
+        registry.isStreamOp(Language.JAVA, "sorted").shouldBeTrue()
+        registry.isStreamOp(Language.JAVA, "contains").shouldBeTrue()
+    }
+
+    @Test
+    fun `should not detect unknown method as stream op`() {
+        registry.isStreamOp(Language.JAVA, "doSomething").shouldBeFalse()
+    }
+
+    @Test
+    fun `allStreamOps should include all languages`() {
+        val all = registry.allStreamOps()
+        all.contains("map").shouldBeTrue()
+        all.contains("each").shouldBeTrue() // Groovy
+        all.contains("includes").shouldBeTrue() // JS
+        all.contains("sortedBy").shouldBeTrue() // Kotlin
+    }
+
+    @Test
+    fun `should detect trivial methods`() {
+        registry.isTrivial(Language.JAVA, "equals").shouldBeTrue()
+        registry.isTrivial(Language.JAVA, "hashCode").shouldBeTrue()
+        registry.isTrivial(Language.JAVA, "size").shouldBeTrue()
+        registry.isTrivial(Language.JAVA, "doSomething").shouldBeFalse()
+    }
+
+    @Test
+    fun `should detect builder methods`() {
+        registry.isBuilder(Language.JAVA, "header").shouldBeTrue()
+        registry.isBuilder(Language.JAVA, "contentType").shouldBeTrue()
+        registry.isBuilder(Language.JAVA, "doSomething").shouldBeFalse()
+    }
+
+    @Test
+    fun `should detect implicitly O1 methods`() {
+        registry.isImplicitlyO1(Language.JAVA, "containsKey").shouldBeTrue()
+        registry.isImplicitlyO1(Language.JAVA, "containsValue").shouldBeTrue()
+        registry.isImplicitlyO1(Language.JAVA, "contains").shouldBeFalse()
+    }
+
+    @Test
+    fun `should provide getter prefixes`() {
+        val prefixes = registry.getterPrefixes(Language.JAVA)
+        prefixes.contains("get").shouldBeTrue()
+        prefixes.contains("find").shouldBeTrue()
+        prefixes.contains("load").shouldBeTrue()
+    }
+
+    @Test
+    fun `allUnresolvableNames should cover stream ops and methods`() {
+        val names = registry.allUnresolvableNames()
+        names.contains("map").shouldBeTrue()
+        names.contains("filter").shouldBeTrue()
+        names.contains("sorted").shouldBeTrue()
+        names.contains("let").shouldBeTrue() // Kotlin scope function
+    }
 }

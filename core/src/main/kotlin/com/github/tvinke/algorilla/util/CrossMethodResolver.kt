@@ -4,6 +4,7 @@ import com.github.tvinke.algorilla.graph.SymbolTable
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.IRNode
+import com.github.tvinke.algorilla.semantics.CollectionSemanticsRegistry
 
 /**
  * Resolves a [FunctionCall] to its [FunctionDecl] using the symbol table, then checks
@@ -58,11 +59,16 @@ public object CrossMethodResolver {
     /**
      * Resolves a [FunctionCall] to its [FunctionDecl] via the symbol table.
      * Tries qualified target first, then falls back to simple name lookup.
+     * Skips built-in stream/collection operations that are never user-defined methods.
+     *
+     * The set of unresolvable names is derived from the semantics registry (YAML),
+     * ensuring it stays in sync with the method classification.
      */
     public fun resolve(
         call: FunctionCall,
         symbolTable: SymbolTable,
     ): FunctionDecl? {
+        if (call.name in unresolvableNames) return null
         if (call.qualifiedTarget != null) {
             val qualified = symbolTable.lookup("${call.qualifiedTarget}.${call.name}")
             if (qualified.isNotEmpty()) return qualified.first()
@@ -83,5 +89,14 @@ public object CrossMethodResolver {
             }
         }
         return results
+    }
+
+    /**
+     * Derived from the semantics registry: all method names that should not be resolved
+     * to user-defined functions. Includes stream ops, scope functions, and all classified
+     * collection methods (lookup, sort, access, iteration, etc.).
+     */
+    private val unresolvableNames: Set<String> by lazy {
+        CollectionSemanticsRegistry.loadDefaults().allUnresolvableNames()
     }
 }

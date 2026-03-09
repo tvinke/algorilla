@@ -19,8 +19,8 @@ methods:
   lastIndexOf: { semantics: lookup, kind: INDEX_OF }
   count:       { semantics: lookup, kind: COUNT }
   grep:        { semantics: lookup, kind: FILTER }
-  containsKey:  { semantics: lookup, kind: CONTAINS }
-  containsValue: { semantics: lookup, kind: CONTAINS }
+  containsKey:  { semantics: lookup, kind: CONTAINS, implicitly-o1: true }
+  containsValue: { semantics: lookup, kind: CONTAINS, implicitly-o1: true }
   filter:      { semantics: lookup, kind: FILTER }
   anyMatch:    { semantics: lookup, kind: ANY_MATCH }
   allMatch:    { semantics: lookup, kind: ALL_MATCH }
@@ -57,6 +57,66 @@ methods:
   convertValue:       { semantics: serialization }
   valueToTree:        { semantics: serialization }
 
+stream-ops:
+  - map
+  - flatMap
+  - inject
+  - collect
+  - collectEntries
+  - collectMany
+  - reduce
+  - peek
+  - distinct
+  - limit
+  - skip
+  - toList
+  - toSet
+  - toMap
+  - groupBy
+  - partition
+
+scope-ops:
+  - with
+  - of
+  - ofNullable
+
+trivial-methods:
+  - equals
+  - hashCode
+  - toString
+  - valueOf
+  - compareTo
+  - isEmpty
+  - isBlank
+  - size
+  - length
+  - trim
+  - get
+  - getOrDefault
+  - containsKey
+  - containsValue
+  - contains
+  - indexOf
+  - lastIndexOf
+  - first
+  - last
+  - getAt
+  - putAt
+  - keySet
+  - values
+  - entrySet
+  - getClass
+  - getProperty
+
+builder-methods:
+  - path
+  - header
+  - param
+  - query
+  - body
+  - accept
+  - contentType
+
 heavyweight-types:
   - ObjectMapper
   - Gson
@@ -77,3 +137,11 @@ o1-types:
   - TreeMap
   - LinkedHashMap
   - ConcurrentHashMap
+
+getter-prefixes:
+  - get
+  - find
+  - load
+  - fetch
+  - lookup
+  - resolve

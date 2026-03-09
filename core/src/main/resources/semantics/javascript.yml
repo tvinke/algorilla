@@ -28,9 +28,6 @@ methods:
   # Access
   at: { semantics: access, kind: FIRST, note: "depends on index" }
 
-  # Blocking
-  # (no stdlib blocking; userland Promise.await etc.)
-
   # Serialization
   stringify: { semantics: serialization, note: "JSON.stringify" }
   parse:     { semantics: serialization, note: "JSON.parse" }
@@ -40,6 +37,42 @@ methods:
   slice:   { semantics: copy-on-modify, note: "returns shallow copy of portion" }
   splice:  { semantics: copy-on-modify, note: "mutates array, returns removed elements" }
 
+stream-ops:
+  - map
+  - flatMap
+  - reduce
+  - reduceRight
+  - flat
+  - fill
+  - from
+  - of
+
+scope-ops: []
+
+trivial-methods:
+  - length
+  - size
+  - toString
+  - valueOf
+  - hasOwnProperty
+  - indexOf
+  - lastIndexOf
+  - includes
+  - charAt
+  - charCodeAt
+  - trim
+  - toLowerCase
+  - toUpperCase
+  - keys
+  - values
+  - entries
+  - has
+  - get
+  - set
+  - delete
+
+builder-methods: []
+
 heavyweight-types:
   - RegExp
 
@@ -48,3 +81,11 @@ o1-types:
   - Map
   - WeakSet
   - WeakMap
+
+getter-prefixes:
+  - get
+  - find
+  - load
+  - fetch
+  - lookup
+  - resolve

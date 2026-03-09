@@ -1,21 +1,21 @@
 methods:
   # Iteration
-  forEach:      { semantics: iteration }
+  forEach:        { semantics: iteration }
   forEachOrdered: { semantics: iteration }
-  stream:       { semantics: iteration, note: "creates stream pipeline" }
+  stream:         { semantics: iteration, note: "creates stream pipeline" }
   parallelStream: { semantics: iteration, note: "creates parallel stream pipeline" }
 
   # Lookup
-  contains:     { semantics: lookup, kind: CONTAINS }
-  containsKey:  { semantics: lookup, kind: CONTAINS }
-  containsValue: { semantics: lookup, kind: CONTAINS }
-  indexOf:      { semantics: lookup, kind: INDEX_OF }
-  lastIndexOf:  { semantics: lookup, kind: INDEX_OF }
-  find:         { semantics: lookup, kind: FIND }
-  filter:       { semantics: lookup, kind: FILTER }
-  anyMatch:     { semantics: lookup, kind: ANY_MATCH }
-  allMatch:     { semantics: lookup, kind: ALL_MATCH }
-  noneMatch:    { semantics: lookup, kind: NONE_MATCH }
+  contains:      { semantics: lookup, kind: CONTAINS }
+  containsKey:   { semantics: lookup, kind: CONTAINS, implicitly-o1: true }
+  containsValue: { semantics: lookup, kind: CONTAINS, implicitly-o1: true }
+  indexOf:       { semantics: lookup, kind: INDEX_OF }
+  lastIndexOf:   { semantics: lookup, kind: INDEX_OF }
+  find:          { semantics: lookup, kind: FIND }
+  filter:        { semantics: lookup, kind: FILTER }
+  anyMatch:      { semantics: lookup, kind: ANY_MATCH }
+  allMatch:      { semantics: lookup, kind: ALL_MATCH }
+  noneMatch:     { semantics: lookup, kind: NONE_MATCH }
 
   # Sort
   sort:    { semantics: sort, kind: SORT }
@@ -37,6 +37,131 @@ methods:
   readValue:          { semantics: serialization }
   convertValue:       { semantics: serialization }
   valueToTree:        { semantics: serialization }
+
+# Stream pipeline operations: methods to strip from variable names and skip
+# during cross-method resolution. All methods in the 'methods' section above
+# are automatically included — this section is for pipeline ops that don't
+# have their own semantic category.
+stream-ops:
+  - map
+  - flatMap
+  - mapToInt
+  - mapToLong
+  - mapToDouble
+  - collect
+  - reduce
+  - peek
+  - distinct
+  - limit
+  - skip
+  - toList
+  - toSet
+  - toMap
+  - groupingBy
+  - joining
+  - counting
+  - mapping
+  - summarizingInt
+  - summarizingLong
+  - summarizingDouble
+  - partitioningBy
+  - groupBy
+  - partition
+  - zip
+  - chunked
+  - windowed
+
+# Kotlin-style scope functions that should not be cross-method resolved
+scope-ops:
+  - apply
+  - also
+  - let
+  - run
+  - takeIf
+  - takeUnless
+  - with
+  - of
+  - ofNullable
+
+# Methods too cheap to flag as redundant expensive calls
+trivial-methods:
+  - equals
+  - hashCode
+  - toString
+  - valueOf
+  - compareTo
+  - isDigit
+  - isLetter
+  - isUpperCase
+  - isLowerCase
+  - isWhitespace
+  - toIntExact
+  - abs
+  - min
+  - max
+  - ceil
+  - floor
+  - round
+  - isEmpty
+  - isBlank
+  - isPresent
+  - isNull
+  - isNotNull
+  - size
+  - length
+  - trim
+  - lowercase
+  - uppercase
+  - charAt
+  - codePointAt
+  - getClass
+  - name
+  - ordinal
+  - get
+  - getOrDefault
+  - containsKey
+  - containsValue
+  - contains
+  - indexOf
+  - lastIndexOf
+  - first
+  - last
+  - getKey
+  - getValue
+  - getProperty
+  - entrySet
+  - keySet
+  - values
+  - just
+  - of
+  - ofNullable
+  - empty
+  - error
+  - never
+  - defer
+  - wrap
+  - asList
+  - singletonList
+  - emptyList
+  - emptySet
+  - emptyMap
+  - singleton
+  - noneOf
+  - allOf
+  - copyOf
+  - unmodifiableList
+  - unmodifiableSet
+  - unmodifiableMap
+
+# Builder-pattern methods called for chaining, not return value
+builder-methods:
+  - path
+  - header
+  - param
+  - query
+  - body
+  - accept
+  - contentType
 
 heavyweight-types:
   - ObjectMapper
@@ -61,3 +186,12 @@ o1-types:
   - TreeMap
   - LinkedHashMap
   - ConcurrentHashMap
+
+# Method name prefixes for getter-pattern detection (shared across rules)
+getter-prefixes:
+  - get
+  - find
+  - load
+  - fetch
+  - lookup
+  - resolve

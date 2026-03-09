@@ -29,4 +29,5 @@ public data class MethodSemantics(
     val accessKind: AccessKind? = null,
     val complexity: String? = null,
     val note: String? = null,
+    val isImplicitlyO1: Boolean = false,
 )
