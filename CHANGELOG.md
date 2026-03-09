@@ -6,6 +6,10 @@
 
 - **filter-after-sort** — Detects `sorted().filter()` in stream pipelines where filtering after sorting wastes O(n log n) on elements that will be discarded. Suggests reordering to filter first.
 
+### CLI
+
+- **`--language` filter** — New `-l` / `--language` option to restrict analysis to specific languages (e.g. `--language java,groovy`). Filters both source files and rules. Accepts comma-separated values or can be repeated.
+
 ### Breaking changes
 
 - **date-in-sort merged into expensive-sort-comparator** — The `date-in-sort` rule is now part of `expensive-sort-comparator`, which detects linear lookups, date parsing, and heavyweight object creation inside sort comparators. The old `date-in-sort` ID is accepted as an alias in suppress comments and config.

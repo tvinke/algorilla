@@ -74,6 +74,25 @@ Set of class names considered "heavyweight" for the heavyweight-object-per-invoc
 
 Maximum depth for following method calls during cross-file analysis. Default: 5.
 
+## Language Filtering
+
+Use `--language` (or `-l`) to restrict analysis to specific languages. Only matching source files will be scanned and only rules that apply to those languages will run.
+
+```bash
+# Single language
+algorilla --language java src/
+
+# Multiple languages (comma-separated)
+algorilla --language java,groovy src/
+
+# Multiple languages (repeated flag)
+algorilla -l java -l kotlin src/
+```
+
+Available languages: `java`, `groovy`, `kotlin`, `javascript`, `typescript`, `vue` (case-insensitive).
+
+When `--language` is omitted, all supported languages are included (default behavior).
+
 ## CLI Override Precedence
 
 Command-line options override file configuration:
@@ -81,3 +100,4 @@ Command-line options override file configuration:
 1. CLI `--severity` overrides `min-severity`
 2. CLI `--exclude` overrides `exclude`
 3. CLI `--config` specifies a custom config file path
+4. CLI `--language` filters source files and rules (no config file equivalent yet)

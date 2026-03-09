@@ -20,5 +20,13 @@ public enum class Language(
          * Detects the language from a file extension, or returns null if unsupported.
          */
         public fun fromExtension(extension: String): Language? = entries.find { extension.lowercase() in it.extensions }
+
+        /**
+         * Resolves a language by name (case-insensitive), matching against enum name or display name.
+         */
+        public fun fromName(name: String): Language? {
+            val normalized = name.trim().lowercase()
+            return entries.find { it.name.lowercase() == normalized || it.displayName.lowercase() == normalized }
+        }
     }
 }
