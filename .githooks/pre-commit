@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -e
+
+echo "Running pre-commit checks (detekt + ktlint)..."
+./gradlew detekt ktlintCheck --quiet 2>&1
+
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "Pre-commit check failed. Fix the issues above before committing."
+    echo "  Auto-fix formatting:  ./gradlew ktlintFormat"
+    echo "  Full build:           ./gradlew build"
+    exit 1
+fi

@@ -94,4 +94,22 @@ Before submitting a change, run the full build:
 ./gradlew build
 ```
 
-This runs compilation, ktlint, detekt, and all tests. The build must pass cleanly — no warnings-as-errors suppressions, no skipped checks.
+This runs compilation, **detekt**, **ktlint**, and all tests in one command. The build must pass cleanly — no warnings-as-errors suppressions, no skipped checks.
+
+Running only `./gradlew test` is **not sufficient** — it skips static analysis. Always use `build`.
+
+If you have formatting issues that ktlint can auto-fix:
+
+```bash
+./gradlew ktlintFormat
+```
+
+### Pre-commit hook
+
+The repository includes a pre-commit hook that runs detekt and ktlint before each commit. Set it up once after cloning:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+This catches static analysis violations before they reach CI. The hook runs `detekt` and `ktlintCheck` — if either fails, the commit is blocked with instructions on how to fix it.
