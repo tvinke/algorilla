@@ -1,9 +1,11 @@
 name: Deploy docs
 
+# Requires GitHub Pages enabled (Settings > Pages > Source: GitHub Actions).
+# Enable the push trigger once the repo is public.
 on:
-  push:
-    branches: [main]
-    paths: ['docs/**']
+  # push:
+  #   branches: [main]
+  #   paths: ['docs/**']
   workflow_dispatch:
 
 permissions:
