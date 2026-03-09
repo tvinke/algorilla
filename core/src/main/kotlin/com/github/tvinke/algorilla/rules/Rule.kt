@@ -21,6 +21,13 @@ public interface Rule {
     public val languages: Set<Language>
 
     /**
+     * Previous rule IDs that this rule was known by. Used to keep suppress comments
+     * and config overrides working after a rule is renamed or merged.
+     */
+    public val aliases: List<String>
+        get() = emptyList()
+
+    /**
      * Evaluates this rule against the given analysis context and returns any findings.
      */
     public fun evaluate(context: AnalysisContext): List<Finding>

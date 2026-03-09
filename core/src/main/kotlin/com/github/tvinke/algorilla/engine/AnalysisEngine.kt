@@ -35,6 +35,10 @@ public class AnalysisEngine(
     /**
      * Runs the full analysis pipeline on the given source files and returns all findings.
      */
+    private val aliasIndex: Map<String, String> = rules.flatMap { rule ->
+        rule.aliases.map { alias -> alias to rule.id }
+    }.toMap()
+
     public fun analyze(sourceFiles: List<String>): AnalysisResult {
         logger.info { "Starting analysis of ${sourceFiles.size} files" }
         val startTime = System.currentTimeMillis()
@@ -48,7 +52,7 @@ public class AnalysisEngine(
         val callGraph = buildCallGraph(irTrees, symbolTable)
         annotateComplexity(symbolTable, callGraph)
         val rawFindings = evaluateRules(irTrees, symbolTable, callGraph)
-        val freshFindings = SuppressionFilter().filter(rawFindings, irTrees)
+        val freshFindings = SuppressionFilter().filter(rawFindings, irTrees, aliasIndex)
 
         val allFindings = freshFindings + cachedFindings
         saveCache(sourceFiles, filesToParse, freshFindings, cachedEntries)
@@ -152,8 +156,14 @@ public class AnalysisEngine(
     ): List<Finding> {
         val context = AnalysisContext(irTrees, symbolTable, callGraph, config, registry)
         return rules
-            .filter { rule -> config.ruleOverrides[rule.id]?.enabled != false }
+            .filter { rule -> isRuleEnabled(rule) }
             .flatMap { it.evaluate(context) }
+    }
+
+    private fun isRuleEnabled(rule: Rule): Boolean {
+        val overrides = config.ruleOverrides
+        if (overrides[rule.id]?.enabled == false) return false
+        return rule.aliases.none { overrides[it]?.enabled == false }
     }
 
     private fun collectSymbols(
