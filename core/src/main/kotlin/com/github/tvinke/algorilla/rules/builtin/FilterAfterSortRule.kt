@@ -12,6 +12,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.rules.SuggestedFix
 
 /**
  * Detects stream/collection pipelines where filter() comes after sort().
@@ -94,6 +95,9 @@ public class FilterAfterSortRule : Rule {
             currentComplexity = "O(n log n + k)",
             suggestedComplexity = "O(k log k + n)",
             evidence = evidence,
+            suggestedFix = SuggestedFix(
+                description = "Move filter() before ${sort.kind.name.lowercase()}()",
+            ),
         )
     }
 }

@@ -4,13 +4,17 @@ import com.github.tvinke.algorilla.engine.AnalysisResult
 import com.github.tvinke.algorilla.engine.Reporter
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.rules.Finding
+import com.github.tvinke.algorilla.rules.SuggestedFix
+import io.github.detekt.sarif4k.ArtifactChange
 import io.github.detekt.sarif4k.ArtifactLocation
+import io.github.detekt.sarif4k.Fix
 import io.github.detekt.sarif4k.Level
 import io.github.detekt.sarif4k.Location
 import io.github.detekt.sarif4k.Message
 import io.github.detekt.sarif4k.MultiformatMessageString
 import io.github.detekt.sarif4k.PhysicalLocation
 import io.github.detekt.sarif4k.Region
+import io.github.detekt.sarif4k.Replacement
 import io.github.detekt.sarif4k.ReportingDescriptor
 import io.github.detekt.sarif4k.Result
 import io.github.detekt.sarif4k.Run
@@ -82,6 +86,28 @@ public class SarifReporter : Reporter {
             level = finding.severity.toSarifLevel(),
             message = buildMessage(finding),
             locations = listOf(finding.location.toSarifLocation()),
+            fixes = finding.suggestedFix?.let { listOf(toSarifFix(it, finding)) },
+        )
+
+    private fun toSarifFix(
+        suggestedFix: SuggestedFix,
+        finding: Finding,
+    ): Fix =
+        Fix(
+            description = Message(text = suggestedFix.description),
+            artifactChanges = listOf(
+                ArtifactChange(
+                    artifactLocation = ArtifactLocation(uri = finding.location.file),
+                    replacements = listOf(
+                        Replacement(
+                            deletedRegion = Region(
+                                startLine = finding.location.line.toLong(),
+                                startColumn = finding.location.column.toLong(),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
         )
 
     private fun buildMessage(finding: Finding): Message {

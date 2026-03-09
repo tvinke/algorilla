@@ -12,6 +12,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.rules.SuggestedFix
 import com.github.tvinke.algorilla.util.findDescendants
 
 /**
@@ -97,6 +98,9 @@ public class SortForLastRule : Rule {
             currentComplexity = "O(n log n)",
             suggestedComplexity = "O(n)",
             evidence = evidence,
+            suggestedFix = SuggestedFix(
+                description = "Replace sorted().findFirst() with min(Comparator.comparing(...))",
+            ),
         )
     }
 

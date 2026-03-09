@@ -11,6 +11,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.rules.SuggestedFix
 import com.github.tvinke.algorilla.util.findDescendants
 
 /**
@@ -84,6 +85,9 @@ public class HeavyweightObjectPerInvocationRule : Rule {
             currentComplexity = "O(n * init)",
             suggestedComplexity = "O(1)",
             evidence = evidence,
+            suggestedFix = SuggestedFix(
+                description = "Move ${creation.typeName} to a private static final field",
+            ),
         )
     }
 }

@@ -43,6 +43,10 @@ public class ConsoleReporter : Reporter {
         output.appendLine("  :${finding.location.line} $categoryTag${finding.ruleId}$complexity")
         output.appendLine("    ${finding.message}")
         output.appendLine("    → ${finding.suggestion}")
+        val fix = finding.suggestedFix
+        if (fix != null) {
+            output.appendLine("    → Suggested fix: ${fix.description}")
+        }
         formatEvidence(finding, output)
     }
 
