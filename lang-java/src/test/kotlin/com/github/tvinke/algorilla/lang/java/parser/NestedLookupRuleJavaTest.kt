@@ -25,7 +25,7 @@ internal class NestedLookupRuleJavaTest {
         findings.first().ruleId shouldBe "nested-lookup"
         findings.first().message shouldContain "contains"
         findings.first().message shouldContain "targets"
-        findings.first().currentComplexity shouldBe "O(n*m)"
+        findings.first().currentComplexity shouldBe "O(items \u00d7 targets)"
     }
 
     @Test
@@ -41,7 +41,7 @@ internal class NestedLookupRuleJavaTest {
         val findings = analyzeFixture("nested-lookup/positive/foreach-indexOf.java")
 
         findings shouldHaveSize 1
-        findings.first().message shouldContain "index_of"
+        findings.first().message shouldContain "indexOf"
     }
 
     @Test

@@ -8,11 +8,11 @@ import com.github.tvinke.algorilla.model.LookupKind
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.model.SortCall
 import com.github.tvinke.algorilla.rules.AnalysisContext
+import com.github.tvinke.algorilla.rules.ComplexityModel
 import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
-import com.github.tvinke.algorilla.rules.SuggestedFix
 
 /**
  * Detects stream/collection pipelines where filter() comes after sort().
@@ -83,27 +83,36 @@ public class FilterAfterSortRule : Rule {
         filter: LookupCall,
     ): List<Evidence> =
         listOf(
-            Evidence(sort.location, "${sort.kind.name.lowercase()} call — sorts all N elements", ExecutionContext.SINGLE),
-            Evidence(filter.location, "filter after sort — discards elements after sorting", ExecutionContext.SINGLE),
+            Evidence(
+                sort.location,
+                "${sort.kind.label} call \u2014 sorts all N elements",
+                ExecutionContext.SINGLE,
+                complexity = ComplexityModel.sortEvidence(isBottleneck = true),
+            ),
+            Evidence(
+                filter.location,
+                "filter after sort \u2014 discards elements after sorting",
+                ExecutionContext.SINGLE,
+                depth = 1,
+                complexity = "O(n)",
+            ),
         )
 
     private fun buildFinding(
         sort: SortCall,
         filter: LookupCall,
-    ): Finding =
-        Finding(
+    ): Finding {
+        val cx = ComplexityModel.filterAfterSort()
+        return Finding(
             ruleId = id,
             ruleName = name,
             severity = severity,
-            location = sort.location,
-            message = "filter() after ${sort.kind.name.lowercase()}() — sorting all elements before filtering",
-            suggestion = "Move filter() before ${sort.kind.name.lowercase()}() to sort fewer elements",
-            currentComplexity = "O(n log n + k)",
-            suggestedComplexity = "O(k log k + n)",
+            location = filter.location,
+            message = "filter() after ${sort.kind.label}() — sorting all elements before filtering",
+            suggestion = "Move filter() before ${sort.kind.label}() to sort fewer elements",
+            currentComplexity = cx.current,
+            suggestedComplexity = cx.suggested,
             evidence = buildEvidence(sort, filter),
-            suggestedFix =
-                SuggestedFix(
-                    description = "Move filter() before ${sort.kind.name.lowercase()}()",
-                ),
         )
+    }
 }

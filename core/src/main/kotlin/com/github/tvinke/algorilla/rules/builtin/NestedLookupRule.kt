@@ -10,6 +10,7 @@ import com.github.tvinke.algorilla.model.LookupKind
 import com.github.tvinke.algorilla.model.LoopNode
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.rules.AnalysisContext
+import com.github.tvinke.algorilla.rules.ComplexityModel
 import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
@@ -103,18 +104,20 @@ public class NestedLookupRule : Rule {
         iterationStack: List<IRNode>,
     ): Finding {
         val targetVar = lookup.targetVariable ?: "collection"
+        val outerVar = iteratedVar(iterationStack.first())
         val outerIteration = iterationStack.first()
         val evidence = buildEvidence(iterationStack, lookup, targetVar)
+        val cx = ComplexityModel.loopTimesLookup(outerVar, targetVar)
 
         return Finding(
             ruleId = id,
             ruleName = name,
             severity = severity,
-            location = outerIteration.location,
-            message = "Linear ${lookup.kind.name.lowercase()} on '$targetVar' inside ${iterationLabel(outerIteration)}",
+            location = lookup.location,
+            message = "Linear ${lookup.kind.label} on '$targetVar' inside ${iterationLabel(outerIteration)}",
             suggestion = "Build a HashSet/Map from '$targetVar' before the loop",
-            currentComplexity = "O(n*m)",
-            suggestedComplexity = "O(n+m)",
+            currentComplexity = cx.current,
+            suggestedComplexity = cx.suggested,
             evidence = evidence,
         )
     }
@@ -125,21 +128,23 @@ public class NestedLookupRule : Rule {
         iterationStack: List<IRNode>,
     ): Finding {
         val outerIteration = iterationStack.first()
+        val outerVar = iteratedVar(outerIteration)
         val targetVar = hiddenLookup.targetVariable ?: "collection"
         val evidence = buildCrossMethodEvidence(iterationStack, call, hiddenLookup, targetVar)
-        val lookupDesc = hiddenLookup.kind.name.lowercase()
+        val lookupDesc = hiddenLookup.kind.label
         val msg =
             "Linear $lookupDesc on '$targetVar' inside " +
                 "${call.name}() called from ${iterationLabel(outerIteration)}"
+        val cx = ComplexityModel.loopTimesLookup(outerVar, targetVar)
         return Finding(
             ruleId = id,
             ruleName = name,
             severity = severity,
-            location = outerIteration.location,
+            location = call.location,
             message = msg,
             suggestion = "Build a HashSet/Map from '$targetVar' before the loop",
-            currentComplexity = "O(n*m)",
-            suggestedComplexity = "O(n+m)",
+            currentComplexity = cx.current,
+            suggestedComplexity = cx.suggested,
             evidence = evidence,
         )
     }
@@ -150,19 +155,24 @@ public class NestedLookupRule : Rule {
         hiddenLookup: LookupCall,
         targetVar: String,
     ): List<Evidence> =
-        iterationStack.map { node ->
+        iterationStack.mapIndexed { idx, node ->
+            val varName = iteratedVar(node)
             Evidence(
                 location = node.location,
-                label = "${iterationLabel(node)} over ${iteratedVar(node)}",
+                label = "${iterationLabel(node)} over $varName",
                 executionContext = ExecutionContext.INSIDE_LOOP,
+                depth = idx,
+                complexity = ComplexityModel.loopEvidence(varName),
             )
         } +
             listOf(
-                Evidence(call.location, "${call.name}() called per iteration", ExecutionContext.INSIDE_LOOP),
+                Evidence(call.location, "${call.name}() called per iteration", ExecutionContext.INSIDE_LOOP, depth = iterationStack.size),
                 Evidence(
                     hiddenLookup.location,
-                    "linear ${hiddenLookup.kind.name.lowercase()} on '$targetVar' inside ${call.name}()",
+                    "linear ${hiddenLookup.kind.label} on '$targetVar' inside ${call.name}()",
                     ExecutionContext.INSIDE_LOOP,
+                    depth = iterationStack.size + 1,
+                    complexity = ComplexityModel.bottleneckO(targetVar),
                 ),
             )
 
@@ -172,18 +182,23 @@ public class NestedLookupRule : Rule {
         targetVar: String,
     ): List<Evidence> {
         val evidence =
-            iterationStack.map { node ->
+            iterationStack.mapIndexed { idx, node ->
+                val varName = iteratedVar(node)
                 Evidence(
                     location = node.location,
-                    label = "${iterationLabel(node)} over ${iteratedVar(node)}",
+                    label = "${iterationLabel(node)} over $varName",
                     executionContext = ExecutionContext.INSIDE_LOOP,
+                    depth = idx,
+                    complexity = ComplexityModel.loopEvidence(varName),
                 )
             }
         return evidence +
             Evidence(
                 location = lookup.location,
-                label = "${lookup.kind.name.lowercase()} on '$targetVar'",
+                label = "${lookup.kind.label} on '$targetVar'",
                 executionContext = ExecutionContext.INSIDE_LOOP,
+                depth = iterationStack.size,
+                complexity = ComplexityModel.bottleneckO(targetVar),
             )
     }
 }
@@ -207,7 +222,7 @@ private fun isIteratingLookup(kind: LookupKind): Boolean = kind in ITERATING_LOO
 private fun iterationLabel(node: IRNode): String =
     when (node) {
         is LoopNode -> node.kind.label()
-        is LookupCall -> "${node.kind.name.lowercase()}()"
+        is LookupCall -> "${node.kind.label}()"
         else -> "iteration"
     }
 

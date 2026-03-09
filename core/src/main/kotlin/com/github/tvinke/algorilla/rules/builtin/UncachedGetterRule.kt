@@ -7,10 +7,12 @@ import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.rules.AnalysisContext
+import com.github.tvinke.algorilla.rules.ComplexityModel
 import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.semantics.CollectionSemanticsRegistry
 import com.github.tvinke.algorilla.util.findDescendants
 
 /**
@@ -67,9 +69,11 @@ public class UncachedGetterRule : Rule {
         val first = calls.first()
         val callDesc = "${first.qualifiedTarget ?: ""}${if (first.qualifiedTarget != null) "." else ""}${first.name}()"
         val evidence =
-            calls.map {
-                Evidence(it.location, "$callDesc called again with same arg", ExecutionContext.SINGLE)
+            calls.mapIndexed { idx, call ->
+                val tag = if (idx == 0) "1st call" else "duplicate"
+                Evidence(call.location, "$callDesc ($tag)", ExecutionContext.SINGLE)
             }
+        val cx = ComplexityModel.uncachedGetter(calls.size)
         return Finding(
             ruleId = id,
             ruleName = name,
@@ -77,8 +81,8 @@ public class UncachedGetterRule : Rule {
             location = first.location,
             message = "$callDesc called ${calls.size} times with same argument in ${fn.name}()",
             suggestion = "Cache the result in a local variable: val x = $callDesc",
-            currentComplexity = "${calls.size}x lookup",
-            suggestedComplexity = "1x lookup",
+            currentComplexity = cx.current,
+            suggestedComplexity = cx.suggested,
             evidence = evidence,
         )
     }
@@ -88,7 +92,11 @@ public class UncachedGetterRule : Rule {
     }
 }
 
-private val GETTER_PREFIXES = listOf("get", "find", "load", "fetch", "lookup", "resolve")
+private val GETTER_PREFIXES: List<String> by lazy {
+    CollectionSemanticsRegistry
+        .loadDefaults()
+        .allGetterPrefixes()
+}
 
 /** Short method names that are too generic to flag (Map.get, List.get, etc.) */
 private val EXCLUDED_NAMES = setOf("get", "getOrDefault", "getOrElse")

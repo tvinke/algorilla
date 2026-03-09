@@ -60,10 +60,17 @@ public class InLoopCollectionBuildingRule : Rule {
         loopStack: List<LoopNode>,
     ): Finding {
         val outerLoop = loopStack.first()
+        val loopVar = outerLoop.iteratedVariable ?: "items"
         val evidence =
             listOf(
-                Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP),
-                Evidence(call.location, "${call.name}() inside loop", ExecutionContext.INSIDE_LOOP),
+                Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP, complexity = "O(|$loopVar|)"),
+                Evidence(
+                    call.location,
+                    "${call.name}() inside loop",
+                    ExecutionContext.INSIDE_LOOP,
+                    depth = 1,
+                    complexity = "copy \u2190 bottleneck",
+                ),
             )
         return Finding(
             ruleId = id,
@@ -72,8 +79,8 @@ public class InLoopCollectionBuildingRule : Rule {
             location = call.location,
             message = "${call.name}() inside ${outerLoop.kind.label()} repeatedly copies collection",
             suggestion = "Accumulate into a single collection, then call ${call.name}() once after the loop",
-            currentComplexity = "O(n*m)",
-            suggestedComplexity = "O(n+m)",
+            currentComplexity = "O(|$loopVar| * copy)",
+            suggestedComplexity = "O(|$loopVar| + copy)",
             evidence = evidence,
         )
     }

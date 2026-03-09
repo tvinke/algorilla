@@ -7,10 +7,12 @@ import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.rules.AnalysisContext
+import com.github.tvinke.algorilla.rules.ComplexityModel
 import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.semantics.CollectionSemanticsRegistry
 import com.github.tvinke.algorilla.semantics.MethodPurity
 import com.github.tvinke.algorilla.util.findDescendants
 
@@ -69,9 +71,11 @@ public class RedundantExpensiveCallRule : Rule {
         val first = calls.first()
         val callDesc = "${first.qualifiedTarget ?: ""}${if (first.qualifiedTarget != null) "." else ""}${first.name}()"
         val evidence =
-            calls.map { call ->
-                Evidence(call.location, "$callDesc (duplicate)", ExecutionContext.SINGLE)
+            calls.mapIndexed { idx, call ->
+                val tag = if (idx == 0) "1st call" else "duplicate"
+                Evidence(call.location, "$callDesc ($tag)", ExecutionContext.SINGLE)
             }
+        val cx = ComplexityModel.redundantCalls(calls.size)
         return Finding(
             ruleId = id,
             ruleName = name,
@@ -79,8 +83,8 @@ public class RedundantExpensiveCallRule : Rule {
             location = first.location,
             message = "$callDesc called ${calls.size} times with same arguments in ${fn.name}()",
             suggestion = "Cache the result in a local variable",
-            currentComplexity = "O(${calls.size}x)",
-            suggestedComplexity = "O(1x)",
+            currentComplexity = cx.current,
+            suggestedComplexity = cx.suggested,
             evidence = evidence,
         )
     }
@@ -108,57 +112,18 @@ private fun argFingerprint(node: IRNode): String =
         else -> node.toString().take(MAX_FINGERPRINT_LENGTH)
     }
 
-/** Trivially cheap methods that are never worth caching */
-private val TRIVIAL_METHODS =
-    setOf(
-        "equals",
-        "hashCode",
-        "toString",
-        "valueOf",
-        "compareTo",
-        "isDigit",
-        "isLetter",
-        "isUpperCase",
-        "isLowerCase",
-        "isWhitespace",
-        "toIntExact",
-        "abs",
-        "min",
-        "max",
-        "ceil",
-        "floor",
-        "round",
-        "isEmpty",
-        "isBlank",
-        "isPresent",
-        "isNull",
-        "isNotNull",
-        "size",
-        "length",
-        "trim",
-        "lowercase",
-        "uppercase",
-        "charAt",
-        "codePointAt",
-        "getClass",
-        "name",
-        "ordinal",
-    )
-
 /**
- * Builder-style method names that are called for chaining rather than return value.
- * These overlap with pure prefixes but are side-effectful in builder context.
+ * Trivial and builder methods derived from the semantics registry (YAML).
+ * To add methods, update the trivial-methods or builder-methods section
+ * in the language YAML files under core/src/main/resources/semantics/.
  */
-private val BUILDER_METHODS =
-    setOf(
-        "path",
-        "header",
-        "param",
-        "query",
-        "body",
-        "accept",
-        "contentType",
-    )
+private val TRIVIAL_METHODS: Set<String> by lazy {
+    CollectionSemanticsRegistry.loadDefaults().allTrivialMethods()
+}
+
+private val BUILDER_METHODS: Set<String> by lazy {
+    CollectionSemanticsRegistry.loadDefaults().allBuilderMethods()
+}
 
 private fun isSideEffectCall(call: FunctionCall): Boolean {
     if (call.name in TRIVIAL_METHODS) return true

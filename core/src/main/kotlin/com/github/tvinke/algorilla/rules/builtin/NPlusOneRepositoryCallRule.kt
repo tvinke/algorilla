@@ -78,12 +78,19 @@ public class NPlusOneRepositoryCallRule : Rule {
         loopStack: List<LoopNode>,
     ): Finding {
         val outerLoop = loopStack.first()
+        val loopVar = outerLoop.iteratedVariable ?: "items"
         val target = hiddenFetch.qualifiedTarget ?: "repository"
         val evidence =
             listOf(
-                Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP),
-                Evidence(call.location, "${call.name}() called per iteration", ExecutionContext.INSIDE_LOOP),
-                Evidence(hiddenFetch.location, "$target.${hiddenFetch.name}() inside ${call.name}()", ExecutionContext.INSIDE_LOOP),
+                Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP, complexity = "O(|$loopVar|)"),
+                Evidence(call.location, "${call.name}() called per iteration", ExecutionContext.INSIDE_LOOP, depth = 1),
+                Evidence(
+                    hiddenFetch.location,
+                    "$target.${hiddenFetch.name}() inside ${call.name}()",
+                    ExecutionContext.INSIDE_LOOP,
+                    depth = 2,
+                    complexity = "IO \u2190 bottleneck",
+                ),
             )
         return Finding(
             ruleId = id,
@@ -92,8 +99,8 @@ public class NPlusOneRepositoryCallRule : Rule {
             location = call.location,
             message = "Single-record fetch $target.${hiddenFetch.name}() inside ${call.name}() called from ${outerLoop.kind.label()} (N+1)",
             suggestion = "Bulk fetch all needed records before the loop, or build an in-memory Map",
-            currentComplexity = "O(n * IO)",
-            suggestedComplexity = "O(1 * IO + n)",
+            currentComplexity = "O(|$loopVar| * IO)",
+            suggestedComplexity = "O(1 * IO + |$loopVar|)",
             evidence = evidence,
         )
     }
@@ -103,11 +110,18 @@ public class NPlusOneRepositoryCallRule : Rule {
         loopStack: List<LoopNode>,
     ): Finding {
         val outerLoop = loopStack.first()
+        val loopVar = outerLoop.iteratedVariable ?: "items"
         val target = call.qualifiedTarget ?: "repository"
         val evidence =
             listOf(
-                Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP),
-                Evidence(call.location, "$target.${call.name}() called per iteration", ExecutionContext.INSIDE_LOOP),
+                Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP, complexity = "O(|$loopVar|)"),
+                Evidence(
+                    call.location,
+                    "$target.${call.name}() called per iteration",
+                    ExecutionContext.INSIDE_LOOP,
+                    depth = 1,
+                    complexity = "IO \u2190 bottleneck",
+                ),
             )
         return Finding(
             ruleId = id,
@@ -116,8 +130,8 @@ public class NPlusOneRepositoryCallRule : Rule {
             location = call.location,
             message = "Single-record fetch $target.${call.name}() inside ${outerLoop.kind.label()} (N+1)",
             suggestion = "Bulk fetch all needed records before the loop, or build an in-memory Map",
-            currentComplexity = "O(n * IO)",
-            suggestedComplexity = "O(1 * IO + n)",
+            currentComplexity = "O(|$loopVar| * IO)",
+            suggestedComplexity = "O(1 * IO + |$loopVar|)",
             evidence = evidence,
         )
     }

@@ -11,4 +11,7 @@ public data class Evidence(
     val location: SourceLocation,
     val label: String,
     val executionContext: ExecutionContext,
+    val depth: Int = 0,
+    /** Optional per-step complexity hint, e.g. "O(n)" or "O(1)". */
+    val complexity: String? = null,
 )

@@ -102,7 +102,7 @@ internal class RulesIntegrationTest {
             findings shouldHaveSize 1
             findings.first().ruleId shouldBe "repeated-linear-scan"
             findings.first().message shouldContain "users"
-            findings.first().currentComplexity shouldBe "O(n*k)"
+            findings.first().currentComplexity shouldBe "O(n \u00d7 2)"
         }
 
         @Test
@@ -127,7 +127,7 @@ internal class RulesIntegrationTest {
 
             findings.size shouldBe 2
             findings.all { it.ruleId == "expensive-sort-comparator" } shouldBe true
-            findings.first().currentComplexity shouldBe "O(n^2 log n)"
+            findings.first().currentComplexity shouldBe "O(n\u00b2 log n)"
             findings.first().suggestedComplexity shouldBe "O(n log n)"
         }
 

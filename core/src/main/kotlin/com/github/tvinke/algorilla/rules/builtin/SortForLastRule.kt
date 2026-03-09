@@ -1,5 +1,6 @@
 package com.github.tvinke.algorilla.rules.builtin
 
+import com.github.tvinke.algorilla.model.AccessKind
 import com.github.tvinke.algorilla.model.CollectionAccess
 import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.FunctionDecl
@@ -8,11 +9,11 @@ import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.model.SortCall
 import com.github.tvinke.algorilla.rules.AnalysisContext
+import com.github.tvinke.algorilla.rules.ComplexityModel
 import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
-import com.github.tvinke.algorilla.rules.SuggestedFix
 import com.github.tvinke.algorilla.util.findDescendants
 
 /**
@@ -76,31 +77,42 @@ public class SortForLastRule : Rule {
         access: CollectionAccess,
     ): List<Evidence> =
         listOf(
-            Evidence(sort.location, "${sort.kind.name.lowercase()} call", ExecutionContext.SINGLE),
-            Evidence(access.location, ".${access.kind.name.lowercase()} after sort", ExecutionContext.SINGLE),
+            Evidence(
+                sort.location,
+                "${sort.kind.label} call",
+                ExecutionContext.SINGLE,
+                complexity = ComplexityModel.sortEvidence(isBottleneck = true),
+            ),
+            Evidence(access.location, ".${access.kind.label} after sort", ExecutionContext.SINGLE, depth = 1, complexity = "O(1)"),
         )
 
     private fun buildFinding(
         sort: SortCall,
         access: CollectionAccess,
-    ): Finding =
-        Finding(
+    ): Finding {
+        val cx = ComplexityModel.sortForAccess()
+        return Finding(
             ruleId = id,
             ruleName = name,
             severity = severity,
             location = sort.location,
-            message = "Sorting entire collection just to access ${access.kind.name.lowercase()} element",
+            message = "Sorting entire collection just to access ${accessLabel(access.kind)} element",
             suggestion = "Use .max(Comparator.comparing(...)) or .min(...) instead of sorting",
-            currentComplexity = "O(n log n)",
-            suggestedComplexity = "O(n)",
+            currentComplexity = cx.current,
+            suggestedComplexity = cx.suggested,
             evidence = buildEvidence(sort, access),
-            suggestedFix =
-                SuggestedFix(
-                    description = "Replace sorted().findFirst() with min(Comparator.comparing(...))",
-                ),
         )
+    }
 
     private companion object {
         const val MAX_LINE_DISTANCE = 5
     }
 }
+
+private fun accessLabel(kind: AccessKind): String =
+    when (kind) {
+        AccessKind.FIRST, AccessKind.FIND_FIRST -> "the first"
+        AccessKind.LAST, AccessKind.GET_SIZE_MINUS_1, AccessKind.POP -> "the last"
+        AccessKind.FIND_ANY -> "a single"
+        AccessKind.INDEX_ZERO -> "the first"
+    }

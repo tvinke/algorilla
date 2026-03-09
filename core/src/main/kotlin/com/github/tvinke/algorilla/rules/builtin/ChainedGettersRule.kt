@@ -10,10 +10,12 @@ import com.github.tvinke.algorilla.model.LoopNode
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.model.VariableDecl
 import com.github.tvinke.algorilla.rules.AnalysisContext
+import com.github.tvinke.algorilla.rules.ComplexityModel
 import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.semantics.CollectionSemanticsRegistry
 import com.github.tvinke.algorilla.util.CrossMethodResolver
 import com.github.tvinke.algorilla.util.findDescendants
 
@@ -102,8 +104,9 @@ public class ChainedGettersRule : Rule {
         val evidence =
             chain.mapIndexed { idx, call ->
                 val label = if (idx == 0) "${call.name}() starts the chain" else "${call.name}() uses result of previous"
-                Evidence(call.location, label, ExecutionContext.SINGLE)
+                Evidence(call.location, label, ExecutionContext.SINGLE, depth = idx, complexity = "IO/query")
             }
+        val cx = ComplexityModel.chainedGetters(chain.size)
         val chainDesc = chain.joinToString(" → ") { it.name }
         return Finding(
             ruleId = id,
@@ -112,8 +115,8 @@ public class ChainedGettersRule : Rule {
             location = chain.first().location,
             message = "Chained getter cascade in ${fn.name}(): $chainDesc",
             suggestion = "Pre-build lookup maps or use a join query to avoid cascading lookups",
-            currentComplexity = "O(n^${chain.size})",
-            suggestedComplexity = "O(n)",
+            currentComplexity = cx.current,
+            suggestedComplexity = cx.suggested,
             evidence = evidence,
         )
     }
@@ -123,7 +126,11 @@ public class ChainedGettersRule : Rule {
     }
 }
 
-private val GETTER_PREFIXES = listOf("get", "find", "load", "fetch", "lookup", "resolve")
+private val GETTER_PREFIXES: List<String> by lazy {
+    CollectionSemanticsRegistry
+        .loadDefaults()
+        .allGetterPrefixes()
+}
 
 private fun isGetterPattern(call: FunctionCall): Boolean = GETTER_PREFIXES.any { call.name.startsWith(it, ignoreCase = true) }
 

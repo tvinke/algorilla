@@ -9,6 +9,7 @@ import com.github.tvinke.algorilla.model.ObjectCreation
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.model.SortCall
 import com.github.tvinke.algorilla.rules.AnalysisContext
+import com.github.tvinke.algorilla.rules.ComplexityModel
 import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
@@ -23,6 +24,7 @@ import com.github.tvinke.algorilla.util.findDescendants
  *
  * Also follows method references via cross-method resolution to catch indirect patterns.
  */
+@Suppress("LargeClass")
 public class ExpensiveSortComparatorRule : Rule {
     override val id: String = "expensive-sort-comparator"
     override val name: String = "Expensive Sort Comparator"
@@ -119,25 +121,22 @@ public class ExpensiveSortComparatorRule : Rule {
         lookup: LookupCall,
     ): Finding {
         val targetVar = lookup.targetVariable ?: "collection"
-        val evidence =
-            listOf(
-                Evidence(sort.location, "${sort.kind.name.lowercase()} with comparator", ExecutionContext.SINGLE),
-                Evidence(
-                    lookup.location,
-                    "linear ${lookup.kind.name.lowercase()} on '$targetVar' inside comparator",
-                    ExecutionContext.INSIDE_LOOP,
-                ),
+        val cx = ComplexityModel.sortTimesLookup()
+        val innerEvidence =
+            Evidence(
+                lookup.location,
+                "linear ${lookup.kind.label} on '$targetVar' inside comparator",
+                ExecutionContext.INSIDE_LOOP,
+                depth = 1,
+                complexity = ComplexityModel.bottleneck("O(n)"),
             )
-        return Finding(
-            ruleId = id,
-            ruleName = name,
-            severity = severity,
-            location = sort.location,
-            message = "Linear lookup on '$targetVar' inside sort comparator",
-            suggestion = "Build a lookup Map from '$targetVar' before the sort",
-            currentComplexity = "O(n^2 log n)",
-            suggestedComplexity = "O(n log n)",
-            evidence = evidence,
+        return buildFinding(
+            sort,
+            lookup.location,
+            cx,
+            innerEvidence,
+            "Linear lookup on '$targetVar' inside sort comparator",
+            "Build a lookup Map from '$targetVar' before the sort",
         )
     }
 
@@ -145,21 +144,22 @@ public class ExpensiveSortComparatorRule : Rule {
         sort: SortCall,
         creation: ObjectCreation,
     ): Finding {
-        val evidence =
-            listOf(
-                Evidence(sort.location, "${sort.kind.name.lowercase()} with comparator", ExecutionContext.SINGLE),
-                Evidence(creation.location, "new ${creation.typeName}() inside comparator", ExecutionContext.INSIDE_LOOP),
+        val cx = ComplexityModel.sortTimesParse()
+        val innerEvidence =
+            Evidence(
+                creation.location,
+                "new ${creation.typeName}() inside comparator",
+                ExecutionContext.INSIDE_LOOP,
+                depth = 1,
+                complexity = ComplexityModel.bottleneck("parse"),
             )
-        return Finding(
-            ruleId = id,
-            ruleName = name,
-            severity = severity,
-            location = sort.location,
-            message = "${creation.typeName} creation inside sort comparator",
-            suggestion = "Compare ISO date strings directly, or parse dates once before sorting",
-            currentComplexity = "O(n log n * parse)",
-            suggestedComplexity = "O(n log n)",
-            evidence = evidence,
+        return buildFinding(
+            sort,
+            creation.location,
+            cx,
+            innerEvidence,
+            "${creation.typeName} creation inside sort comparator",
+            "Compare ISO date strings directly, or parse dates once before sorting",
         )
     }
 
@@ -167,22 +167,23 @@ public class ExpensiveSortComparatorRule : Rule {
         sort: SortCall,
         call: FunctionCall,
     ): Finding {
+        val cx = ComplexityModel.sortTimesParse()
         val target = call.qualifiedTarget ?: "Date"
-        val evidence =
-            listOf(
-                Evidence(sort.location, "${sort.kind.name.lowercase()} with comparator", ExecutionContext.SINGLE),
-                Evidence(call.location, "$target.${call.name}() inside comparator", ExecutionContext.INSIDE_LOOP),
+        val innerEvidence =
+            Evidence(
+                call.location,
+                "$target.${call.name}() inside comparator",
+                ExecutionContext.INSIDE_LOOP,
+                depth = 1,
+                complexity = ComplexityModel.bottleneck("parse"),
             )
-        return Finding(
-            ruleId = id,
-            ruleName = name,
-            severity = severity,
-            location = sort.location,
-            message = "Date parsing (${call.name}) inside sort comparator",
-            suggestion = "Parse dates once before sorting into a Map, then compare pre-parsed values",
-            currentComplexity = "O(n log n * parse)",
-            suggestedComplexity = "O(n log n)",
-            evidence = evidence,
+        return buildFinding(
+            sort,
+            call.location,
+            cx,
+            innerEvidence,
+            "Date parsing (${call.name}) inside sort comparator",
+            "Parse dates once before sorting into a Map, then compare pre-parsed values",
         )
     }
 
@@ -191,6 +192,7 @@ public class ExpensiveSortComparatorRule : Rule {
         call: FunctionCall,
         innerNode: IRNode,
     ): Finding {
+        val cx = ComplexityModel.sortTimesParse()
         val desc =
             when (innerNode) {
                 is ObjectCreation -> "new ${innerNode.typeName}()"
@@ -199,22 +201,69 @@ public class ExpensiveSortComparatorRule : Rule {
             }
         val evidence =
             listOf(
-                Evidence(sort.location, "${sort.kind.name.lowercase()} with comparator", ExecutionContext.SINGLE),
-                Evidence(call.location, "${call.name}() called from comparator", ExecutionContext.INSIDE_LOOP),
-                Evidence(innerNode.location, "$desc inside ${call.name}()", ExecutionContext.INSIDE_LOOP),
+                sortEvidence(sort),
+                Evidence(call.location, "${call.name}() called from comparator", ExecutionContext.INSIDE_LOOP, depth = 1),
+                Evidence(
+                    innerNode.location,
+                    "$desc inside ${call.name}()",
+                    ExecutionContext.INSIDE_LOOP,
+                    depth = 2,
+                    complexity = ComplexityModel.bottleneck("parse"),
+                ),
             )
-        return Finding(
-            ruleId = id,
-            ruleName = name,
-            severity = severity,
-            location = sort.location,
-            message = "Date operation inside ${call.name}() called from sort comparator",
-            suggestion = "Parse dates once before sorting, not inside the comparator call chain",
-            currentComplexity = "O(n log n * parse)",
-            suggestedComplexity = "O(n log n)",
-            evidence = evidence,
+        return buildFinding(
+            innerNode.location,
+            cx,
+            evidence,
+            "Date operation inside ${call.name}() called from sort comparator",
+            "Parse dates once before sorting, not inside the comparator call chain",
         )
     }
+
+    private fun sortEvidence(sort: SortCall) =
+        Evidence(
+            sort.location,
+            "${sort.kind.label} with comparator",
+            ExecutionContext.SINGLE,
+            complexity = ComplexityModel.sortEvidence(),
+        )
+
+    private fun buildFinding(
+        sort: SortCall,
+        location: com.github.tvinke.algorilla.model.SourceLocation,
+        cx: com.github.tvinke.algorilla.rules.ComplexityEstimate,
+        innerEvidence: Evidence,
+        message: String,
+        suggestion: String,
+    ) = Finding(
+        ruleId = id,
+        ruleName = name,
+        severity = severity,
+        location = location,
+        message = message,
+        suggestion = suggestion,
+        currentComplexity = cx.current,
+        suggestedComplexity = cx.suggested,
+        evidence = listOf(sortEvidence(sort), innerEvidence),
+    )
+
+    private fun buildFinding(
+        location: com.github.tvinke.algorilla.model.SourceLocation,
+        cx: com.github.tvinke.algorilla.rules.ComplexityEstimate,
+        evidence: List<Evidence>,
+        message: String,
+        suggestion: String,
+    ) = Finding(
+        ruleId = id,
+        ruleName = name,
+        severity = severity,
+        location = location,
+        message = message,
+        suggestion = suggestion,
+        currentComplexity = cx.current,
+        suggestedComplexity = cx.suggested,
+        evidence = evidence,
+    )
 }
 
 internal val dateTypeNames: Set<String> =

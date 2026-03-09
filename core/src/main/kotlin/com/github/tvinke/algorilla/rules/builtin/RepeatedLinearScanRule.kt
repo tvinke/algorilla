@@ -7,6 +7,7 @@ import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LookupCall
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.rules.AnalysisContext
+import com.github.tvinke.algorilla.rules.ComplexityModel
 import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
@@ -66,23 +67,31 @@ public class RepeatedLinearScanRule : Rule {
         targetVar: String,
         lookups: List<LookupCall>,
     ): Finding {
+        val cx = ComplexityModel.repeatedScans(lookups.size)
+        val ops = lookups.map { ".${it.kind.label}()" }
         val evidence =
-            lookups.map { lookup ->
+            lookups.mapIndexed { idx, lookup ->
+                val tag = if (idx == 0) "1st" else "#${idx + 1}"
                 Evidence(
                     location = lookup.location,
-                    label = "${lookup.kind.name.lowercase()} on '$targetVar'",
+                    label = ".${lookup.kind.label}() on '$targetVar' ($tag)",
                     executionContext = ExecutionContext.SINGLE,
+                    complexity = ComplexityModel.loopEvidence(targetVar),
                 )
             }
+        val opsDesc = ops.joinToString(" and ")
         return Finding(
             ruleId = id,
             ruleName = name,
             severity = severity,
-            location = fn.location,
-            message = "${lookups.size} linear scans on '$targetVar' in ${fn.name}()",
-            suggestion = "Cache the result of the first lookup, or combine into a single pass",
-            currentComplexity = "O(n*k)",
-            suggestedComplexity = "O(n)",
+            location = lookups.first().location,
+            message =
+                "'$targetVar' is scanned ${lookups.size} times in ${fn.name}(): " +
+                    "each $opsDesc iterates the full collection",
+            suggestion =
+                "Combine into a single pass, or convert '$targetVar' to a Set/Map for O(1) lookups",
+            currentComplexity = cx.current,
+            suggestedComplexity = cx.suggested,
             evidence = evidence,
         )
     }

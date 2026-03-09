@@ -65,10 +65,17 @@ public class ExpensiveSerializationInLoopRule : Rule {
         loopStack: List<LoopNode>,
     ): Finding {
         val outerLoop = loopStack.first()
+        val loopVar = outerLoop.iteratedVariable ?: "items"
         val evidence =
             listOf(
-                Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP),
-                Evidence(call.location, "${call.name}() inside loop", ExecutionContext.INSIDE_LOOP),
+                Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP, complexity = "O(|$loopVar|)"),
+                Evidence(
+                    call.location,
+                    "${call.name}() inside loop",
+                    ExecutionContext.INSIDE_LOOP,
+                    depth = 1,
+                    complexity = "serialize \u2190 bottleneck",
+                ),
             )
         return Finding(
             ruleId = id,
@@ -77,8 +84,8 @@ public class ExpensiveSerializationInLoopRule : Rule {
             location = call.location,
             message = "Serialization call ${call.name}() inside ${outerLoop.kind.label()}",
             suggestion = "Move serialization outside the loop, or use batch serialization",
-            currentComplexity = "O(n * serialize)",
-            suggestedComplexity = "O(n)",
+            currentComplexity = "O(|$loopVar| * serialize)",
+            suggestedComplexity = "O(|$loopVar|)",
             evidence = evidence,
         )
     }

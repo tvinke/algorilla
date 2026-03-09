@@ -7,11 +7,11 @@ import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.ObjectCreation
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.rules.AnalysisContext
+import com.github.tvinke.algorilla.rules.ComplexityModel
 import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
-import com.github.tvinke.algorilla.rules.SuggestedFix
 import com.github.tvinke.algorilla.util.findDescendants
 
 /**
@@ -67,12 +67,14 @@ public class HeavyweightObjectPerInvocationRule : Rule {
         fn: FunctionDecl,
         creation: ObjectCreation,
     ): Finding {
+        val cx = ComplexityModel.heavyweightPerInvocation()
         val evidence =
             listOf(
                 Evidence(
                     location = creation.location,
                     label = "new ${creation.typeName}() in ${fn.name}()",
                     executionContext = ExecutionContext.SINGLE,
+                    complexity = ComplexityModel.bottleneck("init"),
                 ),
             )
         return Finding(
@@ -82,13 +84,9 @@ public class HeavyweightObjectPerInvocationRule : Rule {
             location = creation.location,
             message = "${creation.typeName} created inside ${fn.name}() on every invocation",
             suggestion = "Reuse as a static final field or inject via dependency injection",
-            currentComplexity = "O(n * init)",
-            suggestedComplexity = "O(1)",
+            currentComplexity = cx.current,
+            suggestedComplexity = cx.suggested,
             evidence = evidence,
-            suggestedFix =
-                SuggestedFix(
-                    description = "Move ${creation.typeName} to a private static final field",
-                ),
         )
     }
 }

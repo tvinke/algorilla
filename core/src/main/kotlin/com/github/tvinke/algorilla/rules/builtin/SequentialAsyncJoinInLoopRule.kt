@@ -64,10 +64,17 @@ public class SequentialAsyncJoinInLoopRule : Rule {
         loopStack: List<LoopNode>,
     ): Finding {
         val outerLoop = loopStack.first()
+        val loopVar = outerLoop.iteratedVariable ?: "items"
         val evidence =
             listOf(
-                Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP),
-                Evidence(call.location, ".${call.name}() blocks on each iteration", ExecutionContext.INSIDE_LOOP),
+                Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP, complexity = "O(|$loopVar|)"),
+                Evidence(
+                    call.location,
+                    ".${call.name}() blocks on each iteration",
+                    ExecutionContext.INSIDE_LOOP,
+                    depth = 1,
+                    complexity = "wait \u2190 bottleneck",
+                ),
             )
         return Finding(
             ruleId = id,
@@ -76,7 +83,7 @@ public class SequentialAsyncJoinInLoopRule : Rule {
             location = call.location,
             message = "Blocking .${call.name}() on future inside ${outerLoop.kind.label()}",
             suggestion = "Collect all futures first, then call .join()/.get() outside the loop (e.g. CompletableFuture.allOf)",
-            currentComplexity = "O(n * wait)",
+            currentComplexity = "O(|$loopVar| * wait)",
             suggestedComplexity = "O(max-wait)",
             evidence = evidence,
         )

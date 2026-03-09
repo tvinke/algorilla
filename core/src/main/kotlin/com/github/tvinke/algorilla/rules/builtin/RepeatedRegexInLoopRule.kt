@@ -64,10 +64,17 @@ public class RepeatedRegexInLoopRule : Rule {
         desc: String,
     ): Finding {
         val outerLoop = loopStack.first()
+        val loopVar = outerLoop.iteratedVariable ?: "items"
         val evidence =
             listOf(
-                Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP),
-                Evidence(node.location, "$desc inside loop", ExecutionContext.INSIDE_LOOP),
+                Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP, complexity = "O(|$loopVar|)"),
+                Evidence(
+                    node.location,
+                    "$desc inside loop",
+                    ExecutionContext.INSIDE_LOOP,
+                    depth = 1,
+                    complexity = "compile \u2190 bottleneck",
+                ),
             )
         return Finding(
             ruleId = id,
@@ -76,8 +83,8 @@ public class RepeatedRegexInLoopRule : Rule {
             location = node.location,
             message = "Regex compilation ($desc) inside ${outerLoop.kind.label()}",
             suggestion = "Compile the pattern once outside the loop and reuse the compiled Pattern",
-            currentComplexity = "O(n * compile)",
-            suggestedComplexity = "O(n)",
+            currentComplexity = "O(|$loopVar| * compile)",
+            suggestedComplexity = "O(|$loopVar|)",
             evidence = evidence,
         )
     }

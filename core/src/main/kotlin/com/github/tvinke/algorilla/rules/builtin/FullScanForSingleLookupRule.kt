@@ -9,6 +9,7 @@ import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LookupCall
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.rules.AnalysisContext
+import com.github.tvinke.algorilla.rules.ComplexityModel
 import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
@@ -66,17 +67,20 @@ public class FullScanForSingleLookupRule : Rule {
         fn: FunctionDecl,
         call: FunctionCall,
     ): Finding {
+        val cx = ComplexityModel.fullScanForLookup()
         val evidence =
             listOf(
                 Evidence(
                     location = call.location,
                     label = "${call.name}() loads all records",
                     executionContext = ExecutionContext.SINGLE,
+                    complexity = ComplexityModel.bottleneck("O(n)"),
                 ),
                 Evidence(
                     location = fn.location,
                     label = "followed by in-memory filtering in ${fn.name}()",
                     executionContext = ExecutionContext.SINGLE,
+                    complexity = "O(n)",
                 ),
             )
         return Finding(
@@ -86,8 +90,8 @@ public class FullScanForSingleLookupRule : Rule {
             location = call.location,
             message = "${call.name}() followed by in-memory filtering in ${fn.name}()",
             suggestion = "Use a targeted query instead of loading all records and filtering in memory",
-            currentComplexity = "O(n)",
-            suggestedComplexity = "O(1)",
+            currentComplexity = cx.current,
+            suggestedComplexity = cx.suggested,
             evidence = evidence,
         )
     }
