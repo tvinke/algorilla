@@ -35,6 +35,15 @@ Output: `cli/build/libs/algorilla-<version>.jar`
 java -jar cli/build/libs/algorilla-<version>.jar --help
 ```
 
+## Build & serve documentation locally
+
+```bash
+pip3 install -r docs/requirements.txt
+python3 -m mkdocs serve -f docs/mkdocs.yml
+```
+
+Opens a dev server at [http://127.0.0.1:8000/](http://127.0.0.1:8000/) with auto-reload on file changes. Documentation source lives in `docs/docs/`.
+
 ## Project Structure
 
 ```

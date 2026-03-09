@@ -2,7 +2,8 @@
 
 ## Requirements
 
-- **Java 21** or later
+- **Java 11** or later (to run)
+- **Java 21** or later (only needed to build from source)
 
 ## Download
 

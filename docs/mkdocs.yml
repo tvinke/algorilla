@@ -20,7 +20,6 @@ theme:
         icon: material/brightness-4
         name: Switch to light mode
   features:
-    - navigation.tabs
     - navigation.sections
     - navigation.expand
     - content.code.copy
@@ -39,6 +38,11 @@ markdown_extensions:
   - tables
   - toc:
       permalink: true
+  - attr_list
+  - md_in_html
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
 
 nav:
   - Home: index.md
@@ -48,13 +52,27 @@ nav:
     - Configuration: getting-started/configuration.md
   - Rules:
     - Overview: rules/index.md
-    - Nested Lookup: rules/nested-lookup.md
-    - Sort for Last: rules/sort-for-last.md
-    - Expensive Sort Comparator: rules/expensive-sort-comparator.md
-    - Date in Sort: rules/date-in-sort.md
-    - Repeated Linear Scan: rules/repeated-linear-scan.md
-    - Bulk Load for Single Lookup: rules/full-scan-for-single-lookup.md
-    - Expensive Construction: rules/heavyweight-object-per-invocation.md
+    - Loop Amplifiers:
+      - Nested Lookup: rules/nested-lookup.md
+      - Repeated Linear Scan: rules/repeated-linear-scan.md
+      - Repeated Regex in Loop: rules/repeated-regex-in-loop.md
+      - Expensive Serialization in Loop: rules/expensive-serialization-in-loop.md
+      - Sequential Async Join in Loop: rules/sequential-async-join-in-loop.md
+      - In-Loop Collection Building: rules/in-loop-collection-building.md
+    - Sort Abuse:
+      - Sort for Last: rules/sort-for-last.md
+      - Expensive Sort Comparator: rules/expensive-sort-comparator.md
+      - Date in Sort: rules/date-in-sort.md
+      - Filter After Sort: rules/filter-after-sort.md
+    - Query Patterns:
+      - N+1 Query: rules/n-plus-one-query.md
+      - Bulk Load for Single Lookup: rules/full-scan-for-single-lookup.md
+    - Construction Cost:
+      - Expensive Construction: rules/heavyweight-object-per-invocation.md
+    - Redundancy:
+      - Redundant Expensive Call: rules/redundant-expensive-call.md
+      - Uncached Getter: rules/uncached-getter.md
+      - Chained Getters: rules/chained-getters.md
   - Guide:
     - Understanding Output: guide/understanding-output.md
     - CLI Reference: guide/cli-reference.md
@@ -79,3 +97,4 @@ nav:
     - Adding Languages: developer/adding-languages.md
     - Testing: developer/testing.md
     - Releasing: developer/releasing.md
+  - Changelog: changelog.md
