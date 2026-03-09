@@ -10,6 +10,7 @@ import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
+import com.github.tvinke.algorilla.semantics.MethodPurity
 import com.github.tvinke.algorilla.util.findDescendants
 
 /**
@@ -89,24 +90,6 @@ private fun argFingerprint(node: IRNode): String =
         else -> node.toString().take(100)
     }
 
-/**
- * Methods that are meant to be called for side effects rather than return values.
- * These should never be flagged as "redundant" even with same arguments.
- */
-private val SIDE_EFFECT_PREFIXES = listOf(
-    "set", "add", "put", "remove", "delete", "insert", "append", "write", "print",
-    "log", "debug", "info", "warn", "error", "trace",
-    "send", "emit", "publish", "notify", "dispatch",
-    "register", "subscribe", "on",
-    "path", "header", "param", "query", "body", "accept", "contentType",
-    "assert", "verify", "expect", "should",
-)
-
-private val SIDE_EFFECT_TARGETS = listOf(
-    "log", "logger", "console", "system.out", "system.err",
-    "builder", "uriBuilder", "response", "request",
-)
-
 /** Trivially cheap methods that are never worth caching */
 private val TRIVIAL_METHODS = setOf(
     "equals", "hashCode", "toString", "valueOf", "compareTo",
@@ -117,10 +100,16 @@ private val TRIVIAL_METHODS = setOf(
     "charAt", "codePointAt", "getClass", "name", "ordinal",
 )
 
+/**
+ * Builder-style method names that are called for chaining rather than return value.
+ * These overlap with pure prefixes but are side-effectful in builder context.
+ */
+private val BUILDER_METHODS = setOf(
+    "path", "header", "param", "query", "body", "accept", "contentType",
+)
+
 private fun isSideEffectCall(call: FunctionCall): Boolean {
-    val name = call.name.lowercase()
-    if (SIDE_EFFECT_PREFIXES.any { name.startsWith(it) }) return true
     if (call.name in TRIVIAL_METHODS) return true
-    val target = call.qualifiedTarget?.lowercase() ?: return false
-    return SIDE_EFFECT_TARGETS.any { target.contains(it) }
+    if (call.name in BUILDER_METHODS) return true
+    return MethodPurity.isSideEffect(call.name, call.qualifiedTarget)
 }
