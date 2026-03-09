@@ -41,7 +41,7 @@ If you use the [pre-commit](https://pre-commit.com) framework, add this to your 
 ```yaml
 repos:
   - repo: https://github.com/tvinke/algorilla
-    rev: v0.1.1
+    rev: v0.1.0  # replace with latest release tag
     hooks:
       - id: algorilla
         name: algorilla
