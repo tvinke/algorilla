@@ -65,6 +65,7 @@ public class AnalysisEngine(
         return AnalysisResult(
             findings = allFindings.sortedWith(compareBy({ it.location.file }, { it.location.line })),
             filesAnalyzed = sourceFiles.size,
+            filesCached = sourceFiles.size - filesToParse.size,
             errors = errors,
             elapsedMs = elapsed,
         )
@@ -191,6 +192,7 @@ private data class ParseResult(
 public data class AnalysisResult(
     val findings: List<Finding>,
     val filesAnalyzed: Int,
+    val filesCached: Int = 0,
     val errors: List<AnalysisError>,
     val elapsedMs: Long,
 )

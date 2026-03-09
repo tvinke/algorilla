@@ -77,6 +77,7 @@ public class ConsoleReporter : Reporter {
                 .map { it.location.file }
                 .toSet()
                 .size
+        val cacheInfo = if (result.filesCached > 0) " (${result.filesCached} cached)" else ""
         val elapsedStr = String.format(Locale.US, "%.1f", result.elapsedMs / MS_PER_SECOND)
         val errors = result.findings.count { it.severity == Severity.ERROR }
         val warnings = result.findings.count { it.severity == Severity.WARNING }
@@ -89,7 +90,7 @@ public class ConsoleReporter : Reporter {
         val breakdown = if (parts.isNotEmpty()) " (${parts.joinToString(", ")})" else ""
 
         output.appendLine(
-            "Scanned ${result.filesAnalyzed} files in ${elapsedStr}s. " +
+            "Scanned ${result.filesAnalyzed} files$cacheInfo in ${elapsedStr}s. " +
                 "Found ${result.findings.size} ${pluralize("issue", result.findings.size)}$breakdown" +
                 if (fileCount > 0) " across $fileCount ${pluralize("file", fileCount)}." else ".",
         )
