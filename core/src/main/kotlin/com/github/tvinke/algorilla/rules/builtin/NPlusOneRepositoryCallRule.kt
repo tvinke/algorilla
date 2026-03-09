@@ -10,6 +10,7 @@ import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
+import com.github.tvinke.algorilla.util.CrossMethodResolver
 
 /**
  * Detects repository/DAO single-record fetch calls inside loops (N+1 problem).
@@ -28,7 +29,7 @@ public class NPlusOneRepositoryCallRule : Rule {
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
-            scanNode(fileRoot, emptyList(), findings)
+            scanNode(fileRoot, emptyList(), context, findings)
         }
         return findings
     }
@@ -36,22 +37,56 @@ public class NPlusOneRepositoryCallRule : Rule {
     private fun scanNode(
         node: IRNode,
         loopStack: List<LoopNode>,
+        context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
         if (node is LoopNode) {
             for (child in node.children) {
-                scanNode(child, loopStack + node, findings)
+                scanNode(child, loopStack + node, context, findings)
             }
             return
         }
 
-        if (loopStack.isNotEmpty() && node is FunctionCall && isSingleRecordFetch(node)) {
-            findings.add(buildFinding(node, loopStack))
+        if (loopStack.isNotEmpty() && node is FunctionCall) {
+            if (isSingleRecordFetch(node)) {
+                findings.add(buildFinding(node, loopStack))
+            } else {
+                // Cross-method: check if a helper method internally calls a repository method
+                val maxDepth = context.config.maxCallDepth.coerceAtMost(2)
+                val hiddenFetch = CrossMethodResolver.resolveAndFind<FunctionCall>(
+                    node, context.symbolTable, maxDepth = maxDepth,
+                ) { isSingleRecordFetch(it) }
+                if (hiddenFetch != null) {
+                    findings.add(buildCrossMethodFinding(node, hiddenFetch, loopStack))
+                }
+            }
         }
 
         for (child in node.children) {
-            scanNode(child, loopStack, findings)
+            scanNode(child, loopStack, context, findings)
         }
+    }
+
+    private fun buildCrossMethodFinding(
+        call: FunctionCall,
+        hiddenFetch: FunctionCall,
+        loopStack: List<LoopNode>,
+    ): Finding {
+        val outerLoop = loopStack.first()
+        val target = hiddenFetch.qualifiedTarget ?: "repository"
+        val evidence = listOf(
+            Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP),
+            Evidence(call.location, "${call.name}() called per iteration", ExecutionContext.INSIDE_LOOP),
+            Evidence(hiddenFetch.location, "$target.${hiddenFetch.name}() inside ${call.name}()", ExecutionContext.INSIDE_LOOP),
+        )
+        return Finding(
+            ruleId = id, ruleName = name, severity = severity,
+            location = call.location,
+            message = "Single-record fetch $target.${hiddenFetch.name}() inside ${call.name}() called from ${outerLoop.kind.label()} (N+1)",
+            suggestion = "Bulk fetch all needed records before the loop, or build an in-memory Map",
+            currentComplexity = "O(n * IO)", suggestedComplexity = "O(1 * IO + n)",
+            evidence = evidence,
+        )
     }
 
     private fun buildFinding(call: FunctionCall, loopStack: List<LoopNode>): Finding {

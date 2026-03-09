@@ -1,6 +1,7 @@
 package com.github.tvinke.algorilla.rules.builtin
 
 import com.github.tvinke.algorilla.model.ExecutionContext
+import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
@@ -12,6 +13,7 @@ import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
+import com.github.tvinke.algorilla.util.CrossMethodResolver
 import com.github.tvinke.algorilla.util.hasO1Type
 
 /**
@@ -30,7 +32,7 @@ public class NestedLookupRule : Rule {
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
-            scanNode(fileRoot, null, emptyList(), findings)
+            scanNode(fileRoot, null, emptyList(), context, findings)
         }
         return findings
     }
@@ -39,13 +41,14 @@ public class NestedLookupRule : Rule {
         node: IRNode,
         enclosingFn: FunctionDecl?,
         iterationStack: List<IRNode>,
+        context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
         val fn = if (node is FunctionDecl) node else enclosingFn
 
         if (node is LoopNode) {
             for (child in node.children) {
-                scanNode(child, fn, iterationStack + node, findings)
+                scanNode(child, fn, iterationStack + node, context, findings)
             }
             return
         }
@@ -59,14 +62,25 @@ public class NestedLookupRule : Rule {
             // If this lookup itself iterates (has children = closure body), treat as iteration context
             if (node.children.isNotEmpty() && isIteratingLookup(node.kind)) {
                 for (child in node.children) {
-                    scanNode(child, fn, iterationStack + node, findings)
+                    scanNode(child, fn, iterationStack + node, context, findings)
                 }
                 return
             }
         }
 
+        // Cross-method: if a function call inside a loop resolves to a method containing a linear lookup
+        if (iterationStack.isNotEmpty() && node is FunctionCall) {
+            val maxDepth = context.config.maxCallDepth.coerceAtMost(2)
+            val hiddenLookup = CrossMethodResolver.resolveAndFind<LookupCall>(
+                node, context.symbolTable, maxDepth = maxDepth,
+            ) { !it.isO1 }
+            if (hiddenLookup != null) {
+                findings.add(buildCrossMethodFinding(node, hiddenLookup, iterationStack))
+            }
+        }
+
         for (child in node.children) {
-            scanNode(child, fn, iterationStack, findings)
+            scanNode(child, fn, iterationStack, context, findings)
         }
     }
 
@@ -89,6 +103,44 @@ public class NestedLookupRule : Rule {
             severity = severity,
             location = outerIteration.location,
             message = "Linear ${lookup.kind.name.lowercase()} on '$targetVar' inside ${iterationLabel(outerIteration)}",
+            suggestion = "Build a HashSet/Map from '$targetVar' before the loop",
+            currentComplexity = "O(n*m)",
+            suggestedComplexity = "O(n+m)",
+            evidence = evidence,
+        )
+    }
+
+    private fun buildCrossMethodFinding(
+        call: FunctionCall,
+        hiddenLookup: LookupCall,
+        iterationStack: List<IRNode>,
+    ): Finding {
+        val outerIteration = iterationStack.first()
+        val targetVar = hiddenLookup.targetVariable ?: "collection"
+        val evidence = iterationStack.map { node ->
+            Evidence(
+                location = node.location,
+                label = "${iterationLabel(node)} over ${iteratedVar(node)}",
+                executionContext = ExecutionContext.INSIDE_LOOP,
+            )
+        } + listOf(
+            Evidence(
+                location = call.location,
+                label = "${call.name}() called per iteration",
+                executionContext = ExecutionContext.INSIDE_LOOP,
+            ),
+            Evidence(
+                location = hiddenLookup.location,
+                label = "linear ${hiddenLookup.kind.name.lowercase()} on '$targetVar' inside ${call.name}()",
+                executionContext = ExecutionContext.INSIDE_LOOP,
+            ),
+        )
+        return Finding(
+            ruleId = id,
+            ruleName = name,
+            severity = severity,
+            location = outerIteration.location,
+            message = "Linear ${hiddenLookup.kind.name.lowercase()} on '$targetVar' inside ${call.name}() called from ${iterationLabel(outerIteration)}",
             suggestion = "Build a HashSet/Map from '$targetVar' before the loop",
             currentComplexity = "O(n*m)",
             suggestedComplexity = "O(n+m)",
