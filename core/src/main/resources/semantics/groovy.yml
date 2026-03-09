@@ -6,6 +6,8 @@ methods:
   collectEntries: { semantics: iteration }
   collectMany:    { semantics: iteration }
   forEach:        { semantics: iteration }
+  groupBy:        { semantics: iteration }
+  countBy:        { semantics: iteration }
 
   # Lookup
   find:        { semantics: lookup, kind: FIND }

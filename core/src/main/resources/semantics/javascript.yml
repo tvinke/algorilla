@@ -5,6 +5,9 @@ methods:
   flatMap: { semantics: iteration }
   reduce:  { semantics: iteration }
   reduceRight: { semantics: iteration }
+  keys:    { semantics: iteration, note: "Object.keys()" }
+  values:  { semantics: iteration, note: "Object.values()" }
+  entries: { semantics: iteration, note: "Object.entries()" }
 
   # Lookup
   find:      { semantics: lookup, kind: FIND }
@@ -33,7 +36,9 @@ methods:
   parse:     { semantics: serialization, note: "JSON.parse" }
 
   # Copy-on-modify
-  concat: { semantics: copy-on-modify }
+  concat:  { semantics: copy-on-modify }
+  slice:   { semantics: copy-on-modify, note: "returns shallow copy of portion" }
+  splice:  { semantics: copy-on-modify, note: "mutates array, returns removed elements" }
 
 heavyweight-types:
   - RegExp
