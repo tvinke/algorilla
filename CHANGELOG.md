@@ -2,6 +2,10 @@
 
 ## 0.1.1 (unreleased)
 
+### Features
+
+- **Rule categories** — Every rule now belongs to a category (Loop amplifiers, Sort abuse, Redundancy, Construction cost, Query patterns). Console output prefixes each finding with its category tag, e.g. `[Loop amplifiers]`. Custom DSL rules can set `category` in the builder (defaults to Redundancy).
+
 ### New rules
 
 - **filter-after-sort** — Detects `sorted().filter()` in stream pipelines where filtering after sorting wastes O(n log n) on elements that will be discarded. Suggests reordering to filter first.
@@ -17,6 +21,10 @@
 - **n-plus-one-repository-call → n-plus-one-query** — Renamed to reflect broader scope (not limited to repository calls). Old ID kept as alias.
 - **heavyweight-object-per-invocation → expensive-construction** — Renamed for brevity. Old ID kept as alias.
 - **full-scan-for-single-lookup → bulk-load-for-single-lookup** — Renamed to better describe the anti-pattern. Old ID kept as alias.
+
+### Documentation
+
+- **Pre-commit hook guide** — New guide covering Git hook setup, pre-commit framework integration, and tips for fast incremental checks on staged files.
 
 ### Rule improvements
 
