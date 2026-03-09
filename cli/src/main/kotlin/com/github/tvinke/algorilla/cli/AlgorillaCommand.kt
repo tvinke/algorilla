@@ -16,7 +16,6 @@ import com.github.tvinke.algorilla.reporting.JsonReporter
 import com.github.tvinke.algorilla.reporting.SarifReporter
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.builtin.ChainedGettersRule
-import com.github.tvinke.algorilla.rules.builtin.DateInSortRule
 import com.github.tvinke.algorilla.rules.builtin.ExpensiveSerializationInLoopRule
 import com.github.tvinke.algorilla.rules.builtin.ExpensiveSortComparatorRule
 import com.github.tvinke.algorilla.rules.builtin.FilterAfterSortRule
@@ -155,7 +154,6 @@ internal class AlgorillaCommand : Callable<Int> {
             NestedLookupRule(),
             SortForLastRule(),
             ExpensiveSortComparatorRule(),
-            DateInSortRule(),
             RepeatedLinearScanRule(),
             FullScanForSingleLookupRule(),
             HeavyweightObjectPerInvocationRule(),

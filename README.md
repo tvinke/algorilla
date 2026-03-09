@@ -64,7 +64,7 @@ void processOrders(List<Order> orders, List<String> priorityIds) {
 - **Configurable**: `.algorilla.yml` for rules, type hints, exclusions
 - **Custom rules**: Extend with your own patterns via Kotlin Script DSL
 - **Project-aware**: Detects Gradle/Maven layout, auto-excludes test code
-- **16 built-in rules**: The most impactful algorithmic anti-patterns, from nested lookups to stream ordering
+- **15 built-in rules**: The most impactful algorithmic anti-patterns, from nested lookups to stream ordering
 - **Deterministic**: No AI/ML — pure AST pattern matching, fully reproducible
 
 ## Rules
@@ -74,8 +74,7 @@ void processOrders(List<Order> orders, List<String> priorityIds) {
 | `nested-lookup` | `contains()`/`filter()`/`find()` inside a loop | O(n*m) → O(n+m) |
 | `repeated-linear-scan` | Same collection scanned 2+ times in one method | k * O(n) → O(n) |
 | `sort-for-last` | `sort()` just to get `first()`/`last()` | O(n log n) → O(n) |
-| `expensive-sort-comparator` | Linear search inside a sort comparator | O(n² log n) → O(n log n) |
-| `date-in-sort` | `new Date()` / date parsing per comparison | Heap churn per comparison |
+| `expensive-sort-comparator` | Linear search, date parsing, or heavy objects in sort comparator | O(n² log n) → O(n log n) |
 | `full-scan-for-single-lookup` | `findAll()` + filter when a targeted query would do | O(n) → O(1) |
 | `heavyweight-object-per-invocation` | `new ObjectMapper()` inside a method body | ~1ms allocation per call |
 | `n-plus-one-repository-call` | `findById()`/`countBy*` inside a loop | O(n * IO) → O(1 * IO) |

@@ -10,8 +10,7 @@ Algorilla is a static analysis tool that finds hidden O(n²) and O(n·m) perform
 |------|---------|--------|
 | [Nested Lookup](rules/nested-lookup.md) | `contains()` inside a loop | O(n²) → O(n) |
 | [Sort for Last](rules/sort-for-last.md) | `sort().first()` | O(n log n) → O(n) |
-| [Expensive Sort Comparator](rules/expensive-sort-comparator.md) | Linear search in comparator | O(n² log n) → O(n log n) |
-| [Date in Sort](rules/date-in-sort.md) | Date parsing in comparator | O(n log n) → O(n log n)* |
+| [Expensive Sort Comparator](rules/expensive-sort-comparator.md) | Linear search, date parsing in comparator | O(n² log n) → O(n log n) |
 | [Repeated Linear Scan](rules/repeated-linear-scan.md) | Multiple `find()` on same collection | O(n·k) → O(n) |
 | [Full Scan for Single Lookup](rules/full-scan-for-single-lookup.md) | Load all, then filter | O(n) → O(1) |
 | [Heavyweight Object per Invocation](rules/heavyweight-object-per-invocation.md) | `new ObjectMapper()` in methods | Allocation overhead |

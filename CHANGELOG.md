@@ -6,6 +6,11 @@
 
 - **filter-after-sort** — Detects `sorted().filter()` in stream pipelines where filtering after sorting wastes O(n log n) on elements that will be discarded. Suggests reordering to filter first.
 
+### Breaking changes
+
+- **date-in-sort merged into expensive-sort-comparator** — The `date-in-sort` rule is now part of `expensive-sort-comparator`, which detects linear lookups, date parsing, and heavyweight object creation inside sort comparators. The old `date-in-sort` ID is accepted as an alias in suppress comments and config.
+- **Rule aliases** — Rules can now declare `aliases` for backwards compatibility after renames. Old IDs in `// algorilla:ignore` comments and `.algorilla.yml` config keep working.
+
 ### Rule improvements
 
 - **n-plus-one-repository-call** — Now detects Spring Data `countBy*` query methods inside loops, and `getXxxByYyyId` patterns without requiring a known repository target (catches Vuex store getter N+1 patterns)

@@ -6,7 +6,6 @@ import com.github.tvinke.algorilla.graph.SymbolTable
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
-import com.github.tvinke.algorilla.rules.builtin.DateInSortRule
 import com.github.tvinke.algorilla.rules.builtin.ExpensiveSortComparatorRule
 import com.github.tvinke.algorilla.rules.builtin.FilterAfterSortRule
 import com.github.tvinke.algorilla.rules.builtin.FullScanForSingleLookupRule
@@ -142,14 +141,14 @@ internal class RulesIntegrationTest {
 
     @Nested
     inner class DateInSortTests {
-        private val rule = DateInSortRule()
+        private val rule = ExpensiveSortComparatorRule()
 
         @Test
         fun `should detect Date creation inside sort comparator`() {
             val findings = analyzeFixture("date-in-sort/positive/date-creation-in-comparator.java", rule)
 
             findings.size shouldBe 2
-            findings.all { it.ruleId == "date-in-sort" } shouldBe true
+            findings.all { it.ruleId == "expensive-sort-comparator" } shouldBe true
             findings.first().message shouldContain "Date"
         }
 
