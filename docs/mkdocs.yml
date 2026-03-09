@@ -53,8 +53,8 @@ nav:
     - Expensive Sort Comparator: rules/expensive-sort-comparator.md
     - Date in Sort: rules/date-in-sort.md
     - Repeated Linear Scan: rules/repeated-linear-scan.md
-    - Full Scan for Single Lookup: rules/full-scan-for-single-lookup.md
-    - Heavyweight Object per Invocation: rules/heavyweight-object-per-invocation.md
+    - Bulk Load for Single Lookup: rules/full-scan-for-single-lookup.md
+    - Expensive Construction: rules/heavyweight-object-per-invocation.md
   - Guide:
     - Understanding Output: guide/understanding-output.md
     - CLI Reference: guide/cli-reference.md

@@ -11,7 +11,7 @@ for (Item item : items) { ... }
 // algorilla:ignore nested-lookup
 if (list.contains(value)) { ... }
 
-/* algorilla:ignore heavyweight-object-per-invocation */
+/* algorilla:ignore expensive-construction */
 ObjectMapper mapper = new ObjectMapper();
 ```
 

@@ -1,6 +1,6 @@
-# Full Scan for Single Lookup
+# Bulk Load for Single Lookup
 
-**Rule ID:** `full-scan-for-single-lookup` · **Severity:** WARNING · **Complexity:** O(n) → O(1)
+**Rule ID:** `bulk-load-for-single-lookup` · **Severity:** WARNING · **Complexity:** O(n) → O(1)
 
 ## Description
 

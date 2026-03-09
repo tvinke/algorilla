@@ -20,8 +20,9 @@ import com.github.tvinke.algorilla.util.findDescendants
  * Constructors are excluded — it's normal to initialize heavyweight objects in a constructor.
  */
 public class HeavyweightObjectPerInvocationRule : Rule {
-    override val id: String = "heavyweight-object-per-invocation"
-    override val name: String = "Heavyweight Object Per Invocation"
+    override val id: String = "expensive-construction"
+    override val name: String = "Expensive Construction"
+    override val aliases: List<String> = listOf("heavyweight-object-per-invocation")
     override val severity: Severity = Severity.INFO
     override val languages: Set<Language> = Language.entries.toSet()
 

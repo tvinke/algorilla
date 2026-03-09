@@ -19,8 +19,9 @@ import com.github.tvinke.algorilla.util.findDescendants
  * A targeted query is typically O(1) compared to loading everything at O(n).
  */
 public class FullScanForSingleLookupRule : Rule {
-    override val id: String = "full-scan-for-single-lookup"
-    override val name: String = "Full Scan For Single Lookup"
+    override val id: String = "bulk-load-for-single-lookup"
+    override val name: String = "Bulk Load For Single Lookup"
+    override val aliases: List<String> = listOf("full-scan-for-single-lookup")
     override val severity: Severity = Severity.WARNING
     override val languages: Set<Language> = Language.entries.toSet()
 

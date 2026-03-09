@@ -27,7 +27,7 @@ rules:
   nested-lookup:
     enabled: true
     severity: error
-  heavyweight-object-per-invocation:
+  expensive-construction:
     enabled: false
 
 # Type hints for collections the tool can't resolve

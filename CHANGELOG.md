@@ -10,13 +10,16 @@
 
 - **date-in-sort merged into expensive-sort-comparator** — The `date-in-sort` rule is now part of `expensive-sort-comparator`, which detects linear lookups, date parsing, and heavyweight object creation inside sort comparators. The old `date-in-sort` ID is accepted as an alias in suppress comments and config.
 - **Rule aliases** — Rules can now declare `aliases` for backwards compatibility after renames. Old IDs in `// algorilla:ignore` comments and `.algorilla.yml` config keep working.
+- **n-plus-one-repository-call → n-plus-one-query** — Renamed to reflect broader scope (not limited to repository calls). Old ID kept as alias.
+- **heavyweight-object-per-invocation → expensive-construction** — Renamed for brevity. Old ID kept as alias.
+- **full-scan-for-single-lookup → bulk-load-for-single-lookup** — Renamed to better describe the anti-pattern. Old ID kept as alias.
 
 ### Rule improvements
 
-- **n-plus-one-repository-call** — Now detects Spring Data `countBy*` query methods inside loops, and `getXxxByYyyId` patterns without requiring a known repository target (catches Vuex store getter N+1 patterns)
+- **n-plus-one-query** — Now detects Spring Data `countBy*` query methods inside loops, and `getXxxByYyyId` patterns without requiring a known repository target (catches Vuex store getter N+1 patterns)
 - **redundant-expensive-call** — No longer flags trivially cheap methods like `equals()`, `Character.isDigit()`, `Math.toIntExact()` as redundant. Also excludes test assertion methods (`assertThat`, `assertTrue`, `verify`, `expect`, `should*`) that are intentionally repeated.
-- **heavyweight-object-per-invocation** — Extended with `DecimalFormat`, `SimpleDateFormat`, `Collator`, `RuleBasedCollator`, `MessageDigest` — all expensive to construct per method call.
-- **full-scan-for-single-lookup** — Excludes DOM/test framework targets (`wrapper.findAll()` from Vue Test Utils no longer triggers false positives)
+- **expensive-construction** — Extended with `DecimalFormat`, `SimpleDateFormat`, `Collator`, `RuleBasedCollator`, `MessageDigest` — all expensive to construct per method call.
+- **bulk-load-for-single-lookup** — Excludes DOM/test framework targets (`wrapper.findAll()` from Vue Test Utils no longer triggers false positives)
 
 ### Parser improvements
 
@@ -36,13 +39,13 @@ First public release of algorilla.
 - **expensive-sort-comparator** — Linear lookup inside sort comparator
 - **date-in-sort** — Date creation/parsing inside sort comparator
 - **repeated-linear-scan** — Multiple linear scans on same collection
-- **full-scan-for-single-lookup** — Loading all records then filtering in memory
-- **heavyweight-object-per-invocation** — ObjectMapper/Gson created in method body
+- **bulk-load-for-single-lookup** — Loading all records then filtering in memory
+- **expensive-construction** — ObjectMapper/Gson created in method body
 - **repeated-regex-in-loop** — Regex compilation inside loop
 - **expensive-serialization-in-loop** — writeValueAsString/readValue inside loop
 - **sequential-async-join-in-loop** — Blocking .join()/.get() on futures in loop
 - **in-loop-collection-building** — addAll/concat/putAll inside loop
-- **n-plus-one-repository-call** — Single-record DAO fetch inside loop
+- **n-plus-one-query** — Single-record DAO fetch inside loop
 - **redundant-expensive-call** — Same call with same args invoked multiple times
 - **uncached-getter** — Getter-pattern call repeated with same argument
 - **chained-getters** — Cascading getter chain where each feeds into the next

@@ -8,8 +8,8 @@ Algorilla ships with 6 built-in rules that detect common algorithmic complexity 
 | `sort-for-last` | [Sort for Last](sort-for-last.md) | WARNING | O(n log n) where O(n) suffices |
 | `expensive-sort-comparator` | [Expensive Sort Comparator](expensive-sort-comparator.md) | WARNING | O(n² log n) where O(n log n) suffices |
 | `repeated-linear-scan` | [Repeated Linear Scan](repeated-linear-scan.md) | WARNING | O(n·k) where O(n) suffices |
-| `full-scan-for-single-lookup` | [Full Scan for Single Lookup](full-scan-for-single-lookup.md) | WARNING | O(n) where O(1) suffices |
-| `heavyweight-object-per-invocation` | [Heavyweight Object per Invocation](heavyweight-object-per-invocation.md) | WARNING | Unnecessary allocation overhead |
+| `bulk-load-for-single-lookup` | [Bulk Load for Single Lookup](full-scan-for-single-lookup.md) | WARNING | O(n) where O(1) suffices |
+| `expensive-construction` | [Expensive Construction](heavyweight-object-per-invocation.md) | WARNING | Unnecessary allocation overhead |
 
 ## Disabling Rules
 

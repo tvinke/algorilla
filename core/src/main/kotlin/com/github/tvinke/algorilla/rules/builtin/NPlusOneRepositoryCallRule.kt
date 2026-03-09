@@ -19,8 +19,9 @@ import com.github.tvinke.algorilla.rules.Rule
  * Users can extend what counts as a repository call via `.algorilla.yml`.
  */
 public class NPlusOneRepositoryCallRule : Rule {
-    override val id: String = "n-plus-one-repository-call"
-    override val name: String = "N+1 Repository Call"
+    override val id: String = "n-plus-one-query"
+    override val name: String = "N+1 Query"
+    override val aliases: List<String> = listOf("n-plus-one-repository-call")
     override val severity: Severity = Severity.WARNING
     override val languages: Set<Language> = Language.entries.toSet()
 

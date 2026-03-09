@@ -1,6 +1,6 @@
-# Heavyweight Object per Invocation
+# Expensive Construction
 
-**Rule ID:** `heavyweight-object-per-invocation` · **Severity:** WARNING
+**Rule ID:** `expensive-construction` · **Severity:** WARNING
 
 ## Description
 

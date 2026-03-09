@@ -58,7 +58,7 @@ internal class RulesIntegrationTest {
                 )
 
             findings shouldHaveSize 1
-            findings.first().ruleId shouldBe "heavyweight-object-per-invocation"
+            findings.first().ruleId shouldBe "expensive-construction"
             findings.first().message shouldContain "ObjectMapper"
             findings.first().message shouldContain "serialize"
         }
@@ -209,7 +209,7 @@ internal class RulesIntegrationTest {
                 )
 
             findings shouldHaveSize 1
-            findings.first().ruleId shouldBe "full-scan-for-single-lookup"
+            findings.first().ruleId shouldBe "bulk-load-for-single-lookup"
             findings.first().message shouldContain "findAll"
             findings.first().currentComplexity shouldBe "O(n)"
             findings.first().suggestedComplexity shouldBe "O(1)"
