@@ -9,11 +9,11 @@ Detects cascading getter patterns where the result of one lookup feeds into anot
 ## Bad Example
 
 ```java
-public String getOwnerName(Long registrationId) {
-    Registration reg = findRegistration(registrationId);  // O(n)
-    Animal animal = findAnimal(reg.getAnimalId());         // O(n), depends on result above
-    Owner owner = findOwner(animal.getOwnerId());          // O(n), depends on result above
-    return owner.getName();
+public String getCustomerName(Long orderId) {
+    Order order = findOrder(orderId);                       // O(n)
+    Payment payment = findPayment(order.getPaymentId());    // O(n), depends on result above
+    Customer customer = findCustomer(payment.getCustomerId()); // O(n), depends on result above
+    return customer.getName();
 }
 ```
 
@@ -21,15 +21,15 @@ public String getOwnerName(Long registrationId) {
 
 ```java
 // Pre-build lookup maps
-Map<Long, Registration> regMap = buildRegistrationMap();
-Map<Long, Animal> animalMap = buildAnimalMap();
-Map<Long, Owner> ownerMap = buildOwnerMap();
+Map<Long, Order> orderMap = buildOrderMap();
+Map<Long, Payment> paymentMap = buildPaymentMap();
+Map<Long, Customer> customerMap = buildCustomerMap();
 
-public String getOwnerName(Long registrationId) {
-    Registration reg = regMap.get(registrationId);     // O(1)
-    Animal animal = animalMap.get(reg.getAnimalId());  // O(1)
-    Owner owner = ownerMap.get(animal.getOwnerId());   // O(1)
-    return owner.getName();
+public String getCustomerName(Long orderId) {
+    Order order = orderMap.get(orderId);                    // O(1)
+    Payment payment = paymentMap.get(order.getPaymentId()); // O(1)
+    Customer customer = customerMap.get(payment.getCustomerId()); // O(1)
+    return customer.getName();
 }
 ```
 

@@ -67,6 +67,6 @@ Or suppress inline:
 ```java
 // algorilla:ignore nested-lookup
 for (Order order : orders) {
-    if (items.contains(order.getItemId())) { ... }
+    if (discountedProductIds.contains(order.getProductId())) { ... }
 }
 ```

@@ -52,30 +52,32 @@ Point algorilla at your project:
 java -jar algorilla.jar /path/to/your/project
 ```
 
-Algorilla scans your source files and reports what it finds. Here it detected a `List.contains()` call inside a for-each loop — meaning every iteration does a linear scan of `eligibleIds`, making the whole method O(n²):
+Algorilla scans your source files and reports what it finds. Here it detected a `List.contains()` call inside a for-each loop — meaning every iteration does a linear scan of `discountedProductIds`, making the whole method O(n²). Not sure why that's a problem? Read [the hidden O(n²) problem](hidden-complexity.md) first.
 
 ```
 ⏺ src/main/java/com/example/shop/service/OrderService.java (1 finding)
 
-     warning  · nested-lookup · Loop amplifiers · O(orders × eligibleIds) → O(orders + eligibleIds)
+     warning  · nested-lookup · Loop amplifiers · O(orders × discountedProductIds) → O(orders + discountedProductIds)
     com.example.shop.service.OrderService:45
 
-      Linear contains on 'eligibleIds' inside for-each loop
-      → Build a HashSet/Map from 'eligibleIds' before the loop
+      Linear contains on 'discountedProductIds' inside for-each loop
+      → Build a HashSet/Map from 'discountedProductIds' before the loop
 
-          38 │ public List<Order> findEligibleOrders(List<Order> orders, List<String> eligibleIds) {
+          38 │ public List<Order> applyDiscounts(List<Order> orders, List<String> discountedProductIds) {
              │
           44 │ for (Order order : orders) {
-          45 │     if (eligibleIds.contains(order.getId())) {
+          45 │     if (discountedProductIds.contains(order.getProductId())) {
           46 │         matched.add(order);
 
       ⎿  for-each loop over orders OrderService.java:44 O(orders)
-        ⎿  contains on 'eligibleIds' OrderService.java:45 O(eligibleIds) ← bottleneck
+        ⎿  contains on 'discountedProductIds' OrderService.java:45 O(discountedProductIds) ← bottleneck
 
 Scanned 127 files in 0.4s. Found 1 issues (0 errors, 1 warnings) across 1 files.
 ```
 
-Reading from top to bottom: the **severity**, **rule name**, **category**, and **complexity trade-off** are on the first line. Below that, a **description** explains the problem in plain language, followed by a concrete **suggestion**. The **code snippet** shows the exact lines involved, and the **evidence chain** (the `⎿` tree at the bottom) traces the path from outer loop to bottleneck. The fix here: convert `eligibleIds` to a `HashSet` before the loop for O(1) lookups.
+??? tip "Reading the output"
+
+    Reading from top to bottom: the **severity**, **rule name**, **category**, and **complexity trade-off** are on the first line. Below that, a **description** explains the problem in plain language, followed by a concrete **suggestion**. The **code snippet** shows the exact lines involved, and the **evidence chain** (the `⎿` tree at the bottom) traces the path from outer loop to bottleneck. The fix here: convert `discountedProductIds` to a `HashSet` before the loop for O(1) lookups. See [understanding output](guide/understanding-output.md) for the full format reference.
 
 ## What it finds
 
@@ -86,6 +88,14 @@ Reading from top to bottom: the **severity**, **rule name**, **category**, and *
 | [Query patterns](rules/index.md#query-patterns) | N+1 query, bulk load for single lookup | O(n·IO) → O(IO) |
 | [Construction cost](rules/index.md#construction-cost) | Heavyweight object per invocation | Allocation overhead |
 | [Redundancy](rules/index.md#redundancy) | Redundant calls, uncached getters, chained getters | k·O(f) → O(f) |
+
+## Deep dives
+
+These pages walk through how specific patterns hide in real code, step by step:
+
+- [**The hidden O(n²) problem**](hidden-complexity.md) — how `List.contains()` inside a loop creates quadratic behavior that hides behind method calls and layers of indirection
+- [**The hidden triple scan**](hidden-duplication.md) — how clean, readable stream pipelines quietly traverse the same collection multiple times
+- [**The hidden N+1**](hidden-io.md) — how a simple `findById()` in a loop turns into thousands of database round-trips that only surface in production
 
 ## Why algorilla?
 

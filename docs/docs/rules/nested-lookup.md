@@ -12,8 +12,8 @@ Detects linear lookup operations (`contains`, `indexOf`, `find`, `filter`, `any`
 
     ```java
     for (Order order : orders) {
-        if (eligibleIds.contains(order.getId())) { // O(n) per iteration
-            process(order);
+        if (discountedProductIds.contains(order.getProductId())) { // O(n) per iteration
+            applyDiscount(order);
         }
     }
     ```
@@ -22,8 +22,8 @@ Detects linear lookup operations (`contains`, `indexOf`, `find`, `filter`, `any`
 
     ```groovy
     orders.each { order ->
-        if (eligibleIds.contains(order.id)) { // O(n) per iteration
-            process(order)
+        if (discountedProductIds.contains(order.productId)) { // O(n) per iteration
+            applyDiscount(order)
         }
     }
     ```
@@ -32,8 +32,8 @@ Detects linear lookup operations (`contains`, `indexOf`, `find`, `filter`, `any`
 
     ```javascript
     orders.forEach(order => {
-        if (eligibleIds.includes(order.id)) { // O(n) per iteration
-            process(order);
+        if (discountedProductIds.includes(order.productId)) { // O(n) per iteration
+            applyDiscount(order);
         }
     });
     ```
@@ -43,10 +43,10 @@ Detects linear lookup operations (`contains`, `indexOf`, `find`, `filter`, `any`
 === "Java"
 
     ```java
-    Set<String> eligibleIdSet = new HashSet<>(eligibleIds);
+    Set<String> discountedProductIdSet = new HashSet<>(discountedProductIds);
     for (Order order : orders) {
-        if (eligibleIdSet.contains(order.getId())) { // O(1) per iteration
-            process(order);
+        if (discountedProductIdSet.contains(order.getProductId())) { // O(1) per iteration
+            applyDiscount(order);
         }
     }
     ```
@@ -54,13 +54,16 @@ Detects linear lookup operations (`contains`, `indexOf`, `find`, `filter`, `any`
 === "JavaScript"
 
     ```javascript
-    const eligibleIdSet = new Set(eligibleIds);
+    const discountedProductIdSet = new Set(discountedProductIds);
     orders.forEach(order => {
-        if (eligibleIdSet.has(order.id)) { // O(1) per iteration
-            process(order);
+        if (discountedProductIdSet.has(order.productId)) { // O(1) per iteration
+            applyDiscount(order);
         }
     });
     ```
+
+!!! tip "The fix is almost always the same"
+    Convert the lookup target to a `HashSet` (or `Map` if you need the value) **before** the loop. This turns O(n) per lookup into O(1), and the overall loop from O(n²) to O(n).
 
 ## How Detection Works
 

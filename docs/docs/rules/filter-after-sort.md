@@ -9,18 +9,18 @@ Detects stream or collection pipelines where `filter()` comes after `sorted()`. 
 ## Bad Example
 
 ```java
-List<TeamScore> topScores = scores.stream()
-    .sorted(Comparator.comparing(TeamScore::getPoints).reversed())
-    .filter(s -> s.getPoints() > 0)  // Wasted effort: sorted items that get filtered out
+List<Order> paidByTotal = orders.stream()
+    .sorted(Comparator.comparing(Order::getTotal).reversed())
+    .filter(o -> "PAID".equals(o.getStatus()))  // Wasted effort: sorted items that get filtered out
     .collect(Collectors.toList());
 ```
 
 ## Good Example
 
 ```java
-List<TeamScore> topScores = scores.stream()
-    .filter(s -> s.getPoints() > 0)  // Filter first: fewer items to sort
-    .sorted(Comparator.comparing(TeamScore::getPoints).reversed())
+List<Order> paidByTotal = orders.stream()
+    .filter(o -> "PAID".equals(o.getStatus()))  // Filter first: fewer items to sort
+    .sorted(Comparator.comparing(Order::getTotal).reversed())
     .collect(Collectors.toList());
 ```
 

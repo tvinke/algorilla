@@ -4,15 +4,15 @@
 
 ## Description
 
-Detects getter-style calls invoked multiple times with the same argument in a function. When a method like `getAnimal(id)` is called repeatedly with the same ID, the result should be stored in a local variable.
+Detects getter-style calls invoked multiple times with the same argument in a function. When a method like `getProduct(id)` is called repeatedly with the same ID, the result should be stored in a local variable.
 
 ## Bad Example
 
 ```java
-public void enrichRegistration(Registration reg) {
-    String name = getAnimal(reg.getAnimalId()).getName();
-    String breed = getAnimal(reg.getAnimalId()).getBreed(); // Same call
-    String owner = getAnimal(reg.getAnimalId()).getOwner(); // Same call again
+public void enrichLineItem(LineItem lineItem) {
+    String name = getProduct(lineItem.getProductId()).getName();
+    String category = getProduct(lineItem.getProductId()).getCategory(); // Same call
+    BigDecimal price = getProduct(lineItem.getProductId()).getPrice();   // Same call again
     // ...
 }
 ```
@@ -20,11 +20,11 @@ public void enrichRegistration(Registration reg) {
 ## Good Example
 
 ```java
-public void enrichRegistration(Registration reg) {
-    Animal animal = getAnimal(reg.getAnimalId());
-    String name = animal.getName();
-    String breed = animal.getBreed();
-    String owner = animal.getOwner();
+public void enrichLineItem(LineItem lineItem) {
+    Product product = getProduct(lineItem.getProductId());
+    String name = product.getName();
+    String category = product.getCategory();
+    BigDecimal price = product.getPrice();
 }
 ```
 

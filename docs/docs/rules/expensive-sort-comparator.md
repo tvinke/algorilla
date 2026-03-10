@@ -16,16 +16,16 @@ Detects expensive operations inside sort comparators. When a comparator performs
 
 ```java
 // Linear lookup in comparator
-items.sort((a, b) -> {
-    int indexA = priorityList.indexOf(a.getCategory()); // O(n) per comparison
-    int indexB = priorityList.indexOf(b.getCategory());
+orders.sort((a, b) -> {
+    int indexA = paymentMethods.indexOf(a.getPaymentMethod()); // O(n) per comparison
+    int indexB = paymentMethods.indexOf(b.getPaymentMethod());
     return Integer.compare(indexA, indexB);
 });
 
 // Date parsing in comparator
-items.sort((a, b) -> {
-    Date dateA = dateFormat.parse(a.getDateStr()); // Parsed every comparison
-    Date dateB = dateFormat.parse(b.getDateStr());
+orders.sort((a, b) -> {
+    LocalDate dateA = LocalDate.parse(a.getOrderDate()); // Parsed every comparison
+    LocalDate dateB = LocalDate.parse(b.getOrderDate());
     return dateA.compareTo(dateB);
 });
 ```
@@ -34,17 +34,20 @@ items.sort((a, b) -> {
 
 ```java
 // Pre-build lookup map
-Map<String, Integer> priorityMap = new HashMap<>();
-for (int i = 0; i < priorityList.size(); i++) {
-    priorityMap.put(priorityList.get(i), i);
+Map<String, Integer> methodPriority = new HashMap<>();
+for (int i = 0; i < paymentMethods.size(); i++) {
+    methodPriority.put(paymentMethods.get(i), i);
 }
-items.sort(Comparator.comparingInt(item ->
-    priorityMap.getOrDefault(item.getCategory(), Integer.MAX_VALUE)
+orders.sort(Comparator.comparingInt(order ->
+    methodPriority.getOrDefault(order.getPaymentMethod(), Integer.MAX_VALUE)
 ));
 
 // Pre-parse dates, or compare ISO strings directly
-items.sort(Comparator.comparing(Item::getDateStr));
+orders.sort(Comparator.comparing(Order::getOrderDate));
 ```
+
+!!! info "Why this is worse than it looks"
+    A sort comparator runs O(n log n) times — not O(n). For 10,000 orders, the comparator is called roughly 130,000 times. If each call does a linear scan or parses a date, the total cost explodes.
 
 ## Suggestion
 

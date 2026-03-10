@@ -11,8 +11,8 @@ Detects blocking calls (`.join()`, `.get()`) on futures inside loops. Awaiting e
 === "Java"
 
     ```java
-    for (CompletableFuture<Result> future : futures) {
-        Result result = future.join(); // Blocks on each future sequentially
+    for (CompletableFuture<PaymentResult> paymentFuture : paymentFutures) {
+        PaymentResult result = paymentFuture.join(); // Blocks on each payment gateway response sequentially
         results.add(result);
     }
     ```
@@ -20,8 +20,8 @@ Detects blocking calls (`.join()`, `.get()`) on futures inside loops. Awaiting e
 === "JavaScript"
 
     ```javascript
-    for (const promise of promises) {
-        const result = await promise; // Sequential await
+    for (const paymentPromise of paymentPromises) {
+        const result = await paymentPromise; // Sequential await on payment gateway
         results.push(result);
     }
     ```
@@ -31,16 +31,16 @@ Detects blocking calls (`.join()`, `.get()`) on futures inside loops. Awaiting e
 === "Java"
 
     ```java
-    CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
-    for (CompletableFuture<Result> future : futures) {
-        results.add(future.join()); // All already completed
+    CompletableFuture.allOf(paymentFutures.toArray(new CompletableFuture[0])).join();
+    for (CompletableFuture<PaymentResult> paymentFuture : paymentFutures) {
+        results.add(paymentFuture.join()); // All already completed
     }
     ```
 
 === "JavaScript"
 
     ```javascript
-    const results = await Promise.all(promises);
+    const results = await Promise.all(paymentPromises);
     ```
 
 ## How Detection Works

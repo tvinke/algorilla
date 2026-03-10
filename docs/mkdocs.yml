@@ -46,6 +46,9 @@ markdown_extensions:
 
 nav:
   - Home: index.md
+  - The Hidden O(n²) Problem: hidden-complexity.md
+  - The Hidden Triple Scan: hidden-duplication.md
+  - The Hidden N+1: hidden-io.md
   - Getting Started:
     - Installation: getting-started/installation.md
     - Quick Start: getting-started/quickstart.md
@@ -96,5 +99,7 @@ nav:
     - Adding Rules: developer/adding-rules.md
     - Adding Languages: developer/adding-languages.md
     - Testing: developer/testing.md
+    - Example Domain: developer/example-domain.md
+    - Documentation Guidelines: developer/documentation-guidelines.md
     - Releasing: developer/releasing.md
   - Changelog: changelog.md

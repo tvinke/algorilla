@@ -9,21 +9,21 @@ Detects multiple linear scan operations (`find`, `filter`, `any`, `contains`) on
 ## Bad Example
 
 ```java
-User admin = users.stream().filter(u -> u.isAdmin()).findFirst().orElse(null);
-User owner = users.stream().filter(u -> u.isOwner()).findFirst().orElse(null);
-long activeCount = users.stream().filter(u -> u.isActive()).count();
+Order highestTotal = orders.stream().max(Comparator.comparing(Order::getTotal)).orElse(null);
+Order firstCancelled = orders.stream().filter(o -> "CANCELLED".equals(o.getStatus())).findFirst().orElse(null);
+long paidCount = orders.stream().filter(o -> "PAID".equals(o.getStatus())).count();
 ```
 
 ## Good Example
 
 ```java
-User admin = null;
-User owner = null;
-long activeCount = 0;
-for (User u : users) {
-    if (admin == null && u.isAdmin()) admin = u;
-    if (owner == null && u.isOwner()) owner = u;
-    if (u.isActive()) activeCount++;
+Order highestTotal = null;
+Order firstCancelled = null;
+long paidCount = 0;
+for (Order o : orders) {
+    if (highestTotal == null || o.getTotal().compareTo(highestTotal.getTotal()) > 0) highestTotal = o;
+    if (firstCancelled == null && "CANCELLED".equals(o.getStatus())) firstCancelled = o;
+    if ("PAID".equals(o.getStatus())) paidCount++;
 }
 ```
 

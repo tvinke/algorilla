@@ -29,13 +29,20 @@ With 10,000 orders and 8,000 priority IDs? That's **80 million comparisons**. Yo
 Run it on the code above:
 
 ```
-OrderService.java:2:5
-  nested-lookup (O(n*m) → O(n+m))
-  Linear contains on 'priorityIds' inside for-each loop
-  → Build a HashSet/Map from 'priorityIds' before the loop
-  Evidence:
-    1. OrderService.java:2  for-each loop over orders       [INSIDE_LOOP]
-    2. OrderService.java:3  contains on 'priorityIds'       [INSIDE_LOOP]
+⏺ src/main/java/com/example/shop/service/OrderService.java (1 finding)
+
+     warning  · nested-lookup · Loop amplifiers · O(orders × priorityIds) → O(orders + priorityIds)
+    com.example.shop.service.OrderService:3
+
+      Linear contains on 'priorityIds' inside for-each loop
+      → Build a HashSet/Map from 'priorityIds' before the loop
+
+          2 │ for (Order order : orders) {
+          3 │     if (priorityIds.contains(order.getId())) {
+          4 │         ship(order);
+
+      ⎿  for-each loop over orders OrderService.java:2 O(orders)
+        ⎿  contains on 'priorityIds' OrderService.java:3 O(priorityIds) ← bottleneck
 ```
 
 The fix takes 30 seconds:
@@ -89,7 +96,7 @@ void processOrders(List<Order> orders, List<String> priorityIds) {
 
 ## Requirements
 
-- **JDK 21** or later
+- **JDK 11** or later
 
 ## Quick Start
 

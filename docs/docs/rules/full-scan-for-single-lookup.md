@@ -9,9 +9,9 @@ Detects patterns where all records are loaded from a data source (e.g., `findAll
 ## Bad Example
 
 ```java
-List<User> allUsers = userRepository.findAll();
-User target = allUsers.stream()
-    .filter(u -> u.getId().equals(targetId))
+List<Payment> allPayments = paymentRepository.findAll();
+Payment target = allPayments.stream()
+    .filter(p -> p.getOrderId().equals(orderId))
     .findFirst()
     .orElse(null);
 ```
@@ -19,7 +19,7 @@ User target = allUsers.stream()
 ## Good Example
 
 ```java
-User target = userRepository.findById(targetId).orElse(null);
+Payment target = paymentRepository.findByOrderId(orderId).orElse(null);
 ```
 
 ## Suggestion

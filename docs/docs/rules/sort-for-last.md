@@ -9,17 +9,17 @@ Detects patterns where a collection is sorted only to retrieve the first or last
 ## Bad Example
 
 ```java
-List<Product> sorted = products.stream()
-    .sorted(Comparator.comparing(Product::getPrice))
+List<Order> sorted = orders.stream()
+    .sorted(Comparator.comparing(Order::getTotal).reversed())
     .collect(Collectors.toList());
-Product cheapest = sorted.get(0); // Sorted just for this
+Order highestValue = sorted.get(0); // Sorted just for this
 ```
 
 ## Good Example
 
 ```java
-Product cheapest = products.stream()
-    .min(Comparator.comparing(Product::getPrice))
+Order highestValue = orders.stream()
+    .max(Comparator.comparing(Order::getTotal))
     .orElse(null);
 ```
 

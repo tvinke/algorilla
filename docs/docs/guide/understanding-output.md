@@ -11,20 +11,20 @@ Findings are grouped by file. Each file header shows the path and finding count:
 Each finding then shows:
 
 ```
-     warning  · nested-lookup · Loop amplifiers · O(orders × items) → O(orders + items)
+     warning  · nested-lookup · Loop amplifiers · O(orders × discountedProductIds) → O(orders + discountedProductIds)
     com.example.shop.service.OrderService:45
 
-      Linear contains on 'items' inside for-each loop
-      → Build a HashSet/Map from 'items' before the loop
+      Linear contains on 'discountedProductIds' inside for-each loop
+      → Build a HashSet/Map from 'discountedProductIds' before the loop
 
-          38 │ public List<Order> findMatchingOrders(List<Order> orders, List<String> items) {
+          38 │ public List<Order> applyDiscounts(List<Order> orders, List<String> discountedProductIds) {
              │
           44 │ for (Order order : orders) {
-          45 │     if (items.contains(order.getItemId())) {
+          45 │     if (discountedProductIds.contains(order.getProductId())) {
           46 │         matched.add(order);
 
       ⎿  for-each loop over orders OrderService.java:44 O(orders)
-        ⎿  contains on 'items' OrderService.java:45 O(items) ← bottleneck
+        ⎿  contains on 'discountedProductIds' OrderService.java:45 O(discountedProductIds) ← bottleneck
 ```
 
 The format breaks down as:
@@ -41,21 +41,24 @@ The format breaks down as:
 - **warning** — likely performance problems worth investigating
 - **info** — informational findings that may or may not matter in practice
 
+!!! tip "Start with warnings"
+    If algorilla reports many findings, focus on **warnings** first — they flag the patterns most likely to cause real performance issues. Use `--severity warning` to filter out info-level findings.
+
 ### Evidence chain
 
 The evidence chain shows the execution path that leads to the finding. The `← bottleneck` annotation marks the innermost expensive operation. Indentation reflects nesting depth:
 
 ```
       ⎿  for-each loop over orders OrderService.java:44 O(orders)
-        ⎿  contains on 'items' OrderService.java:45 O(items) ← bottleneck
+        ⎿  contains on 'discountedProductIds' OrderService.java:45 O(discountedProductIds) ← bottleneck
 ```
 
 For cross-method findings, the chain shows the call path:
 
 ```
-      ⎿  for-each loop over products ProductService.java:31 O(products)
-        ⎿  lookupCategory() inside loop ProductService.java:33 O(categories)
-          ⎿  contains on 'categories' CategoryHelper.java:12 O(categories) ← bottleneck
+      ⎿  for-each loop over orders OrderService.java:31 O(orders)
+        ⎿  hasDiscount() inside loop OrderService.java:33 O(discountedProductIds)
+          ⎿  contains on 'discountedProductIds' DiscountService.java:12 O(discountedProductIds) ← bottleneck
 ```
 
 ### Finding count per evidence entry
@@ -81,48 +84,48 @@ Scanned 695 files in 1.6s. Found 94 issues (13 warnings, 81 info) across 49 file
 Files with multiple findings show them sequentially under the same file header:
 
 ```
-⏺ src/main/java/com/example/shop/service/ProductService.java (3 findings)
+⏺ src/main/java/com/example/shop/service/OrderService.java (3 findings)
 
      warning  · sort-for-last · Sort abuse · O(n log n) → O(n)
-    com.example.shop.service.ProductService:67
+    com.example.shop.service.OrderService:67
 
       Sorting entire collection just to access a single element
       → Use .max(Comparator.comparing(...)) or .min(...) instead of sorting
 
-          65 │ return products.stream()
-          66 │         .sorted(Comparator.comparing(Product::getPrice))
+          65 │ return orders.stream()
+          66 │         .sorted(Comparator.comparing(Order::getTotal).reversed())
           67 │         .findFirst();
 
-      ⎿  sorted call ProductService.java:66 O(n log n) ← bottleneck
-        ⎿  .findFirst after sort ProductService.java:67 O(1)
+      ⎿  sorted call OrderService.java:66 O(n log n) ← bottleneck
+        ⎿  .findFirst after sort OrderService.java:67 O(1)
 
      info  · filter-after-sort · Sort abuse · O(n log n + k) → O(k log k + n)
-    com.example.shop.service.ProductService:89
+    com.example.shop.service.OrderService:89
 
       filter() after sorted() — sorting all elements before filtering
       → Move filter() before sorted() to sort fewer elements
 
-          87 │ return products.stream()
-          88 │         .sorted(Comparator.comparing(Product::getRating).reversed())
-          89 │         .filter(p -> p.isInStock())
+          87 │ return orders.stream()
+          88 │         .sorted(Comparator.comparing(Order::getTotal).reversed())
+          89 │         .filter(o -> "PAID".equals(o.getStatus()))
           90 │         .collect(Collectors.toList());
 
-      ⎿  sorted call — sorts all N elements ProductService.java:88 O(n log n) ← bottleneck
-        ⎿  filter after sort — discards elements after sorting ProductService.java:89 O(n)
+      ⎿  sorted call — sorts all N elements OrderService.java:88 O(n log n) ← bottleneck
+        ⎿  filter after sort — discards elements after sorting OrderService.java:89 O(n)
 
      info  · redundant-expensive-call · Redundancy · O(2x) → O(1x)
-    com.example.shop.service.ProductService:112
+    com.example.shop.service.OrderService:112
 
-      calculateDiscount() called 2 times with same arguments in applyPromotions()
+      calculateDiscount() called 2 times with same arguments in applyDiscounts()
       → Cache the result in a local variable
 
-          110 │ if (calculateDiscount(order.getItems()).compareTo(BigDecimal.ZERO) > 0) {
+          110 │ if (calculateDiscount(order.getLineItems()).compareTo(BigDecimal.ZERO) > 0) {
               │
-          112 │     applyDiscount(order, calculateDiscount(order.getItems()));
+          112 │     applyDiscount(order, calculateDiscount(order.getLineItems()));
           113 │ }
 
-      ⎿  calculateDiscount() (1st call) ProductService.java:110
-      ⎿  calculateDiscount() (duplicate) ProductService.java:112
+      ⎿  calculateDiscount() (1st call) OrderService.java:110
+      ⎿  calculateDiscount() (duplicate) OrderService.java:112
 ```
 
 ## SARIF output

@@ -9,9 +9,9 @@ Detects creation of heavyweight objects (like `ObjectMapper`, `Gson`, `DocumentB
 ## Bad Example
 
 ```java
-public String serialize(Order order) {
+public String generateJson(Invoice invoice) {
     ObjectMapper mapper = new ObjectMapper(); // Created on every call
-    return mapper.writeValueAsString(order);
+    return mapper.writeValueAsString(invoice);
 }
 ```
 
@@ -20,8 +20,8 @@ public String serialize(Order order) {
 ```java
 private static final ObjectMapper MAPPER = new ObjectMapper();
 
-public String serialize(Order order) {
-    return MAPPER.writeValueAsString(order);
+public String generateJson(Invoice invoice) {
+    return MAPPER.writeValueAsString(invoice);
 }
 ```
 

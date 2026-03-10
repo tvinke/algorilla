@@ -11,31 +11,31 @@ Detects single-record fetch calls (`findById()`, `getById()`, `countBy*`) inside
 === "Java"
 
     ```java
-    for (Long animalId : animalIds) {
-        Animal animal = animalRepository.findById(animalId); // DB call per iteration
-        results.add(animal);
+    for (Long orderId : orderIds) {
+        Order order = orderRepository.findById(orderId); // DB call per iteration
+        results.add(order);
     }
     ```
 
 === "Groovy"
 
     ```groovy
-    animalIds.each { id ->
-        def animal = animalRepository.findById(id) // DB call per iteration
-        results.add(animal)
+    orderIds.each { id ->
+        def order = orderRepository.findById(id) // DB call per iteration
+        results.add(order)
     }
     ```
 
 ## Good Example
 
 ```java
-Map<Long, Animal> animalMap = animalRepository.findAllById(animalIds)
+Map<Long, Order> orderMap = orderRepository.findAllById(orderIds)
     .stream()
-    .collect(Collectors.toMap(Animal::getId, Function.identity()));
+    .collect(Collectors.toMap(Order::getId, Function.identity()));
 
-for (Long animalId : animalIds) {
-    Animal animal = animalMap.get(animalId); // O(1) map lookup
-    results.add(animal);
+for (Long orderId : orderIds) {
+    Order order = orderMap.get(orderId); // O(1) map lookup
+    results.add(order);
 }
 ```
 
@@ -44,9 +44,12 @@ for (Long animalId : animalIds) {
 1. Identifies loop constructs (for, while, forEach, each, stream operations)
 2. Inside each loop, looks for calls matching repository fetch patterns:
     - Method names: `findById`, `getById`, `findOne`, `getOne`, `loadById`, `countBy*`
-    - Compound patterns: `getAnimalByAnimalId`, `findUserByEmail`
+    - Compound patterns: `getOrderByOrderId`, `findPaymentByTransactionRef`
 3. Also checks target variable names for repository indicators (`repository`, `dao`, `store`, `service`, `client`)
 4. Supports cross-method resolution to catch hidden repository calls in helper methods
+
+!!! warning "The silent scaling killer"
+    N+1 queries are one of the most common performance issues in web applications. They're invisible in development (where the database is local and the dataset is small) and devastating in production (where each query adds network latency).
 
 ## Suggestion
 

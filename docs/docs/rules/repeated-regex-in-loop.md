@@ -11,11 +11,11 @@ Detects regex pattern compilation inside loops. Compiling a regular expression i
 === "Java"
 
     ```java
-    for (String line : lines) {
-        Pattern pattern = Pattern.compile("\\d{4}-\\d{2}-\\d{2}"); // Recompiled every iteration
-        Matcher m = pattern.matcher(line);
+    for (String transactionRef : transactionRefs) {
+        Pattern pattern = Pattern.compile("INV-\\d{4}-\\d{6}"); // Recompiled every iteration
+        Matcher m = pattern.matcher(transactionRef);
         if (m.find()) {
-            dates.add(m.group());
+            invoiceRefs.add(m.group());
         }
     }
     ```
@@ -23,10 +23,10 @@ Detects regex pattern compilation inside loops. Compiling a regular expression i
 === "JavaScript"
 
     ```javascript
-    lines.forEach(line => {
-        const pattern = new RegExp('\\d{4}-\\d{2}-\\d{2}'); // Recompiled every iteration
-        const match = line.match(pattern);
-        if (match) dates.push(match[0]);
+    transactionRefs.forEach(ref => {
+        const pattern = new RegExp('INV-\\d{4}-\\d{6}'); // Recompiled every iteration
+        const match = ref.match(pattern);
+        if (match) invoiceRefs.push(match[0]);
     });
     ```
 
@@ -35,11 +35,11 @@ Detects regex pattern compilation inside loops. Compiling a regular expression i
 === "Java"
 
     ```java
-    Pattern pattern = Pattern.compile("\\d{4}-\\d{2}-\\d{2}");
-    for (String line : lines) {
-        Matcher m = pattern.matcher(line);
+    Pattern pattern = Pattern.compile("INV-\\d{4}-\\d{6}");
+    for (String transactionRef : transactionRefs) {
+        Matcher m = pattern.matcher(transactionRef);
         if (m.find()) {
-            dates.add(m.group());
+            invoiceRefs.add(m.group());
         }
     }
     ```
@@ -47,10 +47,10 @@ Detects regex pattern compilation inside loops. Compiling a regular expression i
 === "JavaScript"
 
     ```javascript
-    const pattern = /\d{4}-\d{2}-\d{2}/;
-    lines.forEach(line => {
-        const match = line.match(pattern);
-        if (match) dates.push(match[0]);
+    const pattern = /INV-\d{4}-\d{6}/;
+    transactionRefs.forEach(ref => {
+        const match = ref.match(pattern);
+        if (match) invoiceRefs.push(match[0]);
     });
     ```
 
