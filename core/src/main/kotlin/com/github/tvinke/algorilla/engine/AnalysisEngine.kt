@@ -11,6 +11,8 @@ import com.github.tvinke.algorilla.graph.SymbolTable
 import com.github.tvinke.algorilla.model.FileRoot
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.IRNode
+import com.github.tvinke.algorilla.model.ObjectCreation
+import com.github.tvinke.algorilla.model.VariableDecl
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
@@ -174,8 +176,40 @@ public class AnalysisEngine(
         symbolTable: SymbolTable,
     ) {
         for (node in nodes) {
-            if (node is FunctionDecl) symbolTable.register(node)
+            if (node is FunctionDecl) {
+                symbolTable.register(node)
+                registerParameterTypes(node, symbolTable)
+            }
+            if (node is VariableDecl) {
+                registerVariableType(node, symbolTable)
+            }
             collectSymbols(node.children, symbolTable)
+        }
+    }
+
+    private fun registerParameterTypes(
+        decl: FunctionDecl,
+        symbolTable: SymbolTable,
+    ) {
+        for (param in decl.parameters) {
+            if (param.typeName != null) {
+                symbolTable.registerType(param.name, param.typeName)
+            }
+        }
+    }
+
+    private fun registerVariableType(
+        decl: VariableDecl,
+        symbolTable: SymbolTable,
+    ) {
+        val type =
+            decl.typeName
+                ?: decl.children
+                    .filterIsInstance<ObjectCreation>()
+                    .firstOrNull()
+                    ?.typeName
+        if (type != null) {
+            symbolTable.registerType(decl.name, type)
         }
     }
 }

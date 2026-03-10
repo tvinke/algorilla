@@ -181,6 +181,25 @@ internal class JavaIRVisitor(
         return listOf(ObjectCreation(typeName = typeName, location = loc, children = argNodes))
     }
 
+    override fun visitFieldDeclaration(ctx: JavaParser.FieldDeclarationContext): List<IRNode> {
+        val typeName = ctx.typeType()?.text
+        val results = mutableListOf<IRNode>()
+
+        for (declarator in ctx.variableDeclarators()?.variableDeclarator() ?: emptyList()) {
+            val varName = declarator.variableDeclaratorId()?.text ?: continue
+            val initChildren = declarator.variableInitializer()?.let { visitChildren(it) } ?: emptyList()
+            results.add(
+                VariableDecl(
+                    name = varName,
+                    typeName = typeName,
+                    location = locationOf(ctx),
+                    children = initChildren,
+                ),
+            )
+        }
+        return results
+    }
+
     override fun visitLocalVariableDeclaration(ctx: JavaParser.LocalVariableDeclarationContext): List<IRNode> {
         val typeName = ctx.typeType()?.text
         val results = mutableListOf<IRNode>()

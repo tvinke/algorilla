@@ -34,6 +34,30 @@ internal class SymbolTableTest {
         table.lookupBySimpleName("unknown") shouldHaveSize 0
     }
 
+    @Test
+    fun `should register and resolve variable types`() {
+        val table = SymbolTable()
+        table.registerType("service", "UserService")
+
+        table.resolveType("service") shouldBe "UserService"
+    }
+
+    @Test
+    fun `should return null for unknown variable type`() {
+        val table = SymbolTable()
+
+        table.resolveType("unknown") shouldBe null
+    }
+
+    @Test
+    fun `should overwrite type when re-registered`() {
+        val table = SymbolTable()
+        table.registerType("repo", "OldRepo")
+        table.registerType("repo", "NewRepo")
+
+        table.resolveType("repo") shouldBe "NewRepo"
+    }
+
     private fun makeDecl(
         qualified: String,
         simple: String,

@@ -77,11 +77,8 @@ public object CrossMethodResolver {
     ): FunctionDecl? {
         if (call.name in unresolvableNames) return null
         if (call.qualifiedTarget != null) {
-            val qualified = symbolTable.lookup("${call.qualifiedTarget}.${call.name}")
-            if (qualified.isNotEmpty()) return bestMatch(qualified, call)
-            // Try class-qualified lookup (receiver may match a declaring class)
-            val byClass = symbolTable.lookupByClassAndName("${call.qualifiedTarget}.${call.name}")
-            if (byClass.isNotEmpty()) return bestMatch(byClass, call)
+            val byTarget = resolveByTarget(call, symbolTable)
+            if (byTarget != null) return byTarget
         }
         // Only fall back to simple name when there's no explicit receiver,
         // or receiver is this/super (which refers to the current class)
@@ -90,6 +87,20 @@ public object CrossMethodResolver {
         }
         val byName = symbolTable.lookupBySimpleName(call.name)
         return bestMatch(byName, call)
+    }
+
+    private fun resolveByTarget(
+        call: FunctionCall,
+        symbolTable: SymbolTable,
+    ): FunctionDecl? {
+        val target = call.qualifiedTarget ?: return null
+        val qualified = symbolTable.lookup("$target.${call.name}")
+        if (qualified.isNotEmpty()) return bestMatch(qualified, call)
+        val byClass = symbolTable.lookupByClassAndName("$target.${call.name}")
+        if (byClass.isNotEmpty()) return bestMatch(byClass, call)
+        val targetType = symbolTable.resolveType(target) ?: return null
+        val byType = symbolTable.lookupByClassAndName("$targetType.${call.name}")
+        return if (byType.isNotEmpty()) bestMatch(byType, call) else null
     }
 
     /**
