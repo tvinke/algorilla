@@ -12,6 +12,7 @@ import com.github.tvinke.algorilla.model.LookupKind
 import com.github.tvinke.algorilla.model.LoopKind
 import com.github.tvinke.algorilla.model.LoopNode
 import com.github.tvinke.algorilla.model.ObjectCreation
+import com.github.tvinke.algorilla.model.Parameter
 import com.github.tvinke.algorilla.model.SortCall
 import com.github.tvinke.algorilla.model.SortKind
 import com.github.tvinke.algorilla.model.SourceLocation
@@ -76,7 +77,7 @@ internal class JsTreeSitterVisitor(
             FunctionDecl(
                 name = name,
                 qualifiedName = qName,
-                parameters = emptyList(),
+                parameters = extractParameters(node),
                 declaringClass = enclosingClass,
                 location = locationOf(node),
                 children = bodyChildren,
@@ -94,7 +95,7 @@ internal class JsTreeSitterVisitor(
             FunctionDecl(
                 name = name,
                 qualifiedName = name,
-                parameters = emptyList(),
+                parameters = extractParameters(node),
                 location = locationOf(node),
                 children = bodyChildren,
             ),
@@ -118,7 +119,7 @@ internal class JsTreeSitterVisitor(
             FunctionDecl(
                 name = name,
                 qualifiedName = qName,
-                parameters = emptyList(),
+                parameters = extractParameters(node),
                 isConstructor = isCtor,
                 declaringClass = enclosingClass,
                 location = locationOf(node),
@@ -208,7 +209,7 @@ internal class JsTreeSitterVisitor(
                 FunctionDecl(
                     name = varName,
                     qualifiedName = varName,
-                    parameters = emptyList(),
+                    parameters = extractParameters(valueNode),
                     location = locationOf(declarator),
                     children = bodyChildren,
                 ),
@@ -319,6 +320,85 @@ internal class JsTreeSitterVisitor(
         return result
     }
 
+    private fun extractParameters(funcNode: TSNode): List<Parameter> {
+        val paramsNode = funcNode.getChildByFieldName("parameters") ?: funcNode.getChildByFieldName("parameter")
+        if (paramsNode == null || paramsNode.isNull) return emptyList()
+
+        // Single identifier param (arrow functions like x => ...)
+        if (paramsNode.type == "identifier") {
+            return listOf(Parameter(nodeText(paramsNode), null))
+        }
+
+        val params = mutableListOf<Parameter>()
+        for (i in 0 until paramsNode.namedChildCount) {
+            val paramChild = paramsNode.getNamedChild(i)
+            if (!paramChild.isNull) {
+                extractSingleParameter(paramChild)?.let { params.add(it) }
+            }
+        }
+        return params
+    }
+
+    private fun extractSingleParameter(paramChild: TSNode): Parameter? =
+        when (paramChild.type) {
+            "identifier" -> Parameter(nodeText(paramChild), null)
+            "required_parameter", "optional_parameter" -> extractTypedParameter(paramChild)
+            "assignment_pattern" -> {
+                val left = paramChild.getChildByFieldName("left")
+                if (left != null && !left.isNull) Parameter(nodeText(left), null) else null
+            }
+            "rest_pattern" -> extractRestParameter(paramChild)
+            else -> nodeText(paramChild).trim().takeIf { it.isNotEmpty() }?.let { Parameter(it, null) }
+        }
+
+    private fun extractTypedParameter(paramChild: TSNode): Parameter {
+        val patternNode = paramChild.getChildByFieldName("pattern")
+        val name = if (patternNode != null && !patternNode.isNull) nodeText(patternNode) else nodeText(paramChild)
+        val typeNode = paramChild.getChildByFieldName("type")
+        return Parameter(name, extractTypeName(typeNode))
+    }
+
+    private fun extractRestParameter(paramChild: TSNode): Parameter? {
+        for (j in 0 until paramChild.namedChildCount) {
+            val inner = paramChild.getNamedChild(j)
+            if (!inner.isNull && inner.type == "identifier") {
+                return Parameter(nodeText(inner), null)
+            }
+        }
+        return null
+    }
+
+    private fun extractTypeName(typeNode: TSNode?): String? {
+        if (typeNode == null || typeNode.isNull) return null
+        val typeAnnotation = typeNode
+        // type_annotation wraps the actual type; drill into it
+        return when (typeAnnotation.type) {
+            "type_annotation" -> {
+                // The actual type is a named child
+                for (i in 0 until typeAnnotation.namedChildCount) {
+                    val child = typeAnnotation.getNamedChild(i)
+                    if (!child.isNull) {
+                        return extractTypeText(child)
+                    }
+                }
+                null
+            }
+            else -> extractTypeText(typeAnnotation)
+        }
+    }
+
+    private fun extractTypeText(typeNode: TSNode): String? {
+        if (typeNode.isNull) return null
+        return when (typeNode.type) {
+            "generic_type" -> {
+                val nameNode = typeNode.getChildByFieldName("name")
+                if (nameNode != null && !nameNode.isNull) nodeText(nameNode) else nodeText(typeNode)
+            }
+            "type_identifier", "predefined_type" -> nodeText(typeNode)
+            else -> nodeText(typeNode)
+        }
+    }
+
     private fun nodeText(node: TSNode): String {
         if (node.isNull) return ""
         val start = node.startByte.coerceAtMost(source.length)
@@ -358,6 +438,7 @@ private val TRANSPARENT_TYPES =
         "yield_expression",
         "subscript_expression",
         "arguments",
+        "class_body",
     )
 
 private val FUNCTION_VALUE_TYPES = setOf("arrow_function", "function_expression", "generator_function")

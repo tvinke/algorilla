@@ -7,8 +7,10 @@ import com.github.tvinke.algorilla.model.LookupKind
 import com.github.tvinke.algorilla.model.LoopKind
 import com.github.tvinke.algorilla.model.LoopNode
 import com.github.tvinke.algorilla.model.ObjectCreation
+import com.github.tvinke.algorilla.model.Parameter
 import com.github.tvinke.algorilla.model.SortCall
 import com.github.tvinke.algorilla.util.findDescendants
+import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
@@ -90,6 +92,96 @@ internal class JavaScriptParserTest {
         funcs.any { it.name == "loadUsers" } shouldBe true
         lookups.any { it.kind == LookupKind.INCLUDES } shouldBe true
         lookups.any { it.kind == LookupKind.FILTER } shouldBe true
+    }
+
+    @Test
+    fun `should extract typed parameters from TS function declarations`() {
+        val tree = parseFixture("parameters.ts")
+        val funcs = tree.findDescendants<FunctionDecl>()
+
+        val greet = funcs.first { it.name == "greet" }
+        greet.parameters shouldContainExactly
+            listOf(
+                Parameter("name", "string"),
+                Parameter("age", "number"),
+            )
+    }
+
+    @Test
+    fun `should extract Set and Map type names from TS parameters`() {
+        val tree = parseFixture("parameters.ts")
+        val funcs = tree.findDescendants<FunctionDecl>()
+
+        val lookup = funcs.first { it.name == "lookupUser" }
+        lookup.parameters shouldHaveSize 2
+        lookup.parameters[0].name shouldBe "users"
+        lookup.parameters[0].typeName shouldBe "Set"
+        lookup.parameters[1].name shouldBe "id"
+        lookup.parameters[1].typeName shouldBe "string"
+    }
+
+    @Test
+    fun `should extract parameters from const arrow function with types`() {
+        val tree = parseFixture("parameters.ts")
+        val funcs = tree.findDescendants<FunctionDecl>()
+
+        val process = funcs.first { it.name == "processItems" }
+        process.parameters shouldHaveSize 2
+        process.parameters[0].name shouldBe "items"
+        process.parameters[0].typeName shouldBe "Map"
+        process.parameters[1].name shouldBe "filter"
+        process.parameters[1].typeName shouldBe "boolean"
+    }
+
+    @Test
+    fun `should extract parameters from class methods`() {
+        val tree = parseFixture("parameters.ts")
+        val funcs = tree.findDescendants<FunctionDecl>()
+
+        val findById = funcs.first { it.name == "findById" }
+        findById.parameters shouldHaveSize 2
+        findById.parameters[0].name shouldBe "id"
+        findById.parameters[1].name shouldBe "cache"
+        findById.parameters[1].typeName shouldBe "Map"
+    }
+
+    @Test
+    fun `should extract untyped JS parameters`() {
+        val tree = parseFixture("parameters.ts")
+        val funcs = tree.findDescendants<FunctionDecl>()
+
+        val noTypes = funcs.first { it.name == "noTypes" }
+        noTypes.parameters shouldHaveSize 3
+        noTypes.parameters.map { it.name } shouldContainExactly listOf("a", "b", "c")
+        noTypes.parameters.all { it.typeName == null } shouldBe true
+    }
+
+    @Test
+    fun `should extract parameters from const arrow function without types`() {
+        val tree = parseFixture("parameters.ts")
+        val funcs = tree.findDescendants<FunctionDecl>()
+
+        val arrow = funcs.first { it.name == "arrowNoTypes" }
+        arrow.parameters shouldHaveSize 2
+        arrow.parameters.map { it.name } shouldContainExactly listOf("x", "y")
+    }
+
+    @Test
+    fun `should extract parameters from existing JS fixture`() {
+        val tree = parseFixture("loops-and-lookups.js")
+        val funcs = tree.findDescendants<FunctionDecl>()
+
+        val process = funcs.first { it.name == "processItems" }
+        process.parameters shouldHaveSize 1
+        process.parameters[0].name shouldBe "items"
+
+        val search = funcs.first { it.name == "searchItem" }
+        search.parameters shouldHaveSize 2
+        search.parameters.map { it.name } shouldContainExactly listOf("items", "target")
+
+        val filterActive = funcs.first { it.name == "filterActive" }
+        filterActive.parameters shouldHaveSize 1
+        filterActive.parameters[0].name shouldBe "users"
     }
 
     private fun parseFixture(name: String) =
