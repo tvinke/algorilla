@@ -42,6 +42,19 @@ public object MethodPurity {
             "of",
             "from",
             "with",
+            "map",
+            "flat",
+            "collect",
+            "stream",
+            "filter",
+            "sort",
+            "reduce",
+            "join",
+            "split",
+            "replace",
+            "trim",
+            "strip",
+            "substring",
         )
 
     // Methods starting with these prefixes are likely side-effectful

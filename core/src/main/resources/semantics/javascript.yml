@@ -26,7 +26,9 @@ methods:
   toSorted: { semantics: sort, kind: SORTED }
 
   # Access
-  at: { semantics: access, kind: FIRST, note: "depends on index" }
+  at:  { semantics: access, kind: FIRST, note: "depends on index" }
+  pop: { semantics: access, kind: LAST, note: "removes and returns last element" }
+  shift: { semantics: access, kind: FIRST, note: "removes and returns first element" }
 
   # Serialization
   stringify: { semantics: serialization, note: "JSON.stringify" }

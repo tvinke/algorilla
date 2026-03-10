@@ -3,6 +3,7 @@ package com.github.tvinke.algorilla.rules.builtin
 import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
+import com.github.tvinke.algorilla.model.GenericNode
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.Severity
@@ -14,7 +15,8 @@ import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.semantics.CollectionSemanticsRegistry
 import com.github.tvinke.algorilla.semantics.MethodPurity
-import com.github.tvinke.algorilla.util.findDescendants
+import com.github.tvinke.algorilla.util.findDescendantsWithBranchContext
+import com.github.tvinke.algorilla.util.maxCoExecutableSubset
 
 /**
  * Detects the same parameterized call invoked multiple times with the same arguments
@@ -51,15 +53,15 @@ public class RedundantExpensiveCallRule : Rule {
         fn: FunctionDecl,
         findings: MutableList<Finding>,
     ) {
-        val calls = fn.findDescendants<FunctionCall>()
-        val grouped =
-            calls
-                .filter { it.arguments.isNotEmpty() && !isSideEffectCall(it) }
-                .groupBy { callSignature(it) }
+        val callsWithContext = fn.findDescendantsWithBranchContext<FunctionCall>()
+        val filtered = callsWithContext.filter { it.first.arguments.isNotEmpty() && !isSideEffectCall(it.first) }
+        val grouped = filtered.groupBy { callSignature(it.first) }
 
-        for ((sig, duplicates) in grouped) {
-            if (duplicates.size >= MIN_DUPLICATES && sig.isNotBlank()) {
-                findings.add(buildFinding(fn, duplicates))
+        for ((sig, duplicatesWithContext) in grouped) {
+            if (sig.isBlank()) continue
+            val coExecutable = maxCoExecutableSubset(duplicatesWithContext)
+            if (coExecutable.size >= MIN_DUPLICATES) {
+                findings.add(buildFinding(fn, coExecutable))
             }
         }
     }
@@ -104,13 +106,23 @@ private fun callSignature(call: FunctionCall): String {
     return "$target.${call.name}($argsKey)"
 }
 
-private const val MAX_FINGERPRINT_LENGTH = 100
-
 private fun argFingerprint(node: IRNode): String =
     when (node) {
-        is FunctionCall -> "${node.qualifiedTarget}.${node.name}"
-        else -> node.toString().take(MAX_FINGERPRINT_LENGTH)
+        is FunctionCall -> {
+            val base = "${node.qualifiedTarget}.${node.name}(${node.arguments.joinToString(",") { argFingerprint(it) }})"
+            if (containsNonDeterministic(node)) "$base@${node.location.line}" else base
+        }
+        is GenericNode -> node.nodeType
+        else -> "${node::class.simpleName}@${node.location.line}:${node.location.column}"
     }
+
+/** Methods whose return value differs on each call — prevents grouping calls with these as arguments. */
+private val NON_DETERMINISTIC = setOf("randomUUID", "random", "now", "currentTimeMillis", "nanoTime")
+
+private fun containsNonDeterministic(call: FunctionCall): Boolean {
+    if (call.name in NON_DETERMINISTIC) return true
+    return call.children.any { it is FunctionCall && containsNonDeterministic(it) }
+}
 
 /**
  * Trivial and builder methods derived from the semantics registry (YAML).
@@ -125,8 +137,55 @@ private val BUILDER_METHODS: Set<String> by lazy {
     CollectionSemanticsRegistry.loadDefaults().allBuilderMethods()
 }
 
+/**
+ * Known constant-time operations that are too cheap to flag even when duplicated.
+ * Includes Java time/date arithmetic, enum accessors, and instant conversions.
+ */
+private val CHEAP_METHODS =
+    setOf(
+        // Java time/date arithmetic
+        "plusDays",
+        "minusDays",
+        "plusHours",
+        "minusHours",
+        "plusMinutes",
+        "minusMinutes",
+        "plusSeconds",
+        "minusSeconds",
+        "plusWeeks",
+        "minusWeeks",
+        "plusMonths",
+        "minusMonths",
+        "ofHours",
+        "ofMinutes",
+        "ofSeconds",
+        "ofMillis",
+        "ofNanos",
+        "ofDays",
+        "toInstant",
+        "atStartOfDay",
+        "atZone",
+        // Reflection / modifier checks
+        "isStatic",
+        "isPublic",
+        "isPrivate",
+        "isProtected",
+        "isAbstract",
+        "isFinal",
+        "isInterface",
+        "isSynthetic",
+        "isAnnotationPresent",
+        // String conversions and lookups
+        "startsWith",
+        "endsWith",
+        "substring",
+        "replace",
+        "split",
+    )
+
 private fun isSideEffectCall(call: FunctionCall): Boolean {
     if (call.name in TRIVIAL_METHODS) return true
     if (call.name in BUILDER_METHODS) return true
+    if (call.name in CHEAP_METHODS) return true
     return MethodPurity.isSideEffect(call.name, call.qualifiedTarget)
 }

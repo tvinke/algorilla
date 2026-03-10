@@ -3,6 +3,7 @@ package com.github.tvinke.algorilla.lang.java.parser
 import com.github.tvinke.algorilla.model.AccessKind
 import com.github.tvinke.algorilla.model.CollectionAccess
 import com.github.tvinke.algorilla.model.FunctionCall
+import com.github.tvinke.algorilla.model.GenericNode
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.LookupCall
 import com.github.tvinke.algorilla.model.LookupKind
@@ -21,10 +22,7 @@ public fun classifyChainedCall(
     argNodes: List<IRNode>,
     loc: SourceLocation,
 ): IRNode {
-    if (methodName == "forEach") {
-        val kind = if (targetText.contains(".stream()")) LoopKind.STREAM_FOR_EACH else LoopKind.HIGHER_ORDER
-        return LoopNode(kind = kind, iteratedVariable = targetVar, location = loc, children = argNodes)
-    }
+    classifyAsIteration(methodName, targetText, targetVar, argNodes, loc)?.let { return it }
 
     classifyAsLookup(methodName, targetText, targetVar, argNodes, loc)?.let { return it }
 
@@ -42,6 +40,11 @@ public fun classifyChainedCall(
         return CollectionAccess(kind = kind, location = loc, children = argNodes)
     }
 
+    // .get(0) on a collection → CollectionAccess(INDEX_ZERO), used by sort-for-last detection
+    if (methodName == "get" && isLiteralZeroArg(argNodes)) {
+        return CollectionAccess(kind = AccessKind.INDEX_ZERO, location = loc, children = argNodes)
+    }
+
     return FunctionCall(
         name = methodName,
         qualifiedTarget = targetVar,
@@ -50,6 +53,22 @@ public fun classifyChainedCall(
         children = argNodes,
     )
 }
+
+private fun classifyAsIteration(
+    methodName: String,
+    targetText: String,
+    targetVar: String?,
+    argNodes: List<IRNode>,
+    loc: SourceLocation,
+): IRNode? =
+    when (methodName) {
+        "forEach" -> {
+            val kind = if (targetText.contains(".stream()")) LoopKind.STREAM_FOR_EACH else LoopKind.HIGHER_ORDER
+            LoopNode(kind = kind, iteratedVariable = targetVar, location = loc, children = argNodes)
+        }
+        "removeIf" -> LoopNode(kind = LoopKind.HIGHER_ORDER, iteratedVariable = targetVar, location = loc, children = argNodes)
+        else -> null
+    }
 
 private fun classifyAsLookup(
     methodName: String,
@@ -227,7 +246,52 @@ public fun isImplicitlyO1(methodName: String): Boolean {
 }
 
 private val STRING_METHOD_INDICATORS =
-    setOf("toString()", "substring(", "toLowerCase()", "toUpperCase()", "trim()", "replace(", "replaceAll(", "strip()")
+    setOf(
+        "toString()",
+        "substring(",
+        "toLowerCase()",
+        "toUpperCase()",
+        "trim()",
+        "replace(",
+        "replaceAll(",
+        "strip(",
+        "split(",
+        "concat(",
+        "charAt(",
+        "startsWith(",
+        "endsWith(",
+    )
+
+private val STRING_NAME_SUFFIXES =
+    setOf(
+        "Name",
+        "name",
+        "Text",
+        "text",
+        "Str",
+        "String",
+        "string",
+        "Line",
+        "line",
+        "Path",
+        "path",
+        "Url",
+        "url",
+        "Key",
+        "key",
+        "Value",
+        "value",
+        "Id",
+        "id",
+        "Message",
+        "message",
+        "Description",
+        "description",
+        "Label",
+        "label",
+        "Title",
+        "title",
+    )
 
 /**
  * Heuristic: returns true when the target expression is likely a String rather than a List.
@@ -235,19 +299,14 @@ private val STRING_METHOD_INDICATORS =
  */
 public fun isStringTarget(targetText: String): Boolean =
     STRING_METHOD_INDICATORS.any { targetText.contains(it) } ||
-        targetText.endsWith("Name") ||
-        targetText.endsWith("name") ||
-        targetText.endsWith("Text") ||
-        targetText.endsWith("text") ||
-        targetText.endsWith("Str") ||
-        targetText.endsWith("String") ||
-        targetText.endsWith("string") ||
-        targetText.endsWith("Line") ||
-        targetText.endsWith("line") ||
-        targetText.endsWith("Path") ||
-        targetText.endsWith("path") ||
-        targetText.endsWith("Url") ||
-        targetText.endsWith("url")
+        STRING_NAME_SUFFIXES.any { targetText.endsWith(it) }
+
+/** Returns true when the argument list is a single literal `0` (for `.get(0)` detection). */
+private fun isLiteralZeroArg(argNodes: List<IRNode>): Boolean {
+    if (argNodes.size != 1) return false
+    val arg = argNodes[0]
+    return arg is GenericNode && arg.nodeType.trim() == "0"
+}
 
 /** Lazily loaded registry instance for parser-time queries. */
 private val registryInstance: CollectionSemanticsRegistry by lazy {

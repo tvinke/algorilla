@@ -2,6 +2,7 @@ methods:
   # Iteration
   forEach:        { semantics: iteration }
   forEachOrdered: { semantics: iteration }
+  removeIf:       { semantics: iteration, note: "iterates and removes matching elements" }
   stream:         { semantics: iteration, note: "creates stream pipeline" }
   parallelStream: { semantics: iteration, note: "creates parallel stream pipeline" }
 
@@ -136,6 +137,13 @@ trivial-methods:
   - of
   - ofNullable
   - empty
+  - orElse
+  - orElseGet
+  - orElseThrow
+  - ifPresent
+  - isPresent
+  - getOrDefault
+  - getOrElse
   - error
   - never
   - defer
