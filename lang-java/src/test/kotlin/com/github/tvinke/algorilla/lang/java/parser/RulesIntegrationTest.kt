@@ -6,6 +6,7 @@ import com.github.tvinke.algorilla.graph.SymbolTable
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
+import com.github.tvinke.algorilla.rules.builtin.ExpensiveCallbackRule
 import com.github.tvinke.algorilla.rules.builtin.ExpensiveSortComparatorRule
 import com.github.tvinke.algorilla.rules.builtin.FilterAfterSortRule
 import com.github.tvinke.algorilla.rules.builtin.FullScanForSingleLookupRule
@@ -193,6 +194,51 @@ internal class RulesIntegrationTest {
             val findings = analyzeFixture("filter-after-sort/negative/separate-chains-with-if.java", rule)
 
             findings.shouldBeEmpty()
+        }
+    }
+
+    @Nested
+    inner class ExpensiveCallbackTests {
+        private val rule = ExpensiveCallbackRule()
+
+        @Test
+        fun `should detect regex compilation inside filter callback`() {
+            val findings = analyzeFixture("expensive-callback/positive/regex-in-filter.java", rule)
+
+            findings.any { it.ruleId == "expensive-callback" && it.message.contains("Regex compilation") } shouldBe true
+        }
+
+        @Test
+        fun `should detect linear lookup inside map callback`() {
+            val findings = analyzeFixture("expensive-callback/positive/lookup-in-map.java", rule)
+
+            findings.any { it.ruleId == "expensive-callback" && it.message.contains("contains") } shouldBe true
+        }
+
+        @Test
+        fun `should detect nested iteration inside reduce callback`() {
+            val findings = analyzeFixture("expensive-callback/positive/nested-iteration-in-reduce.java", rule)
+
+            findings.any { it.ruleId == "expensive-callback" && it.message.contains("filter") } shouldBe true
+        }
+
+        @Test
+        fun `should detect date parsing inside forEach callback`() {
+            val findings = analyzeFixture("expensive-callback/positive/date-in-foreach.java", rule)
+
+            findings.any { it.ruleId == "expensive-callback" } shouldBe true
+        }
+
+        @Test
+        fun `should not flag simple callback without expensive operations`() {
+            val findings = analyzeFixture("expensive-callback/negative/simple-callback.java", rule)
+
+            findings.shouldBeEmpty()
+        }
+
+        @Test
+        fun `should have date-in-callback alias`() {
+            rule.aliases shouldBe listOf("date-in-callback")
         }
     }
 
