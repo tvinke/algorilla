@@ -21,6 +21,7 @@ import com.github.tvinke.algorilla.rules.builtin.ExpensiveSortComparatorRule
 import com.github.tvinke.algorilla.rules.builtin.FilterAfterSortRule
 import com.github.tvinke.algorilla.rules.builtin.FullScanForSingleLookupRule
 import com.github.tvinke.algorilla.rules.builtin.HeavyweightObjectPerInvocationRule
+import com.github.tvinke.algorilla.rules.builtin.HiddenNestedLoopRule
 import com.github.tvinke.algorilla.rules.builtin.InLoopCollectionBuildingRule
 import com.github.tvinke.algorilla.rules.builtin.NPlusOneRepositoryCallRule
 import com.github.tvinke.algorilla.rules.builtin.NestedLookupRule
@@ -206,6 +207,7 @@ internal class AlgorillaCommand :
             UncachedGetterRule(),
             ChainedGettersRule(),
             FilterAfterSortRule(),
+            HiddenNestedLoopRule(),
         )
 
     private fun buildConfig(): AnalysisConfig {
