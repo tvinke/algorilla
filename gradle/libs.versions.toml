@@ -11,7 +11,9 @@ kotest = "5.9.1"
 detekt = "1.23.7"
 ktlint-plugin = "12.1.2"
 shadow = "8.1.1"
-treesitter = "0.24.1"
+treesitter = "0.25.0"
+treesitter-core = "0.26.6"
+treesitter-typescript = "0.23.2"
 antlr = "4.13.2"
 
 [libraries]
@@ -28,6 +30,9 @@ junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher
 kotest-assertions = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest" }
 antlr-runtime = { module = "org.antlr:antlr4-runtime", version.ref = "antlr" }
 antlr-tool = { module = "org.antlr:antlr4", version.ref = "antlr" }
+treesitter = { module = "io.github.bonede:tree-sitter", version.ref = "treesitter-core" }
+treesitter-javascript = { module = "io.github.bonede:tree-sitter-javascript", version.ref = "treesitter" }
+treesitter-typescript = { module = "io.github.bonede:tree-sitter-typescript", version.ref = "treesitter-typescript" }
 kotlin-scripting-jsr223 = { module = "org.jetbrains.kotlin:kotlin-scripting-jsr223", version.ref = "kotlin" }
 
 [plugins]
