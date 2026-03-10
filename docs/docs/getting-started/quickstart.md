@@ -8,7 +8,8 @@ Point Algorilla at your project root:
 java -jar algorilla.jar /path/to/your/project
 ```
 
-Algorilla automatically detects the build system (Gradle, Maven, or JS/TS), resolves where source code lives, and excludes test code and build output. There is no need to point at `src/main` — just pass the project root.
+!!! tip "Zero config"
+    Algorilla automatically detects the build system (Gradle, Maven, or JS/TS), resolves where source code lives, and excludes test code and build output. There is no need to point at `src/main` — just pass the project root.
 
 For example, for a Gradle project:
 
@@ -77,10 +78,13 @@ java -jar algorilla.jar --include-tests .
 java -jar algorilla.jar -v .
 ```
 
-## Exit Codes
+## Exit codes
 
 | Code | Meaning |
 |------|---------|
 | 0 | No findings |
 | 1 | Findings detected |
 | 2 | Analysis error |
+
+!!! info "CI-friendly"
+    Exit code 1 on findings makes algorilla work as a quality gate out of the box — pipe it into your CI pipeline and it will fail the build when issues are found. See [CI/CD integration](../guide/ci-integration.md) for setup guides.

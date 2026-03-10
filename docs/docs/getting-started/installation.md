@@ -5,6 +5,9 @@
 - **Java 11** or later (to run)
 - **Java 21** or later (only needed to build from source)
 
+!!! note
+    Most systems already have Java 11+. Check with `java -version`.
+
 ## Download
 
 Download the latest `algorilla.jar` from the [releases page](https://github.com/tvinke/algorilla/releases).
