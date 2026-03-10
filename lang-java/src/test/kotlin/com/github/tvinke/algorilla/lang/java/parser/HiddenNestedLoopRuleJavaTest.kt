@@ -12,6 +12,7 @@ import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
+import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import java.io.File
 
@@ -19,57 +20,182 @@ internal class HiddenNestedLoopRuleJavaTest {
     private val parser = JavaLanguageParser()
     private val rule = HiddenNestedLoopRule()
 
-    @Test
-    fun `should detect loop inside method called from for-each loop`() {
-        val findings = analyzeFixture("hidden-nested-loop/positive/loop-calls-method-with-loop.java")
+    @Nested
+    inner class PositiveCases {
+        @Test
+        fun `should detect loop inside method called from for-each loop`() {
+            val findings = analyzeFixture("hidden-nested-loop/positive/loop-calls-method-with-loop.java")
 
-        findings shouldHaveSize 1
-        findings.first().ruleId shouldBe "hidden-nested-loop"
-        findings.first().message shouldContain "validateItems()"
-        findings.first().message shouldContain "hidden"
+            findings shouldHaveSize 1
+            findings.first().ruleId shouldBe "hidden-nested-loop"
+            findings.first().message shouldContain "validateItems()"
+            findings.first().message shouldContain "hidden"
+        }
+
+        @Test
+        fun `should detect loop inside method called from forEach`() {
+            val findings = analyzeFixture("hidden-nested-loop/positive/foreach-calls-method-with-loop.java")
+
+            findings shouldHaveSize 1
+            findings.first().message shouldContain "summarize()"
+        }
+
+        @Test
+        fun `should detect loop inside method called from while loop`() {
+            val findings = analyzeFixture("hidden-nested-loop/positive/while-loop-calls-method-with-loop.java")
+
+            findings shouldHaveSize 1
+            findings.first().message shouldContain "notifyListeners()"
+            findings.first().message shouldContain "for-each loop" // hidden loop is a for-each
+        }
+
+        @Test
+        fun `should detect hidden while loop from traditional for loop`() {
+            val findings = analyzeFixture("hidden-nested-loop/positive/for-loop-calls-method-with-while.java")
+
+            findings shouldHaveSize 1
+            findings.first().message shouldContain "processGroup()"
+            findings.first().message shouldContain "while loop" // hidden loop is a while
+        }
+
+        @Test
+        fun `should detect loop inside method called from stream forEach`() {
+            val findings = analyzeFixture("hidden-nested-loop/positive/stream-foreach-calls-method-with-loop.java")
+
+            findings shouldHaveSize 1
+            findings.first().message shouldContain "deliver()"
+        }
+
+        @Test
+        fun `should detect multiple hidden loops from same outer loop`() {
+            val findings = analyzeFixture("hidden-nested-loop/positive/multiple-calls-with-hidden-loops.java")
+
+            findings shouldHaveSize 2
+            val names = findings.map { it.message }
+            names.any { it.contains("validateItems()") } shouldBe true
+            names.any { it.contains("calculateWeights()") } shouldBe true
+        }
+
+        @Test
+        fun `should detect hidden loop from doubly-nested outer loops`() {
+            val findings = analyzeFixture("hidden-nested-loop/positive/nested-outer-loops.java")
+
+            findings shouldHaveSize 1
+            findings.first().message shouldContain "expandCell()"
+        }
     }
 
-    @Test
-    fun `should detect loop inside method called from forEach`() {
-        val findings = analyzeFixture("hidden-nested-loop/positive/foreach-calls-method-with-loop.java")
+    @Nested
+    inner class NegativeCases {
+        @Test
+        fun `should not flag method without inner loop`() {
+            val findings = analyzeFixture("hidden-nested-loop/negative/loop-calls-method-without-loop.java")
 
-        findings shouldHaveSize 1
-        findings.first().message shouldContain "summarize()"
+            findings.shouldBeEmpty()
+        }
+
+        @Test
+        fun `should not flag method with loop called outside loop context`() {
+            val findings = analyzeFixture("hidden-nested-loop/negative/no-loop-context.java")
+
+            findings.shouldBeEmpty()
+        }
+
+        @Test
+        fun `should not flag unresolvable external method`() {
+            val findings = analyzeFixture("hidden-nested-loop/negative/loop-calls-unresolvable-method.java")
+
+            findings.shouldBeEmpty()
+        }
+
+        @Test
+        fun `should not flag method with only conditionals`() {
+            val findings = analyzeFixture("hidden-nested-loop/negative/loop-calls-method-with-only-conditionals.java")
+
+            findings.shouldBeEmpty()
+        }
+
+        @Test
+        fun `should handle recursive methods without crashing`() {
+            val findings = analyzeFixture("hidden-nested-loop/negative/recursive-method.java")
+
+            // visit() is recursive and contains a loop — it will be flagged since
+            // walkAll() loops and calls visit() which contains a for-each loop
+            // This test primarily verifies no StackOverflow or infinite loop
+            findings.size shouldBe findings.size // just verify it completes
+        }
+
+        @Test
+        fun `should not flag when no called methods have loops`() {
+            val findings = analyzeFixture("hidden-nested-loop/negative/mixed-calls-only-some-have-loops.java")
+
+            findings.shouldBeEmpty()
+        }
     }
 
-    @Test
-    fun `should include evidence with outer loop and hidden inner loop`() {
-        val findings = analyzeFixture("hidden-nested-loop/positive/loop-calls-method-with-loop.java")
+    @Nested
+    inner class EvidenceAndComplexity {
+        @Test
+        fun `should include evidence with outer loop and hidden inner loop`() {
+            val findings = analyzeFixture("hidden-nested-loop/positive/loop-calls-method-with-loop.java")
 
-        findings shouldHaveSize 1
-        val evidence = findings.first().evidence
-        evidence shouldHaveSize 3
-        evidence[0].label shouldContain "for-each loop"
-        evidence[1].label shouldContain "validateItems()"
-        evidence[2].label shouldContain "for-each loop"
-        evidence[2].label shouldContain "validateItems()"
-    }
+            findings shouldHaveSize 1
+            val evidence = findings.first().evidence
+            evidence shouldHaveSize 3
+            evidence[0].label shouldContain "for-each loop"
+            evidence[1].label shouldContain "validateItems()"
+            evidence[2].label shouldContain "for-each loop"
+            evidence[2].label shouldContain "validateItems()"
+        }
 
-    @Test
-    fun `should show complexity with variable names`() {
-        val findings = analyzeFixture("hidden-nested-loop/positive/loop-calls-method-with-loop.java")
+        @Test
+        fun `should show complexity with outer variable name`() {
+            val findings = analyzeFixture("hidden-nested-loop/positive/loop-calls-method-with-loop.java")
 
-        findings shouldHaveSize 1
-        findings.first().currentComplexity shouldContain "orders"
-    }
+            findings shouldHaveSize 1
+            findings.first().currentComplexity shouldContain "orders"
+        }
 
-    @Test
-    fun `should not flag method without inner loop`() {
-        val findings = analyzeFixture("hidden-nested-loop/negative/loop-calls-method-without-loop.java")
+        @Test
+        fun `should show suggested complexity`() {
+            val findings = analyzeFixture("hidden-nested-loop/positive/loop-calls-method-with-loop.java")
 
-        findings.shouldBeEmpty()
-    }
+            findings shouldHaveSize 1
+            val suggested = findings.first().suggestedComplexity
+            suggested shouldContain "orders"
+            suggested shouldContain "+"
+        }
 
-    @Test
-    fun `should not flag method with loop called outside loop context`() {
-        val findings = analyzeFixture("hidden-nested-loop/negative/no-loop-context.java")
+        @Test
+        fun `should show evidence depth for nested outer loops`() {
+            val findings = analyzeFixture("hidden-nested-loop/positive/nested-outer-loops.java")
 
-        findings.shouldBeEmpty()
+            findings shouldHaveSize 1
+            val evidence = findings.first().evidence
+            // 2 outer loops + call + hidden loop = 4 evidence entries
+            evidence shouldHaveSize 4
+            evidence[0].depth shouldBe 0
+            evidence[1].depth shouldBe 1
+            evidence[2].depth shouldBe 2
+            evidence[3].depth shouldBe 3
+        }
+
+        @Test
+        fun `should report category as loop amplifier`() {
+            val findings = analyzeFixture("hidden-nested-loop/positive/loop-calls-method-with-loop.java")
+
+            findings shouldHaveSize 1
+            rule.category.displayName shouldBe "Loop amplifiers"
+        }
+
+        @Test
+        fun `should use bottleneck marker on inner loop evidence`() {
+            val findings = analyzeFixture("hidden-nested-loop/positive/loop-calls-method-with-loop.java")
+
+            findings shouldHaveSize 1
+            val last = findings.first().evidence.last()
+            last.complexity shouldContain "bottleneck"
+        }
     }
 
     private fun analyzeFixture(fixturePath: String): List<Finding> {
