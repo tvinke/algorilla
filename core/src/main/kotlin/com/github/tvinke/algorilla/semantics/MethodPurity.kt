@@ -105,6 +105,11 @@ public object MethodPurity {
             "subscribe",
             "on",
             "append",
+            "enable",
+            "disable",
+            "configure",
+            "init",
+            "apply",
         )
 
     // Targets that indicate side-effectful context regardless of method name

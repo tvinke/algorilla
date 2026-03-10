@@ -180,7 +180,23 @@ private val CHEAP_METHODS =
         "endsWith",
         "substring",
         "replace",
+        "replaceAll",
+        "replaceFirst",
         "split",
+        "matches",
+        "toLowerCase",
+        "toUpperCase",
+        "trim",
+        "strip",
+        "charAt",
+        "indexOf",
+        "lastIndexOf",
+        "contains",
+        "isEmpty",
+        "isBlank",
+        "length",
+        "concat",
+        "valueOf",
     )
 
 private fun isSideEffectCall(call: FunctionCall): Boolean {
