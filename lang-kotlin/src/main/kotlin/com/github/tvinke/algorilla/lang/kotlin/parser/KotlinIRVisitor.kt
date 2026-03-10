@@ -4,7 +4,11 @@ import com.github.tvinke.algorilla.lang.java.parser.JavaParser
 import com.github.tvinke.algorilla.lang.java.parser.JavaParserBaseVisitor
 import com.github.tvinke.algorilla.lang.java.parser.classifyChainedCall
 import com.github.tvinke.algorilla.lang.java.parser.classifyStandaloneCall
+import com.github.tvinke.algorilla.lang.java.parser.extractLambdaParamNames
 import com.github.tvinke.algorilla.lang.java.parser.extractVariableName
+import com.github.tvinke.algorilla.lang.java.parser.processBlockStatements
+import com.github.tvinke.algorilla.model.BranchNode
+import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.GenericNode
 import com.github.tvinke.algorilla.model.IRNode
@@ -24,6 +28,9 @@ import org.antlr.v4.runtime.ParserRuleContext
 internal class KotlinIRVisitor(
     private val filePath: String,
 ) : JavaParserBaseVisitor<List<IRNode>>() {
+    private val lambdaParams = mutableSetOf<String>()
+    private var enclosingClass: String? = null
+
     override fun defaultResult(): List<IRNode> = emptyList()
 
     override fun aggregateResult(
@@ -31,16 +38,37 @@ internal class KotlinIRVisitor(
         nextResult: List<IRNode>,
     ): List<IRNode> = aggregate + nextResult
 
+    override fun visitClassDeclaration(ctx: JavaParser.ClassDeclarationContext): List<IRNode> {
+        val prev = enclosingClass
+        enclosingClass = ctx.identifier()?.text
+        val result = visitChildren(ctx)
+        enclosingClass = prev
+        return result
+    }
+
+    override fun visitBlock(ctx: JavaParser.BlockContext): List<IRNode> =
+        processBlockStatements(ctx.blockStatement(), 0, this, ::locationOf)
+
+    override fun visitLambdaExpression(ctx: JavaParser.LambdaExpressionContext): List<IRNode> {
+        val params = extractLambdaParamNames(ctx.lambdaParameters())
+        lambdaParams.addAll(params)
+        val result = ctx.lambdaBody()?.let { visitChildren(it) } ?: emptyList()
+        lambdaParams.removeAll(params.toSet())
+        return result
+    }
+
     override fun visitMethodDeclaration(ctx: JavaParser.MethodDeclarationContext): List<IRNode> {
         val name = ctx.identifier().text
         val params = extractParameters(ctx.formalParameters())
         val body = ctx.methodBody()?.let { visitChildren(it) } ?: emptyList()
+        val qName = if (enclosingClass != null) "$enclosingClass.$name" else name
 
         return listOf(
             FunctionDecl(
                 name = name,
-                qualifiedName = name,
+                qualifiedName = qName,
                 parameters = params,
+                declaringClass = enclosingClass,
                 location = locationOf(ctx),
                 children = body,
             ),
@@ -50,6 +78,7 @@ internal class KotlinIRVisitor(
     override fun visitStatement(ctx: JavaParser.StatementContext): List<IRNode> {
         if (ctx.FOR() != null) return handleForStatement(ctx)
         if (ctx.WHILE() != null || ctx.DO() != null) return handleWhileStatement(ctx)
+        if (ctx.IF() != null) return handleIfStatement(ctx)
         return visitChildren(ctx)
     }
 
@@ -103,6 +132,16 @@ internal class KotlinIRVisitor(
         return results
     }
 
+    private fun handleIfStatement(ctx: JavaParser.StatementContext): List<IRNode> {
+        val conditionNodes = ctx.expression(0)?.let { visit(it) } ?: emptyList()
+        val thenBranch = ctx.statement(0)?.let { visitChildren(it) } ?: emptyList()
+        val elseBranch = ctx.statement(1)?.let { visitChildren(it) }
+        if (elseBranch != null) {
+            return conditionNodes + listOf(BranchNode(listOf(thenBranch, elseBranch), locationOf(ctx)))
+        }
+        return conditionNodes + thenBranch
+    }
+
     private fun handleForStatement(ctx: JavaParser.StatementContext): List<IRNode> {
         val enhancedFor = ctx.forControl()?.enhancedForControl()
         val body = ctx.statement(0)?.let { visitChildren(it) } ?: emptyList()
@@ -135,6 +174,17 @@ internal class KotlinIRVisitor(
         val targetVar = extractVariableName(targetText)
         val argNodes = visitArgNodes(methodCall)
         val targetChildren = visit(targetExpr)
+        if (targetVar != null && targetVar in lambdaParams) {
+            val call =
+                FunctionCall(
+                    name = methodName,
+                    qualifiedTarget = targetVar,
+                    arguments = argNodes,
+                    location = loc,
+                    children = argNodes,
+                )
+            return targetChildren + listOf(call)
+        }
         val node = classifyChainedCall(methodName, targetText, targetVar, argNodes, loc)
         return targetChildren + listOf(node)
     }
@@ -172,7 +222,7 @@ internal class KotlinIRVisitor(
         return expressions
             .map { expr ->
                 val visited = visit(expr)
-                visited.ifEmpty { listOf(GenericNode("arg", locationOf(expr), emptyList())) }
+                visited.ifEmpty { listOf(GenericNode(expr.text, locationOf(expr), emptyList())) }
             }.flatten()
     }
 

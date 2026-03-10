@@ -119,6 +119,7 @@ public data class FunctionDecl(
     val qualifiedName: String,
     val parameters: List<Parameter>,
     val isConstructor: Boolean = false,
+    val declaringClass: String? = null,
     var estimatedComplexity: Complexity? = null,
     var executionContext: ExecutionContext = ExecutionContext.SINGLE,
     override val location: SourceLocation,
@@ -154,6 +155,17 @@ public data class VariableDecl(
     override val location: SourceLocation,
     override val children: List<IRNode>,
 ) : IRNode
+
+/**
+ * Represents mutually exclusive code branches, such as if/else or switch/case.
+ * Calls in different branches cannot co-execute in a single invocation.
+ */
+public data class BranchNode(
+    val branches: List<List<IRNode>>,
+    override val location: SourceLocation,
+) : IRNode {
+    override val children: List<IRNode> get() = branches.flatten()
+}
 
 /**
  * A generic statement or expression node that does not map to a specific IR category.

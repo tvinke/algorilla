@@ -131,6 +131,23 @@ internal class HiddenNestedLoopRuleJavaTest {
 
             findings.shouldBeEmpty()
         }
+
+        @Test
+        fun `should not resolve wrong overload when parameter counts differ`() {
+            val findings = analyzeFixture("hidden-nested-loop/negative/loop-calls-overloaded-method.java")
+
+            // fetchData(zone, date) should resolve to the 2-param version (no loop),
+            // not the 1-param version (which contains the outer loop)
+            findings.shouldBeEmpty()
+        }
+
+        @Test
+        fun `should not resolve method call on different receiver`() {
+            val findings = analyzeFixture("hidden-nested-loop/negative/loop-calls-method-on-different-receiver.java")
+
+            // repository.persist(order) should NOT resolve to local persist(Document)
+            findings.shouldBeEmpty()
+        }
     }
 
     @Nested

@@ -61,6 +61,13 @@ public object CrossMethodResolver {
      * Tries qualified target first, then falls back to simple name lookup.
      * Skips built-in stream/collection operations that are never user-defined methods.
      *
+     * When the call has an explicit receiver (qualifiedTarget like "repository" or "service"),
+     * we only resolve via qualified lookup — falling back to simple name would incorrectly
+     * match local methods (e.g. `dataPointRepository.persist()` resolving to local `persist()`).
+     *
+     * When multiple overloads exist, prefers the one whose parameter count matches
+     * the call's argument count.
+     *
      * The set of unresolvable names is derived from the semantics registry (YAML),
      * ensuring it stays in sync with the method classification.
      */
@@ -71,11 +78,36 @@ public object CrossMethodResolver {
         if (call.name in unresolvableNames) return null
         if (call.qualifiedTarget != null) {
             val qualified = symbolTable.lookup("${call.qualifiedTarget}.${call.name}")
-            if (qualified.isNotEmpty()) return qualified.first()
+            if (qualified.isNotEmpty()) return bestMatch(qualified, call)
+            // Try class-qualified lookup (receiver may match a declaring class)
+            val byClass = symbolTable.lookupByClassAndName("${call.qualifiedTarget}.${call.name}")
+            if (byClass.isNotEmpty()) return bestMatch(byClass, call)
+        }
+        // Only fall back to simple name when there's no explicit receiver,
+        // or receiver is this/super (which refers to the current class)
+        if (call.qualifiedTarget != null && call.qualifiedTarget !in SELF_REFERENCES) {
+            return null
         }
         val byName = symbolTable.lookupBySimpleName(call.name)
-        return byName.firstOrNull()
+        return bestMatch(byName, call)
     }
+
+    /**
+     * When multiple candidates match, prefer the one whose parameter count
+     * matches the call's argument count.
+     */
+    private fun bestMatch(
+        candidates: List<FunctionDecl>,
+        call: FunctionCall,
+    ): FunctionDecl? {
+        if (candidates.isEmpty()) return null
+        if (candidates.size == 1) return candidates.first()
+        val byParamCount = candidates.filter { it.parameters.size == call.arguments.size }
+        if (byParamCount.isNotEmpty()) return byParamCount.first()
+        return candidates.first()
+    }
+
+    private val SELF_REFERENCES = setOf("this", "super")
 
     private fun collectDescendants(node: IRNode): List<IRNode> {
         val results = mutableListOf<IRNode>()

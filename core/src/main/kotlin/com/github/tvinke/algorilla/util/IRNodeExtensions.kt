@@ -1,5 +1,6 @@
 package com.github.tvinke.algorilla.util
 
+import com.github.tvinke.algorilla.model.BranchNode
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.VariableDecl
@@ -20,6 +21,98 @@ public inline fun <reified T : IRNode> IRNode.findDescendants(): List<T> {
         stack.addAll(0, node.children)
     }
     return results
+}
+
+/**
+ * Branch context for an IR node: maps each ancestor [BranchNode] (by identity hash)
+ * to the branch index the node resides in. Two nodes with incompatible contexts
+ * are in mutually exclusive branches and cannot co-execute.
+ */
+public typealias BranchContext = Map<Int, Int>
+
+/**
+ * Finds all descendant nodes of the specified type together with their [BranchContext].
+ * The branch context tracks which branch of each ancestor [BranchNode] the descendant is in.
+ */
+public inline fun <reified T : IRNode> IRNode.findDescendantsWithBranchContext(): List<Pair<T, BranchContext>> {
+    val results = mutableListOf<Pair<T, BranchContext>>()
+    val stack = ArrayDeque<Pair<IRNode, BranchContext>>()
+    stack.addFirst(this to emptyMap())
+    while (stack.isNotEmpty()) {
+        val (node, context) = stack.removeFirst()
+        if (node is T) {
+            results.add(node to context)
+        }
+        pushChildrenWithContext(node, context, stack)
+    }
+    return results
+}
+
+@PublishedApi
+internal fun pushChildrenWithContext(
+    node: IRNode,
+    context: BranchContext,
+    stack: ArrayDeque<Pair<IRNode, BranchContext>>,
+) {
+    if (node is BranchNode) {
+        for ((branchIndex, branch) in node.branches.withIndex()) {
+            val childContext = context + (System.identityHashCode(node) to branchIndex)
+            for (child in branch.asReversed()) {
+                stack.addFirst(child to childContext)
+            }
+        }
+    } else {
+        for (child in node.children.asReversed()) {
+            stack.addFirst(child to context)
+        }
+    }
+}
+
+/**
+ * Returns true if two branch contexts are compatible, meaning the nodes can co-execute.
+ * Contexts are incompatible when they disagree on the branch index for any shared [BranchNode].
+ */
+public fun BranchContext.isCompatibleWith(other: BranchContext): Boolean {
+    for ((nodeId, idx) in this) {
+        val otherIdx = other[nodeId]
+        if (otherIdx != null && otherIdx != idx) return false
+    }
+    return true
+}
+
+/**
+ * From a list of items with branch contexts, finds the largest subset
+ * where all items can co-execute (pairwise compatible branch contexts).
+ * For typical code (small groups), this is efficient enough.
+ */
+public fun <T> maxCoExecutableSubset(items: List<Pair<T, BranchContext>>): List<T> {
+    if (items.size <= 1) return items.map { it.first }
+
+    // Group by exact branch context — items in the same context always co-execute
+    val byContext = items.groupBy { it.second }
+
+    // Find the largest group of items from compatible contexts
+    val contextGroups = byContext.entries.toList()
+    var bestSubset = emptyList<T>()
+
+    for (i in contextGroups.indices) {
+        val compatible = mutableListOf<T>()
+        compatible.addAll(contextGroups[i].value.map { it.first })
+        val baseContext = contextGroups[i].key
+
+        for (j in contextGroups.indices) {
+            if (j == i) continue
+            if (baseContext.isCompatibleWith(contextGroups[j].key)) {
+                compatible.addAll(contextGroups[j].value.map { it.first })
+            }
+        }
+
+        if (compatible.size > bestSubset.size) {
+            bestSubset = compatible
+        }
+    }
+
+    return bestSubset
 }
 
 /**

@@ -12,8 +12,9 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
-import com.github.tvinke.algorilla.util.findDescendants
+import com.github.tvinke.algorilla.util.findDescendantsWithBranchContext
 import com.github.tvinke.algorilla.util.hasO1Type
+import com.github.tvinke.algorilla.util.maxCoExecutableSubset
 
 /**
  * Detects multiple linear scans on the same collection within a single function.
@@ -50,14 +51,16 @@ public class RepeatedLinearScanRule : Rule {
         fn: FunctionDecl,
         findings: MutableList<Finding>,
     ) {
-        val lookups = fn.findDescendants<LookupCall>()
-        val grouped =
-            lookups
-                .filter { it.targetVariable != null && !it.isO1 && !fn.hasO1Type(it.targetVariable) }
-                .groupBy { it.targetVariable }
-        for ((targetVar, calls) in grouped) {
-            if (calls.size >= MIN_LOOKUPS_TO_REPORT) {
-                findings.add(buildFinding(fn, targetVar!!, calls))
+        val lookupsWithContext = fn.findDescendantsWithBranchContext<LookupCall>()
+        val filtered =
+            lookupsWithContext.filter {
+                it.first.targetVariable != null && !it.first.isO1 && !fn.hasO1Type(it.first.targetVariable)
+            }
+        val grouped = filtered.groupBy { it.first.targetVariable }
+        for ((targetVar, callsWithContext) in grouped) {
+            val coExecutable = maxCoExecutableSubset(callsWithContext)
+            if (coExecutable.size >= MIN_LOOKUPS_TO_REPORT) {
+                findings.add(buildFinding(fn, targetVar!!, coExecutable))
             }
         }
     }

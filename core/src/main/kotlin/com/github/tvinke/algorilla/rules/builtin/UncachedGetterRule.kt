@@ -3,6 +3,7 @@ package com.github.tvinke.algorilla.rules.builtin
 import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
+import com.github.tvinke.algorilla.model.GenericNode
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.Severity
@@ -13,7 +14,8 @@ import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.semantics.CollectionSemanticsRegistry
-import com.github.tvinke.algorilla.util.findDescendants
+import com.github.tvinke.algorilla.util.findDescendantsWithBranchContext
+import com.github.tvinke.algorilla.util.maxCoExecutableSubset
 
 /**
  * Detects the same getter-style call invoked multiple times with the same argument
@@ -51,13 +53,14 @@ public class UncachedGetterRule : Rule {
         fn: FunctionDecl,
         findings: MutableList<Finding>,
     ) {
-        val calls = fn.findDescendants<FunctionCall>()
-        val getterCalls = calls.filter { isGetterPattern(it) && it.arguments.isNotEmpty() }
-        val grouped = getterCalls.groupBy { "${it.qualifiedTarget}.${it.name}(${argKey(it)})" }
+        val callsWithContext = fn.findDescendantsWithBranchContext<FunctionCall>()
+        val getterCalls = callsWithContext.filter { isGetterPattern(it.first) && it.first.arguments.isNotEmpty() }
+        val grouped = getterCalls.groupBy { "${it.first.qualifiedTarget}.${it.first.name}(${argKey(it.first)})" }
 
-        for ((_, duplicates) in grouped) {
-            if (duplicates.size >= MIN_CALLS) {
-                findings.add(buildFinding(fn, duplicates))
+        for ((_, duplicatesWithContext) in grouped) {
+            val coExecutable = maxCoExecutableSubset(duplicatesWithContext)
+            if (coExecutable.size >= MIN_CALLS) {
+                findings.add(buildFinding(fn, coExecutable))
             }
         }
     }
@@ -106,6 +109,11 @@ private fun isGetterPattern(call: FunctionCall): Boolean {
     return GETTER_PREFIXES.any { call.name.startsWith(it, ignoreCase = true) }
 }
 
-private const val MAX_ARG_LENGTH = 80
-
-private fun argKey(call: FunctionCall): String = call.arguments.joinToString(",") { it.toString().take(MAX_ARG_LENGTH) }
+private fun argKey(call: FunctionCall): String =
+    call.arguments.joinToString(",") { arg ->
+        when (arg) {
+            is FunctionCall -> "${arg.qualifiedTarget}.${arg.name}/${arg.arguments.size}"
+            is GenericNode -> arg.nodeType
+            else -> "${arg::class.simpleName}@${arg.location.line}:${arg.location.column}"
+        }
+    }

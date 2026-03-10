@@ -4,6 +4,7 @@ import com.github.tvinke.algorilla.model.FileRoot
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.IRNode
+import com.github.tvinke.algorilla.util.CrossMethodResolver
 import io.github.oshai.kotlinlogging.KotlinLogging
 
 private val logger = KotlinLogging.logger {}
@@ -50,15 +51,5 @@ public class CallGraphBuilder(
         }
     }
 
-    private fun resolveCallee(call: FunctionCall): FunctionDecl? {
-        val byQualified = call.qualifiedTarget?.let { symbolTable.lookup(it) } ?: emptyList()
-        if (byQualified.isNotEmpty()) return byQualified.first()
-
-        val bySimpleName = symbolTable.lookupBySimpleName(call.name)
-        if (bySimpleName.isEmpty()) return null
-        if (bySimpleName.size == 1) return bySimpleName.first()
-
-        val argCount = call.arguments.size
-        return bySimpleName.find { it.parameters.size == argCount } ?: bySimpleName.first()
-    }
+    private fun resolveCallee(call: FunctionCall): FunctionDecl? = CrossMethodResolver.resolve(call, symbolTable)
 }
