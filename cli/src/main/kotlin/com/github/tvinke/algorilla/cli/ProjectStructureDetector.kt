@@ -167,11 +167,28 @@ internal class ProjectStructureDetector {
     private fun parseGradleModules(settingsFile: File): List<String> {
         val content = settingsFile.readText()
         val modules = mutableListOf<String>()
-        val includePattern = Regex("""include\s*\(\s*"([^"]+)"\s*\)""")
-        for (match in includePattern.findAll(content)) {
-            modules.add(match.groupValues[1])
+
+        // Kotlin DSL: include("core", "cli") or include("core")
+        val ktsDsl = Regex("""include\s*\(([^)]+)\)""")
+        for (match in ktsDsl.findAll(content)) {
+            val args = match.groupValues[1]
+            val quoted = Regex(""""([^"]+)"""")
+            for (q in quoted.findAll(args)) {
+                modules.add(q.groupValues[1].removePrefix(":"))
+            }
         }
-        return modules
+
+        // Groovy DSL: include 'core', 'cli' or include ':core', ':cli'
+        val groovyDsl = Regex("""include\s+(['"][^)]*?)(?:\n|$)""")
+        for (match in groovyDsl.findAll(content)) {
+            val line = match.groupValues[1]
+            val quoted = Regex("""['"]([^'"]+)['"]""")
+            for (q in quoted.findAll(line)) {
+                modules.add(q.groupValues[1].removePrefix(":"))
+            }
+        }
+
+        return modules.distinct()
     }
 
     /**

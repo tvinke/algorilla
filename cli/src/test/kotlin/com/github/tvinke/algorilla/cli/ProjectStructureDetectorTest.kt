@@ -113,6 +113,97 @@ internal class ProjectStructureDetectorTest {
         }
 
         @Test
+        fun `should detect modules from multi-arg include call`(
+            @TempDir tmp: File,
+        ) {
+            File(tmp, "settings.gradle.kts").writeText(
+                """
+                include("core", "cli", "api")
+                """.trimIndent(),
+            )
+            File(tmp, "build.gradle.kts").createNewFile()
+            File(tmp, "core/src/main/kotlin").mkdirs()
+            File(tmp, "cli/src/main/kotlin").mkdirs()
+            File(tmp, "api/src/main/java").mkdirs()
+
+            val roots = detector.resolveSourceRoots(tmp, tmp)
+
+            roots shouldContainExactlyInAnyOrder
+                listOf(
+                    File(tmp, "core/src/main/kotlin").canonicalFile,
+                    File(tmp, "cli/src/main/kotlin").canonicalFile,
+                    File(tmp, "api/src/main/java").canonicalFile,
+                )
+        }
+
+        @Test
+        fun `should strip colon prefix from module names`(
+            @TempDir tmp: File,
+        ) {
+            File(tmp, "settings.gradle.kts").writeText(
+                """
+                include(":core", ":cli")
+                """.trimIndent(),
+            )
+            File(tmp, "build.gradle.kts").createNewFile()
+            File(tmp, "core/src/main/java").mkdirs()
+            File(tmp, "cli/src/main/kotlin").mkdirs()
+
+            val roots = detector.resolveSourceRoots(tmp, tmp)
+
+            roots shouldContainExactlyInAnyOrder
+                listOf(
+                    File(tmp, "core/src/main/java").canonicalFile,
+                    File(tmp, "cli/src/main/kotlin").canonicalFile,
+                )
+        }
+
+        @Test
+        fun `should detect modules from Groovy settings file`(
+            @TempDir tmp: File,
+        ) {
+            File(tmp, "settings.gradle").writeText(
+                """
+                include ':core', ':cli'
+                """.trimIndent(),
+            )
+            File(tmp, "build.gradle").createNewFile()
+            File(tmp, "core/src/main/java").mkdirs()
+            File(tmp, "cli/src/main/groovy").mkdirs()
+
+            val roots = detector.resolveSourceRoots(tmp, tmp)
+
+            roots shouldContainExactlyInAnyOrder
+                listOf(
+                    File(tmp, "core/src/main/java").canonicalFile,
+                    File(tmp, "cli/src/main/groovy").canonicalFile,
+                )
+        }
+
+        @Test
+        fun `should handle hierarchical module paths`(
+            @TempDir tmp: File,
+        ) {
+            File(tmp, "settings.gradle.kts").writeText(
+                """
+                include("core:model")
+                include("core:api")
+                """.trimIndent(),
+            )
+            File(tmp, "build.gradle.kts").createNewFile()
+            File(tmp, "core/model/src/main/kotlin").mkdirs()
+            File(tmp, "core/api/src/main/java").mkdirs()
+
+            val roots = detector.resolveSourceRoots(tmp, tmp)
+
+            roots shouldContainExactlyInAnyOrder
+                listOf(
+                    File(tmp, "core/model/src/main/kotlin").canonicalFile,
+                    File(tmp, "core/api/src/main/java").canonicalFile,
+                )
+        }
+
+        @Test
         fun `should fall back to project root when no source dirs exist`(
             @TempDir tmp: File,
         ) {
