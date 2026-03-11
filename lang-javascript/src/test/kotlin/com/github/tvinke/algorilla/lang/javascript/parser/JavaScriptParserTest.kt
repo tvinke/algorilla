@@ -184,6 +184,19 @@ internal class JavaScriptParserTest {
         filterActive.parameters[0].name shouldBe "users"
     }
 
+    @Test
+    fun `should mark inline array includes as O1`() {
+        val tree = parseFixture("loops-and-lookups.js")
+        val lookups = tree.findDescendants<LookupCall>()
+        val includesLookups = lookups.filter { it.kind == LookupKind.INCLUDES }
+
+        // codes.includes() — variable reference — should NOT be O(1)
+        includesLookups.any { !it.isO1 } shouldBe true
+
+        // ['active','pending','shipped'].includes() — inline array — should be O(1)
+        includesLookups.any { it.isO1 } shouldBe true
+    }
+
     private fun parseFixture(name: String) =
         parser.parse(
             File(

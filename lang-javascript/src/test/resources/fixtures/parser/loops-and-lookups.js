@@ -27,3 +27,11 @@ function sortAndPick(items) {
     items.sort((a, b) => a - b);
     return items[0];
 }
+
+function filterBySmallSet(items) {
+    return items.filter(item => ['active', 'pending', 'shipped'].includes(item.status));
+}
+
+function filterByVariable(items, codes) {
+    return items.filter(item => codes.includes(item.code));
+}

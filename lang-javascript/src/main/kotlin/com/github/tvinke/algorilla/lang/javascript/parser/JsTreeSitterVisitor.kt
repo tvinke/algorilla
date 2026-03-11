@@ -538,8 +538,34 @@ private fun jsClassifyAsLookup(
     if (kind.isStringApplicable() && jsIsStringTarget(targetText)) {
         return FunctionCall(name = methodName, qualifiedTarget = targetVar, arguments = argNodes, location = loc, children = argNodes)
     }
-    return LookupCall(kind, targetVar, false, loc, argNodes)
+    val isO1 = jsIsSmallInlineArray(targetText)
+    return LookupCall(kind, targetVar, isO1, loc, argNodes)
 }
+
+/**
+ * Detects inline array literals like `[a, b, c]` and returns true when the array
+ * has at most [SMALL_ARRAY_THRESHOLD] elements. Lookups on such arrays are effectively O(1)
+ * and should not be flagged as linear.
+ */
+private fun jsIsSmallInlineArray(targetText: String): Boolean {
+    val trimmed = targetText.trim()
+    if (!trimmed.startsWith("[") || !trimmed.endsWith("]")) return false
+    val inner = trimmed.substring(1, trimmed.length - 1).trim()
+    if (inner.isEmpty()) return true // empty array is O(1)
+    // Count elements by commas, accounting for nested brackets/parens
+    var depth = 0
+    var elements = 1
+    for (ch in inner) {
+        when (ch) {
+            '[', '(' -> depth++
+            ']', ')' -> depth--
+            ',' -> if (depth == 0) elements++
+        }
+    }
+    return elements <= SMALL_ARRAY_THRESHOLD
+}
+
+private const val SMALL_ARRAY_THRESHOLD = 8
 
 private fun jsIsLiteralZeroArg(argNodes: List<IRNode>): Boolean =
     argNodes.size == 1 && argNodes[0] is GenericNode && (argNodes[0] as GenericNode).nodeType.trim() == "0"
