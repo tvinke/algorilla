@@ -1,0 +1,27 @@
+{
+  "name": "algorilla",
+  "version": "0.0.0",
+  "description": "Detect algorithmic complexity anti-patterns in source code",
+  "keywords": ["static-analysis", "performance", "complexity", "linter"],
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tvinke/algorilla.git"
+  },
+  "bin": {
+    "algorilla": "bin/algorilla.js"
+  },
+  "scripts": {
+    "postinstall": "node scripts/postinstall.js"
+  },
+  "os": ["darwin", "linux", "win32"],
+  "engines": {
+    "node": ">=16"
+  },
+  "files": [
+    "bin/",
+    "scripts/",
+    "lib/",
+    "LICENSE"
+  ]
+}
