@@ -3,6 +3,7 @@ package com.github.tvinke.algorilla.rules.builtin
 import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
+import com.github.tvinke.algorilla.model.GenericNode
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LookupCall
@@ -139,6 +140,10 @@ private const val MAX_VAR_NAME_LENGTH = 60
 private fun simpleVarName(node: IRNode): String? =
     when (node) {
         is FunctionCall -> null
+        is GenericNode -> {
+            val text = node.nodeType
+            if (text.length < MAX_VAR_NAME_LENGTH && text.matches(Regex("[a-zA-Z_][a-zA-Z0-9_]*"))) text else null
+        }
         else -> {
             val text = node.toString()
             if (text.length < MAX_VAR_NAME_LENGTH && text.matches(Regex("[a-zA-Z_][a-zA-Z0-9_]*"))) text else null
