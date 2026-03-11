@@ -56,7 +56,8 @@ public class AnalysisEngine(
         val callGraph = buildCallGraph(irTrees, symbolTable)
         annotateComplexity(symbolTable, callGraph)
         val rawFindings = evaluateRules(irTrees, symbolTable, callGraph)
-        val freshFindings = SuppressionFilter().filter(rawFindings, irTrees, aliasIndex)
+        val deduplicated = deduplicateOverlappingRules(rawFindings)
+        val freshFindings = SuppressionFilter().filter(deduplicated, irTrees, aliasIndex)
 
         val allFindings = freshFindings + cachedFindings
         saveCache(sourceFiles, filesToParse, freshFindings, cachedEntries)
@@ -65,7 +66,7 @@ public class AnalysisEngine(
         logger.info { "Analysis complete: ${allFindings.size} findings in ${elapsed}ms" }
 
         return AnalysisResult(
-            findings = allFindings.sortedWith(compareBy({ it.location.file }, { it.location.line })),
+            findings = allFindings.sortedWith(findingOrder),
             filesAnalyzed = sourceFiles.size,
             filesCached = sourceFiles.size - filesToParse.size,
             errors = errors,
@@ -214,6 +215,28 @@ public class AnalysisEngine(
     }
 }
 
+/**
+ * When two rules flag the same location for overlapping reasons, keep the higher-confidence one.
+ * Currently deduplicates: uncached-getter vs redundant-expensive-call (same call, same location).
+ */
+private fun deduplicateOverlappingRules(findings: List<Finding>): List<Finding> {
+    data class LocationKey(
+        val file: String,
+        val line: Int,
+    )
+
+    val redundantLocations =
+        findings
+            .filter { it.ruleId == "redundant-expensive-call" }
+            .map { LocationKey(it.location.file, it.location.line) }
+            .toSet()
+
+    return findings.filter { finding ->
+        finding.ruleId != "uncached-getter" ||
+            LocationKey(finding.location.file, finding.location.line) !in redundantLocations
+    }
+}
+
 private data class ParseResult(
     val irTrees: Map<String, FileRoot>,
     val symbolTable: SymbolTable,
@@ -253,6 +276,16 @@ public class ParseException(
     message: String,
     cause: Throwable? = null,
 ) : RuntimeException(message, cause)
+
+/**
+ * Sort findings so the most actionable ones appear first:
+ * severity (ERROR > WARNING > INFO), then category weight, then location.
+ */
+private val findingOrder: Comparator<Finding> =
+    compareByDescending<Finding> { it.severity.ordinal }
+        .thenBy { it.category?.ordinal ?: Int.MAX_VALUE }
+        .thenBy { it.location.file }
+        .thenBy { it.location.line }
 
 private fun createRegistry(config: AnalysisConfig): CollectionSemanticsRegistry {
     val base = CollectionSemanticsRegistry.loadDefaults()
