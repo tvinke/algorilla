@@ -295,6 +295,64 @@ cheap-methods:
   # Source extraction / context accessors — cheap lookups
   - extractSource
   - getSource
+  # Numeric parsing — O(string_length), effectively constant for typical inputs
+  - parseInt
+  - parseLong
+  - parseDouble
+  - parseFloat
+  - parseByte
+  - parseShort
+  # Apache Commons / collection utility checks — O(1)
+  - isNotEmpty
+  - isNotBlank
+  - isAllBlank
+  - isAnyBlank
+  - isNoneBlank
+  - isAllEmpty
+  - isAnyEmpty
+  - isNoneEmpty
+  # Servlet request accessors — O(1) hash lookups
+  - getParameter
+  - getAttribute
+  - getHeader
+  - getSession
+  - getContextPath
+  - getRequestURI
+  - getServletPath
+  - getScheme
+  - getServerName
+  - getServerPort
+  - getMethod
+  - getProtocol
+  - getRemoteAddr
+  - getRemoteHost
+  # Java time accessors — O(1) field reads
+  - toEpochMilli
+  - toEpochSecond
+  - getEpochSecond
+  - getNano
+  - isAfter
+  - isBefore
+  - isEqual
+  - getYear
+  - getMonthValue
+  - getDayOfMonth
+  - getHour
+  - getMinute
+  - getSecond
+  # Class metadata accessors — O(1)
+  - getName
+  - getSimpleName
+  - getCanonicalName
+  - getPackageName
+  - getSuperclass
+  - getAnnotation
+  # Map/Collection utilities — O(1)
+  - putIfAbsent
+  - computeIfAbsent
+  - computeIfPresent
+  - getOrDefault
+  - merge
 
 # Sequential read / stateful iteration methods whose return value changes
 # on each invocation — not redundant even when called with identical arguments

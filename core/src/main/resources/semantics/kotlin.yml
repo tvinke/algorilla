@@ -233,6 +233,19 @@ cheap-methods:
   # Source extraction / context accessors
   - extractSource
   - getSource
+  # Kotlin parsing and checks
+  - toInt
+  - toLong
+  - toDouble
+  - toFloat
+  - toIntOrNull
+  - toLongOrNull
+  - toDoubleOrNull
+  - toFloatOrNull
+  - isNotEmpty
+  - isNotBlank
+  - isNullOrEmpty
+  - isNullOrBlank
 
 # Sequential read / stateful iteration methods whose return value changes
 # on each invocation — not redundant even when called with identical arguments

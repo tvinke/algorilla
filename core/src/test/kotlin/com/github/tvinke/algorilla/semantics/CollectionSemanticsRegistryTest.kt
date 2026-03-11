@@ -11,6 +11,7 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 
+@Suppress("LargeClass")
 internal class CollectionSemanticsRegistryTest {
     private val registry = CollectionSemanticsRegistry.loadDefaults()
 
@@ -213,6 +214,25 @@ internal class CollectionSemanticsRegistryTest {
         registry.isCheap(Language.JAVA, "plusDays").shouldBeTrue()
         registry.isCheap(Language.JAVA, "indexOf").shouldBeTrue()
         registry.isCheap(Language.JAVA, "someUnknownMethod").shouldBeFalse()
+    }
+
+    @Test
+    fun `should include newly added cheap methods`() {
+        // Numeric parsing
+        registry.isCheap(Language.JAVA, "parseInt").shouldBeTrue()
+        registry.isCheap(Language.JAVA, "parseLong").shouldBeTrue()
+        // Apache Commons utilities
+        registry.isCheap(Language.JAVA, "isNotEmpty").shouldBeTrue()
+        registry.isCheap(Language.JAVA, "isNotBlank").shouldBeTrue()
+        // Servlet request accessors
+        registry.isCheap(Language.JAVA, "getParameter").shouldBeTrue()
+        registry.isCheap(Language.JAVA, "getAttribute").shouldBeTrue()
+        // Java time accessors
+        registry.isCheap(Language.JAVA, "toEpochMilli").shouldBeTrue()
+        registry.isCheap(Language.JAVA, "isAfter").shouldBeTrue()
+        // Kotlin equivalents
+        registry.isCheap(Language.KOTLIN, "toInt").shouldBeTrue()
+        registry.isCheap(Language.KOTLIN, "isNotEmpty").shouldBeTrue()
     }
 
     @Test
