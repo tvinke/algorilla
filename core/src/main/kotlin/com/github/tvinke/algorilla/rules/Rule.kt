@@ -31,6 +31,18 @@ public interface Rule {
         get() = emptyList()
 
     /**
+     * Rule IDs that this rule subsumes (i.e. is a more specific version of).
+     * When this rule and a subsumed rule both fire at the same source location,
+     * the engine keeps this rule's finding and drops the subsumed one.
+     *
+     * Example: `nested-lookup` subsumes `expensive-callback` because a linear
+     * lookup inside a loop is exactly the pattern both rules detect — `nested-lookup`
+     * just gives a more precise diagnosis.
+     */
+    public val subsumes: Set<String>
+        get() = emptySet()
+
+    /**
      * Evaluates this rule against the given analysis context and returns any findings.
      */
     public fun evaluate(context: AnalysisContext): List<Finding>

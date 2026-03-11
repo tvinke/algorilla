@@ -28,6 +28,7 @@ public class RedundantExpensiveCallRule : Rule {
     override val severity: Severity = Severity.INFO
     override val languages: Set<Language> = Language.entries.toSet()
     override val category: RuleCategory = RuleCategory.REDUNDANCY
+    override val subsumes: Set<String> = setOf("uncached-getter")
 
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()

@@ -56,7 +56,7 @@ public class AnalysisEngine(
         val callGraph = buildCallGraph(irTrees, symbolTable)
         annotateComplexity(symbolTable, callGraph)
         val rawFindings = evaluateRules(irTrees, symbolTable, callGraph)
-        val deduplicated = deduplicateOverlappingRules(rawFindings)
+        val deduplicated = applySubsumption(rawFindings, rules)
         val freshFindings = SuppressionFilter().filter(deduplicated, irTrees, aliasIndex)
 
         val allFindings = freshFindings + cachedFindings
@@ -216,25 +216,42 @@ public class AnalysisEngine(
 }
 
 /**
- * When two rules flag the same location for overlapping reasons, keep the higher-confidence one.
- * Currently deduplicates: uncached-getter vs redundant-expensive-call (same call, same location).
+ * When two rules flag the same source location for overlapping reasons, keep the
+ * more specific one. Rules declare which other rules they subsume via [Rule.subsumes].
+ *
+ * For each (file, line) group, if rule A fired there and rule B also fired there,
+ * and A declares that it subsumes B, then B's finding is dropped.
  */
-private fun deduplicateOverlappingRules(findings: List<Finding>): List<Finding> {
+internal fun applySubsumption(
+    findings: List<Finding>,
+    rules: List<Rule>,
+): List<Finding> {
+    val subsumptionIndex: Map<String, Set<String>> =
+        rules.filter { it.subsumes.isNotEmpty() }.associate { it.id to it.subsumes }
+    if (subsumptionIndex.isEmpty()) return findings
+
     data class LocationKey(
         val file: String,
         val line: Int,
     )
 
-    val redundantLocations =
-        findings
-            .filter { it.ruleId == "redundant-expensive-call" }
-            .map { LocationKey(it.location.file, it.location.line) }
-            .toSet()
+    val byLocation = findings.groupBy { LocationKey(it.location.file, it.location.line) }
+    val subsumed = mutableSetOf<Finding>()
 
-    return findings.filter { finding ->
-        finding.ruleId != "uncached-getter" ||
-            LocationKey(finding.location.file, finding.location.line) !in redundantLocations
+    for ((_, group) in byLocation) {
+        if (group.size < 2) continue
+        val ruleIdsPresent = group.map { it.ruleId }.toSet()
+        for (finding in group) {
+            if (finding in subsumed) continue
+            val dominated =
+                subsumptionIndex.entries
+                    .filter { (dominantId, _) -> dominantId in ruleIdsPresent && dominantId != finding.ruleId }
+                    .any { (_, subs) -> finding.ruleId in subs }
+            if (dominated) subsumed.add(finding)
+        }
     }
+
+    return findings.filter { it !in subsumed }
 }
 
 private data class ParseResult(

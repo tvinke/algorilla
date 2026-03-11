@@ -31,6 +31,7 @@ public class NestedLookupRule : Rule {
     override val severity: Severity = Severity.WARNING
     override val languages: Set<Language> = Language.entries.toSet()
     override val category: RuleCategory = RuleCategory.LOOP_AMPLIFIER
+    override val subsumes: Set<String> = setOf("expensive-callback")
 
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
