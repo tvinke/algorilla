@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.2.0-SNAPSHOT](https://github.com/tvinke/algorilla/compare/v0.1.0-SNAPSHOT...v0.2.0-SNAPSHOT) (2026-03-11)
+## [0.2.0](https://github.com/tvinke/algorilla/compare/v0.1.0...v0.2.0) (2026-03-11)
 
 
 ### Features
