@@ -141,3 +141,158 @@ getter-prefixes:
   - fetch
   - lookup
   - resolve
+
+# Constant-time operations too cheap to flag even when duplicated
+cheap-methods:
+  # Java time/date arithmetic (available via java.time)
+  - plusDays
+  - minusDays
+  - plusHours
+  - minusHours
+  - plusMinutes
+  - minusMinutes
+  - plusSeconds
+  - minusSeconds
+  - plusWeeks
+  - minusWeeks
+  - plusMonths
+  - minusMonths
+  - ofHours
+  - ofMinutes
+  - ofSeconds
+  - ofMillis
+  - ofNanos
+  - ofDays
+  - toInstant
+  - atStartOfDay
+  - atZone
+  # Reflection / modifier checks
+  - isStatic
+  - isPublic
+  - isPrivate
+  - isProtected
+  - isAbstract
+  - isFinal
+  - isInterface
+  - isSynthetic
+  - isAnnotationPresent
+  # String conversions and lookups
+  - startsWith
+  - endsWith
+  - substring
+  - replace
+  - replaceAll
+  - replaceFirst
+  - split
+  - matches
+  - toLowerCase
+  - toUpperCase
+  - trim
+  - strip
+  - charAt
+  - indexOf
+  - lastIndexOf
+  - contains
+  - isEmpty
+  - isBlank
+  - length
+  - concat
+  - valueOf
+  - hasText
+  - hasLength
+  # Type checks / reflection
+  - getType
+  - getDescriptor
+  - getInternalName
+  - getMethodDescriptor
+  - getReturnType
+  - getSort
+  - getSize
+  - getOpcode
+  # Runtime state checks
+  - isTerminated
+  - isCancelled
+  - isDone
+  - isActive
+  - isAlive
+  - isOpen
+  - isClosed
+  - isRunning
+  - isReady
+  - isInstance
+  - isAssignableFrom
+  - isAssignableBound
+  # Stream / collector factories
+  - stream
+  - parallelStream
+  - joining
+  - toList
+  - toSet
+  - toMap
+  - toUnmodifiableList
+  # Source extraction / context accessors
+  - extractSource
+  - getSource
+
+# Sequential read / stateful iteration methods whose return value changes
+# on each invocation — not redundant even when called with identical arguments
+sequential-read-methods:
+  # Binary / byte-stream readers
+  - read
+  - readByte
+  - readShort
+  - readUnsignedShort
+  - readInt
+  - readLong
+  - readFloat
+  - readDouble
+  - readChar
+  - readBoolean
+  - readUTF
+  - readUTF8
+  - readClass
+  - readLine
+  - readAttribute
+  # Scanner / tokeniser style iteration
+  - next
+  - nextByte
+  - nextShort
+  - nextInt
+  - nextLong
+  - nextFloat
+  - nextDouble
+  - nextBoolean
+  - nextLine
+  - nextToken
+  # BitSet iteration
+  - nextSetBit
+  - nextClearBit
+  # Queue / stack / deque stateful operations
+  - poll
+  - pop
+  - take
+  # Bytecode / ASM emission instructions (side-effectful, intentionally repeated)
+  - push
+  - mark
+  - load_local
+  - load_arg
+  - load_this
+  - getfield
+  - putfield
+  - array_load
+  - array_store
+  - dup
+  - swap
+  - invoke_virtual
+  - invoke_interface
+  - invoke_static
+  - invoke_constructor
+  - checkcast
+  - visitVarInsn
+  - visitInsn
+  - visitFieldInsn
+  - visitMethodInsn
+  - visitTypeInsn
+  - visitLabel
+  - visitJumpInsn
+  - visitLdcInsn

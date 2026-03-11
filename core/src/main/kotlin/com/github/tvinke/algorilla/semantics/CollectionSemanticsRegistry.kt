@@ -15,7 +15,7 @@ private val logger = KotlinLogging.logger {}
  * This is the single source of truth for method classification. All hardcoded method name sets
  * in the codebase should derive from this registry instead of maintaining their own lists.
  */
-@Suppress("TooManyFunctions")
+@Suppress("TooManyFunctions", "LongParameterList")
 public class CollectionSemanticsRegistry private constructor(
     private val methodsByLanguage: Map<Language, Map<String, MethodSemantics>>,
     private val heavyweightByLanguage: Map<Language, Set<String>>,
@@ -25,6 +25,8 @@ public class CollectionSemanticsRegistry private constructor(
     private val trivialByLanguage: Map<Language, Set<String>>,
     private val builderByLanguage: Map<Language, Set<String>>,
     private val getterPrefixesByLanguage: Map<Language, List<String>>,
+    private val cheapByLanguage: Map<Language, Set<String>>,
+    private val sequentialReadByLanguage: Map<Language, Set<String>>,
 ) {
     /**
      * Classifies a method name for the given language.
@@ -181,6 +183,38 @@ public class CollectionSemanticsRegistry private constructor(
             .flatten()
             .distinct()
 
+    /**
+     * Returns true if the method is a known cheap/constant-time operation for the language.
+     */
+    public fun isCheap(
+        language: Language,
+        methodName: String,
+    ): Boolean {
+        val resolved = resolveLanguage(language)
+        return cheapByLanguage[resolved]?.contains(methodName) == true
+    }
+
+    /**
+     * Returns the union of all cheap methods across all languages.
+     */
+    public fun allCheapMethods(): Set<String> = cheapByLanguage.values.flatten().toSet()
+
+    /**
+     * Returns true if the method is a sequential read / stateful iteration method.
+     */
+    public fun isSequentialRead(
+        language: Language,
+        methodName: String,
+    ): Boolean {
+        val resolved = resolveLanguage(language)
+        return sequentialReadByLanguage[resolved]?.contains(methodName) == true
+    }
+
+    /**
+     * Returns the union of all sequential read methods across all languages.
+     */
+    public fun allSequentialReadMethods(): Set<String> = sequentialReadByLanguage.values.flatten().toSet()
+
     private fun resolveLanguage(language: Language): Language =
         when (language) {
             Language.TYPESCRIPT, Language.VUE -> Language.JAVASCRIPT
@@ -199,6 +233,7 @@ public class CollectionSemanticsRegistry private constructor(
         /**
          * Loads the default registry from classpath YAML resources.
          */
+        @Suppress("LongMethod")
         public fun loadDefaults(): CollectionSemanticsRegistry {
             val methods = mutableMapOf<Language, Map<String, MethodSemantics>>()
             val heavyweight = mutableMapOf<Language, Set<String>>()
@@ -208,6 +243,8 @@ public class CollectionSemanticsRegistry private constructor(
             val trivial = mutableMapOf<Language, Set<String>>()
             val builder = mutableMapOf<Language, Set<String>>()
             val getterPrefixes = mutableMapOf<Language, List<String>>()
+            val cheap = mutableMapOf<Language, Set<String>>()
+            val sequentialRead = mutableMapOf<Language, Set<String>>()
 
             for ((lang, resource) in LANGUAGE_FILES) {
                 val text = loadResource(resource) ?: continue
@@ -220,6 +257,8 @@ public class CollectionSemanticsRegistry private constructor(
                 trivial[lang] = parsed.trivialMethods
                 builder[lang] = parsed.builderMethods
                 getterPrefixes[lang] = parsed.getterPrefixes
+                cheap[lang] = parsed.cheapMethods
+                sequentialRead[lang] = parsed.sequentialReadMethods
             }
 
             logger.info {
@@ -227,7 +266,18 @@ public class CollectionSemanticsRegistry private constructor(
                 "Collection semantics registry loaded: $total methods across ${methods.size} languages"
             }
 
-            return CollectionSemanticsRegistry(methods, heavyweight, o1, streamOps, scopeOps, trivial, builder, getterPrefixes)
+            return CollectionSemanticsRegistry(
+                methods,
+                heavyweight,
+                o1,
+                streamOps,
+                scopeOps,
+                trivial,
+                builder,
+                getterPrefixes,
+                cheap,
+                sequentialRead,
+            )
         }
 
         /**
@@ -257,6 +307,8 @@ public class CollectionSemanticsRegistry private constructor(
                 trivialByLanguage = base.trivialByLanguage,
                 builderByLanguage = base.builderByLanguage,
                 getterPrefixesByLanguage = base.getterPrefixesByLanguage,
+                cheapByLanguage = base.cheapByLanguage,
+                sequentialReadByLanguage = base.sequentialReadByLanguage,
             )
         }
 
@@ -280,6 +332,8 @@ internal data class ParsedYaml(
     val trivialMethods: Set<String>,
     val builderMethods: Set<String>,
     val getterPrefixes: List<String>,
+    val cheapMethods: Set<String>,
+    val sequentialReadMethods: Set<String>,
 )
 
 /**
@@ -300,6 +354,8 @@ internal fun parseYaml(text: String): ParsedYaml {
         trivialMethods = collectListItems(sections["trivial-methods"]),
         builderMethods = collectListItems(sections["builder-methods"]),
         getterPrefixes = collectListItems(sections["getter-prefixes"]).toList(),
+        cheapMethods = collectListItems(sections["cheap-methods"]),
+        sequentialReadMethods = collectListItems(sections["sequential-read-methods"]),
     )
 }
 
