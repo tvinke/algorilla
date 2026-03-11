@@ -14,7 +14,7 @@ Algorilla is a static analysis tool that finds hidden O(n²) and O(n·m) perform
 
 -   :material-shield-search:{ .lg .middle } **Rules**
 
-    Browse all 15 built-in rules with examples, detection logic, and suggested fixes.
+    Browse all 23 built-in rules with examples, detection logic, and suggested fixes.
 
     [:octicons-arrow-right-24: Rules overview](rules/index.md)
 
@@ -103,7 +103,7 @@ Most static analyzers focus on correctness — null checks, type errors, securit
 
 Algorilla catches these patterns **before** they ship:
 
-- **15 built-in rules** across 5 categories, each with evidence chains that show *why* it's a problem
+- **23 built-in rules** across 6 categories, each with evidence chains that show *why* it's a problem
 - **Multi-language**: Java, Groovy, Kotlin, JavaScript, TypeScript, Vue SFC
 - **Cross-file analysis**: follows call chains across files and languages to catch indirect patterns
 - **Fast**: analyzes thousands of files in seconds with incremental caching
@@ -115,7 +115,7 @@ Algorilla catches these patterns **before** they ship:
 
 -   **Try it on your project** — [Installation](getting-started/installation.md) takes under a minute. Run it, see what it finds.
 
--   **Browse the rules** — [15 rules](rules/index.md) with bad/good examples so you know exactly what to look for.
+-   **Browse the rules** — [23 rules](rules/index.md) with bad/good examples so you know exactly what to look for.
 
 -   **Add it to CI** — [CI/CD integration](guide/ci-integration.md) with GitHub Actions, GitLab CI, and baseline workflows.
 

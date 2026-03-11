@@ -68,7 +68,7 @@ Manual type hints for variables whose types cannot be resolved statically. Map v
 
 ### `heavyweight-types`
 
-Set of class names considered "heavyweight" for the heavyweight-object-per-invocation rule. Defaults include `ObjectMapper`, `Gson`, `XmlMapper`, `DocumentBuilderFactory`, and `TransformerFactory`.
+Set of class names considered "heavyweight" for the `expensive-construction` rule. Defaults include `ObjectMapper`, `Gson`, `XmlMapper`, `DocumentBuilderFactory`, and `TransformerFactory`.
 
 ### `max-call-depth`
 

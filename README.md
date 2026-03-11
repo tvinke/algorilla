@@ -109,23 +109,32 @@ Requires Java 11+.
 
 ## Rules
 
+23 built-in rules across 6 categories. See [all rules](docs/docs/rules/index.md) for details.
+
 | Rule | What it catches | Impact |
 |------|----------------|--------|
 | `nested-lookup` | `contains()`/`filter()`/`find()` inside a loop | O(n*m) → O(n+m) |
 | `repeated-linear-scan` | Same collection scanned 2+ times in one method | k * O(n) → O(n) |
 | `sort-for-last` | `sort()` just to get `first()`/`last()` | O(n log n) → O(n) |
 | `expensive-sort-comparator` | Linear search, date parsing, or heavy objects in sort comparator | O(n² log n) → O(n log n) |
+| `filter-after-sort` | `sorted().filter()` — filtering after sorting wastes sort effort | O(n log n) → O(k log k) |
 | `bulk-load-for-single-lookup` | `findAll()` + filter when a targeted query would do | O(n) → O(1) |
-| `expensive-construction` | `new ObjectMapper()` inside a method body | ~1ms allocation per call |
 | `n-plus-one-query` | `findById()`/`countBy*` inside a loop | O(n * IO) → O(1 * IO) |
+| `expensive-construction` | `new ObjectMapper()` inside a method body | ~1ms allocation per call |
 | `repeated-regex-in-loop` | `Pattern.compile()` / `new RegExp()` inside loop | Recompilation per iteration |
+| `implicit-regex-in-loop` | `String.matches()`/`replaceAll()` inside loop | Hidden recompilation per iteration |
 | `expensive-serialization-in-loop` | `writeValueAsString()`/`JSON.parse()` inside loop | O(n * serialize) |
 | `sequential-async-join-in-loop` | `.join()`/`.get()` on futures in loop | Sequential I/O instead of parallel |
 | `in-loop-collection-building` | `addAll()`/`concat()` inside loop | O(n*m) copying per iteration |
+| `string-concat-in-loop` | String concatenation with `+=` inside loop | O(n²) copying |
+| `quadratic-removal` | `remove()`/`removeFirst()` on ArrayList in loop | O(n²) shifting |
+| `repeated-reflection-in-loop` | Reflection calls inside loop | O(n * reflection) |
+| `hidden-nested-loop` | Method call inside loop hides an inner loop | O(n*m) hidden behind method call |
+| `expensive-callback` | Expensive operations inside `filter`/`map`/`forEach` | O(n * expensive-op) |
 | `redundant-expensive-call` | Same call with same args invoked multiple times | k * O(f) → O(f) |
 | `uncached-getter` | `getXxx(id)` called repeatedly with same argument | Cache in local variable |
 | `chained-getters` | Cascading getter chain: `a=get(x)` → `b=get(a)` → `c=get(b)` | Compound lookup cost |
-| `filter-after-sort` | `sorted().filter()` — filtering after sorting wastes sort effort | O(n log n) → O(k log k) |
+| `parallel-stream-bottleneck` | Shared mutable state in `parallelStream().forEach()` | Thread-safety + serialization |
 
 ## Documentation
 

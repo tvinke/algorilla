@@ -59,23 +59,30 @@ nav:
       - Nested Lookup: rules/nested-lookup.md
       - Repeated Linear Scan: rules/repeated-linear-scan.md
       - Repeated Regex in Loop: rules/repeated-regex-in-loop.md
+      - Implicit Regex in Loop: rules/implicit-regex-in-loop.md
       - Expensive Serialization in Loop: rules/expensive-serialization-in-loop.md
       - Sequential Async Join in Loop: rules/sequential-async-join-in-loop.md
       - In-Loop Collection Building: rules/in-loop-collection-building.md
+      - String Concat in Loop: rules/string-concat-in-loop.md
+      - Quadratic Removal: rules/quadratic-removal.md
+      - Repeated Reflection in Loop: rules/repeated-reflection-in-loop.md
+      - Hidden Nested Loop: rules/hidden-nested-loop.md
+      - Expensive Callback: rules/expensive-callback.md
     - Sort Abuse:
       - Sort for Last: rules/sort-for-last.md
       - Expensive Sort Comparator: rules/expensive-sort-comparator.md
-      - Date in Sort: rules/date-in-sort.md
       - Filter After Sort: rules/filter-after-sort.md
     - Query Patterns:
       - N+1 Query: rules/n-plus-one-query.md
-      - Bulk Load for Single Lookup: rules/full-scan-for-single-lookup.md
+      - Bulk Load for Single Lookup: rules/bulk-load-for-single-lookup.md
     - Construction Cost:
-      - Expensive Construction: rules/heavyweight-object-per-invocation.md
+      - Expensive Construction: rules/expensive-construction.md
     - Redundancy:
       - Redundant Expensive Call: rules/redundant-expensive-call.md
       - Uncached Getter: rules/uncached-getter.md
       - Chained Getters: rules/chained-getters.md
+    - Concurrency:
+      - Parallel Stream Bottleneck: rules/parallel-stream-bottleneck.md
   - Guide:
     - Workflow: guide/workflow.md
     - Understanding Output: guide/understanding-output.md

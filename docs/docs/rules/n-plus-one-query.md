@@ -57,4 +57,4 @@ for (Long orderId : orderIds) {
 
 ## Related Rules
 
-- [Bulk Load for Single Lookup](full-scan-for-single-lookup.md) — loading all records when only one is needed
+- [Bulk Load for Single Lookup](bulk-load-for-single-lookup.md) — loading all records when only one is needed

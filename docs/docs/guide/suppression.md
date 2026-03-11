@@ -49,6 +49,6 @@ See the [Workflow](workflow.md#accept-it-ignore-list) page for when to use inlin
 
 ```yaml
 rules:
-  date-in-sort:
+  expensive-sort-comparator:
     enabled: false
 ```

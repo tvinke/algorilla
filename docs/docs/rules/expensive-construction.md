@@ -1,6 +1,6 @@
 # Expensive Construction
 
-**Rule ID:** `expensive-construction` · **Severity:** WARNING
+**Rule ID:** `expensive-construction` · **Severity:** INFO · **Category:** Construction cost
 
 ## Description
 

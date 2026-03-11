@@ -1,6 +1,6 @@
 # Rules Overview
 
-Algorilla ships with 22 built-in rules that detect common algorithmic complexity anti-patterns, organized in six categories.
+Algorilla ships with 23 built-in rules that detect common algorithmic complexity anti-patterns, organized in six categories.
 
 ## Loop amplifiers
 
@@ -38,7 +38,7 @@ Database and service call patterns that cause excessive I/O.
 | Rule ID | Name | Severity | Detected Complexity |
 |---------|------|----------|-------------------|
 | `n-plus-one-query` | [N+1 Query](n-plus-one-query.md) | WARNING | O(n·IO) where O(1·IO) suffices |
-| `bulk-load-for-single-lookup` | [Bulk Load for Single Lookup](full-scan-for-single-lookup.md) | WARNING | O(n) where O(1) suffices |
+| `bulk-load-for-single-lookup` | [Bulk Load for Single Lookup](bulk-load-for-single-lookup.md) | WARNING | O(n) where O(1) suffices |
 
 ## Construction cost
 
@@ -46,7 +46,7 @@ Unnecessary object creation overhead.
 
 | Rule ID | Name | Severity | Detected Complexity |
 |---------|------|----------|-------------------|
-| `expensive-construction` | [Expensive Construction](heavyweight-object-per-invocation.md) | WARNING | Unnecessary allocation overhead |
+| `expensive-construction` | [Expensive Construction](expensive-construction.md) | INFO | Unnecessary allocation overhead |
 
 ## Redundancy
 
