@@ -17,27 +17,7 @@ import com.github.tvinke.algorilla.reporting.ConsoleReporter
 import com.github.tvinke.algorilla.reporting.JsonReporter
 import com.github.tvinke.algorilla.reporting.SarifReporter
 import com.github.tvinke.algorilla.rules.Rule
-import com.github.tvinke.algorilla.rules.builtin.ChainedGettersRule
-import com.github.tvinke.algorilla.rules.builtin.ExpensiveCallbackRule
-import com.github.tvinke.algorilla.rules.builtin.ExpensiveSerializationInLoopRule
-import com.github.tvinke.algorilla.rules.builtin.ExpensiveSortComparatorRule
-import com.github.tvinke.algorilla.rules.builtin.FilterAfterSortRule
-import com.github.tvinke.algorilla.rules.builtin.FullScanForSingleLookupRule
-import com.github.tvinke.algorilla.rules.builtin.HeavyweightObjectPerInvocationRule
-import com.github.tvinke.algorilla.rules.builtin.HiddenNestedLoopRule
-import com.github.tvinke.algorilla.rules.builtin.ImplicitRegexInLoopRule
-import com.github.tvinke.algorilla.rules.builtin.InLoopCollectionBuildingRule
-import com.github.tvinke.algorilla.rules.builtin.NPlusOneRepositoryCallRule
-import com.github.tvinke.algorilla.rules.builtin.NestedLookupRule
-import com.github.tvinke.algorilla.rules.builtin.QuadraticRemovalRule
-import com.github.tvinke.algorilla.rules.builtin.RedundantExpensiveCallRule
-import com.github.tvinke.algorilla.rules.builtin.RepeatedLinearScanRule
-import com.github.tvinke.algorilla.rules.builtin.RepeatedReflectionInLoopRule
-import com.github.tvinke.algorilla.rules.builtin.RepeatedRegexInLoopRule
-import com.github.tvinke.algorilla.rules.builtin.SequentialAsyncJoinInLoopRule
-import com.github.tvinke.algorilla.rules.builtin.SortForLastRule
-import com.github.tvinke.algorilla.rules.builtin.StringConcatInLoopRule
-import com.github.tvinke.algorilla.rules.builtin.UncachedGetterRule
+import com.github.tvinke.algorilla.rules.builtin.BuiltinRules
 import picocli.CommandLine
 import picocli.CommandLine.Command
 import picocli.CommandLine.Model.CommandSpec
@@ -282,30 +262,7 @@ internal class AlgorillaCommand :
     }
 }
 
-private fun builtinRules(): List<Rule> =
-    listOf(
-        NestedLookupRule(),
-        SortForLastRule(),
-        ExpensiveSortComparatorRule(),
-        ExpensiveCallbackRule(),
-        RepeatedLinearScanRule(),
-        FullScanForSingleLookupRule(),
-        HeavyweightObjectPerInvocationRule(),
-        RepeatedRegexInLoopRule(),
-        ExpensiveSerializationInLoopRule(),
-        SequentialAsyncJoinInLoopRule(),
-        InLoopCollectionBuildingRule(),
-        NPlusOneRepositoryCallRule(),
-        RedundantExpensiveCallRule(),
-        UncachedGetterRule(),
-        ChainedGettersRule(),
-        FilterAfterSortRule(),
-        HiddenNestedLoopRule(),
-        ImplicitRegexInLoopRule(),
-        StringConcatInLoopRule(),
-        QuadraticRemovalRule(),
-        RepeatedReflectionInLoopRule(),
-    )
+private fun builtinRules(): List<Rule> = BuiltinRules.all()
 
 private fun applyBaseline(
     result: AnalysisResult,
