@@ -1,0 +1,125 @@
+name: 'Algorilla'
+description: 'Detect algorithmic complexity anti-patterns in source code'
+author: 'Ted Vinke'
+
+branding:
+  icon: 'search'
+  color: 'green'
+
+inputs:
+  paths:
+    description: 'Directories to scan (space-separated)'
+    required: false
+    default: '.'
+  format:
+    description: 'Output format: console, json, sarif'
+    required: false
+    default: 'sarif'
+  severity:
+    description: 'Minimum severity to report: info, warning, error'
+    required: false
+    default: 'warning'
+  fail-on:
+    description: 'Minimum severity to fail the build: info, warning, error'
+    required: false
+    default: 'info'
+  rules:
+    description: 'Comma-separated list of rule IDs to run (empty = all)'
+    required: false
+    default: ''
+  baseline:
+    description: 'Path to baseline file'
+    required: false
+    default: ''
+  language:
+    description: 'Comma-separated languages to scan (empty = all)'
+    required: false
+    default: ''
+  version:
+    description: 'Algorilla version to use (default: latest)'
+    required: false
+    default: 'latest'
+
+outputs:
+  findings-count:
+    description: 'Number of findings reported'
+  report-file:
+    description: 'Path to the generated report file'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: temurin
+
+    - name: Download algorilla
+      shell: bash
+      env:
+        ALGORILLA_VERSION: ${{ inputs.version }}
+        GH_REPO: ${{ github.action_repository || github.repository }}
+      run: |
+        OWNER="${GH_REPO%%/*}"
+        REPO="${GH_REPO##*/}"
+        if [ "$ALGORILLA_VERSION" = "latest" ]; then
+          TAG=$(curl -sL "https://api.github.com/repos/${OWNER}/${REPO}/releases/latest" | grep '"tag_name"' | cut -d'"' -f4)
+        else
+          TAG="v${ALGORILLA_VERSION}"
+        fi
+        echo "Downloading algorilla ${TAG}..."
+        curl -sL "https://github.com/${OWNER}/${REPO}/releases/download/${TAG}/algorilla-${TAG#v}.jar" -o /tmp/algorilla.jar
+
+    - name: Run algorilla
+      shell: bash
+      id: run
+      env:
+        INPUT_PATHS: ${{ inputs.paths }}
+        INPUT_FORMAT: ${{ inputs.format }}
+        INPUT_SEVERITY: ${{ inputs.severity }}
+        INPUT_FAIL_ON: ${{ inputs.fail-on }}
+        INPUT_RULES: ${{ inputs.rules }}
+        INPUT_BASELINE: ${{ inputs.baseline }}
+        INPUT_LANGUAGE: ${{ inputs.language }}
+      run: |
+        ARGS="${INPUT_PATHS}"
+        ARGS="${ARGS} --format ${INPUT_FORMAT}"
+        ARGS="${ARGS} --severity ${INPUT_SEVERITY}"
+        ARGS="${ARGS} --fail-on ${INPUT_FAIL_ON}"
+
+        if [ -n "${INPUT_RULES}" ]; then
+          ARGS="${ARGS} --rule ${INPUT_RULES}"
+        fi
+        if [ -n "${INPUT_BASELINE}" ]; then
+          ARGS="${ARGS} --baseline ${INPUT_BASELINE}"
+        fi
+        if [ -n "${INPUT_LANGUAGE}" ]; then
+          ARGS="${ARGS} --language ${INPUT_LANGUAGE}"
+        fi
+
+        REPORT_EXT="json"
+        if [ "${INPUT_FORMAT}" = "sarif" ]; then REPORT_EXT="sarif"; fi
+        REPORT_FILE="${GITHUB_WORKSPACE}/algorilla-report.${REPORT_EXT}"
+        ARGS="${ARGS} --output ${REPORT_FILE}"
+
+        set +e
+        java -jar /tmp/algorilla.jar ${ARGS}
+        EXIT_CODE=$?
+        set -e
+
+        echo "report-file=${REPORT_FILE}" >> "${GITHUB_OUTPUT}"
+
+        if [ -f "${REPORT_FILE}" ] && [ "${INPUT_FORMAT}" = "json" ]; then
+          COUNT=$(python3 -c "import json; r=json.load(open('${REPORT_FILE}')); print(r.get('summary',{}).get('totalFindings',0))" 2>/dev/null || echo "unknown")
+          echo "findings-count=${COUNT}" >> "${GITHUB_OUTPUT}"
+        fi
+
+        exit ${EXIT_CODE}
+
+    - name: Upload SARIF (if sarif format)
+      if: inputs.format == 'sarif' && always()
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: ${{ steps.run.outputs.report-file }}
+      continue-on-error: true
