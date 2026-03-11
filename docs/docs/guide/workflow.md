@@ -7,23 +7,23 @@ This page walks through the typical workflow of using algorilla on a project: sc
 Point algorilla at your project root. It auto-detects the build system and source directories:
 
 ```bash
-java -jar algorilla.jar .
+algorilla .
 ```
 
 For a first run on a large codebase, start with warnings only:
 
 ```bash
-java -jar algorilla.jar --severity warning .
+algorilla --severity warning .
 ```
 
 Or focus on a single rule:
 
 ```bash
-java -jar algorilla.jar --rule nested-lookup .
+algorilla --rule nested-lookup .
 ```
 
 !!! tip "List available rules"
-    Run `java -jar algorilla.jar --list-rules` to see all built-in rules with their severity, category, and supported languages.
+    Run `algorilla --list-rules` to see all built-in rules with their severity, category, and supported languages.
 
 ## 2. Read the output
 
@@ -54,7 +54,7 @@ Apply the suggestion, then re-run algorilla. The finding disappears:
 
 ```bash
 # fix the code, then:
-java -jar algorilla.jar .
+algorilla .
 ```
 
 Caching makes re-scans fast — only changed files are re-analyzed.
@@ -82,7 +82,7 @@ If a finding is valid code that you've reviewed and decided is acceptable, accep
 Accept one or more findings:
 
 ```bash
-java -jar algorilla.jar --accept a1b2c3d4e5f6g7h8 .
+algorilla --accept a1b2c3d4e5f6g7h8 .
 ```
 
 This adds the finding to `.algorilla/ignore-list.json`. On subsequent runs, accepted findings are hidden automatically. The ignore list is project-local and can be committed to version control.
@@ -115,10 +115,10 @@ On a legacy codebase, save a baseline so you only see new findings going forward
 
 ```bash
 # on main branch:
-java -jar algorilla.jar --save-baseline .algorilla/baseline.json .
+algorilla --save-baseline .algorilla/baseline.json .
 
 # on a feature branch:
-java -jar algorilla.jar --baseline .algorilla/baseline.json .
+algorilla --baseline .algorilla/baseline.json .
 ```
 
 See [Baseline Workflow](baseline-workflow.md) for details.
@@ -129,10 +129,10 @@ Use `--fail-on` to control when algorilla fails a build:
 
 ```bash
 # fail only on errors (warnings are advisory)
-java -jar algorilla.jar --fail-on error --format sarif -o results.sarif .
+algorilla --fail-on error --format sarif -o results.sarif .
 
 # fail on warnings and errors (strict)
-java -jar algorilla.jar --fail-on warning --format sarif -o results.sarif .
+algorilla --fail-on warning --format sarif -o results.sarif .
 ```
 
 See [CI Integration](ci-integration.md) for GitHub Actions and GitLab CI examples.
@@ -141,11 +141,11 @@ See [CI Integration](ci-integration.md) for GitHub Actions and GitLab CI example
 
 | Task | Command |
 |---|---|
-| Scan project | `java -jar algorilla.jar .` |
-| Warnings only | `java -jar algorilla.jar --severity warning .` |
-| Single rule | `java -jar algorilla.jar --rule nested-lookup .` |
-| List rules | `java -jar algorilla.jar --list-rules` |
-| Accept a finding | `java -jar algorilla.jar --accept <hash> .` |
-| Save baseline | `java -jar algorilla.jar --save-baseline .algorilla/baseline.json .` |
-| Compare to baseline | `java -jar algorilla.jar --baseline .algorilla/baseline.json .` |
-| CI (fail on errors) | `java -jar algorilla.jar --fail-on error --format sarif -o results.sarif .` |
+| Scan project | `algorilla .` |
+| Warnings only | `algorilla --severity warning .` |
+| Single rule | `algorilla --rule nested-lookup .` |
+| List rules | `algorilla --list-rules` |
+| Accept a finding | `algorilla --accept <hash> .` |
+| Save baseline | `algorilla --save-baseline .algorilla/baseline.json .` |
+| Compare to baseline | `algorilla --baseline .algorilla/baseline.json .` |
+| CI (fail on errors) | `algorilla --fail-on error --format sarif -o results.sarif .` |

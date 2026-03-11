@@ -139,7 +139,7 @@ SARIF (Static Analysis Results Interchange Format) output follows the SARIF 2.1.
 - Azure DevOps
 
 ```bash
-java -jar algorilla.jar --format sarif --output results.sarif .
+algorilla --format sarif --output results.sarif .
 ```
 
 ## JSON output
@@ -147,5 +147,5 @@ java -jar algorilla.jar --format sarif --output results.sarif .
 Machine-readable JSON output for custom tooling:
 
 ```bash
-java -jar algorilla.jar --format json --output results.json .
+algorilla --format json --output results.json .
 ```

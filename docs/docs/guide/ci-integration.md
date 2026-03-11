@@ -6,7 +6,9 @@ Run Algorilla as part of your pipeline to catch algorithmic complexity issues be
 
 ## GitHub Actions
 
-### Basic workflow
+### Using the Algorilla action (recommended)
+
+The simplest way to add algorilla to a GitHub Actions workflow:
 
 ```yaml
 # .github/workflows/algorilla.yml
@@ -22,6 +24,52 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: tvinke/algorilla@v0.2.0
+        with:
+          paths: '.'
+          severity: 'warning'
+          fail-on: 'error'
+```
+
+This automatically downloads algorilla, runs the analysis, and uploads SARIF results to GitHub Code Scanning — findings show up as annotations on the PR diff.
+
+#### Action inputs
+
+| Input | Description | Default |
+|-------|-------------|---------|
+| `paths` | Directories to scan (space-separated) | `.` |
+| `format` | Output format: `console`, `json`, `sarif` | `sarif` |
+| `severity` | Minimum severity to report | `warning` |
+| `fail-on` | Minimum severity to fail the build | `info` |
+| `rules` | Comma-separated rule IDs (empty = all) | all |
+| `baseline` | Path to baseline file | none |
+| `language` | Comma-separated languages to scan | all |
+| `version` | Algorilla version to use | `latest` |
+
+### With baseline (PR-only findings)
+
+To only flag findings introduced in the PR, maintain a baseline on `main`:
+
+```yaml
+      - uses: tvinke/algorilla@v0.2.0
+        with:
+          paths: '.'
+          baseline: '.algorilla/baseline.json'
+```
+
+See [Baseline Workflow](#baseline-workflow) below for how to keep the baseline up to date.
+
+### Manual setup
+
+If you prefer to manage the JAR yourself:
+
+```yaml
+jobs:
+  algorilla:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -29,6 +77,7 @@ jobs:
 
       - name: Run Algorilla
         run: |
+          curl -sL https://github.com/tvinke/algorilla/releases/latest/download/algorilla-0.2.0.jar -o algorilla.jar
           java -jar algorilla.jar \
             --no-cache \
             --format sarif \
@@ -42,27 +91,8 @@ jobs:
           sarif_file: results.sarif
 ```
 
-This uploads findings to GitHub Code Scanning, so they show up as annotations on the PR diff.
-
 !!! note
     The `if: always()` on the upload step is important — Algorilla exits with `1` when it finds issues, which would skip the upload otherwise.
-
-### With baseline (PR-only findings)
-
-To only flag findings introduced in the PR, maintain a baseline on `main`:
-
-```yaml
-      - name: Run Algorilla
-        run: |
-          java -jar algorilla.jar \
-            --no-cache \
-            --baseline .algorilla/baseline.json \
-            --format sarif \
-            --output results.sarif \
-            .
-```
-
-See [Baseline Workflow](#baseline-workflow) below for how to keep the baseline up to date.
 
 ## GitLab CI
 
@@ -70,9 +100,9 @@ See [Baseline Workflow](#baseline-workflow) below for how to keep the baseline u
 # .gitlab-ci.yml
 algorilla:
   stage: test
-  image: eclipse-temurin:17-jdk
+  image: ghcr.io/tvinke/algorilla:latest
   script:
-    - java -jar algorilla.jar
+    - algorilla
         --no-cache
         --format json
         --output algorilla-report.json
@@ -88,6 +118,16 @@ algorilla:
 
 Setting `allow_failure` for exit code `1` lets the pipeline continue when findings exist, while still failing on actual errors (exit code `2`).
 
+Alternatively, use `npx`:
+
+```yaml
+algorilla:
+  stage: test
+  image: node:20
+  script:
+    - npx algorilla --no-cache --format json --output algorilla-report.json .
+```
+
 ## Baseline Workflow
 
 Baselines let you avoid drowning in existing findings and focus on what the PR introduces.
@@ -97,7 +137,7 @@ Baselines let you avoid drowning in existing findings and focus on what the PR i
 Run this once (or in a scheduled job) on your default branch:
 
 ```bash
-java -jar algorilla.jar --save-baseline .algorilla/baseline.json .
+algorilla --save-baseline .algorilla/baseline.json .
 ```
 
 Commit `.algorilla/baseline.json` to the repo.
@@ -107,7 +147,7 @@ Commit `.algorilla/baseline.json` to the repo.
 Pass `--baseline` in your CI job so only new findings are reported:
 
 ```bash
-java -jar algorilla.jar \
+algorilla \
   --baseline .algorilla/baseline.json \
   --format sarif \
   --output results.sarif \
@@ -121,7 +161,7 @@ The exit code will be `0` if all findings were already in the baseline.
 When you fix findings or intentionally accept them, regenerate:
 
 ```bash
-java -jar algorilla.jar --save-baseline .algorilla/baseline.json .
+algorilla --save-baseline .algorilla/baseline.json .
 git add .algorilla/baseline.json
 git commit -m "update algorilla baseline"
 ```
@@ -133,19 +173,19 @@ git commit -m "update algorilla baseline"
 **Focus on specific languages** with `--language` if your repo is multi-language but you only care about a subset:
 
 ```bash
-java -jar algorilla.jar --no-cache --language java,kotlin .
+algorilla --no-cache --language java,kotlin .
 ```
 
 **Control noise with `--severity`.** Start with `--severity error` to surface only the worst offenders, then lower it as you clean up:
 
 ```bash
-java -jar algorilla.jar --no-cache --severity error .
+algorilla --no-cache --severity error .
 ```
 
 **Fail fast on errors.** If your CI treats any non-zero exit as failure, wrap the command to distinguish findings from errors:
 
 ```bash
-java -jar algorilla.jar --no-cache . || [ $? -eq 1 ]
+algorilla --no-cache . || [ $? -eq 1 ]
 ```
 
 This passes when exit code is `0` (clean) or `1` (findings), but fails on `2` (error).

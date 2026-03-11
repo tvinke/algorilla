@@ -34,5 +34,5 @@ JS/TS files are scanned with a regex-based approach that recognizes function dec
 A single `algorilla` invocation handles mixed-language projects. Point it at your project root and it automatically detects file types:
 
 ```bash
-java -jar algorilla.jar /path/to/mixed-language-project
+algorilla /path/to/mixed-language-project
 ```

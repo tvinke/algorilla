@@ -15,7 +15,7 @@ The cache is stored at `.algorilla/analysis-cache.json` relative to the scan roo
 ## Disabling the Cache
 
 ```bash
-java -jar algorilla.jar --no-cache .
+algorilla --no-cache .
 ```
 
 ## Performance Impact

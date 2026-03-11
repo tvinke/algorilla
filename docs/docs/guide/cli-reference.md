@@ -47,39 +47,39 @@ If no build system is detected, the given path is used as-is.
 
 ```bash
 # Scan current directory (auto-detects project structure)
-java -jar algorilla.jar
+algorilla
 
 # Scan specific project
-java -jar algorilla.jar /path/to/project
+algorilla /path/to/project
 
 # Targeted scan of a single module
-java -jar algorilla.jar /path/to/project/api/src/main/java
+algorilla /path/to/project/api/src/main/java
 
 # SARIF output for CI
-java -jar algorilla.jar --format sarif -o results.sarif .
+algorilla --format sarif -o results.sarif .
 
 # Only errors, exclude generated code
-java -jar algorilla.jar --severity error --exclude "**/generated/**" .
+algorilla --severity error --exclude "**/generated/**" .
 
 # Save baseline, then only report new findings
-java -jar algorilla.jar --save-baseline baseline.json .
-java -jar algorilla.jar --baseline baseline.json .
+algorilla --save-baseline baseline.json .
+algorilla --baseline baseline.json .
 
 # Force full re-analysis
-java -jar algorilla.jar --no-cache .
+algorilla --no-cache .
 
 # List all available rules
-java -jar algorilla.jar --list-rules
+algorilla --list-rules
 
 # Run only specific rules
-java -jar algorilla.jar --rule nested-lookup,sort-for-last .
+algorilla --rule nested-lookup,sort-for-last .
 
 # Fail CI only on errors (warnings are advisory)
-java -jar algorilla.jar --fail-on error --format sarif -o results.sarif .
+algorilla --fail-on error --format sarif -o results.sarif .
 
 # Accept a reviewed finding
-java -jar algorilla.jar --accept a1b2c3d4e5f6g7h8 .
+algorilla --accept a1b2c3d4e5f6g7h8 .
 
 # Scan only Java and Kotlin files
-java -jar algorilla.jar --language java,kotlin .
+algorilla --language java,kotlin .
 ```

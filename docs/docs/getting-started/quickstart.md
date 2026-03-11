@@ -2,10 +2,10 @@
 
 ## Scan a Project
 
-Point Algorilla at your project root:
+Point algorilla at your project root:
 
 ```bash
-java -jar algorilla.jar /path/to/your/project
+algorilla /path/to/your/project
 ```
 
 !!! tip "Zero config"
@@ -14,7 +14,7 @@ java -jar algorilla.jar /path/to/your/project
 For example, for a Gradle project:
 
 ```bash
-java -jar algorilla.jar .
+algorilla .
 ```
 
 This detects all modules from `settings.gradle.kts` and scans their `src/main/{java,kotlin,groovy}` directories.
@@ -25,10 +25,10 @@ You can also point at a specific file or subdirectory for a targeted scan:
 
 ```bash
 # Single file
-java -jar algorilla.jar src/main/java/com/example/OrderService.java
+algorilla src/main/java/com/example/OrderService.java
 
 # Specific subdirectory
-java -jar algorilla.jar src/main/groovy
+algorilla src/main/groovy
 ```
 
 When targeting a subdirectory, Algorilla still resolves the project root upwards and places its `.algorilla/` cache there.
@@ -47,35 +47,35 @@ When targeting a subdirectory, Algorilla still resolves the project root upwards
 Console output (default):
 
 ```bash
-java -jar algorilla.jar .
+algorilla .
 ```
 
 SARIF for CI/CD integration:
 
 ```bash
-java -jar algorilla.jar --format sarif --output results.sarif .
+algorilla --format sarif --output results.sarif .
 ```
 
 JSON for programmatic processing:
 
 ```bash
-java -jar algorilla.jar --format json --output results.json .
+algorilla --format json --output results.json .
 ```
 
 ## Common Options
 
 ```bash
 # Show only errors (skip warnings)
-java -jar algorilla.jar --severity error .
+algorilla --severity error .
 
 # Exclude specific directories
-java -jar algorilla.jar --exclude "**/generated/**" .
+algorilla --exclude "**/generated/**" .
 
 # Include test code in analysis
-java -jar algorilla.jar --include-tests .
+algorilla --include-tests .
 
 # Verbose output for debugging
-java -jar algorilla.jar -v .
+algorilla -v .
 ```
 
 ## Exit codes
