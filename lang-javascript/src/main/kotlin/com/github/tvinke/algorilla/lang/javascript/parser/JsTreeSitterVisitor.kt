@@ -216,10 +216,11 @@ internal class JsTreeSitterVisitor(
             )
         }
         val initChildren = if (!valueNode.isNull) visit(valueNode) else emptyList()
+        val typeName = inferVariableType(declarator, valueNode)
         return listOf(
             VariableDecl(
                 name = varName,
-                typeName = null,
+                typeName = typeName,
                 location = locationOf(declarator),
                 children = initChildren,
             ),
@@ -364,6 +365,27 @@ internal class JsTreeSitterVisitor(
             if (!inner.isNull && inner.type == "identifier") {
                 return Parameter(nodeText(inner), null)
             }
+        }
+        return null
+    }
+
+    /**
+     * Infer a variable's type from TypeScript annotations or constructor calls.
+     * Examples: `const x: Map<K,V> = ...` → "Map", `const x = new Set()` → "Set"
+     */
+    private fun inferVariableType(
+        declarator: TSNode,
+        valueNode: TSNode,
+    ): String? {
+        // TypeScript type annotation: `const x: Map<string, number> = ...`
+        val typeNode = declarator.getChildByFieldName("type")
+        val annotated = extractTypeName(typeNode)
+        if (annotated != null) return annotated
+
+        // Constructor inference: `const x = new Map()` → "Map"
+        if (!valueNode.isNull && valueNode.type == "new_expression") {
+            val ctorNode = valueNode.getChildByFieldName("constructor")
+            if (ctorNode != null && !ctorNode.isNull) return nodeText(ctorNode)
         }
         return null
     }
