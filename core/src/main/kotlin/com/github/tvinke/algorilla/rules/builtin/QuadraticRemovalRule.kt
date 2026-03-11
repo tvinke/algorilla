@@ -2,6 +2,7 @@ package com.github.tvinke.algorilla.rules.builtin
 
 import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.FunctionCall
+import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LoopNode
@@ -12,6 +13,7 @@ import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.semantics.CollectionSemanticsRegistry
+import com.github.tvinke.algorilla.util.hasO1Type
 
 /**
  * Detects element-by-element removal from List/Array inside loops. Each remove() on an
@@ -29,31 +31,41 @@ public class QuadraticRemovalRule : Rule {
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
-            scanNode(fileRoot, emptyList(), findings)
+            scanNode(fileRoot, null, emptyList(), findings)
         }
         return findings
     }
 
     private fun scanNode(
         node: IRNode,
+        enclosingFn: FunctionDecl?,
         loopStack: List<LoopNode>,
         findings: MutableList<Finding>,
     ) {
+        val fn = if (node is FunctionDecl) node else enclosingFn
+
         if (node is LoopNode) {
             for (child in node.children) {
-                scanNode(child, loopStack + node, findings)
+                scanNode(child, fn, loopStack + node, findings)
             }
             return
         }
 
-        if (loopStack.isNotEmpty() && node is FunctionCall && isRemovalCall(node)) {
-            findings.add(buildFinding(node, loopStack))
+        if (loopStack.isNotEmpty() && node is FunctionCall) {
+            if (isRemovalCall(node) && !isO1RemovalTarget(node, fn)) {
+                findings.add(buildFinding(node, loopStack))
+            }
         }
 
         for (child in node.children) {
-            scanNode(child, loopStack, findings)
+            scanNode(child, fn, loopStack, findings)
         }
     }
+
+    private fun isO1RemovalTarget(
+        call: FunctionCall,
+        fn: FunctionDecl?,
+    ): Boolean = fn != null && fn.hasO1Type(call.qualifiedTarget)
 
     private fun buildFinding(
         call: FunctionCall,

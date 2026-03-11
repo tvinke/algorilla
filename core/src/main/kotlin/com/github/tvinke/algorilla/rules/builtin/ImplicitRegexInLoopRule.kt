@@ -97,6 +97,13 @@ private val IMPLICIT_REGEX_METHODS: Set<String> by lazy {
 /** Languages where string methods only compile regex when the argument is a regex literal. */
 private val JS_FAMILY = setOf(Language.JAVASCRIPT, Language.TYPESCRIPT, Language.VUE)
 
+/**
+ * Kotlin's String.split(String) does NOT compile a regex — it calls
+ * String.split(Regex.fromLiteral(delimiter)) which uses Pattern.LITERAL.
+ * Same for replace(). Only matches() and replaceFirst() still compile.
+ */
+private val KOTLIN_SAFE_METHODS = setOf("split", "replace")
+
 private fun isImplicitRegexCall(
     call: FunctionCall,
     language: Language?,
@@ -105,6 +112,8 @@ private fun isImplicitRegexCall(
     // In JS/TS, split/replace/match with a plain string argument do NOT compile regex.
     // Only regex literals (/pattern/) or RegExp objects trigger compilation.
     if (language in JS_FAMILY && hasStringLiteralFirstArg(call)) return false
+    // Kotlin's split() and replace() with String args use literal matching, not regex.
+    if (language == Language.KOTLIN && call.name in KOTLIN_SAFE_METHODS) return false
     return true
 }
 

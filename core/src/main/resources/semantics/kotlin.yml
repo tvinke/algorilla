@@ -400,6 +400,30 @@ cheap-methods:
   - toByteArray
   - encodeToByteArray
   - decodeToString
+  # Kotlin collection factories (O(1) or tiny allocations)
+  - listOf
+  - listOfNotNull
+  - mapOf
+  - setOf
+  - mutableListOf
+  - mutableSetOf
+  - mutableMapOf
+  - arrayListOf
+  - hashSetOf
+  - linkedSetOf
+  - hashMapOf
+  - linkedMapOf
+  - sortedSetOf
+  - sortedMapOf
+  - emptyList
+  - emptySet
+  - emptyMap
+  - emptySequence
+  # Kotlin IO / path helpers
+  - toPath
+  - toFile
+  - toUri
+  - toURL
 
 # Sequential read / stateful iteration methods whose return value changes
 # on each invocation — not redundant even when called with identical arguments
