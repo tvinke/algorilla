@@ -6,7 +6,7 @@ plugins {
     id("org.jlleitschuh.gradle.ktlint")
 }
 
-group = "com.github.tvinke.algorilla"
+group = "io.github.tvinke.algorilla"
 version = findProperty("version") as String? ?: "0.0.0-dev"
 
 java {
