@@ -1,89 +1,430 @@
 methods:
-  # Iteration
-  forEach: { semantics: iteration }
-  map:     { semantics: iteration }
-  flatMap: { semantics: iteration }
-  reduce:  { semantics: iteration }
-  reduceRight: { semantics: iteration }
-  keys:    { semantics: iteration, note: "Object.keys()" }
-  values:  { semantics: iteration, note: "Object.values()" }
-  entries: { semantics: iteration, note: "Object.entries()" }
+  # === Iteration ===
+  # Array.prototype
+  forEach:      { semantics: iteration }
+  map:          { semantics: iteration }
+  flatMap:      { semantics: iteration }
+  flat:         { semantics: iteration, note: "Array.prototype.flat(depth)" }
+  reduce:       { semantics: iteration }
+  reduceRight:  { semantics: iteration }
+  keys:         { semantics: iteration, note: "Array/Map/Set/Object.keys()" }
+  values:       { semantics: iteration, note: "Array/Map/Set/Object.values()" }
+  entries:      { semantics: iteration, note: "Array/Map/Set/Object.entries()" }
+  from:         { semantics: iteration, note: "Array.from() — iterates iterable/array-like" }
+  # Object static
+  fromEntries:  { semantics: iteration, note: "Object.fromEntries() — iterates iterable of [k,v]" }
+  # Map/Set
+  # forEach already listed above — shared name
+  # Iterator helpers (ES2025)
+  toArray:      { semantics: iteration, note: "Iterator.prototype.toArray()" }
 
-  # Lookup
-  find:      { semantics: lookup, kind: FIND }
-  findIndex: { semantics: lookup, kind: INDEX_OF }
-  findLast:  { semantics: lookup, kind: FIND }
-  findLastIndex: { semantics: lookup, kind: INDEX_OF }
-  filter:    { semantics: lookup, kind: FILTER }
-  some:      { semantics: lookup, kind: SOME }
-  every:     { semantics: lookup, kind: ALL_MATCH }
-  includes:  { semantics: lookup, kind: INCLUDES }
-  indexOf:   { semantics: lookup, kind: INDEX_OF }
-  lastIndexOf: { semantics: lookup, kind: INDEX_OF }
+  # === Lookup ===
+  # Array.prototype
+  find:            { semantics: lookup, kind: FIND }
+  findIndex:       { semantics: lookup, kind: INDEX_OF }
+  findLast:        { semantics: lookup, kind: FIND }
+  findLastIndex:   { semantics: lookup, kind: INDEX_OF }
+  filter:          { semantics: lookup, kind: FILTER }
+  some:            { semantics: lookup, kind: SOME }
+  every:           { semantics: lookup, kind: ALL_MATCH }
+  includes:        { semantics: lookup, kind: INCLUDES, note: "Array/String/TypedArray" }
+  indexOf:         { semantics: lookup, kind: INDEX_OF, note: "Array/String/TypedArray" }
+  lastIndexOf:     { semantics: lookup, kind: INDEX_OF, note: "Array/String/TypedArray" }
+  # Map/Set
+  has:             { semantics: lookup, kind: CONTAINS, implicitly-o1: true, note: "Map/Set/WeakMap/WeakSet.has()" }
+  # String.prototype
+  search:          { semantics: lookup, kind: INDEX_OF, note: "String.prototype.search(regex)" }
+  startsWith:      { semantics: lookup, kind: CONTAINS, note: "String.prototype.startsWith()" }
+  endsWith:        { semantics: lookup, kind: CONTAINS, note: "String.prototype.endsWith()" }
+  # Set (ES2025 set methods)
+  isSubsetOf:      { semantics: lookup, kind: ALL_MATCH, note: "Set.prototype.isSubsetOf()" }
+  isSupersetOf:    { semantics: lookup, kind: ALL_MATCH, note: "Set.prototype.isSupersetOf()" }
+  isDisjointFrom:  { semantics: lookup, kind: NONE_MATCH, note: "Set.prototype.isDisjointFrom()" }
 
-  # Sort
-  sort:     { semantics: sort, kind: SORT }
-  toSorted: { semantics: sort, kind: SORTED }
+  # === Sort ===
+  sort:       { semantics: sort, kind: SORT, note: "Array.prototype.sort() — mutates" }
+  toSorted:   { semantics: sort, kind: SORTED, note: "Array.prototype.toSorted() — non-mutating" }
 
-  # Access
-  at:  { semantics: access, kind: FIRST, note: "depends on index" }
-  pop: { semantics: access, kind: LAST, note: "removes and returns last element" }
+  # === Access ===
+  at:    { semantics: access, kind: FIRST, note: "Array/String/TypedArray.at() — depends on index" }
+  pop:   { semantics: access, kind: LAST, note: "removes and returns last element" }
   shift: { semantics: access, kind: FIRST, note: "removes and returns first element" }
+  get:   { semantics: access, kind: INDEX_ZERO, note: "Map.get(key) — O(1)" }
 
-  # Serialization
+  # === Serialization ===
   stringify: { semantics: serialization, note: "JSON.stringify" }
   parse:     { semantics: serialization, note: "JSON.parse" }
 
-  # Copy-on-modify
-  concat:  { semantics: copy-on-modify }
-  slice:   { semantics: copy-on-modify, note: "returns shallow copy of portion" }
-  splice:  { semantics: copy-on-modify, note: "mutates array, returns removed elements" }
+  # === Blocking ===
+  # Promise-based (conceptually blocking when awaited)
+  then:    { semantics: blocking, note: "Promise.then — async continuation" }
+  catch:   { semantics: blocking, note: "Promise.catch — async error handler" }
+  finally: { semantics: blocking, note: "Promise.finally — async cleanup" }
 
+  # === Copy-on-modify ===
+  concat:      { semantics: copy-on-modify, note: "Array/String.concat()" }
+  slice:       { semantics: copy-on-modify, note: "Array/String/TypedArray.slice() — shallow copy" }
+  splice:      { semantics: copy-on-modify, note: "Array.splice() — mutates, returns removed" }
+  toReversed:  { semantics: copy-on-modify, note: "Array.prototype.toReversed()" }
+  toSpliced:   { semantics: copy-on-modify, note: "Array.prototype.toSpliced()" }
+  with:        { semantics: copy-on-modify, note: "Array.prototype.with(index, value)" }
+  # Set (ES2025)
+  union:              { semantics: copy-on-modify, note: "Set.prototype.union()" }
+  intersection:       { semantics: copy-on-modify, note: "Set.prototype.intersection()" }
+  difference:         { semantics: copy-on-modify, note: "Set.prototype.difference()" }
+  symmetricDifference: { semantics: copy-on-modify, note: "Set.prototype.symmetricDifference()" }
+  # Object static
+  assign:  { semantics: copy-on-modify, note: "Object.assign() — shallow copy/merge" }
+  freeze:  { semantics: copy-on-modify, note: "Object.freeze() — returns frozen object" }
+
+# Stream pipeline operations: higher-order functions in collection pipelines.
+# Methods in the 'methods' section are automatically included — this section
+# is for pipeline ops that don't have their own semantic category.
 stream-ops:
   - map
   - flatMap
+  - flat
   - reduce
   - reduceRight
-  - flat
-  - fill
+  - filter
   - from
   - of
+  - fill
+  # Iterator helpers (ES2025)
+  - drop
+  - take
+  # Grouping
+  - groupBy
 
-scope-ops: []
+# Scope/wrapper functions to skip during cross-method resolution
+scope-ops:
+  # Promise wrappers
+  - resolve
+  - reject
+  # Functional wrappers common in JS/TS
+  - bind
+  - call
+  - apply
 
+# O(1) operations too cheap to flag as redundant expensive calls
 trivial-methods:
+  # Property reads / type checks
   - length
   - size
   - toString
   - valueOf
+  - toLocaleString
+  - typeof
+  - instanceof
+  # Object property checks
   - hasOwnProperty
+  - hasOwn
+  - isPrototypeOf
+  - propertyIsEnumerable
+  # Array type checks
+  - isArray
+  # Number type checks and conversions
+  - isFinite
+  - isInteger
+  - isNaN
+  - isSafeInteger
+  - toFixed
+  - toExponential
+  - toPrecision
+  # Simple lookups (O(1) or trivially cheap)
   - indexOf
   - lastIndexOf
   - includes
-  - charAt
-  - charCodeAt
-  - trim
-  - toLowerCase
-  - toUpperCase
-  - keys
-  - values
-  - entries
   - has
   - get
   - set
   - delete
+  # String character access (O(1))
+  - charAt
+  - charCodeAt
+  - codePointAt
+  # String case/trim (cheap, in-place conceptually)
+  - trim
+  - trimStart
+  - trimEnd
+  - toLowerCase
+  - toUpperCase
+  - toLocaleLowerCase
+  - toLocaleUpperCase
+  # Map/Set accessors
+  - keys
+  - values
+  - entries
+  # Math operations (all O(1))
+  - abs
+  - ceil
+  - floor
+  - round
+  - trunc
+  - sign
+  - sqrt
+  - cbrt
+  - pow
+  - min
+  - max
+  - log
+  - log2
+  - log10
+  - log1p
+  - exp
+  - expm1
+  - random
+  - sin
+  - cos
+  - tan
+  - asin
+  - acos
+  - atan
+  - atan2
+  - sinh
+  - cosh
+  - tanh
+  - asinh
+  - acosh
+  - atanh
+  - hypot
+  - fround
+  - clz32
+  - imul
+  # Date accessors (O(1) field reads)
+  - getTime
+  - getFullYear
+  - getMonth
+  - getDate
+  - getDay
+  - getHours
+  - getMinutes
+  - getSeconds
+  - getMilliseconds
+  - getTimezoneOffset
+  - getUTCFullYear
+  - getUTCMonth
+  - getUTCDate
+  - getUTCDay
+  - getUTCHours
+  - getUTCMinutes
+  - getUTCSeconds
+  - getUTCMilliseconds
+  - setTime
+  - setFullYear
+  - setMonth
+  - setDate
+  - setHours
+  - setMinutes
+  - setSeconds
+  - setMilliseconds
+  - setUTCFullYear
+  - setUTCMonth
+  - setUTCDate
+  - setUTCHours
+  - setUTCMinutes
+  - setUTCSeconds
+  - setUTCMilliseconds
+  - toISOString
+  - toJSON
+  - toDateString
+  - toTimeString
+  - toUTCString
+  - toLocaleDateString
+  - toLocaleTimeString
+  - now
+  # Object static (O(1) or O(props) but cheap)
+  - is
+  - isExtensible
+  - isFrozen
+  - isSealed
+  - getPrototypeOf
+  # Promise static factories
+  - resolve
+  - reject
+  # Symbol
+  - for
+  - keyFor
+  - description
+  # Object meta
+  - constructor
+  - prototype
+  # Promise static combinators
+  - all
+  - allSettled
+  - any
+  - race
+  # Error
+  - message
+  - stack
+  # WeakRef
+  - deref
+  # FinalizationRegistry
+  - register
+  - unregister
+  # console (side-effect methods, not expensive)
+  - log
+  - warn
+  - error
+  - debug
+  - info
+  - trace
+  - time
+  - timeEnd
+  - timeLog
+  - count
+  - countReset
+  - assert
+  - clear
+  - group
+  - groupCollapsed
+  - groupEnd
+  - table
+  - dir
+  - dirxml
+  # process accessors (O(1))
+  - cwd
+  - uptime
+  - memoryUsage
+  - cpuUsage
+  - hrtime
+  # path operations (string manipulation, cheap)
+  - join
+  - resolve
+  - basename
+  - dirname
+  - extname
+  - normalize
+  - relative
+  - isAbsolute
+  - parse
+  - format
+  - sep
+  - delimiter
+  # URL accessors
+  - toString
+  - toJSON
+  - href
+  - origin
+  - protocol
+  - host
+  - hostname
+  - port
+  - pathname
+  - search
+  - hash
+  # URLSearchParams accessors
+  - append
+  - getAll
+  - sort
+  - forEach
 
-builder-methods: []
+# Builder-pattern methods called for chaining, not return value
+builder-methods:
+  # Express/Koa/Fastify middleware chaining
+  - use
+  - get
+  - post
+  - put
+  - patch
+  - delete
+  - route
+  - param
+  # Generic builder/config chaining
+  - set
+  - configure
+  - option
+  - options
+  - header
+  - headers
+  - query
+  - body
+  - status
+  - type
+  - accept
+  - contentType
+  - timeout
+  - retry
+  # Promise chaining
+  - then
+  - catch
+  - finally
+  # EventEmitter / stream chaining
+  - on
+  - once
+  - off
+  - emit
+  - send
+  - write
+  - end
+  - close
+  - listen
+  - connect
+  - bind
+  # Registration pattern
+  - register
+  - unregister
+  - middleware
+  - plugin
+  # RxJS / Observable chaining
+  - pipe
+  - subscribe
 
 heavyweight-types:
   - RegExp
+  - Worker
+  - SharedWorker
+  - ServiceWorker
+  - WebSocket
+  - XMLHttpRequest
+  - WebAssembly
+  - Intl.Collator
+  - Intl.DateTimeFormat
+  - Intl.NumberFormat
+  - Intl.PluralRules
+  - Intl.RelativeTimeFormat
+  - Intl.ListFormat
+  - Intl.Segmenter
+  # Web API types
+  - Proxy
+  - ReadableStream
+  - WritableStream
+  - TransformStream
+  - CompressionStream
+  - DecompressionStream
+  - TextDecoder
+  - TextEncoder
+  - AbortController
+  - FormData
+  - Headers
+  - Request
+  - Response
+  - Blob
+  - File
+  - FileReader
+  - ImageData
+  - OffscreenCanvas
+  - AudioContext
+  - MediaRecorder
+  - MediaStream
+  - RTCPeerConnection
+  - IDBDatabase
+  - Cache
+  - CacheStorage
+  # Node.js
+  - ChildProcess
+  - Cluster
+  - Server
+  - Agent
 
 o1-types:
   - Set
   - Map
   - WeakSet
   - WeakMap
+  - Object
 
+# Method name prefixes for getter-pattern detection
 getter-prefixes:
   - get
   - find
@@ -91,6 +432,9 @@ getter-prefixes:
   - fetch
   - lookup
   - resolve
+  - query
+  - select
+  - read
 
 # Constant-time operations too cheap to flag even when duplicated
 cheap-methods:
@@ -101,67 +445,304 @@ cheap-methods:
   - replace
   - replaceAll
   - split
-  - matches
+  - match
+  - matchAll
   - toLowerCase
   - toUpperCase
+  - toLocaleLowerCase
+  - toLocaleUpperCase
   - trim
+  - trimStart
+  - trimEnd
+  - padStart
+  - padEnd
+  - repeat
+  - normalize
   - charAt
+  - charCodeAt
+  - codePointAt
   - indexOf
   - lastIndexOf
-  - contains
-  - isEmpty
+  - includes
+  - search
+  - localeCompare
   - length
   - concat
   - valueOf
+  - at
+  # Number parsing — O(string_length), effectively constant
+  - parseInt
+  - parseFloat
+  - Number
+  - isNaN
+  - isFinite
+  - isInteger
+  - isSafeInteger
+  - toFixed
+  - toExponential
+  - toPrecision
   # Runtime state checks
   - isOpen
   - isClosed
-  # Collection / stream factories
+  - isConnected
+  - isReady
+  - isPaused
+  - isDestroyed
+  - destroyed
+  - readable
+  - writable
+  # Collection / factory methods
   - toList
   - toSet
   - toMap
+  - Array.from
+  - Array.of
+  - Array.isArray
+  - Object.keys
+  - Object.values
+  - Object.entries
+  # JSON (intentionally here — cheap for small payloads, flagged elsewhere for large)
+  # (not included — JSON.parse/stringify are not cheap)
+  # String slice/substr
+  - slice
+  - substr
+  # Type coercion functions (cheap wrappers)
+  - String
+  - Boolean
+  - Symbol
+  - BigInt
+  # Encoding / decoding
+  - encodeURIComponent
+  - decodeURIComponent
+  - encodeURI
+  - decodeURI
+  - btoa
+  - atob
+  # Structured clone (cheap for small objects)
+  - structuredClone
+  # Microtask scheduling
+  - queueMicrotask
+  # Object property checks
+  - hasOwnProperty
+  - hasOwn
+  - isPrototypeOf
+  - propertyIsEnumerable
+  # Object static (cheap introspection)
+  - getPrototypeOf
+  - freeze
+  - isFrozen
+  - isSealed
+  - isExtensible
+  - preventExtensions
+  - seal
+  - assign
+  - keys
+  - values
+  - entries
+  - create
+  - defineProperty
+  # Crypto quick checks
+  - randomUUID
+  # Buffer quick accessors
+  - byteLength
+  - byteOffset
 
 # Sequential read / stateful iteration methods whose return value changes
 # on each invocation — not redundant even when called with identical arguments
 sequential-read-methods:
-  # Scanner / tokeniser style iteration
+  # Iterator protocol
   - next
-  - nextLine
-  - nextToken
+  # Generator
+  - next
+  - return
+  - throw
   # Queue / stack / deque stateful operations
   - poll
   - pop
   - take
   - push
   - shift
+  - dequeue
+  - enqueue
+  # Stream reading (Node.js)
+  - read
+  - readline
+  # Scanner / tokeniser style iteration
+  - nextLine
+  - nextToken
+  # Async iterator
+  - next
+  # EventEmitter (each call may get different event)
+  - emit
+
+# Reflection-like operations in JS (metaprogramming)
+reflection-methods:
+  - getOwnPropertyDescriptor
+  - getOwnPropertyDescriptors
+  - getOwnPropertyNames
+  - getOwnPropertySymbols
+  - getPrototypeOf
+  - setPrototypeOf
+  - defineProperty
+  - defineProperties
+  - create
+  - keys
+  - values
+  - entries
+  - Reflect.get
+  - Reflect.set
+  - Reflect.has
+  - Reflect.deleteProperty
+  - Reflect.ownKeys
+  - Reflect.getPrototypeOf
+  - Reflect.setPrototypeOf
+  - Reflect.isExtensible
+  - Reflect.preventExtensions
+  - Reflect.getOwnPropertyDescriptor
+  - Reflect.defineProperty
+  - Reflect.apply
+  - Reflect.construct
+
+copy-on-modify-methods:
+  - concat
+  - slice
+  - toReversed
+  - toSorted
+  - toSpliced
+  - with
+  - flat
+  - flatMap
+  - map
+  - filter
+  - assign
+  - freeze
+  - structuredClone
+  # Set (ES2025)
+  - union
+  - intersection
+  - difference
+  - symmetricDifference
+  # String (all string methods return new strings)
+  - substring
+  - replace
+  - replaceAll
+  - padStart
+  - padEnd
+  - repeat
+  - trim
+  - trimStart
+  - trimEnd
+  - normalize
+  - toLowerCase
+  - toUpperCase
+  - toLocaleLowerCase
+  - toLocaleUpperCase
+  # Array/String creation from transformation
+  - split
+  - Array.from
+  - Object.keys
+  - Object.values
+  - Object.entries
+  - Object.fromEntries
+  # Buffer
+  - subarray
+  # TypedArray
+  - TypedArray.from
 
 regex-types:
   - RegExp
 
+# String methods that may compile a regex internally.
+# Only methods that ACTUALLY accept regex — not when called with plain strings.
 implicit-regex-methods:
   - match
+  - matchAll
+  - search
   - split
-  - replaceAll
   - replace
+  - replaceAll
 
+# Methods that mutate the receiver (collection or object)
 mutation-methods:
+  # Array mutators
   - push
-  - splice
-  - unshift
   - pop
   - shift
+  - unshift
+  - splice
+  - sort
+  - reverse
+  - fill
+  - copyWithin
+  # Map/Set mutators
   - set
+  - add
   - delete
+  - clear
+  # Object mutators
+  - defineProperty
+  - defineProperties
+  - setPrototypeOf
+  - preventExtensions
+  - seal
+  - freeze
+  # FormData / generic append
+  - append
+  # WeakMap/WeakSet mutators (already covered by set/add/delete)
+  # Node.js Buffer
+  - write
+  - writeInt8
+  - writeInt16BE
+  - writeInt16LE
+  - writeInt32BE
+  - writeInt32LE
+  - writeUInt8
+  - writeUInt16BE
+  - writeUInt16LE
+  - writeUInt32BE
+  - writeUInt32LE
+  - writeFloatBE
+  - writeFloatLE
+  - writeDoubleBE
+  - writeDoubleLE
+  - writeBigInt64BE
+  - writeBigInt64LE
+  - writeBigUInt64BE
+  - writeBigUInt64LE
+  # EventEmitter
+  - addListener
+  - removeListener
+  - removeAllListeners
+  - on
+  - once
+  - off
+  - prependListener
+  - prependOnceListener
+  # Stream
+  - end
+  - destroy
+  - cork
+  - uncork
+  - setEncoding
+  - pause
+  - resume
 
+# Methods that remove elements from collections
 removal-methods:
   - splice
+  - pop
+  - shift
+  - delete
+  - clear
+  - remove
 
-copy-on-modify-methods:
-  - concat
-
+# Batch query method prefixes
 bulk-load-prefixes:
   - findAll
   - getAll
   - listAll
   - loadAll
   - fetchAll
+  - queryAll
+  - selectAll
+  - readAll

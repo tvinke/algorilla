@@ -76,6 +76,58 @@ stream-ops:
   - takeWhile
   - filterIsInstance
   - filterNotNull
+  - sumOf
+  - maxBy
+  - maxByOrNull
+  - minBy
+  - minByOrNull
+  - maxOf
+  - maxOfOrNull
+  - minOf
+  - minOfOrNull
+  - maxWith
+  - maxWithOrNull
+  - minWith
+  - minWithOrNull
+  - count
+  - sumBy
+  - average
+  - foldIndexed
+  - foldRight
+  - foldRightIndexed
+  - reduceIndexed
+  - reduceRight
+  - reduceRightIndexed
+  - reduceOrNull
+  - runningFold
+  - runningReduce
+  - scan
+  - scanIndexed
+  - sorted
+  - sortedBy
+  - sortedByDescending
+  - sortedWith
+  - reversed
+  - asReversed
+  - shuffled
+  - flatten
+  - unzip
+  - toTypedArray
+  - toIntArray
+  - toLongArray
+  - toDoubleArray
+  - toBooleanArray
+  - toSortedSet
+  - toSortedMap
+  - toMutableMap
+  - mapIndexed
+  - mapIndexedNotNull
+  - flatMapIndexed
+  - onEachIndexed
+  - filterIndexed
+  - forEachIndexed
+  - fold
+  - reduce
 
 scope-ops:
   - apply
@@ -106,6 +158,42 @@ trivial-methods:
   - containsKey
   - containsValue
   - contains
+  # Kotlin number conversions
+  - toInt
+  - toLong
+  - toDouble
+  - toFloat
+  - toByte
+  - toShort
+  - toChar
+  - toBoolean
+  - toIntOrNull
+  - toLongOrNull
+  - toDoubleOrNull
+  - toFloatOrNull
+  - toByteOrNull
+  - toShortOrNull
+  - toBooleanStrict
+  - toBooleanStrictOrNull
+  # Kotlin Char checks
+  - isDigit
+  - isLetter
+  - isLetterOrDigit
+  - isUpperCase
+  - isLowerCase
+  - isWhitespace
+  - digitToInt
+  - digitToChar
+  - titlecase
+  # Kotlin element access
+  - first
+  - last
+  - single
+  - random
+  - randomOrNull
+  - component1
+  - component2
+  - component3
 
 builder-methods:
   - path
@@ -121,6 +209,11 @@ heavyweight-types:
   - Gson
   - XmlMapper
   - Pattern
+  - DecimalFormat
+  - SimpleDateFormat
+  - MessageDigest
+  - DocumentBuilderFactory
+  - TransformerFactory
 
 o1-types:
   - Set
@@ -133,6 +226,12 @@ o1-types:
   - LinkedHashMap
   - MutableSet
   - MutableMap
+  - ConcurrentHashMap
+  - ConcurrentSkipListSet
+  - ConcurrentSkipListMap
+  - EnumSet
+  - EnumMap
+  - ArrayDeque
 
 getter-prefixes:
   - get
@@ -246,6 +345,61 @@ cheap-methods:
   - isNotBlank
   - isNullOrEmpty
   - isNullOrBlank
+  # Kotlin stdlib: preconditions & error
+  - require
+  - requireNotNull
+  - check
+  - checkNotNull
+  - error
+  - TODO
+  # Kotlin scope functions
+  - also
+  - apply
+  - let
+  - run
+  - with
+  - takeIf
+  - takeUnless
+  # Kotlin operators & ranges
+  - to
+  - compareTo
+  - coerceIn
+  - coerceAtLeast
+  - coerceAtMost
+  - rangeTo
+  - downTo
+  - until
+  - step
+  - repeat
+  # Kotlin builders
+  - buildString
+  - buildList
+  - buildSet
+  - buildMap
+  # Kotlin string utilities
+  - toRegex
+  - toPattern
+  - lines
+  - lineSequence
+  - substringBefore
+  - substringAfter
+  - substringBeforeLast
+  - substringAfterLast
+  - removePrefix
+  - removeSuffix
+  - removeSurrounding
+  - padStart
+  - padEnd
+  - prependIndent
+  - trimIndent
+  - trimMargin
+  - ifEmpty
+  - ifBlank
+  - orEmpty
+  # Kotlin encoding
+  - toByteArray
+  - encodeToByteArray
+  - decodeToString
 
 # Sequential read / stateful iteration methods whose return value changes
 # on each invocation — not redundant even when called with identical arguments
@@ -356,9 +510,27 @@ mutation-methods:
   - push
   - write
   - append
+  - removeAt
+  - clear
+  - sort
+  - shuffle
+  - fill
+  - replaceAll
+  - retainAll
+  - addFirst
+  - addLast
+  - removeFirst
+  - removeLast
 
 removal-methods:
   - remove
+  - removeAll
+  - removeAt
+  - removeFirst
+  - removeLast
+  - clear
+  - retainAll
+  - removeIf
   - splice
 
 bulk-load-prefixes:

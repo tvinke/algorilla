@@ -8,6 +8,14 @@ methods:
   forEach:        { semantics: iteration }
   groupBy:        { semantics: iteration }
   countBy:        { semantics: iteration }
+  collectNested:  { semantics: iteration }
+  inject:         { semantics: iteration, note: "Groovy's fold/reduce" }
+  spread:         { semantics: iteration, note: "spread operator method" }
+  sum:            { semantics: iteration }
+  combinations:   { semantics: iteration, note: "cartesian product" }
+  permutations:   { semantics: iteration }
+  transpose:      { semantics: iteration }
+  subsequences:   { semantics: iteration }
 
   # Lookup
   find:        { semantics: lookup, kind: FIND }
@@ -19,6 +27,8 @@ methods:
   lastIndexOf: { semantics: lookup, kind: INDEX_OF }
   count:       { semantics: lookup, kind: COUNT }
   grep:        { semantics: lookup, kind: FILTER }
+  findResult:  { semantics: lookup, kind: FIND, note: "find + transform" }
+  findResults: { semantics: lookup, kind: FILTER, note: "findAll + transform non-null" }
   containsKey:  { semantics: lookup, kind: CONTAINS, implicitly-o1: true }
   containsValue: { semantics: lookup, kind: CONTAINS, implicitly-o1: true }
   filter:      { semantics: lookup, kind: FILTER }
@@ -74,6 +84,30 @@ stream-ops:
   - toMap
   - groupBy
   - partition
+  - collectNested
+  - spread
+  - sum
+  - combinations
+  - permutations
+  - transpose
+  - subsequences
+  - withIndex
+  - indexed
+  - unique
+  - sort
+  - flatten
+  - take
+  - drop
+  - takeWhile
+  - dropWhile
+  - reverse
+  - collate
+  - chop
+  - each
+  - eachWithIndex
+  - reverseEach
+  - findResult
+  - findResults
 
 scope-ops:
   - with
@@ -107,6 +141,21 @@ trivial-methods:
   - entrySet
   - getClass
   - getProperty
+  - asType
+  - asBoolean
+  - toInteger
+  - toLong
+  - toDouble
+  - toFloat
+  - toBigInteger
+  - toBigDecimal
+  - isCase
+  - isNumber
+  - isInteger
+  - respondsTo
+  - hasProperty
+  - getMetaClass
+  - invokeMethod
 
 builder-methods:
   - path
@@ -237,6 +286,59 @@ cheap-methods:
   # Source extraction / context accessors
   - extractSource
   - getSource
+  # GDK-specific
+  - asType
+  - with
+  - tap
+  - identity
+  - asBoolean
+  - toInteger
+  - toLong
+  - toDouble
+  - toFloat
+  - toBigInteger
+  - toBigDecimal
+  - toList
+  - toSorted
+  - toUnique
+  - collectEntries
+  - collectMany
+  - groupBy
+  - countBy
+  - withDefault
+  - withLazyDefault
+  - leftShift
+  - rightShift
+  - multiply
+  - power
+  - padLeft
+  - padRight
+  - center
+  - capitalize
+  - uncapitalize
+  - denormalize
+  - normalize
+  - stripIndent
+  - stripMargin
+  - tokenize
+  - readLines
+  - eachLine
+  - splitEachLine
+  - execute
+  - getText
+  - setText
+  - bytes
+  - getBytes
+  - eachByte
+  - eachMatch
+  - isCase
+  - isNumber
+  - isInteger
+  - isLong
+  - isDouble
+  - isFloat
+  - isBigDecimal
+  - isBigInteger
 
 # Sequential read / stateful iteration methods whose return value changes
 # on each invocation — not redundant even when called with identical arguments
@@ -346,11 +448,24 @@ mutation-methods:
   - set
   - offer
   - push
+  - pop
+  - leftShift
+  - clear
+  - addFirst
+  - addLast
+  - removeFirst
+  - removeLast
   - write
   - append
 
 removal-methods:
   - remove
+  - removeAll
+  - removeFirst
+  - removeLast
+  - clear
+  - retainAll
+  - removeElement
   - splice
 
 bulk-load-prefixes:
@@ -359,3 +474,7 @@ bulk-load-prefixes:
   - listAll
   - loadAll
   - fetchAll
+  - queryAll
+  - selectAll
+  - readAll
+  - searchAll
