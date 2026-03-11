@@ -1,37 +1,5 @@
-/* Language tag colors */
-[data-md-color-scheme] .md-tag[href*="Java"]:not([href*="JavaScript"]) {
-  background-color: #e76f00;
-  color: white;
-}
-[data-md-color-scheme] .md-tag[href*="Kotlin"] {
-  background-color: #7f52ff;
-  color: white;
-}
-[data-md-color-scheme] .md-tag[href*="Groovy"] {
-  background-color: #4298b8;
-  color: white;
-}
-[data-md-color-scheme] .md-tag[href*="JavaScript"] {
-  background-color: #f0db4f;
-  color: #323330;
-}
-
-/* Language badges in rule headers */
-.lang-badges {
-  display: flex;
-  gap: 0.4rem;
-  margin: -0.5rem 0 1rem;
-  flex-wrap: wrap;
-}
-.lang-badge {
-  display: inline-block;
-  padding: 0.15rem 0.5rem;
-  border-radius: 1rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-}
-.lang-badge.java       { background: #e76f00; color: white; }
-.lang-badge.kotlin     { background: #7f52ff; color: white; }
-.lang-badge.groovy     { background: #4298b8; color: white; }
-.lang-badge.javascript { background: #f0db4f; color: #323330; }
+/* Language badge colors — applied by extra.js based on tag text */
+.md-tag[data-lang="java"]       { background-color: #e76f00 !important; color: white !important; }
+.md-tag[data-lang="kotlin"]     { background-color: #7f52ff !important; color: white !important; }
+.md-tag[data-lang="groovy"]     { background-color: #4298b8 !important; color: white !important; }
+.md-tag[data-lang="javascript"] { background-color: #f0db4f !important; color: #323330 !important; }
