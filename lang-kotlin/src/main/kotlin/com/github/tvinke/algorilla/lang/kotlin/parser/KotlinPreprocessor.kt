@@ -9,6 +9,7 @@ internal fun preprocessKotlinSource(source: String): String =
         .let(::replaceFunKeyword)
         .let(::replaceValVar)
         .let(::replaceParameterSyntax)
+        .let(::replaceForInLoops)
         .let(::stripKotlinKeywords)
         .let(::stripKotlinAnnotations)
 
@@ -18,6 +19,12 @@ private fun replaceValVar(source: String): String =
     source
         .replace(Regex("""\bval\b"""), "Object")
         .replace(Regex("""\bvar\b"""), "Object")
+
+/** Converts Kotlin `for (x in collection)` to Java-style `for (Object x : collection)`. */
+private fun replaceForInLoops(source: String): String =
+    source.replace(Regex("""for\s*\(\s*(\w+)\s+in\s+""")) { m ->
+        "for (Object ${m.groupValues[1]} : "
+    }
 
 private val paramPattern = Regex("""(\w+)\s*:\s*(\w[\w<>,? ]*)""")
 
