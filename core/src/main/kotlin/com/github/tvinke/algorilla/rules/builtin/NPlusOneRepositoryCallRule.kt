@@ -150,12 +150,16 @@ private val SINGLE_FETCH_METHOD_PREFIXES =
         "countBy",
     )
 
-/** Patterns like getAnimalByAnimalId, findUserByEmail — strong signal for single-record fetch */
+/** Widened pattern: any verb+By+field pattern (e.g. findByEmail, getOrderByStatus, getBySku) */
 private val SINGLE_FETCH_METHOD_REGEX =
     Regex(
-        """^(?:get|find|load|fetch|lookup)\w+By\w+(?:Id|Key|Name|Code|Identifier)$""",
+        """^(?:get|find|load|fetch|lookup)\w*By\w+$""",
         RegexOption.IGNORE_CASE,
     )
+
+/** Spring Data batch patterns that return collections, not single records */
+private val BATCH_METHOD_SUFFIXES = listOf("In", "Between", "Containing", "Like", "NotIn", "IsIn")
+private val BATCH_METHOD_PREFIXES = listOf("findAll", "getAll", "loadAll", "fetchAll", "listAll")
 
 private val REPO_TARGET_PATTERNS =
     listOf(
@@ -169,12 +173,21 @@ private val REPO_TARGET_PATTERNS =
     )
 
 private fun isSingleRecordFetch(call: FunctionCall): Boolean {
-    val matchesMethod = SINGLE_FETCH_METHOD_PREFIXES.any { call.name.startsWith(it, ignoreCase = true) }
-    if (matchesMethod) {
+    val name = call.name
+    // Exact prefix matches (highest confidence)
+    val matchesPrefixes = SINGLE_FETCH_METHOD_PREFIXES.any { name.startsWith(it, ignoreCase = true) }
+    if (matchesPrefixes) {
         val target = call.qualifiedTarget?.lowercase()
         if (target == null || REPO_TARGET_PATTERNS.any { target.contains(it) }) return true
     }
-    // Also match strong naming patterns like getAnimalByAnimalId, findUserByEmail
-    if (SINGLE_FETCH_METHOD_REGEX.matches(call.name)) return true
+    // Widened pattern: any findByX/getByX on a repository-like target
+    if (SINGLE_FETCH_METHOD_REGEX.matches(name)) {
+        // Exclude batch patterns
+        if (BATCH_METHOD_SUFFIXES.any { name.endsWith(it, ignoreCase = true) }) return false
+        if (BATCH_METHOD_PREFIXES.any { name.startsWith(it, ignoreCase = true) && name.contains("By", ignoreCase = true) }) return false
+        // For widened pattern, require a repository-like target to reduce FPs
+        val target = call.qualifiedTarget?.lowercase()
+        if (target != null && REPO_TARGET_PATTERNS.any { target.contains(it) }) return true
+    }
     return false
 }
