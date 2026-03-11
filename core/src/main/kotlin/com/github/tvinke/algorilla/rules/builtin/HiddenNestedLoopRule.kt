@@ -70,6 +70,11 @@ public class HiddenNestedLoopRule : Rule {
         if (isStringOrCopyMethod(call.name)) return
 
         val resolved = CrossMethodResolver.resolve(call, context.symbolTable) ?: return
+
+        // Skip recursive methods — their internal loop iterates child nodes
+        // of the same data structure, not an independent collection
+        if (isRecursive(resolved)) return
+
         val hiddenLoop = resolved.findDescendants<LoopNode>().firstOrNull() ?: return
 
         // Skip trivial methods (single-statement wrappers with no real loop body)
@@ -138,8 +143,24 @@ public class HiddenNestedLoopRule : Rule {
             )
 }
 
-/** Filter out trivial loops with no meaningful body (e.g. empty forEach). */
-private fun isTrivialLoop(loop: LoopNode): Boolean = loop.children.isEmpty()
+/**
+ * Returns true if the function calls itself directly (recursive method).
+ * Recursive methods (tree walkers, visitors, DFS) contain loops that iterate
+ * child nodes — flagging them as "hidden nested loops" is a false positive
+ * because the total work is O(tree_size), not O(n²).
+ */
+private fun isRecursive(fn: FunctionDecl): Boolean = fn.findDescendants<FunctionCall>().any { it.name == fn.name }
+
+/** Filter out trivial loops with no meaningful body or only simple operations. */
+private fun isTrivialLoop(loop: LoopNode): Boolean {
+    if (loop.children.isEmpty()) return true
+    // A loop with a single child that is a simple function call to a skip/trivial method
+    if (loop.children.size == 1) {
+        val child = loop.children.first()
+        if (child is FunctionCall && isStringOrCopyMethod(child.name)) return true
+    }
+    return false
+}
 
 /**
  * Methods whose internal loop iterates over characters/bytes rather than business
