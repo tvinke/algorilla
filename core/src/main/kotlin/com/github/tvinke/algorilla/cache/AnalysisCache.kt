@@ -95,6 +95,10 @@ public data class CachedFileEntry(
 
 /**
  * Serializable representation of a [Finding] for cache storage.
+ *
+ * @property severity Enum name: `"ERROR"`, `"WARNING"`, or `"INFO"`.
+ * @property currentComplexity Big-O or multiplier string, e.g. `"O(n × m)"`, `"2x lookup"`. Null when not applicable.
+ * @property suggestedComplexity Expected complexity after fix, e.g. `"O(n + m)"`, `"1x lookup"`. Null when not applicable.
  */
 @Serializable
 public data class CachedFinding(
@@ -143,6 +147,8 @@ public data class CachedFinding(
 
 /**
  * Serializable representation of an [Evidence] entry for cache storage.
+ *
+ * @property executionContext Enum name: `"LOOP"`, `"CALLBACK"`, `"SORT_COMPARATOR"`, or `"TOP_LEVEL"`.
  */
 @Serializable
 public data class CachedEvidence(

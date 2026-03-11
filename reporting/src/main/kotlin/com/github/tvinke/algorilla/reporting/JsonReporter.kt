@@ -72,12 +72,18 @@ private fun com.github.tvinke.algorilla.rules.Evidence.toJsonEvidence(): JsonEvi
         complexity = complexity,
     )
 
+/**
+ * Top-level JSON output structure containing a summary and all individual findings.
+ */
 @Serializable
 internal data class JsonReport(
     val summary: JsonSummary,
     val findings: List<JsonFinding>,
 )
 
+/**
+ * Aggregate counts for a scan run.
+ */
 @Serializable
 internal data class JsonSummary(
     val totalFindings: Int,
@@ -88,6 +94,18 @@ internal data class JsonSummary(
     val elapsedMs: Long,
 )
 
+/**
+ * JSON representation of a single finding.
+ *
+ * @property ruleId Rule identifier, e.g. `"nested-lookup"`, `"sort-for-last"`.
+ * @property ruleName Human-readable name, e.g. `"Nested Lookup"`.
+ * @property category Rule family name, e.g. `"Loop amplifiers"`, `"Sort abuse"`. Null if uncategorized.
+ * @property severity `"ERROR"`, `"WARNING"`, or `"INFO"`.
+ * @property currentComplexity Big-O or multiplier notation for the current code, e.g.
+ *   `"O(n × m)"`, `"O(n log n)"`, `"2x lookup"`. Null when not applicable.
+ * @property suggestedComplexity Expected complexity after applying the fix, e.g.
+ *   `"O(n + m)"`, `"O(n)"`, `"1x lookup"`. Null when not applicable.
+ */
 @Serializable
 internal data class JsonFinding(
     val ruleId: String,
@@ -109,6 +127,14 @@ internal data class JsonLocation(
     val column: Int,
 )
 
+/**
+ * A step in the evidence chain showing how the anti-pattern was traced.
+ *
+ * @property label Description of this step, e.g. `"for-loop over items"`, `"contains() call"`.
+ * @property executionContext `"LOOP"`, `"CALLBACK"`, `"SORT_COMPARATOR"`, or `"TOP_LEVEL"`.
+ * @property depth Nesting depth in the evidence chain (0 = outermost).
+ * @property complexity Per-step complexity hint, e.g. `"O(n)"`, `"O(n log n) ← bottleneck"`. Null if not set.
+ */
 @Serializable
 internal data class JsonEvidence(
     val location: JsonLocation,
