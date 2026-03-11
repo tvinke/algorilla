@@ -11,6 +11,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.semantics.CollectionSemanticsRegistry
 
 /**
  * Detects String methods that internally compile a regex on every call when used inside loops.
@@ -85,6 +86,8 @@ public class ImplicitRegexInLoopRule : Rule {
     }
 }
 
-private val IMPLICIT_REGEX_METHODS = setOf("matches", "split", "replaceAll", "replaceFirst")
+private val IMPLICIT_REGEX_METHODS: Set<String> by lazy {
+    CollectionSemanticsRegistry.loadDefaults().allImplicitRegexMethods()
+}
 
 private fun isImplicitRegexCall(call: FunctionCall): Boolean = call.name in IMPLICIT_REGEX_METHODS && call.qualifiedTarget != null

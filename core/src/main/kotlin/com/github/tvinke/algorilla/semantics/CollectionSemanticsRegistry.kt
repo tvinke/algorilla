@@ -27,6 +27,13 @@ public class CollectionSemanticsRegistry private constructor(
     private val getterPrefixesByLanguage: Map<Language, List<String>>,
     private val cheapByLanguage: Map<Language, Set<String>>,
     private val sequentialReadByLanguage: Map<Language, Set<String>>,
+    private val reflectionByLanguage: Map<Language, Set<String>>,
+    private val copyOnModifyByLanguage: Map<Language, Set<String>>,
+    private val regexTypesByLanguage: Map<Language, Set<String>>,
+    private val implicitRegexByLanguage: Map<Language, Set<String>>,
+    private val mutationByLanguage: Map<Language, Set<String>>,
+    private val removalByLanguage: Map<Language, Set<String>>,
+    private val bulkLoadPrefixesByLanguage: Map<Language, List<String>>,
 ) {
     /**
      * Classifies a method name for the given language.
@@ -215,6 +222,44 @@ public class CollectionSemanticsRegistry private constructor(
      */
     public fun allSequentialReadMethods(): Set<String> = sequentialReadByLanguage.values.flatten().toSet()
 
+    /**
+     * Returns the union of all reflection methods across all languages.
+     */
+    public fun allReflectionMethods(): Set<String> = reflectionByLanguage.values.flatten().toSet()
+
+    /**
+     * Returns the union of all copy-on-modify methods across all languages.
+     */
+    public fun allCopyOnModifyMethods(): Set<String> = copyOnModifyByLanguage.values.flatten().toSet()
+
+    /**
+     * Returns the union of all regex types across all languages.
+     */
+    public fun allRegexTypes(): Set<String> = regexTypesByLanguage.values.flatten().toSet()
+
+    /**
+     * Returns the union of all implicit regex methods across all languages.
+     */
+    public fun allImplicitRegexMethods(): Set<String> = implicitRegexByLanguage.values.flatten().toSet()
+
+    /**
+     * Returns the union of all mutation methods across all languages.
+     */
+    public fun allMutationMethods(): Set<String> = mutationByLanguage.values.flatten().toSet()
+
+    /**
+     * Returns the union of all removal methods across all languages.
+     */
+    public fun allRemovalMethods(): Set<String> = removalByLanguage.values.flatten().toSet()
+
+    /**
+     * Returns the union of all bulk-load prefixes across all languages.
+     */
+    public fun allBulkLoadPrefixes(): List<String> =
+        bulkLoadPrefixesByLanguage.values
+            .flatten()
+            .distinct()
+
     private fun resolveLanguage(language: Language): Language =
         when (language) {
             Language.TYPESCRIPT, Language.VUE -> Language.JAVASCRIPT
@@ -245,6 +290,13 @@ public class CollectionSemanticsRegistry private constructor(
             val getterPrefixes = mutableMapOf<Language, List<String>>()
             val cheap = mutableMapOf<Language, Set<String>>()
             val sequentialRead = mutableMapOf<Language, Set<String>>()
+            val reflection = mutableMapOf<Language, Set<String>>()
+            val copyOnModify = mutableMapOf<Language, Set<String>>()
+            val regexTypes = mutableMapOf<Language, Set<String>>()
+            val implicitRegex = mutableMapOf<Language, Set<String>>()
+            val mutation = mutableMapOf<Language, Set<String>>()
+            val removal = mutableMapOf<Language, Set<String>>()
+            val bulkLoadPrefixes = mutableMapOf<Language, List<String>>()
 
             for ((lang, resource) in LANGUAGE_FILES) {
                 val text = loadResource(resource) ?: continue
@@ -259,6 +311,13 @@ public class CollectionSemanticsRegistry private constructor(
                 getterPrefixes[lang] = parsed.getterPrefixes
                 cheap[lang] = parsed.cheapMethods
                 sequentialRead[lang] = parsed.sequentialReadMethods
+                reflection[lang] = parsed.reflectionMethods
+                copyOnModify[lang] = parsed.copyOnModifyMethods
+                regexTypes[lang] = parsed.regexTypes
+                implicitRegex[lang] = parsed.implicitRegexMethods
+                mutation[lang] = parsed.mutationMethods
+                removal[lang] = parsed.removalMethods
+                bulkLoadPrefixes[lang] = parsed.bulkLoadPrefixes
             }
 
             logger.info {
@@ -277,12 +336,20 @@ public class CollectionSemanticsRegistry private constructor(
                 getterPrefixes,
                 cheap,
                 sequentialRead,
+                reflection,
+                copyOnModify,
+                regexTypes,
+                implicitRegex,
+                mutation,
+                removal,
+                bulkLoadPrefixes,
             )
         }
 
         /**
          * Returns a registry merged with user-provided overrides.
          */
+        @Suppress("LongMethod")
         public fun withOverrides(
             base: CollectionSemanticsRegistry,
             userHeavyweightTypes: Set<String>,
@@ -309,6 +376,13 @@ public class CollectionSemanticsRegistry private constructor(
                 getterPrefixesByLanguage = base.getterPrefixesByLanguage,
                 cheapByLanguage = base.cheapByLanguage,
                 sequentialReadByLanguage = base.sequentialReadByLanguage,
+                reflectionByLanguage = base.reflectionByLanguage,
+                copyOnModifyByLanguage = base.copyOnModifyByLanguage,
+                regexTypesByLanguage = base.regexTypesByLanguage,
+                implicitRegexByLanguage = base.implicitRegexByLanguage,
+                mutationByLanguage = base.mutationByLanguage,
+                removalByLanguage = base.removalByLanguage,
+                bulkLoadPrefixesByLanguage = base.bulkLoadPrefixesByLanguage,
             )
         }
 
@@ -334,6 +408,13 @@ internal data class ParsedYaml(
     val getterPrefixes: List<String>,
     val cheapMethods: Set<String>,
     val sequentialReadMethods: Set<String>,
+    val reflectionMethods: Set<String>,
+    val copyOnModifyMethods: Set<String>,
+    val regexTypes: Set<String>,
+    val implicitRegexMethods: Set<String>,
+    val mutationMethods: Set<String>,
+    val removalMethods: Set<String>,
+    val bulkLoadPrefixes: List<String>,
 )
 
 /**
@@ -356,6 +437,13 @@ internal fun parseYaml(text: String): ParsedYaml {
         getterPrefixes = collectListItems(sections["getter-prefixes"]).toList(),
         cheapMethods = collectListItems(sections["cheap-methods"]),
         sequentialReadMethods = collectListItems(sections["sequential-read-methods"]),
+        reflectionMethods = collectListItems(sections["reflection-methods"]),
+        copyOnModifyMethods = collectListItems(sections["copy-on-modify-methods"]),
+        regexTypes = collectListItems(sections["regex-types"]),
+        implicitRegexMethods = collectListItems(sections["implicit-regex-methods"]),
+        mutationMethods = collectListItems(sections["mutation-methods"]),
+        removalMethods = collectListItems(sections["removal-methods"]),
+        bulkLoadPrefixes = collectListItems(sections["bulk-load-prefixes"]).toList(),
     )
 }
 

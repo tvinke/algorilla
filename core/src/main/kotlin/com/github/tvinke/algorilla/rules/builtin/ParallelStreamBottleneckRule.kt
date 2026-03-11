@@ -12,6 +12,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.semantics.CollectionSemanticsRegistry
 import com.github.tvinke.algorilla.util.findDescendants
 
 /**
@@ -116,18 +117,6 @@ public class ParallelStreamBottleneckRule : Rule {
     }
 }
 
-private val MUTATION_METHODS =
-    setOf(
-        "add",
-        "addAll",
-        "put",
-        "putAll",
-        "putIfAbsent",
-        "remove",
-        "removeAll",
-        "set",
-        "offer",
-        "push",
-        "write",
-        "append",
-    )
+private val MUTATION_METHODS: Set<String> by lazy {
+    CollectionSemanticsRegistry.loadDefaults().allMutationMethods()
+}

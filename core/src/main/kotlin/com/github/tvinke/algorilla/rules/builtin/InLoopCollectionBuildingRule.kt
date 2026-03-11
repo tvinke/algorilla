@@ -11,6 +11,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.semantics.CollectionSemanticsRegistry
 
 /**
  * Detects patterns that repeatedly copy or rebuild collections inside loops:
@@ -86,6 +87,8 @@ public class InLoopCollectionBuildingRule : Rule {
     }
 }
 
-private val COPY_ON_MODIFY_METHODS = setOf("addAll", "concat", "putAll")
+private val COPY_ON_MODIFY_METHODS: Set<String> by lazy {
+    CollectionSemanticsRegistry.loadDefaults().allCopyOnModifyMethods()
+}
 
 private fun isCopyOnModifyCall(name: String): Boolean = name in COPY_ON_MODIFY_METHODS

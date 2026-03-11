@@ -13,6 +13,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.semantics.CollectionSemanticsRegistry
 
 /**
  * Detects regex pattern compilation inside loops. Compiling a regex is expensive;
@@ -91,7 +92,9 @@ public class RepeatedRegexInLoopRule : Rule {
     }
 }
 
-private val REGEX_TYPES = setOf("Pattern", "RegExp", "Regex")
+private val REGEX_TYPES: Set<String> by lazy {
+    CollectionSemanticsRegistry.loadDefaults().allRegexTypes()
+}
 
 private fun isRegexType(typeName: String): Boolean = typeName in REGEX_TYPES
 

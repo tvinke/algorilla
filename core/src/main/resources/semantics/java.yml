@@ -416,3 +416,62 @@ sequential-read-methods:
   - visitLabel
   - visitJumpInsn
   - visitLdcInsn
+
+reflection-methods:
+  - getDeclaredMethods
+  - getDeclaredFields
+  - getDeclaredConstructors
+  - getDeclaredAnnotations
+  - getMethods
+  - getFields
+  - getConstructors
+  - getAnnotations
+  - getAnnotationsByType
+  - getDeclaredAnnotationsByType
+  - getGenericInterfaces
+  - getInterfaces
+  - getDeclaredClasses
+  - getClasses
+  - getParameterTypes
+  - getGenericParameterTypes
+  - getExceptionTypes
+
+copy-on-modify-methods:
+  - addAll
+  - concat
+  - putAll
+
+regex-types:
+  - Pattern
+  - Regex
+
+implicit-regex-methods:
+  - matches
+  - split
+  - replaceAll
+  - replaceFirst
+
+mutation-methods:
+  - add
+  - addAll
+  - put
+  - putAll
+  - putIfAbsent
+  - remove
+  - removeAll
+  - set
+  - offer
+  - push
+  - write
+  - append
+
+removal-methods:
+  - remove
+  - splice
+
+bulk-load-prefixes:
+  - findAll
+  - getAll
+  - listAll
+  - loadAll
+  - fetchAll

@@ -17,6 +17,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.semantics.CollectionSemanticsRegistry
 import com.github.tvinke.algorilla.util.CrossMethodResolver
 import com.github.tvinke.algorilla.util.findDescendants
 
@@ -399,7 +400,9 @@ private fun asCallbackContainer(node: IRNode): CallbackContainer? =
         else -> null
     }
 
-private val REGEX_TYPES = setOf("Pattern", "RegExp", "Regex")
+private val REGEX_TYPES: Set<String> by lazy {
+    CollectionSemanticsRegistry.loadDefaults().allRegexTypes()
+}
 
 private fun isRegexType(typeName: String): Boolean = typeName in REGEX_TYPES
 

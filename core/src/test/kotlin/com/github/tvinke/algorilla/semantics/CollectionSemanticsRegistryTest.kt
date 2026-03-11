@@ -256,4 +256,57 @@ internal class CollectionSemanticsRegistryTest {
         all shouldContain "nextToken"
         all shouldContain "poll"
     }
+
+    @Test
+    fun `should provide reflection methods for Java`() {
+        val methods = registry.allReflectionMethods()
+        methods shouldContain "getDeclaredMethods"
+        methods shouldContain "getFields"
+    }
+
+    @Test
+    fun `should provide copy-on-modify methods`() {
+        val methods = registry.allCopyOnModifyMethods()
+        methods shouldContain "addAll"
+        methods shouldContain "putAll"
+    }
+
+    @Test
+    fun `should provide regex types`() {
+        val types = registry.allRegexTypes()
+        types shouldContain "Pattern"
+        types shouldContain "Regex"
+        types shouldContain "RegExp"
+    }
+
+    @Test
+    fun `should provide implicit regex methods`() {
+        val methods = registry.allImplicitRegexMethods()
+        methods shouldContain "matches"
+        methods shouldContain "split"
+        methods shouldContain "replaceAll"
+    }
+
+    @Test
+    fun `should provide mutation methods`() {
+        val methods = registry.allMutationMethods()
+        methods shouldContain "add"
+        methods shouldContain "put"
+        methods shouldContain "push"
+    }
+
+    @Test
+    fun `should provide removal methods`() {
+        val methods = registry.allRemovalMethods()
+        methods shouldContain "remove"
+        methods shouldContain "splice"
+    }
+
+    @Test
+    fun `should provide bulk load prefixes`() {
+        val prefixes = registry.allBulkLoadPrefixes()
+        prefixes shouldContain "findAll"
+        prefixes shouldContain "getAll"
+        prefixes shouldContain "loadAll"
+    }
 }

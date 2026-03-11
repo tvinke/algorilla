@@ -134,3 +134,34 @@ sequential-read-methods:
   - take
   - push
   - shift
+
+regex-types:
+  - RegExp
+
+implicit-regex-methods:
+  - match
+  - split
+  - replaceAll
+  - replace
+
+mutation-methods:
+  - push
+  - splice
+  - unshift
+  - pop
+  - shift
+  - set
+  - delete
+
+removal-methods:
+  - splice
+
+copy-on-modify-methods:
+  - concat
+
+bulk-load-prefixes:
+  - findAll
+  - getAll
+  - listAll
+  - loadAll
+  - fetchAll
