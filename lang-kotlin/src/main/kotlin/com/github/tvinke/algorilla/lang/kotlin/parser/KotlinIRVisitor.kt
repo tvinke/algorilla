@@ -6,12 +6,14 @@ import com.github.tvinke.algorilla.lang.java.parser.classifyChainedCall
 import com.github.tvinke.algorilla.lang.java.parser.classifyStandaloneCall
 import com.github.tvinke.algorilla.lang.java.parser.extractLambdaParamNames
 import com.github.tvinke.algorilla.lang.java.parser.extractVariableName
+import com.github.tvinke.algorilla.lang.java.parser.handleTryCatchStatement
 import com.github.tvinke.algorilla.lang.java.parser.processBlockStatements
 import com.github.tvinke.algorilla.model.BranchNode
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.GenericNode
 import com.github.tvinke.algorilla.model.IRNode
+import com.github.tvinke.algorilla.model.LookupCall
 import com.github.tvinke.algorilla.model.LoopKind
 import com.github.tvinke.algorilla.model.LoopNode
 import com.github.tvinke.algorilla.model.ObjectCreation
@@ -79,8 +81,11 @@ internal class KotlinIRVisitor(
         if (ctx.FOR() != null) return handleForStatement(ctx)
         if (ctx.WHILE() != null || ctx.DO() != null) return handleWhileStatement(ctx)
         if (ctx.IF() != null) return handleIfStatement(ctx)
+        if (ctx.TRY() != null) return handleTryStatement(ctx)
         return visitChildren(ctx)
     }
+
+    private fun handleTryStatement(ctx: JavaParser.StatementContext): List<IRNode> = handleTryCatchStatement(ctx, this, ::locationOf)
 
     override fun visitMethodCallExpression(ctx: JavaParser.MethodCallExpressionContext): List<IRNode> {
         val methodCall = ctx.methodCall() ?: return defaultResult()
@@ -197,6 +202,9 @@ internal class KotlinIRVisitor(
             return targetChildren + listOf(call)
         }
         val node = classifyChainedCall(methodName, targetText, targetVar, argNodes, loc)
+        if (node is LookupCall && targetChildren.any { it is LookupCall && (it as LookupCall).targetVariable == targetVar }) {
+            return targetChildren + argNodes
+        }
         return targetChildren + listOf(node)
     }
 

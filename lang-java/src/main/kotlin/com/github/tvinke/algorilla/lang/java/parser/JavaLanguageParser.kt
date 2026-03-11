@@ -9,6 +9,7 @@ import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.GenericNode
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
+import com.github.tvinke.algorilla.model.LookupCall
 import com.github.tvinke.algorilla.model.LoopKind
 import com.github.tvinke.algorilla.model.LoopNode
 import com.github.tvinke.algorilla.model.ObjectCreation
@@ -138,6 +139,9 @@ internal class JavaIRVisitor(
         if (ctx.IF() != null) {
             return handleIfStatement(ctx)
         }
+        if (ctx.TRY() != null) {
+            return handleTryStatement(ctx)
+        }
         return visitChildren(ctx)
     }
 
@@ -229,6 +233,8 @@ internal class JavaIRVisitor(
         return conditionNodes + thenBranch
     }
 
+    private fun handleTryStatement(ctx: JavaParser.StatementContext): List<IRNode> = handleTryCatchStatement(ctx, this, ::locationOf)
+
     private fun handleForStatement(ctx: JavaParser.StatementContext): List<IRNode> {
         val forControl = ctx.forControl()
         val enhancedFor = forControl?.enhancedForControl()
@@ -292,6 +298,11 @@ internal class JavaIRVisitor(
         }
         val node = classifyChainedCall(methodName, targetText, targetVar, argNodes, loc)
 
+        // Chained stream ops (e.g. .filter(a).filter(b)) compose into a single pass.
+        // If the target already produced a LookupCall for the same variable, skip the duplicate.
+        if (node is LookupCall && targetChildren.any { it is LookupCall && (it as LookupCall).targetVariable == targetVar }) {
+            return targetChildren + argNodes
+        }
         return targetChildren + listOf(node)
     }
 

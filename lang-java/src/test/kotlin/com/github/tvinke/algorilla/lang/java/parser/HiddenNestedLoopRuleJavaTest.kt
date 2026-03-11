@@ -148,6 +148,22 @@ internal class HiddenNestedLoopRuleJavaTest {
             // repository.persist(order) should NOT resolve to local persist(Document)
             findings.shouldBeEmpty()
         }
+
+        @Test
+        fun `should not flag string utility methods that iterate chars`() {
+            val findings = analyzeFixture("hidden-nested-loop/negative/loop-calls-string-utility-method.java")
+
+            // hasText() and trimWhitespace() iterate characters, not business collections
+            findings.shouldBeEmpty()
+        }
+
+        @Test
+        fun `should not flag collection copy methods like addAll and putAll`() {
+            val findings = analyzeFixture("hidden-nested-loop/negative/loop-calls-collection-copy-method.java")
+
+            // addAll() and putAll() are O(n) copy ops, not algorithmic nested loops
+            findings.shouldBeEmpty()
+        }
     }
 
     @Nested

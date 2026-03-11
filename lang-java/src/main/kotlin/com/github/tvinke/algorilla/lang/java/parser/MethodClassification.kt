@@ -78,10 +78,11 @@ private fun classifyAsLookup(
     loc: SourceLocation,
 ): IRNode? {
     val kind = lookupKindFor(methodName) ?: return null
-    if (kind == LookupKind.INDEX_OF && isStringTarget(targetText)) {
+    if (kind.isStringApplicable() && isStringTarget(targetText)) {
         return FunctionCall(name = methodName, qualifiedTarget = targetVar, arguments = argNodes, location = loc, children = argNodes)
     }
-    if (kind == LookupKind.FIND && argNodes.size >= 2) {
+    // find() with 0 args is Matcher.find(), not a collection find; with 2+ args is Map.find()
+    if (kind == LookupKind.FIND && argNodes.size != 1) {
         return FunctionCall(name = methodName, qualifiedTarget = targetVar, arguments = argNodes, location = loc, children = argNodes)
     }
     val o1 = isO1Type(targetText) || isImplicitlyO1(methodName)
@@ -260,6 +261,7 @@ private val STRING_METHOD_INDICATORS =
         "charAt(",
         "startsWith(",
         "endsWith(",
+        ".append(",
     )
 
 private val STRING_NAME_SUFFIXES =
@@ -291,7 +293,45 @@ private val STRING_NAME_SUFFIXES =
         "label",
         "Title",
         "title",
+        "Field",
+        "field",
+        "Signature",
+        "signature",
+        "Property",
+        "property",
+        "Qualifier",
+        "qualifier",
+        "Separator",
+        "separator",
+        "Delimiter",
+        "delimiter",
+        "Prefix",
+        "prefix",
+        "Suffix",
+        "suffix",
+        "Pattern",
+        "pattern",
+        "Expression",
+        "expression",
+        "Descriptor",
+        "descriptor",
+        "Content",
+        "content",
+        "Location",
+        "location",
+        "Source",
+        "source",
+        "Token",
+        "token",
+        "Spec",
+        "spec",
+        "Tag",
+        "tag",
     )
+
+/** Common short variable names that are almost always strings or StringBuilders. */
+private val STRING_EXACT_NAMES =
+    setOf("s", "sb", "str", "desc", "buf", "buffer", "input", "output", "line", "word", "query", "sql")
 
 /**
  * Heuristic: returns true when the target expression is likely a String rather than a List.
@@ -299,7 +339,8 @@ private val STRING_NAME_SUFFIXES =
  */
 public fun isStringTarget(targetText: String): Boolean =
     STRING_METHOD_INDICATORS.any { targetText.contains(it) } ||
-        STRING_NAME_SUFFIXES.any { targetText.endsWith(it) }
+        STRING_NAME_SUFFIXES.any { targetText.endsWith(it) } ||
+        extractVariableName(targetText) in STRING_EXACT_NAMES
 
 /** Returns true when the argument list is a single literal `0` (for `.get(0)` detection). */
 private fun isLiteralZeroArg(argNodes: List<IRNode>): Boolean {

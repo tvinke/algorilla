@@ -197,11 +197,124 @@ private val CHEAP_METHODS =
         "length",
         "concat",
         "valueOf",
+        "hasText",
+        "hasLength",
+        // Type checks / reflection
+        "getType",
+        "getDescriptor",
+        "getInternalName",
+        "getMethodDescriptor",
+        "getReturnType",
+        "getSort",
+        "getSize",
+        "getOpcode",
+        // Runtime state checks — cheap boolean queries, intentionally called at different points
+        "isTerminated",
+        "isCancelled",
+        "isDone",
+        "isActive",
+        "isAlive",
+        "isOpen",
+        "isClosed",
+        "isRunning",
+        "isReady",
+        "isInstance",
+        "isAssignableFrom",
+        "isAssignableBound",
+        // Stream / collector factories — near-zero cost
+        "stream",
+        "parallelStream",
+        "joining",
+        "toList",
+        "toSet",
+        "toMap",
+        "toUnmodifiableList",
+        // Source extraction / context accessors — cheap lookups
+        "extractSource",
+        "getSource",
     )
 
-private fun isSideEffectCall(call: FunctionCall): Boolean {
-    if (call.name in TRIVIAL_METHODS) return true
-    if (call.name in BUILDER_METHODS) return true
-    if (call.name in CHEAP_METHODS) return true
-    return MethodPurity.isSideEffect(call.name, call.qualifiedTarget)
-}
+/**
+ * Sequential read / stateful iteration methods whose return value changes on
+ * each invocation even when called with identical arguments, because they
+ * advance an internal cursor or mutate the underlying collection.
+ */
+private val SEQUENTIAL_READ_METHODS =
+    setOf(
+        // Binary / byte-stream readers
+        "read",
+        "readByte",
+        "readShort",
+        "readUnsignedShort",
+        "readInt",
+        "readLong",
+        "readFloat",
+        "readDouble",
+        "readChar",
+        "readBoolean",
+        "readUTF",
+        "readUTF8",
+        "readClass",
+        "readLine",
+        "readAttribute",
+        // Scanner / tokeniser style iteration
+        "next",
+        "nextByte",
+        "nextShort",
+        "nextInt",
+        "nextLong",
+        "nextFloat",
+        "nextDouble",
+        "nextBoolean",
+        "nextLine",
+        "nextToken",
+        // BitSet iteration
+        "nextSetBit",
+        "nextClearBit",
+        // Queue / stack / deque stateful operations
+        "poll",
+        "pop",
+        "take",
+        // Bytecode / ASM emission instructions (side-effectful, intentionally repeated)
+        "push",
+        "mark",
+        "load_local",
+        "load_arg",
+        "load_this",
+        "getfield",
+        "putfield",
+        "array_load",
+        "array_store",
+        "dup",
+        "swap",
+        "invoke_virtual",
+        "invoke_interface",
+        "invoke_static",
+        "invoke_constructor",
+        "checkcast",
+        "visitVarInsn",
+        "visitInsn",
+        "visitFieldInsn",
+        "visitMethodInsn",
+        "visitTypeInsn",
+        "visitLabel",
+        "visitJumpInsn",
+        "visitLdcInsn",
+    )
+
+private fun isSideEffectCall(call: FunctionCall): Boolean =
+    call.name in TRIVIAL_METHODS ||
+        call.name in BUILDER_METHODS ||
+        call.name in CHEAP_METHODS ||
+        call.name in SEQUENTIAL_READ_METHODS ||
+        isSequentialReadPrefix(call.name) ||
+        isBytecodeInstruction(call.name) ||
+        MethodPurity.isSideEffect(call.name, call.qualifiedTarget)
+
+/** Catches read* and next* methods not explicitly listed in SEQUENTIAL_READ_METHODS. */
+private val SEQUENTIAL_PREFIXES = listOf("read", "next")
+
+private fun isSequentialReadPrefix(name: String): Boolean = SEQUENTIAL_PREFIXES.any { name.length > it.length && name.startsWith(it) }
+
+/** Underscore-prefixed ALL_CAPS methods are typically bytecode instructions (_ALOAD, _ISTORE). */
+private fun isBytecodeInstruction(name: String): Boolean = name.startsWith("_") && name.all { it == '_' || it.isUpperCase() }

@@ -535,7 +535,7 @@ private fun jsClassifyAsLookup(
     loc: SourceLocation,
 ): IRNode? {
     val kind = jsAllLookupKindFor(methodName) ?: return null
-    if (kind == LookupKind.INDEX_OF && jsIsStringTarget(targetText)) {
+    if (kind.isStringApplicable() && jsIsStringTarget(targetText)) {
         return FunctionCall(name = methodName, qualifiedTarget = targetVar, arguments = argNodes, location = loc, children = argNodes)
     }
     return LookupCall(kind, targetVar, false, loc, argNodes)

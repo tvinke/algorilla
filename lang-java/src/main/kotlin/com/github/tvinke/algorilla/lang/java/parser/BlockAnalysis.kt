@@ -75,6 +75,26 @@ public fun endsWithReturnOrThrow(stmt: JavaParser.StatementContext?): Boolean {
 private fun JavaParser.BlockContext.lastStatement(): JavaParser.StatementContext? = blockStatement()?.lastOrNull()?.statement()
 
 /**
+ * Parses a try/catch/finally statement into a [BranchNode] where try-body and each catch-body
+ * are mutually exclusive branches. The finally block (if any) runs after and is appended as a sibling.
+ */
+public fun handleTryCatchStatement(
+    ctx: JavaParser.StatementContext,
+    visitor: JavaParserBaseVisitor<List<IRNode>>,
+    locationOf: (ParserRuleContext) -> SourceLocation,
+): List<IRNode> {
+    val tryBody = ctx.block()?.let { visitor.visitChildren(it) } ?: emptyList()
+    val catches = ctx.catchClause() ?: emptyList()
+    if (catches.isEmpty()) return tryBody
+    val branches = mutableListOf(tryBody)
+    for (catchClause in catches) {
+        branches.add(catchClause.block()?.let { visitor.visitChildren(it) } ?: emptyList())
+    }
+    val finallyBody = ctx.finallyBlock()?.block()?.let { visitor.visitChildren(it) } ?: emptyList()
+    return listOf(BranchNode(branches, locationOf(ctx))) + finallyBody
+}
+
+/**
  * Extracts lambda parameter names from a [JavaParser.LambdaParametersContext].
  * Handles single identifier (`m`), identifier list (`(x, y)`), and typed parameters.
  */

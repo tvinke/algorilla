@@ -46,6 +46,10 @@ public enum class LookupKind(
     NONE_MATCH("noneMatch"),
     COUNT("count"),
     INDEX_OF("indexOf"),
+    ;
+
+    /** Returns true if this lookup kind also exists as a String method (indexOf, contains, includes). */
+    public fun isStringApplicable(): Boolean = this == INDEX_OF || this == CONTAINS || this == INCLUDES
 }
 
 /**

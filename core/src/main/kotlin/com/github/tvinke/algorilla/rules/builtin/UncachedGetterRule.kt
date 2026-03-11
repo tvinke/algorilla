@@ -101,8 +101,19 @@ private val GETTER_PREFIXES: List<String> by lazy {
         .allGetterPrefixes()
 }
 
-/** Short method names that are too generic to flag (Map.get, List.get, etc.) */
-private val EXCLUDED_NAMES = setOf("get", "getOrDefault", "getOrElse")
+/** Method names excluded from getter detection. */
+private val EXCLUDED_NAMES =
+    setOf(
+        // Too generic (Map.get, List.get)
+        "get",
+        "getOrDefault",
+        "getOrElse",
+        // Bytecode / ASM instructions (side-effectful emission, not getters)
+        "load_local",
+        "load_arg",
+        "load_this",
+        "getfield",
+    )
 
 private fun isGetterPattern(call: FunctionCall): Boolean {
     if (call.name in EXCLUDED_NAMES) return false

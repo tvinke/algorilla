@@ -110,6 +110,18 @@ public object MethodPurity {
             "configure",
             "init",
             "apply",
+            "release",
+            "free",
+            "flush",
+            "commit",
+            "rollback",
+            "cancel",
+            "interrupt",
+            "stop",
+            "disconnect",
+            "lock",
+            "unlock",
+            "customize",
         )
 
     // Targets that indicate side-effectful context regardless of method name
@@ -124,6 +136,16 @@ public object MethodPurity {
             "uriBuilder",
             "response",
             "request",
+            // ASM / bytecode visitors and code-generation targets
+            "visitor",
+            "mv",
+            "cw",
+            "cv",
+            "emitter",
+            "generator",
+            "encoder",
+            "printer",
+            "output",
         )
 
     /**
