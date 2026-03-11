@@ -1,5 +1,6 @@
 package com.github.tvinke.algorilla.reporting
 
+import com.github.tvinke.algorilla.baseline.Baseline
 import com.github.tvinke.algorilla.engine.AnalysisResult
 import com.github.tvinke.algorilla.engine.Reporter
 import com.github.tvinke.algorilla.model.Severity
@@ -60,6 +61,8 @@ public class ConsoleReporter(
         output.appendLine("      ${Ansi.green("\u2192 ${finding.suggestion}", color)}")
         snippetRenderer.render(finding.location.file, finding.location.line, finding.severity, output)
         formatEvidence(finding, snippetRenderer, output)
+        val hash = Baseline.fingerprintOf(finding).contentHash
+        output.appendLine("      ${Ansi.dim("# $hash", color)}")
     }
 
     private fun formatSeverityTag(severity: Severity): String =

@@ -1,6 +1,7 @@
 package com.github.tvinke.algorilla.cli
 
 import com.github.tvinke.algorilla.baseline.Baseline
+import com.github.tvinke.algorilla.baseline.IgnoreList
 import com.github.tvinke.algorilla.cache.AnalysisCache
 import com.github.tvinke.algorilla.config.AnalysisConfig
 import com.github.tvinke.algorilla.engine.AnalysisEngine
@@ -11,6 +12,7 @@ import com.github.tvinke.algorilla.lang.javascript.parser.JavaScriptParser
 import com.github.tvinke.algorilla.lang.kotlin.parser.KotlinParser
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.Severity
+import com.github.tvinke.algorilla.reporting.Ansi
 import com.github.tvinke.algorilla.reporting.ConsoleReporter
 import com.github.tvinke.algorilla.reporting.JsonReporter
 import com.github.tvinke.algorilla.reporting.SarifReporter
@@ -150,17 +152,62 @@ internal class AlgorillaCommand :
     )
     private var color: String = "auto"
 
+    @Option(
+        names = ["--list-rules"],
+        description = ["List all available rules and exit"],
+    )
+    private var listRules: Boolean = false
+
+    @Option(
+        names = ["--rule"],
+        description = ["Only run specific rule(s). Comma-separated or repeated: --rule nested-lookup,sort-for-last"],
+        split = ",",
+    )
+    private var ruleFilter: List<String> = emptyList()
+
+    @Option(
+        names = ["--fail-on"],
+        description = ["Minimum severity that triggers a non-zero exit code: info, warning, error (default: info)"],
+        defaultValue = "info",
+    )
+    private var failOn: String = "info"
+
+    @Option(
+        names = ["--accept"],
+        description = ["Accept findings by fingerprint hash (shown in output). Adds them to .algorilla/ignore-list.json"],
+        split = ",",
+    )
+    private var acceptHashes: List<String> = emptyList()
+
     private var projectRoot: File = File(".")
     private var scanRoots: List<File> = emptyList()
 
     override fun call(): Int {
         configureLogging()
         val useColor = resolveColor(color, outputFile)
+
+        if (listRules) {
+            printRuleList(builtinRules() + CustomRuleLoader.loadRules(File(".")), useColor)
+            return EXIT_OK
+        }
+
         if (outputFile == null) printScanTarget(paths, useColor)
         val result = runAnalysis()
-        val filteredResult = applyBaseline(result)
-        writeReport(filteredResult, format, outputFile, useColor, projectRoot, scanRoots)
-        return exitCodeFor(filteredResult)
+        val baselined = applyBaseline(result, baselineFile, saveBaselineFile)
+        val accepted = applyIgnoreList(baselined, projectRoot)
+
+        if (acceptHashes.isNotEmpty()) {
+            val count =
+                IgnoreList.accept(
+                    IgnoreList.defaultFile(projectRoot),
+                    result.findings,
+                    acceptHashes.toSet(),
+                )
+            System.err.println("Accepted $count ${if (count == 1) "finding" else "findings"}.")
+        }
+
+        writeReport(accepted, format, outputFile, useColor, projectRoot, scanRoots)
+        return exitCodeFor(accepted, resolveFailOn(failOn))
     }
 
     private fun configureLogging() {
@@ -170,55 +217,36 @@ internal class AlgorillaCommand :
         }
     }
 
-    private fun runAnalysis(): com.github.tvinke.algorilla.engine.AnalysisResult {
+    private fun runAnalysis(): AnalysisResult {
         val config = buildConfig()
         val detector = ProjectStructureDetector()
         projectRoot = detector.resolveProjectRoot(paths.first())
         scanRoots = paths.flatMap { detector.resolveSourceRoots(projectRoot, it) }
 
-        val languageFilter = resolveLanguageFilter()
         val parsers = listOf(JavaLanguageParser(), GroovyParser(), KotlinParser(), JavaScriptParser())
-        val rules = builtinRules()
-        val customRules = CustomRuleLoader.loadRules(projectRoot)
-        val allRules =
-            (rules + customRules).let { ruleList ->
-                if (languageFilter != null) {
-                    ruleList.filter { rule -> rule.languages.any { it in languageFilter } }
-                } else {
-                    ruleList
-                }
-            }
+        val allRules = resolveRules()
         val cache = if (noCache) null else AnalysisCache(projectRoot)
+        val languageFilter = resolveLanguageFilter()
         val collector = SourceFileCollector(detector)
         val sourceFiles = collector.collect(scanRoots, config.excludePatterns, includeTests, languageFilter)
-        val engine = AnalysisEngine(parsers = parsers, rules = allRules, config = config, cache = cache, verbose = verbose)
-        return engine.analyze(sourceFiles)
+        return AnalysisEngine(parsers = parsers, rules = allRules, config = config, cache = cache, verbose = verbose)
+            .analyze(sourceFiles)
     }
 
-    private fun builtinRules(): List<Rule> =
-        listOf(
-            NestedLookupRule(),
-            SortForLastRule(),
-            ExpensiveSortComparatorRule(),
-            ExpensiveCallbackRule(),
-            RepeatedLinearScanRule(),
-            FullScanForSingleLookupRule(),
-            HeavyweightObjectPerInvocationRule(),
-            RepeatedRegexInLoopRule(),
-            ExpensiveSerializationInLoopRule(),
-            SequentialAsyncJoinInLoopRule(),
-            InLoopCollectionBuildingRule(),
-            NPlusOneRepositoryCallRule(),
-            RedundantExpensiveCallRule(),
-            UncachedGetterRule(),
-            ChainedGettersRule(),
-            FilterAfterSortRule(),
-            HiddenNestedLoopRule(),
-            ImplicitRegexInLoopRule(),
-            StringConcatInLoopRule(),
-            QuadraticRemovalRule(),
-            RepeatedReflectionInLoopRule(),
-        )
+    private fun resolveRules(): List<Rule> {
+        val languageFilter = resolveLanguageFilter()
+        return (builtinRules() + CustomRuleLoader.loadRules(projectRoot))
+            .let { list ->
+                if (languageFilter != null) list.filter { r -> r.languages.any { it in languageFilter } } else list
+            }.let { list ->
+                if (ruleFilter.isNotEmpty()) {
+                    val ids = ruleFilter.toSet()
+                    list.filter { it.id in ids || it.name in ids }
+                } else {
+                    list
+                }
+            }
+    }
 
     private fun buildConfig(): AnalysisConfig {
         val fileConfig = loadConfig(configFile)
@@ -233,36 +261,18 @@ internal class AlgorillaCommand :
         return fileConfig.copy(excludePatterns = mergedExclude, minSeverity = mergedSeverity)
     }
 
-    private fun cliSeverityProvided(): Boolean {
-        // picocli sets the default; check if the user explicitly passed --severity
-        return spec.commandLine().parseResult.hasMatchedOption("severity")
-    }
-
-    private fun applyBaseline(result: AnalysisResult): AnalysisResult {
-        if (saveBaselineFile != null) {
-            Baseline.save(result.findings, saveBaselineFile!!)
-        }
-        val baseline = baselineFile?.let { Baseline.load(it) }
-        return if (baseline != null) {
-            val newFindings = baseline.filterNew(result.findings)
-            result.copy(findings = newFindings)
-        } else {
-            result
-        }
-    }
+    private fun cliSeverityProvided(): Boolean = spec.commandLine().parseResult.hasMatchedOption("severity")
 
     private fun resolveLanguageFilter(): Set<Language>? {
         if (languages.isEmpty()) return null
-        val resolved =
-            languages
-                .map { name ->
-                    Language.fromName(name)
-                        ?: throw CommandLine.ParameterException(
-                            spec.commandLine(),
-                            "Unknown language '$name'. Available: ${Language.entries.joinToString { it.displayName.lowercase() }}",
-                        )
-                }.toSet()
-        return resolved
+        return languages
+            .map { name ->
+                Language.fromName(name)
+                    ?: throw CommandLine.ParameterException(
+                        spec.commandLine(),
+                        "Unknown language '$name'. Available: ${Language.entries.joinToString { it.displayName.lowercase() }}",
+                    )
+            }.toSet()
     }
 
     internal companion object {
@@ -272,8 +282,66 @@ internal class AlgorillaCommand :
     }
 }
 
+private fun builtinRules(): List<Rule> =
+    listOf(
+        NestedLookupRule(),
+        SortForLastRule(),
+        ExpensiveSortComparatorRule(),
+        ExpensiveCallbackRule(),
+        RepeatedLinearScanRule(),
+        FullScanForSingleLookupRule(),
+        HeavyweightObjectPerInvocationRule(),
+        RepeatedRegexInLoopRule(),
+        ExpensiveSerializationInLoopRule(),
+        SequentialAsyncJoinInLoopRule(),
+        InLoopCollectionBuildingRule(),
+        NPlusOneRepositoryCallRule(),
+        RedundantExpensiveCallRule(),
+        UncachedGetterRule(),
+        ChainedGettersRule(),
+        FilterAfterSortRule(),
+        HiddenNestedLoopRule(),
+        ImplicitRegexInLoopRule(),
+        StringConcatInLoopRule(),
+        QuadraticRemovalRule(),
+        RepeatedReflectionInLoopRule(),
+    )
+
+private fun applyBaseline(
+    result: AnalysisResult,
+    baselineFile: File?,
+    saveBaselineFile: File?,
+): AnalysisResult {
+    if (saveBaselineFile != null) {
+        Baseline.save(result.findings, saveBaselineFile)
+    }
+    val baseline = baselineFile?.let { Baseline.load(it) }
+    return if (baseline != null) {
+        result.copy(findings = baseline.filterNew(result.findings))
+    } else {
+        result
+    }
+}
+
+private fun applyIgnoreList(
+    result: AnalysisResult,
+    projectRoot: File,
+): AnalysisResult {
+    val ignoreFile = IgnoreList.defaultFile(projectRoot)
+    val ignoreList = IgnoreList.load(ignoreFile)
+    if (ignoreList.size == 0) return result
+    return result.copy(findings = ignoreList.filter(result.findings))
+}
+
+private fun resolveFailOn(failOn: String): Severity =
+    when (failOn.lowercase()) {
+        "error" -> Severity.ERROR
+        "warning" -> Severity.WARNING
+        else -> Severity.INFO
+    }
+
 private fun writeReport(
-    result: com.github.tvinke.algorilla.engine.AnalysisResult,
+    result: AnalysisResult,
     format: String,
     outputFile: File?,
     useColor: Boolean,
@@ -292,12 +360,51 @@ private fun writeReport(
     output.use { reporter.report(result, it) }
 }
 
-private fun exitCodeFor(result: com.github.tvinke.algorilla.engine.AnalysisResult): Int =
+private fun exitCodeFor(
+    result: AnalysisResult,
+    failOn: Severity = Severity.INFO,
+): Int =
     when {
         result.errors.isNotEmpty() && result.findings.isEmpty() -> AlgorillaCommand.EXIT_ERROR
-        result.findings.isNotEmpty() -> AlgorillaCommand.EXIT_FINDINGS
+        result.findings.any { it.severity.ordinal >= failOn.ordinal } -> AlgorillaCommand.EXIT_FINDINGS
         else -> AlgorillaCommand.EXIT_OK
     }
+
+private const val SEVERITY_COL_WIDTH = 9
+private const val RULE_TABLE_WIDTH = 85
+
+private fun printRuleList(
+    rules: List<Rule>,
+    color: Boolean,
+) {
+    val out = System.out.bufferedWriter()
+    out.appendLine()
+    out.appendLine(
+        Ansi.boldWhite(
+            "  %-30s  %-9s  %-20s  %s".format("RULE ID", "SEVERITY", "CATEGORY", "LANGUAGES"),
+            color,
+        ),
+    )
+    out.appendLine("  ${"─".repeat(RULE_TABLE_WIDTH)}")
+    for (rule in rules.sortedWith(compareBy({ it.category.ordinal }, { it.id }))) {
+        val severityLabel =
+            rule.severity.name
+                .lowercase()
+                .padEnd(SEVERITY_COL_WIDTH)
+        val severityStr =
+            when (rule.severity) {
+                Severity.ERROR -> Ansi.red(severityLabel, color)
+                Severity.WARNING -> Ansi.yellow(severityLabel, color)
+                Severity.INFO -> Ansi.cyan(severityLabel, color)
+            }
+        val langs = rule.languages.joinToString(", ") { it.displayName.lowercase() }
+        out.appendLine("  %-30s  %s  %-20s  %s".format(rule.id, severityStr, rule.category.displayName, langs))
+    }
+    out.appendLine()
+    out.appendLine(Ansi.dim("  ${rules.size} rules available", color))
+    out.appendLine()
+    out.flush()
+}
 
 private fun resolveColor(
     color: String,
@@ -314,10 +421,7 @@ private fun printScanTarget(
     color: Boolean,
 ) {
     val targets = paths.joinToString(", ") { it.absoluteFile.normalize().path }
-    System.err.println(
-        com.github.tvinke.algorilla.reporting.Ansi
-            .dim("\uD83E\uDD8D Scanning $targets...", color),
-    )
+    System.err.println(Ansi.dim("\uD83E\uDD8D Scanning $targets...", color))
 }
 
 @Suppress("SpreadOperator")
