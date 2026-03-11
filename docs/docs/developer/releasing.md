@@ -126,6 +126,8 @@ If some publish jobs fail but others succeed:
    ```
 4. This triggers a fresh workflow run. Jobs that already published will fail with "already exists" errors — those are harmless.
 
+npm and Docker publishes are idempotent — re-runs skip gracefully if the version already exists. Gradle Plugin Portal does not support re-publishing the same version.
+
 **Caution:** `gh run rerun --failed` re-runs with the *original* commit, not the latest. Always move the tag instead.
 
 ### Release Please adds `-SNAPSHOT` suffix

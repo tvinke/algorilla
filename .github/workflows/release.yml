@@ -100,7 +100,13 @@ jobs:
       - name: Publish to npm
         run: |
           cd npm
-          npm publish --access public
+          npm publish --access public || {
+            if npm view algorilla@${{ needs.build.outputs.version }} version 2>/dev/null; then
+              echo "Version ${{ needs.build.outputs.version }} already published — skipping"
+            else
+              exit 1
+            fi
+          }
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
