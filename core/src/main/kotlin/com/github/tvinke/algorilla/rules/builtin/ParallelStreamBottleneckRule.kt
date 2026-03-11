@@ -1,0 +1,133 @@
+package com.github.tvinke.algorilla.rules.builtin
+
+import com.github.tvinke.algorilla.model.ExecutionContext
+import com.github.tvinke.algorilla.model.FunctionCall
+import com.github.tvinke.algorilla.model.IRNode
+import com.github.tvinke.algorilla.model.Language
+import com.github.tvinke.algorilla.model.LoopKind
+import com.github.tvinke.algorilla.model.LoopNode
+import com.github.tvinke.algorilla.model.Severity
+import com.github.tvinke.algorilla.rules.AnalysisContext
+import com.github.tvinke.algorilla.rules.Evidence
+import com.github.tvinke.algorilla.rules.Finding
+import com.github.tvinke.algorilla.rules.Rule
+import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.util.findDescendants
+
+/**
+ * Detects parallelStream().forEach() where the callback body mutates shared state.
+ *
+ * Using parallelStream() with shared mutable operations (add, put, remove, write, etc.)
+ * negates parallelism benefits and risks thread-safety bugs. Common patterns:
+ *
+ * ```java
+ * List<Result> results = new ArrayList<>();
+ * items.parallelStream().forEach(item -> results.add(item.process()));
+ * ```
+ *
+ * The fix is typically to use `.collect(Collectors.toList())` or a thread-safe accumulator.
+ */
+public class ParallelStreamBottleneckRule : Rule {
+    override val id: String = "parallel-stream-bottleneck"
+    override val name: String = "Parallel Stream Bottleneck"
+    override val severity: Severity = Severity.WARNING
+    override val languages: Set<Language> = setOf(Language.JAVA, Language.KOTLIN, Language.GROOVY)
+    override val category: RuleCategory = RuleCategory.CONCURRENCY
+
+    override fun evaluate(context: AnalysisContext): List<Finding> {
+        val findings = mutableListOf<Finding>()
+        for ((_, fileRoot) in context.irTrees) {
+            scanNode(fileRoot, findings)
+        }
+        return findings
+    }
+
+    private fun scanNode(
+        node: IRNode,
+        findings: MutableList<Finding>,
+    ) {
+        if (node is LoopNode && node.kind == LoopKind.PARALLEL_STREAM_FOR_EACH) {
+            checkForSharedMutation(node, findings)
+            return
+        }
+        for (child in node.children) {
+            scanNode(child, findings)
+        }
+    }
+
+    private fun checkForSharedMutation(
+        parallelLoop: LoopNode,
+        findings: MutableList<Finding>,
+    ) {
+        val mutationCalls =
+            parallelLoop
+                .findDescendants<FunctionCall>()
+                .filter { it.name in MUTATION_METHODS && it.qualifiedTarget != null }
+
+        // The lambda parameter is typically the iterated variable — mutations on
+        // something else are shared state mutations
+        val iteratedVar = parallelLoop.iteratedVariable
+        for (call in mutationCalls) {
+            // If the mutation target is the iterated variable itself, it's fine
+            // (e.g. item.add() where item is the lambda param — unlikely but safe)
+            if (call.qualifiedTarget == iteratedVar) continue
+
+            findings.add(buildFinding(parallelLoop, call))
+        }
+    }
+
+    @Suppress("LongMethod")
+    private fun buildFinding(
+        parallelLoop: LoopNode,
+        mutationCall: FunctionCall,
+    ): Finding {
+        val target = mutationCall.qualifiedTarget ?: "shared"
+        val iterVar = parallelLoop.iteratedVariable ?: "items"
+        return Finding(
+            ruleId = id,
+            ruleName = name,
+            severity = severity,
+            location = mutationCall.location,
+            message =
+                "$target.${mutationCall.name}() inside " +
+                    "parallelStream().forEach() mutates shared state",
+            suggestion =
+                "Use .collect(Collectors.toList()) or a thread-safe " +
+                    "accumulator instead of mutating shared state from parallel threads",
+            currentComplexity = "thread-unsafe",
+            suggestedComplexity = "thread-safe",
+            evidence =
+                listOf(
+                    Evidence(
+                        parallelLoop.location,
+                        "parallelStream().forEach() over $iterVar",
+                        ExecutionContext.INSIDE_LOOP,
+                        complexity = "parallel",
+                    ),
+                    Evidence(
+                        mutationCall.location,
+                        "$target.${mutationCall.name}() — shared state mutation",
+                        ExecutionContext.INSIDE_LOOP,
+                        depth = 1,
+                        complexity = "bottleneck",
+                    ),
+                ),
+        )
+    }
+}
+
+private val MUTATION_METHODS =
+    setOf(
+        "add",
+        "addAll",
+        "put",
+        "putAll",
+        "putIfAbsent",
+        "remove",
+        "removeAll",
+        "set",
+        "offer",
+        "push",
+        "write",
+        "append",
+    )

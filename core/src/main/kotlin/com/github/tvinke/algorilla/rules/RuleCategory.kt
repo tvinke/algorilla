@@ -11,4 +11,5 @@ public enum class RuleCategory(
     REDUNDANCY("Redundancy"),
     CONSTRUCTION_COST("Construction cost"),
     QUERY_PATTERN("Query patterns"),
+    CONCURRENCY("Concurrency"),
 }
