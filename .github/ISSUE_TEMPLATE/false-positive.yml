@@ -1,0 +1,57 @@
+name: False Positive
+description: Algorilla flagged code that isn't actually a problem
+labels: ["false-positive", "triage"]
+body:
+  - type: input
+    id: rule
+    attributes:
+      label: Rule ID
+      description: Which rule produced the finding?
+      placeholder: e.g. nested-lookup, sort-for-last
+    validations:
+      required: true
+
+  - type: textarea
+    id: code
+    attributes:
+      label: Code snippet
+      description: Minimal code that triggers the false positive. Use a fenced code block.
+      placeholder: |
+        ```java
+        // paste your code here
+        ```
+    validations:
+      required: true
+
+  - type: textarea
+    id: finding
+    attributes:
+      label: Algorilla output
+      description: The finding as printed by algorilla (console output or SARIF excerpt).
+      render: text
+    validations:
+      required: false
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why is this a false positive?
+      description: What makes this case different from the pattern the rule targets?
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Algorilla version
+      placeholder: e.g. 0.2.0
+    validations:
+      required: false
+
+  - type: input
+    id: language
+    attributes:
+      label: Language
+      placeholder: e.g. Java, Kotlin, Groovy, JavaScript/TypeScript
+    validations:
+      required: false

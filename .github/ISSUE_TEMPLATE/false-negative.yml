@@ -1,0 +1,48 @@
+name: False Negative
+description: Algorilla missed a pattern it should catch
+labels: ["false-negative", "triage"]
+body:
+  - type: input
+    id: rule
+    attributes:
+      label: Expected rule
+      description: Which rule should have triggered? Or describe the pattern if no rule exists yet.
+      placeholder: e.g. nested-lookup, or "new pattern — repeated allocation in loop"
+    validations:
+      required: true
+
+  - type: textarea
+    id: code
+    attributes:
+      label: Code snippet
+      description: Minimal code that should trigger a finding but doesn't. Use a fenced code block.
+      placeholder: |
+        ```java
+        // paste your code here
+        ```
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected finding
+      description: What should algorilla report? What's the complexity issue?
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Algorilla version
+      placeholder: e.g. 0.2.0
+    validations:
+      required: false
+
+  - type: input
+    id: language
+    attributes:
+      label: Language
+      placeholder: e.g. Java, Kotlin, Groovy, JavaScript/TypeScript
+    validations:
+      required: false

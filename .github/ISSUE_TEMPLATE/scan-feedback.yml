@@ -1,0 +1,44 @@
+name: Scan Feedback
+description: Share observations from running algorilla on your codebase
+labels: ["feedback", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for trying algorilla! Real-world scan feedback is incredibly valuable — it drives rule quality and helps prioritize what to work on next.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: What did you scan?
+      description: Brief description of the codebase (language, rough size, framework). You don't need to share the repo if it's private.
+      placeholder: "Spring Boot app, ~200 Java files, mix of REST controllers and batch processing"
+    validations:
+      required: true
+
+  - type: textarea
+    id: observations
+    attributes:
+      label: Observations
+      description: |
+        What worked well? What was noisy? Any rules that felt too strict or too lenient?
+        Patterns you noticed that algorilla doesn't cover yet?
+    validations:
+      required: true
+
+  - type: textarea
+    id: stats
+    attributes:
+      label: Scan summary (optional)
+      description: If you have the numbers — total findings, breakdown by rule, any standout results.
+      render: text
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: Algorilla version
+      placeholder: e.g. 0.2.0
+    validations:
+      required: false
