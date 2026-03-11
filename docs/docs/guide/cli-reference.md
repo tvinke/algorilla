@@ -27,13 +27,19 @@ If no build system is detected, the given path is used as-is.
 | `-f`, `--format` | Output format: `console`, `sarif`, `json` | `console` |
 | `-o`, `--output` | Write report to file instead of stdout | stdout |
 | `-v`, `--verbose` | Show detailed analysis progress (DEBUG logging) | off |
-| `--severity` | Minimum severity: `info`, `warning`, `error` | `warning` |
+| `--severity` | Minimum severity to report: `info`, `warning`, `error` | `warning` |
+| `--fail-on` | Minimum severity that triggers exit code 1: `info`, `warning`, `error` | `info` |
+| `--rule` | Only run specific rule(s), comma-separated or repeated | all rules |
+| `--list-rules` | List all available rules and exit | |
 | `--exclude` | Glob patterns to exclude from scanning | none |
 | `-c`, `--config` | Path to `.algorilla.yml` config file | auto-detect |
 | `--no-cache` | Disable incremental analysis caching | caching on |
 | `--baseline` | Baseline file to compare against | none |
 | `--save-baseline` | Save current findings to a baseline file | none |
+| `--accept` | Accept findings by fingerprint hash, adding them to `.algorilla/ignore-list.json` | |
 | `--include-tests` | Include test source files in analysis | excluded |
+| `-l`, `--language` | Only analyze specified language(s), comma-separated or repeated | all |
+| `--color` | Color output: `auto`, `always`, `never` | `auto` |
 | `-h`, `--help` | Show help message | |
 | `-V`, `--version` | Print version information | |
 
@@ -61,4 +67,19 @@ java -jar algorilla.jar --baseline baseline.json .
 
 # Force full re-analysis
 java -jar algorilla.jar --no-cache .
+
+# List all available rules
+java -jar algorilla.jar --list-rules
+
+# Run only specific rules
+java -jar algorilla.jar --rule nested-lookup,sort-for-last .
+
+# Fail CI only on errors (warnings are advisory)
+java -jar algorilla.jar --fail-on error --format sarif -o results.sarif .
+
+# Accept a reviewed finding
+java -jar algorilla.jar --accept a1b2c3d4e5f6g7h8 .
+
+# Scan only Java and Kotlin files
+java -jar algorilla.jar --language java,kotlin .
 ```

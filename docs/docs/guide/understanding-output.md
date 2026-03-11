@@ -25,6 +25,7 @@ Each finding then shows:
 
       ⎿  for-each loop over orders OrderService.java:44 O(orders)
         ⎿  contains on 'discountedProductIds' OrderService.java:45 O(discountedProductIds) ← bottleneck
+      # a1b2c3d4e5f6g7h8
 ```
 
 The format breaks down as:
@@ -35,6 +36,7 @@ The format breaks down as:
 4. **Suggestion** prefixed with `→`
 5. **Code snippet** with line numbers showing the relevant context
 6. **Evidence chain** with tree markers (`⎿`) tracing the path from outer context to the bottleneck
+7. **Fingerprint hash** — a stable identifier for this finding, used with `--accept` to add it to the [ignore list](workflow.md#accept-it-ignore-list)
 
 ### Severity levels
 

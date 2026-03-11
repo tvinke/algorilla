@@ -77,6 +77,7 @@ nav:
       - Uncached Getter: rules/uncached-getter.md
       - Chained Getters: rules/chained-getters.md
   - Guide:
+    - Workflow: guide/workflow.md
     - Understanding Output: guide/understanding-output.md
     - CLI Reference: guide/cli-reference.md
     - Project Detection: guide/project-detection.md
