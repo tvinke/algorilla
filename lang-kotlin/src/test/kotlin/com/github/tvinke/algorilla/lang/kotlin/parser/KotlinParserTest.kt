@@ -6,6 +6,7 @@ import com.github.tvinke.algorilla.model.LookupCall
 import com.github.tvinke.algorilla.model.LookupKind
 import com.github.tvinke.algorilla.model.LoopKind
 import com.github.tvinke.algorilla.model.LoopNode
+import com.github.tvinke.algorilla.model.Parameter
 import com.github.tvinke.algorilla.model.SortCall
 import com.github.tvinke.algorilla.util.findDescendants
 import io.kotest.matchers.shouldBe
@@ -59,6 +60,16 @@ internal class KotlinParserTest {
         val sorts = tree.findDescendants<SortCall>()
 
         sorts.any { it.kind == com.github.tvinke.algorilla.model.SortKind.SORT } shouldBe true
+    }
+
+    @Test
+    fun `should parse function with multiple generic-typed parameters`() {
+        val tree = parseFixture("kotlin-generic-params.java")
+        val func = tree.findDescendants<FunctionDecl>().single { it.name == "filterByIds" }
+
+        func.parameters.size shouldBe 2
+        func.parameters[0] shouldBe Parameter(name = "ids", typeName = "List<String>")
+        func.parameters[1] shouldBe Parameter(name = "active", typeName = "HashSet<String>")
     }
 
     private fun parseFixture(name: String) =
