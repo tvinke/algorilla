@@ -20,7 +20,7 @@ gradlePlugin {
     vcsUrl.set("https://github.com/tvinke/algorilla")
     plugins {
         create("algorilla") {
-            id = "com.github.tvinke.algorilla"
+            id = "io.github.tvinke.algorilla"
             implementationClass = "com.github.tvinke.algorilla.gradle.AlgorillaPlugin"
             displayName = "Algorilla"
             description = "Detects algorithmic complexity anti-patterns in source code"

@@ -21,7 +21,7 @@ internal class AlgorillaPluginFunctionalTest {
             """
             plugins {
                 java
-                id("com.github.tvinke.algorilla")
+                id("io.github.tvinke.algorilla")
             }
 
             $buildExtra
