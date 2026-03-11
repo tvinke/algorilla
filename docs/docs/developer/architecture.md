@@ -32,6 +32,35 @@ The `core` module defines all abstractions and contains no language-specific cod
 3. **Complexity Annotation** — Execution contexts are propagated through the call graph.
 4. **Rule Evaluation** — Rules traverse IR trees and produce findings.
 
+After rule evaluation, two post-processing steps run before findings reach the user:
+
+- **Subsumption** — When two rules fire at the same source location and one is a more specific version of the other, the less specific finding is dropped. See [Rule Subsumption](#rule-subsumption) below.
+- **Suppression** — Findings with `// algorilla:ignore` comments are removed.
+
+## Rule Subsumption
+
+Some rules detect overlapping patterns. For example, `nested-lookup` and `expensive-callback` can both fire on `list.filter(x -> other.contains(x.id))` — one from the "linear search inside a loop" angle, the other from the "expensive operation inside a callback" angle. Reporting both is noise.
+
+The subsumption model lets rules declare which other rules they make redundant:
+
+```kotlin
+class NestedLookupRule : Rule {
+    override val subsumes = setOf("expensive-callback")
+    // ...
+}
+```
+
+The engine groups findings by source location (file + line). Within each group, if rule A fired and rule A declares `subsumes = setOf("B")`, any finding from rule B in that group is dropped. Rule B's findings at other locations (where A did not fire) are unaffected.
+
+Current subsumption declarations:
+
+| Dominant rule | Subsumes |
+|--------------|----------|
+| `nested-lookup` | `expensive-callback` |
+| `redundant-expensive-call` | `uncached-getter` |
+
+When adding a new rule, check whether it overlaps with existing rules and add a `subsumes` declaration if appropriate. See [Adding Rules](adding-rules.md#subsumption).
+
 ## Extension Points
 
 - **New language**: Implement `LanguageParser` interface, register in CLI

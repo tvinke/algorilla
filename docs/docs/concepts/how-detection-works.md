@@ -38,6 +38,12 @@ To avoid false positives, Algorilla checks whether a collection target is an O(1
 3. **Variable declarations** — checks the declared type of local variables
 4. **Type hints** — user-provided hints in `.algorilla.yml`
 
+## Overlap Resolution
+
+Some rules look at the same code from different angles. For example, `list.filter(x -> ids.contains(x.id))` triggers both the `nested-lookup` rule (linear search inside a loop) and the `expensive-callback` rule (expensive operation inside a callback). Reporting both would be noisy.
+
+Algorilla handles this automatically: when a more specific rule and a more general rule both fire on the same line, the more general finding is dropped. You always see the most precise diagnosis. If you suppress the specific finding (via `// algorilla:ignore`), the general one stays suppressed too — you won't see a "new" finding pop up after suppression.
+
 ## Suppression Handling
 
-After rule evaluation, the **Suppression Filter** removes findings that have `// algorilla:ignore` comments on or near the finding's location and evidence chain locations.
+After overlap resolution, the **Suppression Filter** removes findings that have `// algorilla:ignore` comments on or near the finding's location and evidence chain locations.

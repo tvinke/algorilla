@@ -39,6 +39,28 @@ val rules = listOf(
 
 3. Add test fixtures in `src/test/resources/fixtures/my-new-rule/positive/` and `negative/`.
 
+## Subsumption
+
+If your rule detects a pattern that overlaps with an existing rule, declare which rule(s) it subsumes:
+
+```kotlin
+class MyNewRule : Rule {
+    override val id = "my-new-rule"
+    override val subsumes = setOf("less-specific-rule")
+    // ...
+}
+```
+
+When both rules fire at the same source location, the engine keeps your finding and drops the subsumed one. The subsumed rule's findings at other locations are unaffected.
+
+Guidelines:
+
+- Only declare subsumption when your rule is strictly more specific. If the rules detect genuinely different problems that happen to co-locate, both findings should survive.
+- Subsumption is directional — the more specific rule declares the relationship, not the general one.
+- Check existing `subsumes` declarations in the codebase to avoid conflicts.
+
+See [Architecture: Rule Subsumption](architecture.md#rule-subsumption) for how the engine implements this.
+
 ## Custom Rule via DSL
 
 See [Custom Rules](../guide/custom-rules.md) for the Kotlin Script approach.
