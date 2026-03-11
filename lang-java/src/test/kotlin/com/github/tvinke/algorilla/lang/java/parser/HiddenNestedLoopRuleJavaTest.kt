@@ -116,13 +116,12 @@ internal class HiddenNestedLoopRuleJavaTest {
         }
 
         @Test
-        fun `should handle recursive methods without crashing`() {
+        fun `should not flag recursive methods`() {
             val findings = analyzeFixture("hidden-nested-loop/negative/recursive-method.java")
 
-            // visit() is recursive and contains a loop — it will be flagged since
-            // walkAll() loops and calls visit() which contains a for-each loop
-            // This test primarily verifies no StackOverflow or infinite loop
-            findings.size shouldBe findings.size // just verify it completes
+            // Recursive tree-walker methods should not be flagged — their internal
+            // loop iterates child nodes, total work is O(tree_size) not O(n²)
+            findings.shouldBeEmpty()
         }
 
         @Test
