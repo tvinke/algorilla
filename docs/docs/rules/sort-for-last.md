@@ -1,3 +1,11 @@
+---
+tags:
+  - Java
+  - Kotlin
+  - Groovy
+  - JavaScript
+---
+
 # Sort for Last
 
 **Rule ID:** `sort-for-last` · **Severity:** WARNING · **Complexity:** O(n log n) → O(n)

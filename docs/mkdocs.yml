@@ -27,6 +27,13 @@ theme:
   icon:
     repo: fontawesome/brands/github
 
+plugins:
+  - search
+  - tags
+
+extra_css:
+  - stylesheets/extra.css
+
 markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
@@ -83,6 +90,12 @@ nav:
       - Chained Getters: rules/chained-getters.md
     - Concurrency:
       - Parallel Stream Bottleneck: rules/parallel-stream-bottleneck.md
+  - Languages:
+    - Overview: languages/index.md
+    - Java: languages/java.md
+    - Kotlin: languages/kotlin.md
+    - Groovy: languages/groovy.md
+    - JavaScript / TypeScript: languages/javascript.md
   - Guide:
     - Workflow: guide/workflow.md
     - Understanding Output: guide/understanding-output.md

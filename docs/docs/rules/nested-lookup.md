@@ -1,3 +1,11 @@
+---
+tags:
+  - Java
+  - Kotlin
+  - Groovy
+  - JavaScript
+---
+
 # Nested Lookup
 
 **Rule ID:** `nested-lookup` · **Severity:** WARNING · **Complexity:** O(n²) → O(n)

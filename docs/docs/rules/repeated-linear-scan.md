@@ -1,3 +1,11 @@
+---
+tags:
+  - Java
+  - Kotlin
+  - Groovy
+  - JavaScript
+---
+
 # Repeated Linear Scan
 
 **Rule ID:** `repeated-linear-scan` · **Severity:** WARNING · **Complexity:** O(n·k) → O(n)

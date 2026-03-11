@@ -1,3 +1,11 @@
+---
+tags:
+  - Java
+  - Kotlin
+  - Groovy
+  - JavaScript
+---
+
 # Bulk Load for Single Lookup
 
 **Rule ID:** `bulk-load-for-single-lookup` · **Severity:** WARNING · **Complexity:** O(n) → O(1)

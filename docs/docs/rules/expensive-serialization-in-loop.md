@@ -1,3 +1,11 @@
+---
+tags:
+  - Java
+  - Kotlin
+  - Groovy
+  - JavaScript
+---
+
 # Expensive Serialization in Loop
 
 **Rule ID:** `expensive-serialization-in-loop` · **Severity:** WARNING · **Complexity:** O(n·serialize) → O(n)

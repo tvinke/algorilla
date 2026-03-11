@@ -1,3 +1,11 @@
+---
+tags:
+  - Java
+  - Kotlin
+  - Groovy
+  - JavaScript
+---
+
 # Implicit Regex in Loop
 
 **Rule ID:** `implicit-regex-in-loop` · **Severity:** WARNING · **Complexity:** O(n·compile) → O(n)

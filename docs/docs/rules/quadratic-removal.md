@@ -1,3 +1,11 @@
+---
+tags:
+  - Java
+  - Kotlin
+  - Groovy
+  - JavaScript
+---
+
 # Quadratic Removal
 
 **Rule ID:** `quadratic-removal` · **Severity:** WARNING · **Complexity:** O(n²) → O(n)

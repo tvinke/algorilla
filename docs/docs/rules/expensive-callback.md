@@ -1,3 +1,11 @@
+---
+tags:
+  - Java
+  - Kotlin
+  - Groovy
+  - JavaScript
+---
+
 # Expensive Callback
 
 **Rule ID:** `expensive-callback` · **Severity:** WARNING · **Category:** Loop amplifiers

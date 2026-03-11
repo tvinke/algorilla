@@ -18,6 +18,12 @@ Algorilla is a static analysis tool that finds hidden O(n²) and O(n·m) perform
 
     [:octicons-arrow-right-24: Rules overview](rules/index.md)
 
+-   :material-translate:{ .lg .middle } **Languages**
+
+    Java, Kotlin, Groovy, JavaScript/TypeScript — parser details and rule coverage per language.
+
+    [:octicons-arrow-right-24: Language support](languages/index.md)
+
 -   :material-console:{ .lg .middle } **Guide**
 
     CLI reference, CI/CD integration, baseline workflows, custom rules, and more.

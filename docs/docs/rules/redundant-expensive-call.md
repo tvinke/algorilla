@@ -1,3 +1,11 @@
+---
+tags:
+  - Java
+  - Kotlin
+  - Groovy
+  - JavaScript
+---
+
 # Redundant Expensive Call
 
 **Rule ID:** `redundant-expensive-call` · **Severity:** INFO · **Complexity:** k·O(f) → O(f)

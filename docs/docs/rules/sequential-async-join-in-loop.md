@@ -1,3 +1,11 @@
+---
+tags:
+  - Java
+  - Kotlin
+  - Groovy
+  - JavaScript
+---
+
 # Sequential Async Join in Loop
 
 **Rule ID:** `sequential-async-join-in-loop` · **Severity:** WARNING · **Complexity:** O(n·wait) → O(max-wait)

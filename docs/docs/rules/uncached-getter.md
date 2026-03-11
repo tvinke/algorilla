@@ -1,3 +1,11 @@
+---
+tags:
+  - Java
+  - Kotlin
+  - Groovy
+  - JavaScript
+---
+
 # Uncached Getter
 
 **Rule ID:** `uncached-getter` · **Severity:** INFO · **Complexity:** k·O(lookup) → O(lookup)

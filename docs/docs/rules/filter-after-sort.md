@@ -1,3 +1,11 @@
+---
+tags:
+  - Java
+  - Kotlin
+  - Groovy
+  - JavaScript
+---
+
 # Filter After Sort
 
 **Rule ID:** `filter-after-sort` · **Severity:** INFO · **Complexity:** O(n log n + k) → O(k log k + n)

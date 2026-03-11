@@ -1,3 +1,11 @@
+---
+tags:
+  - Java
+  - Kotlin
+  - Groovy
+  - JavaScript
+---
+
 # Expensive Construction
 
 **Rule ID:** `expensive-construction` · **Severity:** INFO · **Category:** Construction cost

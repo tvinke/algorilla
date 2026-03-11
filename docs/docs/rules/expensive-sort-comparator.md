@@ -1,3 +1,11 @@
+---
+tags:
+  - Java
+  - Kotlin
+  - Groovy
+  - JavaScript
+---
+
 # Expensive Sort Comparator
 
 **Rule ID:** `expensive-sort-comparator` · **Severity:** WARNING · **Category:** Sort abuse · **Complexity:** O(n² log n) → O(n log n)

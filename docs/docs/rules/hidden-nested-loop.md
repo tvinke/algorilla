@@ -1,3 +1,11 @@
+---
+tags:
+  - Java
+  - Kotlin
+  - Groovy
+  - JavaScript
+---
+
 # Hidden Nested Loop
 
 **Rule ID:** `hidden-nested-loop` · **Severity:** WARNING · **Category:** Loop amplifiers

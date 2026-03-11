@@ -1,3 +1,10 @@
+---
+tags:
+  - Java
+  - Kotlin
+  - Groovy
+---
+
 # Repeated Reflection in Loop
 
 **Rule ID:** `repeated-reflection-in-loop` · **Severity:** INFO · **Complexity:** O(n·reflection) → O(n)

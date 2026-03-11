@@ -1,3 +1,11 @@
+---
+tags:
+  - Java
+  - Kotlin
+  - Groovy
+  - JavaScript
+---
+
 # String Concat in Loop
 
 **Rule ID:** `string-concat-in-loop` · **Severity:** WARNING · **Complexity:** O(n²) → O(n)

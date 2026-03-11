@@ -1,3 +1,11 @@
+---
+tags:
+  - Java
+  - Kotlin
+  - Groovy
+  - JavaScript
+---
+
 # Chained Getters
 
 **Rule ID:** `chained-getters` · **Severity:** INFO · **Complexity:** O(n^k) → O(n)

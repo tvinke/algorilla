@@ -1,3 +1,11 @@
+---
+tags:
+  - Java
+  - Kotlin
+  - Groovy
+  - JavaScript
+---
+
 # N+1 Query
 
 **Rule ID:** `n-plus-one-query` · **Severity:** WARNING · **Complexity:** O(n·IO) → O(1·IO + n)

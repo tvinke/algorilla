@@ -1,8 +1,13 @@
+---
+tags:
+  - Java
+  - Kotlin
+  - Groovy
+---
+
 # Parallel Stream Bottleneck
 
 **Rule ID:** `parallel-stream-bottleneck` · **Severity:** WARNING · **Category:** Concurrency
-
-**Languages:** Java, Kotlin, Groovy
 
 ## Description
 

@@ -1,3 +1,11 @@
+---
+tags:
+  - Java
+  - Kotlin
+  - Groovy
+  - JavaScript
+---
+
 # Repeated Regex in Loop
 
 **Rule ID:** `repeated-regex-in-loop` · **Severity:** WARNING · **Complexity:** O(n·compile) → O(n)

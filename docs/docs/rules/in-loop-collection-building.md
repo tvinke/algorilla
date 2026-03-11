@@ -1,3 +1,11 @@
+---
+tags:
+  - Java
+  - Kotlin
+  - Groovy
+  - JavaScript
+---
+
 # In-Loop Collection Building
 
 **Rule ID:** `in-loop-collection-building` · **Severity:** WARNING · **Complexity:** O(n·m) → O(n+m)
