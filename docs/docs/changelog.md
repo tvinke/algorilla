@@ -1,5 +1,58 @@
 # Changelog
 
+## 0.2.0 (2026-03-10)
+
+### New rules
+
+8 new rules, bringing the total to 23:
+
+| Rule | What it catches |
+|------|----------------|
+| `string-concat-in-loop` | String concatenation inside loop (quadratic copying) |
+| `quadratic-removal` | Removing elements from a list inside a loop |
+| `repeated-reflection-in-loop` | Reflection calls (getMethod, getField) inside loop |
+| `hidden-nested-loop` | Method call inside loop that itself iterates |
+| `expensive-callback` | Heavy operations (regex, lookups, nested iteration) inside callbacks |
+| `implicit-regex-in-loop` | String.matches()/replaceAll() inside loop (hidden regex compilation) |
+| `parallel-stream-bottleneck` | Shared mutable state inside parallelStream().forEach() |
+| `expensive-sort-comparator` | Linear search, date parsing, or heavy work in sort comparator |
+
+### Distribution
+
+Algorilla is now available through 5 channels:
+
+- **npm** — `npx algorilla .` (bundled JRE download)
+- **Gradle plugin** — `plugins { id("io.github.tvinke.algorilla") version "0.2.0" }`
+- **Docker** — `docker run --rm -v "$(pwd):/src" ghcr.io/tvinke/algorilla /src`
+- **GitHub Action** — `uses: tvinke/algorilla@v0.2.0`
+- **JAR** — direct download from GitHub Releases
+
+### Features
+
+- **`--list-rules`** — print all available rules and exit
+- **`--rule`** — run only specific rules
+- **`--fail-on`** — set minimum severity for non-zero exit code
+- **`--accept`** — accept specific findings to suppress them going forward
+- **Cross-method analysis** — sort-for-last and expensive-callback now follow call chains across methods
+- **Type-aware symbol table** — cross-method resolution uses type information for more accurate detection
+- **Multi-module Gradle support** — auto-discovers all submodule source roots
+- **Findings sorted by severity** — most actionable findings appear first
+
+### Improvements
+
+- Moved cheap-methods and sequential-read-methods to YAML registry (extensible via config)
+- Widened N+1 detection to catch `findByX` patterns without suffix whitelist
+- Generalized expensive-callback to catch regex, lookups, and nested iteration
+- Tightened FP filters across hidden-nested-loop, redundant-call, and purity model
+- Skipped recursive methods in hidden-nested-loop detection
+- Extracted shared block analysis utilities
+
+### Infrastructure
+
+- Multi-channel release pipeline (GitHub Release, npm, Gradle Plugin Portal, Docker, GitHub Action)
+- Dedicated per-rule integration test classes
+- Auto-deploy docs on push to main
+
 ## 0.1.0 (2026-03-09)
 
 First release of algorilla.
