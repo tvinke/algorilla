@@ -1,6 +1,6 @@
 # Rules Overview
 
-Algorilla ships with 15 built-in rules that detect common algorithmic complexity anti-patterns, organized in five categories.
+Algorilla ships with 21 built-in rules that detect common algorithmic complexity anti-patterns, organized in five categories.
 
 ## Loop amplifiers
 
@@ -11,9 +11,15 @@ Expensive operations hidden inside loop bodies that multiply the cost per iterat
 | `nested-lookup` | [Nested Lookup](nested-lookup.md) | WARNING | O(n²) where O(n) suffices |
 | `repeated-linear-scan` | [Repeated Linear Scan](repeated-linear-scan.md) | WARNING | O(n·k) where O(n) suffices |
 | `repeated-regex-in-loop` | [Repeated Regex in Loop](repeated-regex-in-loop.md) | WARNING | O(n·compile) where O(n) suffices |
+| `implicit-regex-in-loop` | [Implicit Regex in Loop](implicit-regex-in-loop.md) | WARNING | O(n·compile) where O(n) suffices |
 | `expensive-serialization-in-loop` | [Expensive Serialization in Loop](expensive-serialization-in-loop.md) | WARNING | O(n·serialize) where O(n) suffices |
 | `sequential-async-join-in-loop` | [Sequential Async Join in Loop](sequential-async-join-in-loop.md) | WARNING | O(n·wait) where O(max-wait) suffices |
 | `in-loop-collection-building` | [In-Loop Collection Building](in-loop-collection-building.md) | WARNING | O(n·m) where O(n+m) suffices |
+| `string-concat-in-loop` | [String Concat in Loop](string-concat-in-loop.md) | WARNING | O(n²) where O(n) suffices |
+| `quadratic-removal` | [Quadratic Removal](quadratic-removal.md) | WARNING | O(n²) where O(n) suffices |
+| `repeated-reflection-in-loop` | [Repeated Reflection in Loop](repeated-reflection-in-loop.md) | INFO | O(n·reflection) where O(n) suffices |
+| `hidden-nested-loop` | [Hidden Nested Loop](hidden-nested-loop.md) | WARNING | O(n·m) hidden behind method call |
+| `expensive-callback` | [Expensive Callback](expensive-callback.md) | WARNING | Expensive operations inside HOF callbacks |
 
 ## Sort abuse
 

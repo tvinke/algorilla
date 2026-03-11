@@ -23,14 +23,18 @@ import com.github.tvinke.algorilla.rules.builtin.FilterAfterSortRule
 import com.github.tvinke.algorilla.rules.builtin.FullScanForSingleLookupRule
 import com.github.tvinke.algorilla.rules.builtin.HeavyweightObjectPerInvocationRule
 import com.github.tvinke.algorilla.rules.builtin.HiddenNestedLoopRule
+import com.github.tvinke.algorilla.rules.builtin.ImplicitRegexInLoopRule
 import com.github.tvinke.algorilla.rules.builtin.InLoopCollectionBuildingRule
 import com.github.tvinke.algorilla.rules.builtin.NPlusOneRepositoryCallRule
 import com.github.tvinke.algorilla.rules.builtin.NestedLookupRule
+import com.github.tvinke.algorilla.rules.builtin.QuadraticRemovalRule
 import com.github.tvinke.algorilla.rules.builtin.RedundantExpensiveCallRule
 import com.github.tvinke.algorilla.rules.builtin.RepeatedLinearScanRule
+import com.github.tvinke.algorilla.rules.builtin.RepeatedReflectionInLoopRule
 import com.github.tvinke.algorilla.rules.builtin.RepeatedRegexInLoopRule
 import com.github.tvinke.algorilla.rules.builtin.SequentialAsyncJoinInLoopRule
 import com.github.tvinke.algorilla.rules.builtin.SortForLastRule
+import com.github.tvinke.algorilla.rules.builtin.StringConcatInLoopRule
 import com.github.tvinke.algorilla.rules.builtin.UncachedGetterRule
 import picocli.CommandLine
 import picocli.CommandLine.Command
@@ -210,6 +214,10 @@ internal class AlgorillaCommand :
             ChainedGettersRule(),
             FilterAfterSortRule(),
             HiddenNestedLoopRule(),
+            ImplicitRegexInLoopRule(),
+            StringConcatInLoopRule(),
+            QuadraticRemovalRule(),
+            RepeatedReflectionInLoopRule(),
         )
 
     private fun buildConfig(): AnalysisConfig {

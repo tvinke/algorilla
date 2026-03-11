@@ -11,8 +11,12 @@ import com.github.tvinke.algorilla.rules.builtin.ExpensiveSortComparatorRule
 import com.github.tvinke.algorilla.rules.builtin.FilterAfterSortRule
 import com.github.tvinke.algorilla.rules.builtin.FullScanForSingleLookupRule
 import com.github.tvinke.algorilla.rules.builtin.HeavyweightObjectPerInvocationRule
+import com.github.tvinke.algorilla.rules.builtin.ImplicitRegexInLoopRule
+import com.github.tvinke.algorilla.rules.builtin.QuadraticRemovalRule
 import com.github.tvinke.algorilla.rules.builtin.RepeatedLinearScanRule
+import com.github.tvinke.algorilla.rules.builtin.RepeatedReflectionInLoopRule
 import com.github.tvinke.algorilla.rules.builtin.SortForLastRule
+import com.github.tvinke.algorilla.rules.builtin.StringConcatInLoopRule
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -268,6 +272,92 @@ internal class RulesIntegrationTest {
                     "full-scan-for-single-lookup/negative/no-bulk-load.java",
                     rule,
                 )
+
+            findings.shouldBeEmpty()
+        }
+    }
+
+    @Nested
+    inner class ImplicitRegexInLoopTests {
+        private val rule = ImplicitRegexInLoopRule()
+
+        @Test
+        fun `should detect matches and split inside loop`() {
+            val findings = analyzeFixture("implicit-regex-in-loop/positive/matches-in-loop.java", rule)
+
+            findings shouldHaveSize 2
+            findings.all { it.ruleId == "implicit-regex-in-loop" } shouldBe true
+            findings.any { it.message.contains("matches") } shouldBe true
+            findings.any { it.message.contains("split") } shouldBe true
+        }
+
+        @Test
+        fun `should not flag non-regex string methods`() {
+            val findings = analyzeFixture("implicit-regex-in-loop/negative/no-regex-methods.java", rule)
+
+            findings.shouldBeEmpty()
+        }
+    }
+
+    @Nested
+    inner class StringConcatInLoopTests {
+        private val rule = StringConcatInLoopRule()
+
+        @Test
+        fun `should detect concat inside loop`() {
+            val findings = analyzeFixture("string-concat-in-loop/positive/concat-in-loop.java", rule)
+
+            findings shouldHaveSize 2
+            findings.all { it.ruleId == "string-concat-in-loop" } shouldBe true
+            findings.first().message shouldContain "concat"
+        }
+
+        @Test
+        fun `should not flag StringBuilder append`() {
+            val findings = analyzeFixture("string-concat-in-loop/negative/no-concat.java", rule)
+
+            findings.shouldBeEmpty()
+        }
+    }
+
+    @Nested
+    inner class QuadraticRemovalTests {
+        private val rule = QuadraticRemovalRule()
+
+        @Test
+        fun `should detect remove inside loop`() {
+            val findings = analyzeFixture("quadratic-removal/positive/remove-in-loop.java", rule)
+
+            findings shouldHaveSize 1
+            findings.first().ruleId shouldBe "quadratic-removal"
+            findings.first().message shouldContain "remove"
+            findings.first().message shouldContain "items"
+        }
+
+        @Test
+        fun `should not flag map remove`() {
+            val findings = analyzeFixture("quadratic-removal/negative/map-remove.java", rule)
+
+            findings.shouldBeEmpty()
+        }
+    }
+
+    @Nested
+    inner class RepeatedReflectionInLoopTests {
+        private val rule = RepeatedReflectionInLoopRule()
+
+        @Test
+        fun `should detect getDeclaredMethods inside loop`() {
+            val findings = analyzeFixture("repeated-reflection-in-loop/positive/reflection-in-loop.java", rule)
+
+            findings shouldHaveSize 1
+            findings.first().ruleId shouldBe "repeated-reflection-in-loop"
+            findings.first().message shouldContain "getDeclaredMethods"
+        }
+
+        @Test
+        fun `should not flag non-reflection methods`() {
+            val findings = analyzeFixture("repeated-reflection-in-loop/negative/no-reflection.java", rule)
 
             findings.shouldBeEmpty()
         }

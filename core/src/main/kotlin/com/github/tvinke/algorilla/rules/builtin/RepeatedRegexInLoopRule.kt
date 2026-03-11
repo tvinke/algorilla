@@ -2,6 +2,7 @@ package com.github.tvinke.algorilla.rules.builtin
 
 import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.FunctionCall
+import com.github.tvinke.algorilla.model.GenericNode
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LoopNode
@@ -48,7 +49,7 @@ public class RepeatedRegexInLoopRule : Rule {
             if (node is ObjectCreation && isRegexType(node.typeName)) {
                 findings.add(buildFinding(node, loopStack, "new ${node.typeName}()"))
             }
-            if (node is FunctionCall && isCompileCall(node)) {
+            if (node is FunctionCall && isCompileCall(node) && hasConstantArgument(node)) {
                 findings.add(buildFinding(node, loopStack, "${node.qualifiedTarget ?: "Pattern"}.${node.name}()"))
             }
         }
@@ -100,3 +101,21 @@ private fun isCompileCall(call: FunctionCall): Boolean =
             call.qualifiedTarget?.contains("Pattern") == true ||
                 call.qualifiedTarget?.contains("Regex") == true
         )
+
+/**
+ * Returns true if the compile() call's first argument appears to be a constant (string literal).
+ * If the argument is a variable or expression, it likely varies per loop iteration and
+ * cannot be hoisted — skip the finding.
+ */
+private fun hasConstantArgument(call: FunctionCall): Boolean {
+    val firstArg = call.arguments.firstOrNull() ?: return true
+    if (firstArg is GenericNode) {
+        val text = firstArg.nodeType.trim()
+        // String literal: starts and ends with quote
+        if (text.startsWith("\"") || text.startsWith("'")) return true
+        // Static constant: ALL_CAPS or qualified like Foo.PATTERN
+        if (text.all { it == '_' || it.isUpperCase() || it == '.' }) return true
+    }
+    // Variable/expression arguments likely vary per iteration
+    return false
+}
