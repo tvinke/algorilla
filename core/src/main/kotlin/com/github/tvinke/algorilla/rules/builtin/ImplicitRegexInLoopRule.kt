@@ -1,7 +1,9 @@
 package com.github.tvinke.algorilla.rules.builtin
 
 import com.github.tvinke.algorilla.model.ExecutionContext
+import com.github.tvinke.algorilla.model.FileRoot
 import com.github.tvinke.algorilla.model.FunctionCall
+import com.github.tvinke.algorilla.model.GenericNode
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LoopNode
@@ -28,7 +30,8 @@ public class ImplicitRegexInLoopRule : Rule {
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
-            scanNode(fileRoot, emptyList(), findings)
+            val language = (fileRoot as? FileRoot)?.language
+            scanNode(fileRoot, emptyList(), language, findings)
         }
         return findings
     }
@@ -36,21 +39,22 @@ public class ImplicitRegexInLoopRule : Rule {
     private fun scanNode(
         node: IRNode,
         loopStack: List<LoopNode>,
+        language: Language?,
         findings: MutableList<Finding>,
     ) {
         if (node is LoopNode) {
             for (child in node.children) {
-                scanNode(child, loopStack + node, findings)
+                scanNode(child, loopStack + node, language, findings)
             }
             return
         }
 
-        if (loopStack.isNotEmpty() && node is FunctionCall && isImplicitRegexCall(node)) {
+        if (loopStack.isNotEmpty() && node is FunctionCall && isImplicitRegexCall(node, language)) {
             findings.add(buildFinding(node, loopStack))
         }
 
         for (child in node.children) {
-            scanNode(child, loopStack, findings)
+            scanNode(child, loopStack, language, findings)
         }
     }
 
@@ -90,4 +94,29 @@ private val IMPLICIT_REGEX_METHODS: Set<String> by lazy {
     CollectionSemanticsRegistry.loadDefaults().allImplicitRegexMethods()
 }
 
-private fun isImplicitRegexCall(call: FunctionCall): Boolean = call.name in IMPLICIT_REGEX_METHODS && call.qualifiedTarget != null
+/** Languages where string methods only compile regex when the argument is a regex literal. */
+private val JS_FAMILY = setOf(Language.JAVASCRIPT, Language.TYPESCRIPT, Language.VUE)
+
+private fun isImplicitRegexCall(
+    call: FunctionCall,
+    language: Language?,
+): Boolean {
+    if (call.name !in IMPLICIT_REGEX_METHODS || call.qualifiedTarget == null) return false
+    // In JS/TS, split/replace/match with a plain string argument do NOT compile regex.
+    // Only regex literals (/pattern/) or RegExp objects trigger compilation.
+    if (language in JS_FAMILY && hasStringLiteralFirstArg(call)) return false
+    return true
+}
+
+/**
+ * Returns true if the first argument is a string literal (quoted with ' or ").
+ * In the IR, arguments from the JS parser are [GenericNode] with the source text as nodeType.
+ */
+private fun hasStringLiteralFirstArg(call: FunctionCall): Boolean {
+    val firstArg = call.arguments.firstOrNull() ?: return false
+    if (firstArg !is GenericNode) return false
+    val text = firstArg.nodeType.trim()
+    return (text.startsWith("'") && text.endsWith("'")) ||
+        (text.startsWith("\"") && text.endsWith("\"")) ||
+        (text.startsWith("`") && text.endsWith("`"))
+}
