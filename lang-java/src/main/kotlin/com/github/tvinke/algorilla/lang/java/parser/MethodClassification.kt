@@ -63,7 +63,12 @@ private fun classifyAsIteration(
 ): IRNode? =
     when (methodName) {
         "forEach" -> {
-            val kind = if (targetText.contains(".stream()")) LoopKind.STREAM_FOR_EACH else LoopKind.HIGHER_ORDER
+            val kind =
+                when {
+                    targetText.contains(".parallelStream()") -> LoopKind.PARALLEL_STREAM_FOR_EACH
+                    targetText.contains(".stream()") -> LoopKind.STREAM_FOR_EACH
+                    else -> LoopKind.HIGHER_ORDER
+                }
             LoopNode(kind = kind, iteratedVariable = targetVar, location = loc, children = argNodes)
         }
         "removeIf" -> LoopNode(kind = LoopKind.HIGHER_ORDER, iteratedVariable = targetVar, location = loc, children = argNodes)

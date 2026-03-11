@@ -29,6 +29,7 @@ import com.github.tvinke.algorilla.rules.builtin.ImplicitRegexInLoopRule
 import com.github.tvinke.algorilla.rules.builtin.InLoopCollectionBuildingRule
 import com.github.tvinke.algorilla.rules.builtin.NPlusOneRepositoryCallRule
 import com.github.tvinke.algorilla.rules.builtin.NestedLookupRule
+import com.github.tvinke.algorilla.rules.builtin.ParallelStreamBottleneckRule
 import com.github.tvinke.algorilla.rules.builtin.QuadraticRemovalRule
 import com.github.tvinke.algorilla.rules.builtin.RedundantExpensiveCallRule
 import com.github.tvinke.algorilla.rules.builtin.RepeatedLinearScanRule
@@ -305,6 +306,7 @@ private fun builtinRules(): List<Rule> =
         StringConcatInLoopRule(),
         QuadraticRemovalRule(),
         RepeatedReflectionInLoopRule(),
+        ParallelStreamBottleneckRule(),
     )
 
 private fun applyBaseline(

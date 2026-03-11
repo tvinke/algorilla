@@ -239,5 +239,6 @@ internal fun com.github.tvinke.algorilla.model.LoopKind.label(): String =
         com.github.tvinke.algorilla.model.LoopKind.WHILE -> "while loop"
         com.github.tvinke.algorilla.model.LoopKind.FOR_EACH -> "for-each loop"
         com.github.tvinke.algorilla.model.LoopKind.STREAM_FOR_EACH -> "stream().forEach()"
+        com.github.tvinke.algorilla.model.LoopKind.PARALLEL_STREAM_FOR_EACH -> "parallelStream().forEach()"
         com.github.tvinke.algorilla.model.LoopKind.HIGHER_ORDER -> "forEach()"
     }

@@ -18,6 +18,7 @@ public enum class LoopKind {
     WHILE,
     FOR_EACH,
     STREAM_FOR_EACH,
+    PARALLEL_STREAM_FOR_EACH,
     HIGHER_ORDER,
 }
 
