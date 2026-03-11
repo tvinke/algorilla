@@ -1,0 +1,101 @@
+# Ktor — framework overlay for Kotlin
+# Server routing, client, serialization, and plugins
+
+methods: {}
+
+cheap-methods:
+  # Routing DSL — each registers a distinct route handler
+  - get
+  - post
+  - put
+  - delete
+  - patch
+  - head
+  - options
+  - route
+  - authenticate
+  - install
+  - intercept
+  # Application / Pipeline
+  - application
+  - environment
+  - attributes
+  - featureOrNull
+  - feature
+  # Request / Response
+  - receive
+  - receiveText
+  - receiveMultipart
+  - receiveParameters
+  - receiveChannel
+  - respond
+  - respondText
+  - respondHtml
+  - respondFile
+  - respondBytes
+  - respondRedirect
+  - respondOutputStream
+  # Call context
+  - call
+  - request
+  - response
+  - parameters
+  - queryParameters
+  - headers
+  - cookies
+  # Ktor Client
+  - request
+  - prepareRequest
+  - submitForm
+  - submitFormWithBinaryData
+  - body
+  - bodyAsText
+  - bodyAsChannel
+  # Content negotiation
+  - json
+  - xml
+  - cbor
+  - protobuf
+  # Sessions
+  - sessions
+  - getOrSet
+  - clear
+  # WebSockets
+  - webSocket
+  - webSocketSession
+  - send
+  - incoming
+  - outgoing
+  - close
+  # Status Pages
+  - exception
+  - status
+  - statusFile
+
+trivial-methods:
+  # URL building
+  - url
+  - host
+  - port
+  - path
+  - encodedPath
+  - protocol
+  - parameters
+  - fragment
+  - appendPathSegments
+  - build
+  - buildString
+  # Header access
+  - contentType
+  - contentLength
+  - etag
+  - lastModified
+  - cacheControl
+  - accept
+  - acceptCharset
+  - acceptEncoding
+  - acceptLanguage
+  - authorization
+  - userAgent
+  - cookie
+  - setCookie

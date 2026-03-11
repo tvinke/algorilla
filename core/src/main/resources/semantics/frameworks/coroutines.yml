@@ -1,0 +1,144 @@
+# Kotlin Coroutines — framework overlay for Kotlin
+# Structured concurrency, Flow, channels, and dispatchers
+
+methods: {}
+
+cheap-methods:
+  # Coroutine builders — each launches a distinct coroutine
+  - launch
+  - async
+  - runBlocking
+  - withContext
+  - coroutineScope
+  - supervisorScope
+  - withTimeout
+  - withTimeoutOrNull
+  # Job management
+  - cancel
+  - cancelAndJoin
+  - cancelChildren
+  - join
+  - start
+  - isActive
+  - isCompleted
+  - isCancelled
+  - ensureActive
+  # Deferred
+  - await
+  - awaitAll
+  # Flow builders — each creates a distinct flow
+  - flow
+  - flowOf
+  - asFlow
+  - callbackFlow
+  - channelFlow
+  - emptyFlow
+  - stateIn
+  - shareIn
+  - MutableStateFlow
+  - MutableSharedFlow
+  # Flow emission
+  - emit
+  - emitAll
+  # Channel
+  - send
+  - receive
+  - trySend
+  - tryReceive
+  - close
+  - cancel
+  - offer
+  - poll
+  - Channel
+  - produce
+  - actor
+  # Select
+  - select
+  - onAwait
+  - onReceive
+  - onReceiveCatching
+  - onSend
+  - onJoin
+  - onTimeout
+  # Mutex / Semaphore
+  - withLock
+  - withPermit
+  - lock
+  - unlock
+  - acquire
+  - release
+  - tryLock
+  - tryAcquire
+
+stream-ops:
+  # Flow operators — pipeable transformations
+  - map
+  - mapNotNull
+  - filter
+  - filterNot
+  - filterNotNull
+  - filterIsInstance
+  - transform
+  - transformLatest
+  - transformWhile
+  - onEach
+  - onStart
+  - onCompletion
+  - onEmpty
+  - catch
+  - retry
+  - retryWhen
+  # Flow combining
+  - combine
+  - combineTransform
+  - merge
+  - flatMapConcat
+  - flatMapMerge
+  - flatMapLatest
+  - zip
+  # Flow limiting
+  - take
+  - takeWhile
+  - drop
+  - dropWhile
+  - distinctUntilChanged
+  - distinctUntilChangedBy
+  - debounce
+  - sample
+  - timeout
+  # Flow context
+  - flowOn
+  - conflate
+  - buffer
+  - produceIn
+  - broadcastIn
+  # Flow terminal
+  - collect
+  - collectLatest
+  - first
+  - firstOrNull
+  - last
+  - lastOrNull
+  - single
+  - singleOrNull
+  - toList
+  - toSet
+  - count
+  - fold
+  - reduce
+  - launchIn
+
+trivial-methods:
+  # Dispatchers
+  - Default
+  - IO
+  - Main
+  - Unconfined
+  # CoroutineContext
+  - plus
+  - minusKey
+  - isActive
+  - job
+  # Yield
+  - yield
+  - delay

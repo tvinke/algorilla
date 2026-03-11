@@ -1,0 +1,52 @@
+# React — framework overlay for JavaScript
+# Hooks, component factories, and lifecycle methods
+
+methods: {}
+
+# React hooks and factory methods — each call creates a distinct slot
+# or instance. Must not be flagged as redundant expensive calls.
+cheap-methods:
+  # Hooks — each call site is a distinct React slot
+  - useState
+  - useEffect
+  - useLayoutEffect
+  - useMemo
+  - useCallback
+  - useRef
+  - useContext
+  - useReducer
+  - useId
+  - useDeferredValue
+  - useTransition
+  - useImperativeHandle
+  - useDebugValue
+  - useSyncExternalStore
+  - useInsertionEffect
+  - useOptimistic
+  - useFormStatus
+  - useActionState
+  # Factory methods — produce distinct instances
+  - createElement
+  - createPortal
+  - createRoot
+  - hydrateRoot
+  - createContext
+  - createRef
+  - forwardRef
+  - memo
+  - lazy
+  # Render methods
+  - render
+  - unmountComponentAtNode
+  - flushSync
+  # React Router
+  - useNavigate
+  - useParams
+  - useLocation
+  - useSearchParams
+  - useMatch
+
+trivial-methods:
+  # State checks
+  - isValidElement
+  - Children

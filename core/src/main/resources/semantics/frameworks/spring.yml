@@ -1,0 +1,204 @@
+# Spring Framework — framework overlay for Java
+# Spring Boot, Spring MVC, Spring Data, Spring Security
+
+methods: {}
+
+cheap-methods:
+  # ApplicationContext / BeanFactory
+  - getBean
+  - containsBean
+  - isSingleton
+  - isPrototype
+  - getType
+  - getAliases
+  - getBeanDefinitionNames
+  - getBeanDefinitionCount
+  - containsBeanDefinition
+  - getBeanNamesForType
+  - getBeansOfType
+  - getBeansWithAnnotation
+  - findAnnotationOnBean
+  # Environment / PropertySource
+  - getProperty
+  - getRequiredProperty
+  - containsProperty
+  - getActiveProfiles
+  - getDefaultProfiles
+  - acceptsProfiles
+  - resolvePlaceholders
+  - resolveRequiredPlaceholders
+  # Spring MVC — ResponseEntity builders
+  - ok
+  - created
+  - accepted
+  - noContent
+  - badRequest
+  - notFound
+  - status
+  - body
+  - header
+  - headers
+  - contentType
+  - contentLength
+  - location
+  - eTag
+  - lastModified
+  - cacheControl
+  - allow
+  # RestTemplate / WebClient
+  - getForObject
+  - getForEntity
+  - postForObject
+  - postForEntity
+  - postForLocation
+  - put
+  - patchForObject
+  - delete
+  - exchange
+  - execute
+  - headForHeaders
+  - optionsForAllow
+  # WebClient (reactive)
+  - retrieve
+  - bodyToMono
+  - bodyToFlux
+  - toEntity
+  - toEntityList
+  - toBodilessEntity
+  - onStatus
+  - uri
+  - attribute
+  - attributes
+  # Spring Data — Repository query methods
+  - findById
+  - findAll
+  - findAllById
+  - save
+  - saveAll
+  - saveAndFlush
+  - saveAllAndFlush
+  - deleteById
+  - deleteAll
+  - deleteAllById
+  - deleteAllInBatch
+  - deleteAllByIdInBatch
+  - existsById
+  - count
+  - flush
+  - getReferenceById
+  - getById
+  - getOne
+  - findOne
+  # Spring Data — Specification / Criteria
+  - where
+  - and
+  - or
+  - not
+  # Spring Data — Pageable / Sort
+  - of
+  - unpaged
+  - by
+  - ascending
+  - descending
+  # Spring Security
+  - hasRole
+  - hasAuthority
+  - hasAnyRole
+  - hasAnyAuthority
+  - isAuthenticated
+  - isAnonymous
+  - isFullyAuthenticated
+  - isRememberMe
+  - permitAll
+  - denyAll
+  - authenticated
+  - anonymous
+  - csrf
+  - cors
+  - httpBasic
+  - formLogin
+  - logout
+  - sessionManagement
+  - exceptionHandling
+  - authorizeRequests
+  - authorizeHttpRequests
+  - requestMatchers
+  - antMatchers
+  - mvcMatchers
+  # Spring Validation
+  - rejectValue
+  - reject
+  - hasErrors
+  - hasFieldErrors
+  - hasGlobalErrors
+  - getFieldError
+  - getFieldErrors
+  - getAllErrors
+  - getErrorCount
+  # Spring Events
+  - publishEvent
+  # Spring Transaction
+  - getTransaction
+  - commit
+  - rollback
+
+trivial-methods:
+  # BeanUtils
+  - copyProperties
+  - instantiateClass
+  - findMethod
+  - findDeclaredMethod
+  # StringUtils (Spring)
+  - hasText
+  - hasLength
+  - isEmpty
+  - trimWhitespace
+  - capitalize
+  - uncapitalize
+  - replace
+  - delete
+  - startsWithIgnoreCase
+  - endsWithIgnoreCase
+  - collectionToCommaDelimitedString
+  - collectionToDelimitedString
+  - commaDelimitedListToSet
+  - commaDelimitedListToStringArray
+  - delimitedListToStringArray
+  - tokenizeToStringArray
+  - arrayToCommaDelimitedString
+  - arrayToDelimitedString
+  # ObjectUtils (Spring)
+  - nullSafeEquals
+  - nullSafeHashCode
+  - nullSafeToString
+  - isEmpty
+  - isArray
+  # Assert (Spring)
+  - notNull
+  - notEmpty
+  - hasText
+  - isTrue
+  - state
+  - isNull
+  - noNullElements
+  - doesNotContain
+  - isAssignable
+  - isInstanceOf
+
+heavyweight-types:
+  - ApplicationContext
+  - AnnotationConfigApplicationContext
+  - ClassPathXmlApplicationContext
+  - WebApplicationContext
+  - RestTemplate
+  - WebClient
+  - JdbcTemplate
+  - NamedParameterJdbcTemplate
+  - EntityManagerFactory
+  - SessionFactory
+  - TransactionTemplate
+  - DataSource
+  - JmsTemplate
+  - KafkaTemplate
+  - RedisTemplate
+  - MongoTemplate
