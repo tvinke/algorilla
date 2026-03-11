@@ -139,168 +139,21 @@ private val BUILDER_METHODS: Set<String> by lazy {
 
 /**
  * Known constant-time operations that are too cheap to flag even when duplicated.
- * Includes Java time/date arithmetic, enum accessors, and instant conversions.
+ * Loaded from the `cheap-methods` section of the language YAML files.
  */
-private val CHEAP_METHODS =
-    setOf(
-        // Java time/date arithmetic
-        "plusDays",
-        "minusDays",
-        "plusHours",
-        "minusHours",
-        "plusMinutes",
-        "minusMinutes",
-        "plusSeconds",
-        "minusSeconds",
-        "plusWeeks",
-        "minusWeeks",
-        "plusMonths",
-        "minusMonths",
-        "ofHours",
-        "ofMinutes",
-        "ofSeconds",
-        "ofMillis",
-        "ofNanos",
-        "ofDays",
-        "toInstant",
-        "atStartOfDay",
-        "atZone",
-        // Reflection / modifier checks
-        "isStatic",
-        "isPublic",
-        "isPrivate",
-        "isProtected",
-        "isAbstract",
-        "isFinal",
-        "isInterface",
-        "isSynthetic",
-        "isAnnotationPresent",
-        // String conversions and lookups
-        "startsWith",
-        "endsWith",
-        "substring",
-        "replace",
-        "replaceAll",
-        "replaceFirst",
-        "split",
-        "matches",
-        "toLowerCase",
-        "toUpperCase",
-        "trim",
-        "strip",
-        "charAt",
-        "indexOf",
-        "lastIndexOf",
-        "contains",
-        "isEmpty",
-        "isBlank",
-        "length",
-        "concat",
-        "valueOf",
-        "hasText",
-        "hasLength",
-        // Type checks / reflection
-        "getType",
-        "getDescriptor",
-        "getInternalName",
-        "getMethodDescriptor",
-        "getReturnType",
-        "getSort",
-        "getSize",
-        "getOpcode",
-        // Runtime state checks — cheap boolean queries, intentionally called at different points
-        "isTerminated",
-        "isCancelled",
-        "isDone",
-        "isActive",
-        "isAlive",
-        "isOpen",
-        "isClosed",
-        "isRunning",
-        "isReady",
-        "isInstance",
-        "isAssignableFrom",
-        "isAssignableBound",
-        // Stream / collector factories — near-zero cost
-        "stream",
-        "parallelStream",
-        "joining",
-        "toList",
-        "toSet",
-        "toMap",
-        "toUnmodifiableList",
-        // Source extraction / context accessors — cheap lookups
-        "extractSource",
-        "getSource",
-    )
+private val CHEAP_METHODS: Set<String> by lazy {
+    CollectionSemanticsRegistry.loadDefaults().allCheapMethods()
+}
 
 /**
  * Sequential read / stateful iteration methods whose return value changes on
  * each invocation even when called with identical arguments, because they
  * advance an internal cursor or mutate the underlying collection.
+ * Loaded from the `sequential-read-methods` section of the language YAML files.
  */
-private val SEQUENTIAL_READ_METHODS =
-    setOf(
-        // Binary / byte-stream readers
-        "read",
-        "readByte",
-        "readShort",
-        "readUnsignedShort",
-        "readInt",
-        "readLong",
-        "readFloat",
-        "readDouble",
-        "readChar",
-        "readBoolean",
-        "readUTF",
-        "readUTF8",
-        "readClass",
-        "readLine",
-        "readAttribute",
-        // Scanner / tokeniser style iteration
-        "next",
-        "nextByte",
-        "nextShort",
-        "nextInt",
-        "nextLong",
-        "nextFloat",
-        "nextDouble",
-        "nextBoolean",
-        "nextLine",
-        "nextToken",
-        // BitSet iteration
-        "nextSetBit",
-        "nextClearBit",
-        // Queue / stack / deque stateful operations
-        "poll",
-        "pop",
-        "take",
-        // Bytecode / ASM emission instructions (side-effectful, intentionally repeated)
-        "push",
-        "mark",
-        "load_local",
-        "load_arg",
-        "load_this",
-        "getfield",
-        "putfield",
-        "array_load",
-        "array_store",
-        "dup",
-        "swap",
-        "invoke_virtual",
-        "invoke_interface",
-        "invoke_static",
-        "invoke_constructor",
-        "checkcast",
-        "visitVarInsn",
-        "visitInsn",
-        "visitFieldInsn",
-        "visitMethodInsn",
-        "visitTypeInsn",
-        "visitLabel",
-        "visitJumpInsn",
-        "visitLdcInsn",
-    )
+private val SEQUENTIAL_READ_METHODS: Set<String> by lazy {
+    CollectionSemanticsRegistry.loadDefaults().allSequentialReadMethods()
+}
 
 private fun isSideEffectCall(call: FunctionCall): Boolean =
     call.name in TRIVIAL_METHODS ||

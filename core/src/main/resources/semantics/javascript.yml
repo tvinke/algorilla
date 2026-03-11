@@ -91,3 +91,46 @@ getter-prefixes:
   - fetch
   - lookup
   - resolve
+
+# Constant-time operations too cheap to flag even when duplicated
+cheap-methods:
+  # String conversions and lookups
+  - startsWith
+  - endsWith
+  - substring
+  - replace
+  - replaceAll
+  - split
+  - matches
+  - toLowerCase
+  - toUpperCase
+  - trim
+  - charAt
+  - indexOf
+  - lastIndexOf
+  - contains
+  - isEmpty
+  - length
+  - concat
+  - valueOf
+  # Runtime state checks
+  - isOpen
+  - isClosed
+  # Collection / stream factories
+  - toList
+  - toSet
+  - toMap
+
+# Sequential read / stateful iteration methods whose return value changes
+# on each invocation — not redundant even when called with identical arguments
+sequential-read-methods:
+  # Scanner / tokeniser style iteration
+  - next
+  - nextLine
+  - nextToken
+  # Queue / stack / deque stateful operations
+  - poll
+  - pop
+  - take
+  - push
+  - shift

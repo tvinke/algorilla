@@ -5,6 +5,7 @@ import com.github.tvinke.algorilla.model.LookupKind
 import com.github.tvinke.algorilla.model.SortKind
 import io.kotest.matchers.booleans.shouldBeFalse
 import io.kotest.matchers.booleans.shouldBeTrue
+import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -205,5 +206,34 @@ internal class CollectionSemanticsRegistryTest {
         names.contains("filter").shouldBeTrue()
         names.contains("sorted").shouldBeTrue()
         names.contains("let").shouldBeTrue() // Kotlin scope function
+    }
+
+    @Test
+    fun `should detect cheap methods`() {
+        registry.isCheap(Language.JAVA, "plusDays").shouldBeTrue()
+        registry.isCheap(Language.JAVA, "indexOf").shouldBeTrue()
+        registry.isCheap(Language.JAVA, "someUnknownMethod").shouldBeFalse()
+    }
+
+    @Test
+    fun `should detect sequential read methods`() {
+        registry.isSequentialRead(Language.JAVA, "readByte").shouldBeTrue()
+        registry.isSequentialRead(Language.JAVA, "nextToken").shouldBeTrue()
+        registry.isSequentialRead(Language.JAVA, "someUnknownMethod").shouldBeFalse()
+    }
+
+    @Test
+    fun `should include cheap methods in cross-language union`() {
+        val all = registry.allCheapMethods()
+        all shouldContain "plusDays"
+        all shouldContain "startsWith"
+    }
+
+    @Test
+    fun `should include sequential read methods in cross-language union`() {
+        val all = registry.allSequentialReadMethods()
+        all shouldContain "readByte"
+        all shouldContain "nextToken"
+        all shouldContain "poll"
     }
 }
