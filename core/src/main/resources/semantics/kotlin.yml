@@ -424,6 +424,20 @@ cheap-methods:
   - toFile
   - toUri
   - toURL
+  # Test assertion / matcher factories
+  - equalTo
+  - hasItem
+  - hasItems
+  - hasEntry
+  - hasKey
+  - hasValue
+  - instanceOf
+  - notNullValue
+  - nullValue
+  - closeTo
+  - greaterThan
+  - lessThan
+  - assertThat
 
 # Sequential read / stateful iteration methods whose return value changes
 # on each invocation — not redundant even when called with identical arguments
