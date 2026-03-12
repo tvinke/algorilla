@@ -204,6 +204,36 @@ internal class ProjectStructureDetectorTest {
         }
 
         @Test
+        fun `should fall back to directory walk for custom settings DSL`(
+            @TempDir tmp: File,
+        ) {
+            // Simulate a project like ktor that uses a custom DSL instead of include()
+            File(tmp, "settings.gradle.kts").writeText(
+                """
+                rootProject.name = "my-framework"
+                projects {
+                    module("ktor-server")
+                    module("ktor-client")
+                }
+                """.trimIndent(),
+            )
+            File(tmp, "build.gradle.kts").createNewFile()
+            File(tmp, "ktor-server/src/main/kotlin").mkdirs()
+            File(tmp, "ktor-client/src/main/kotlin").mkdirs()
+            // Also create dirs that should be excluded
+            File(tmp, "build/generated/src/main/kotlin").mkdirs()
+            File(tmp, ".gradle/caches/src/main/kotlin").mkdirs()
+
+            val roots = detector.resolveSourceRoots(tmp, tmp)
+
+            roots shouldContainExactlyInAnyOrder
+                listOf(
+                    File(tmp, "ktor-server/src/main/kotlin").canonicalFile,
+                    File(tmp, "ktor-client/src/main/kotlin").canonicalFile,
+                )
+        }
+
+        @Test
         fun `should fall back to project root when no source dirs exist`(
             @TempDir tmp: File,
         ) {
@@ -241,6 +271,23 @@ internal class ProjectStructureDetectorTest {
             val roots = detector.resolveSourceRoots(tmp, tmp)
 
             roots shouldBe listOf(File(tmp, "src/main/java").canonicalFile)
+        }
+
+        @Test
+        fun `should detect kotlin and groovy Maven source dirs`(
+            @TempDir tmp: File,
+        ) {
+            File(tmp, "pom.xml").writeText("<project/>")
+            File(tmp, "src/main/java").mkdirs()
+            File(tmp, "src/main/kotlin").mkdirs()
+
+            val roots = detector.resolveSourceRoots(tmp, tmp)
+
+            roots shouldContainExactlyInAnyOrder
+                listOf(
+                    File(tmp, "src/main/java").canonicalFile,
+                    File(tmp, "src/main/kotlin").canonicalFile,
+                )
         }
 
         @Test

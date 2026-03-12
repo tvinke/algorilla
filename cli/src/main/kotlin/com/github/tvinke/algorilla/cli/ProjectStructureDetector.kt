@@ -80,20 +80,27 @@ internal class ProjectStructureDetector {
             }
         }
 
+        // Fallback: when no source dirs found (e.g. custom settings DSL), walk the tree
+        if (roots.isEmpty()) {
+            logger.info { "No source roots from settings parsing, falling back to directory walk" }
+            roots.addAll(walkForSourceDirs(projectRoot))
+        }
+
         return roots
     }
 
     private fun detectMavenSourceRoots(projectRoot: File): List<File> {
         val roots = mutableListOf<File>()
 
-        val rootSrc = File(projectRoot, "src/main/java")
-        if (rootSrc.isDirectory) roots.add(rootSrc)
+        // Root-level source dirs
+        roots.addAll(existingSourceDirs(projectRoot))
 
+        // Submodule source dirs
         val pomContent = File(projectRoot, "pom.xml").readText()
         val modulePattern = Regex("""<module>\s*([^<]+)\s*</module>""")
         for (match in modulePattern.findAll(pomContent)) {
-            val moduleSrc = File(projectRoot, "${match.groupValues[1].trim()}/src/main/java")
-            if (moduleSrc.isDirectory) roots.add(moduleSrc)
+            val moduleDir = File(projectRoot, match.groupValues[1].trim())
+            roots.addAll(existingSourceDirs(moduleDir))
         }
 
         return roots
@@ -103,6 +110,17 @@ internal class ProjectStructureDetector {
         GRADLE_SOURCE_DIRS
             .map { File(moduleDir, "src/main/$it") }
             .filter { it.isDirectory }
+
+    private fun walkForSourceDirs(projectRoot: File): List<File> {
+        val excludeDirNames = setOf("build", ".git", ".gradle", "node_modules")
+        val sourceTargets = GRADLE_SOURCE_DIRS.map { "src/main/$it" }.toSet()
+
+        return projectRoot
+            .walkTopDown()
+            .onEnter { dir -> dir == projectRoot || dir.name !in excludeDirNames }
+            .filter { it.isDirectory && sourceTargets.any { target -> it.path.endsWith(target) } }
+            .toList()
+    }
 
     /**
      * Returns a predicate that filters out test source files based on the detected
