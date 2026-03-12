@@ -1,7 +1,7 @@
 package com.github.tvinke.algorilla.lang.groovy.parser
 
 import com.github.tvinke.algorilla.engine.LanguageParser
-import com.github.tvinke.algorilla.engine.ParseException
+import com.github.tvinke.algorilla.engine.ParserRegistry
 import com.github.tvinke.algorilla.lang.java.parser.JavaLexer
 import com.github.tvinke.algorilla.lang.java.parser.JavaParser
 import com.github.tvinke.algorilla.model.FileRoot
@@ -20,21 +20,23 @@ private val logger = KotlinLogging.logger {}
  * (especially with @CompileStatic) is syntactically close to Java.
  * Files that fail to parse are silently skipped with a warning.
  */
-public class GroovyParser : LanguageParser {
+public class GroovyLanguageParser : LanguageParser {
     override val language: Language = Language.GROOVY
 
     override fun canParse(filePath: String): Boolean = filePath.endsWith(".groovy")
 
     override fun parse(filePath: String): FileRoot {
         val file = File(filePath)
-        if (!file.exists()) throw ParseException("File not found: $filePath")
-
+        if (!file.exists()) {
+            logger.warn { "File not found: $filePath" }
+            return emptyFileRoot(filePath)
+        }
         return try {
             parseWithJavaGrammar(file, filePath)
         } catch (
             @Suppress("TooGenericExceptionCaught") e: Exception,
         ) {
-            logger.debug { "Groovy file not parseable with Java grammar: $filePath (${e.message})" }
+            logger.warn { "Groovy file not parseable with Java grammar: $filePath (${e.message})" }
             emptyFileRoot(filePath)
         }
     }
@@ -69,6 +71,12 @@ public class GroovyParser : LanguageParser {
             location = SourceLocation(filePath, 1, 1),
             children = emptyList(),
         )
+
+    public companion object {
+        init {
+            ParserRegistry.register(GroovyLanguageParser())
+        }
+    }
 }
 
 /**

@@ -4,10 +4,11 @@ import com.github.tvinke.algorilla.baseline.Baseline
 import com.github.tvinke.algorilla.config.AnalysisConfig
 import com.github.tvinke.algorilla.engine.AnalysisEngine
 import com.github.tvinke.algorilla.engine.AnalysisResult
-import com.github.tvinke.algorilla.lang.groovy.parser.GroovyParser
+import com.github.tvinke.algorilla.engine.ParserRegistry
+import com.github.tvinke.algorilla.lang.groovy.parser.GroovyLanguageParser
 import com.github.tvinke.algorilla.lang.java.parser.JavaLanguageParser
-import com.github.tvinke.algorilla.lang.javascript.parser.JavaScriptParser
-import com.github.tvinke.algorilla.lang.kotlin.parser.KotlinParser
+import com.github.tvinke.algorilla.lang.javascript.parser.JavaScriptLanguageParser
+import com.github.tvinke.algorilla.lang.kotlin.parser.KotlinLanguageParser
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.reporting.ConsoleReporter
 import com.github.tvinke.algorilla.reporting.JsonReporter
@@ -67,7 +68,8 @@ public abstract class AlgorillaTask : DefaultTask() {
 
         val config = buildConfig()
         val rules = resolveRules()
-        val parsers = listOf(JavaLanguageParser(), GroovyParser(), KotlinParser(), JavaScriptParser())
+        registerAllParsers()
+        val parsers = ParserRegistry.all()
         val result = AnalysisEngine(parsers = parsers, rules = rules, config = config).analyze(sourceFiles)
 
         val filtered = applyBaseline(result)
@@ -139,6 +141,13 @@ public abstract class AlgorillaTask : DefaultTask() {
             "warning" -> Severity.WARNING
             else -> Severity.INFO
         }
+
+    private fun registerAllParsers() {
+        JavaLanguageParser.Companion
+        GroovyLanguageParser.Companion
+        KotlinLanguageParser.Companion
+        JavaScriptLanguageParser.Companion
+    }
 
     private companion object {
         val SUPPORTED_EXTENSIONS = setOf("java", "groovy", "kt", "kts", "js", "ts", "vue")

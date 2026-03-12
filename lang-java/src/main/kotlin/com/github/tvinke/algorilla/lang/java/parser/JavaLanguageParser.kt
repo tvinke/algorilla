@@ -1,7 +1,7 @@
 package com.github.tvinke.algorilla.lang.java.parser
 
 import com.github.tvinke.algorilla.engine.LanguageParser
-import com.github.tvinke.algorilla.engine.ParseException
+import com.github.tvinke.algorilla.engine.ParserRegistry
 import com.github.tvinke.algorilla.model.BranchNode
 import com.github.tvinke.algorilla.model.FileRoot
 import com.github.tvinke.algorilla.model.FunctionCall
@@ -34,23 +34,46 @@ public class JavaLanguageParser : LanguageParser {
 
     override fun parse(filePath: String): FileRoot {
         val file = File(filePath)
-        if (!file.exists()) throw ParseException("File not found: $filePath")
+        if (!file.exists()) {
+            logger.warn { "File not found: $filePath" }
+            return emptyFileRoot(filePath)
+        }
+        return try {
+            val input = CharStreams.fromPath(file.toPath())
+            val lexer = JavaLexer(input)
+            val tokens = CommonTokenStream(lexer)
+            val antlrParser = JavaParser(tokens)
+            antlrParser.removeErrorListeners()
 
-        val input = CharStreams.fromPath(file.toPath())
-        val lexer = JavaLexer(input)
-        val tokens = CommonTokenStream(lexer)
-        val parser = JavaParser(tokens)
-        parser.removeErrorListeners()
+            val compilationUnit = antlrParser.compilationUnit()
+            val children = JavaIRVisitor(filePath).visit(compilationUnit)
 
-        val compilationUnit = parser.compilationUnit()
-        val children = JavaIRVisitor(filePath).visit(compilationUnit)
+            FileRoot(
+                filePath = filePath,
+                language = Language.JAVA,
+                location = SourceLocation(filePath, 1, 1),
+                children = children,
+            )
+        } catch (
+            @Suppress("TooGenericExceptionCaught") e: Exception,
+        ) {
+            logger.warn { "Failed to parse $filePath: ${e.message}" }
+            emptyFileRoot(filePath)
+        }
+    }
 
-        return FileRoot(
+    private fun emptyFileRoot(filePath: String) =
+        FileRoot(
             filePath = filePath,
-            language = Language.JAVA,
+            language = language,
             location = SourceLocation(filePath, 1, 1),
-            children = children,
+            children = emptyList(),
         )
+
+    public companion object {
+        init {
+            ParserRegistry.register(JavaLanguageParser())
+        }
     }
 }
 

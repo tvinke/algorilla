@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test
 import java.io.File
 
 internal class NestedLookupRuleJsTest {
-    private val parser = JavaScriptParser()
+    private val parser = JavaScriptLanguageParser()
     private val rule = NestedLookupRule()
 
     @Nested

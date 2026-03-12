@@ -1,7 +1,7 @@
 package com.github.tvinke.algorilla.lang.javascript.parser
 
 import com.github.tvinke.algorilla.engine.LanguageParser
-import com.github.tvinke.algorilla.engine.ParseException
+import com.github.tvinke.algorilla.engine.ParserRegistry
 import com.github.tvinke.algorilla.model.FileRoot
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
@@ -19,7 +19,7 @@ private val logger = KotlinLogging.logger {}
  * Parses JavaScript, TypeScript, and Vue SFC files into the unified IR representation.
  * Uses tree-sitter for proper parse tree analysis, with regex-based fallback.
  */
-public class JavaScriptParser : LanguageParser {
+public class JavaScriptLanguageParser : LanguageParser {
     override val language: Language = Language.JAVASCRIPT
 
     private val supportedExtensions = setOf(".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx", ".vue")
@@ -28,13 +28,18 @@ public class JavaScriptParser : LanguageParser {
 
     override fun parse(filePath: String): FileRoot {
         val file = File(filePath)
-        if (!file.exists()) throw ParseException("File not found: $filePath")
+        if (!file.exists()) {
+            logger.warn { "File not found: $filePath" }
+            return FileRoot(filePath = filePath, language = language, location = SourceLocation(filePath, 1, 1), children = emptyList())
+        }
 
         val lang = detectLanguage(filePath)
         val source = extractSource(file)
-        val children =
-            parseWithTreeSitter(filePath, source, lang)
-                ?: parseWithRegex(filePath, source)
+        val treeSitterResult = parseWithTreeSitter(filePath, source, lang)
+        if (treeSitterResult == null) {
+            logger.warn { "Tree-sitter failed for $filePath, falling back to regex scanner" }
+        }
+        val children = treeSitterResult ?: parseWithRegex(filePath, source)
         return FileRoot(filePath = filePath, language = lang, location = SourceLocation(filePath, 1, 1), children = children)
     }
 
@@ -72,6 +77,12 @@ public class JavaScriptParser : LanguageParser {
             logger.debug { "JS/TS file not parseable: $filePath (${e.message})" }
             emptyList()
         }
+
+    public companion object {
+        init {
+            ParserRegistry.register(JavaScriptLanguageParser())
+        }
+    }
 }
 
 internal fun tsLanguageFor(lang: Language): TSLanguage =

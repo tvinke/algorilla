@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test
 import java.io.File
 
 internal class ImplicitRegexInLoopRuleJsTest {
-    private val parser = JavaScriptParser()
+    private val parser = JavaScriptLanguageParser()
     private val rule = ImplicitRegexInLoopRule()
 
     @Nested

@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test
 import java.io.File
 
 internal class InLoopCollectionBuildingRuleJsTest {
-    private val parser = JavaScriptParser()
+    private val parser = JavaScriptLanguageParser()
     private val rule = InLoopCollectionBuildingRule()
 
     @Nested

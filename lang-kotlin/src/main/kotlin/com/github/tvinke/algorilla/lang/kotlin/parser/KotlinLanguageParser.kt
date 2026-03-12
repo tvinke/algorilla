@@ -1,7 +1,7 @@
 package com.github.tvinke.algorilla.lang.kotlin.parser
 
 import com.github.tvinke.algorilla.engine.LanguageParser
-import com.github.tvinke.algorilla.engine.ParseException
+import com.github.tvinke.algorilla.engine.ParserRegistry
 import com.github.tvinke.algorilla.lang.java.parser.JavaLexer
 import com.github.tvinke.algorilla.lang.java.parser.JavaParser
 import com.github.tvinke.algorilla.model.FileRoot
@@ -22,28 +22,47 @@ private val logger = KotlinLogging.logger {}
  * Uses tree-sitter-kotlin for proper Kotlin parsing, falling back to
  * the preprocessor + Java ANTLR grammar when tree-sitter fails.
  */
-public class KotlinParser : LanguageParser {
+public class KotlinLanguageParser : LanguageParser {
     override val language: Language = Language.KOTLIN
 
     override fun canParse(filePath: String): Boolean = filePath.endsWith(".kt") || filePath.endsWith(".kts")
 
     override fun parse(filePath: String): FileRoot {
         val file = File(filePath)
-        if (!file.exists()) throw ParseException("File not found: $filePath")
-
-        val source = file.readText()
-        val children =
-            parseWithTreeSitter(filePath, source)
-                ?: parseWithJavaGrammar(filePath, source)
-                ?: emptyList()
-
-        return FileRoot(
-            filePath = filePath,
-            language = Language.KOTLIN,
-            location = SourceLocation(filePath, 1, 1),
-            children = children,
-        )
+        if (!file.exists()) {
+            logger.warn { "File not found: $filePath" }
+            return emptyFileRoot(filePath)
+        }
+        return try {
+            val source = file.readText()
+            val children =
+                parseWithTreeSitter(filePath, source)
+                    ?: parseWithJavaGrammar(filePath, source)
+                    ?: run {
+                        logger.warn { "All parse strategies failed for $filePath, returning empty result" }
+                        emptyList()
+                    }
+            FileRoot(
+                filePath = filePath,
+                language = Language.KOTLIN,
+                location = SourceLocation(filePath, 1, 1),
+                children = children,
+            )
+        } catch (
+            @Suppress("TooGenericExceptionCaught") e: Exception,
+        ) {
+            logger.warn { "Failed to parse $filePath: ${e.message}" }
+            emptyFileRoot(filePath)
+        }
     }
+
+    private fun emptyFileRoot(filePath: String) =
+        FileRoot(
+            filePath = filePath,
+            language = language,
+            location = SourceLocation(filePath, 1, 1),
+            children = emptyList(),
+        )
 
     @Suppress("TooGenericExceptionCaught")
     private fun parseWithTreeSitter(
@@ -86,4 +105,10 @@ public class KotlinParser : LanguageParser {
             logger.debug { "Kotlin file not parseable with Java grammar: $filePath (${e.message})" }
             null
         }
+
+    public companion object {
+        init {
+            ParserRegistry.register(KotlinLanguageParser())
+        }
+    }
 }

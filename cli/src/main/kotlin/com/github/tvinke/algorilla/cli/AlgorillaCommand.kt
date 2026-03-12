@@ -6,10 +6,11 @@ import com.github.tvinke.algorilla.cache.AnalysisCache
 import com.github.tvinke.algorilla.config.AnalysisConfig
 import com.github.tvinke.algorilla.engine.AnalysisEngine
 import com.github.tvinke.algorilla.engine.AnalysisResult
-import com.github.tvinke.algorilla.lang.groovy.parser.GroovyParser
+import com.github.tvinke.algorilla.engine.ParserRegistry
+import com.github.tvinke.algorilla.lang.groovy.parser.GroovyLanguageParser
 import com.github.tvinke.algorilla.lang.java.parser.JavaLanguageParser
-import com.github.tvinke.algorilla.lang.javascript.parser.JavaScriptParser
-import com.github.tvinke.algorilla.lang.kotlin.parser.KotlinParser
+import com.github.tvinke.algorilla.lang.javascript.parser.JavaScriptLanguageParser
+import com.github.tvinke.algorilla.lang.kotlin.parser.KotlinLanguageParser
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.reporting.Ansi
@@ -203,7 +204,8 @@ internal class AlgorillaCommand :
         projectRoot = detector.resolveProjectRoot(paths.first())
         scanRoots = paths.flatMap { detector.resolveSourceRoots(projectRoot, it) }
 
-        val parsers = listOf(JavaLanguageParser(), GroovyParser(), KotlinParser(), JavaScriptParser())
+        registerAllParsers()
+        val parsers = ParserRegistry.all()
         val allRules = resolveRules()
         val cache = if (noCache) null else AnalysisCache(projectRoot)
         val languageFilter = resolveLanguageFilter()
@@ -263,6 +265,18 @@ internal class AlgorillaCommand :
 }
 
 private fun builtinRules(): List<Rule> = BuiltinRules.all()
+
+/**
+ * Ensures all built-in language parsers are registered in [ParserRegistry].
+ * Each parser's companion object registers itself, but that only happens when
+ * the class is first loaded — so we touch each companion here to trigger it.
+ */
+private fun registerAllParsers() {
+    JavaLanguageParser.Companion
+    GroovyLanguageParser.Companion
+    KotlinLanguageParser.Companion
+    JavaScriptLanguageParser.Companion
+}
 
 private fun applyBaseline(
     result: AnalysisResult,
