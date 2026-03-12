@@ -7,12 +7,26 @@ package com.github.tvinke.algorilla.lang.kotlin.parser
 internal fun preprocessKotlinSource(source: String): String =
     source
         .let(::replaceFunKeyword)
+        .let(::replaceTypedDeclarations)
         .let(::replaceValVar)
         .let(::replaceParameterSyntax)
         .let(::stripKotlinKeywords)
         .let(::stripKotlinAnnotations)
 
 private fun replaceFunKeyword(source: String): String = source.replace("fun ", "void ")
+
+/**
+ * Converts typed val/var declarations `val name: Type` to `Type name` so the
+ * Java parser captures the actual type instead of `Object`. Handles fields,
+ * constructor parameters, and destructuring. Must run before [replaceValVar].
+ */
+private val typedDeclPattern = Regex("""\b(val|var)\s+(\w+)\s*:\s*(\w[\w<>,? ]*)""")
+
+@Suppress("MagicNumber")
+private fun replaceTypedDeclarations(source: String): String =
+    typedDeclPattern.replace(source) { m ->
+        "${m.groupValues[3].trim()} ${m.groupValues[2]}"
+    }
 
 private fun replaceValVar(source: String): String =
     source
