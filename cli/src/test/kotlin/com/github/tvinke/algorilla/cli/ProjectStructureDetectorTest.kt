@@ -260,6 +260,71 @@ internal class ProjectStructureDetectorTest {
     }
 
     @Nested
+    inner class ResolveSourceRootsKmp {
+        @Test
+        fun `should detect KMP source sets in single module`(
+            @TempDir tmp: File,
+        ) {
+            File(tmp, "build.gradle.kts").createNewFile()
+            File(tmp, "src/commonMain/kotlin").mkdirs()
+            File(tmp, "src/jvmMain/kotlin").mkdirs()
+            File(tmp, "src/nativeMain/kotlin").mkdirs()
+
+            val roots = detector.resolveSourceRoots(tmp, tmp)
+
+            roots shouldContainExactlyInAnyOrder
+                listOf(
+                    File(tmp, "src/commonMain/kotlin").canonicalFile,
+                    File(tmp, "src/jvmMain/kotlin").canonicalFile,
+                    File(tmp, "src/nativeMain/kotlin").canonicalFile,
+                )
+        }
+
+        @Test
+        fun `should detect KMP source sets in multi-module project`(
+            @TempDir tmp: File,
+        ) {
+            File(tmp, "settings.gradle.kts").writeText("""include("core", "json")""")
+            File(tmp, "build.gradle.kts").createNewFile()
+            File(tmp, "core/src/commonMain/kotlin").mkdirs()
+            File(tmp, "core/src/jvmMain/kotlin").mkdirs()
+            File(tmp, "json/src/commonMain/kotlin").mkdirs()
+
+            val roots = detector.resolveSourceRoots(tmp, tmp)
+
+            roots shouldContainExactlyInAnyOrder
+                listOf(
+                    File(tmp, "core/src/commonMain/kotlin").canonicalFile,
+                    File(tmp, "core/src/jvmMain/kotlin").canonicalFile,
+                    File(tmp, "json/src/commonMain/kotlin").canonicalFile,
+                )
+        }
+
+        @Test
+        fun `should detect KMP source sets via fallback walk`(
+            @TempDir tmp: File,
+        ) {
+            File(tmp, "settings.gradle.kts").writeText(
+                """
+                rootProject.name = "my-kmp-lib"
+                configureModules { module("formats") }
+                """.trimIndent(),
+            )
+            File(tmp, "build.gradle.kts").createNewFile()
+            File(tmp, "formats/src/commonMain/kotlin").mkdirs()
+            File(tmp, "formats/src/jvmMain/kotlin").mkdirs()
+
+            val roots = detector.resolveSourceRoots(tmp, tmp)
+
+            roots shouldContainExactlyInAnyOrder
+                listOf(
+                    File(tmp, "formats/src/commonMain/kotlin").canonicalFile,
+                    File(tmp, "formats/src/jvmMain/kotlin").canonicalFile,
+                )
+        }
+    }
+
+    @Nested
     inner class ResolveSourceRootsMaven {
         @Test
         fun `should detect single-module Maven source dir`(
@@ -373,6 +438,29 @@ internal class ProjectStructureDetectorTest {
                 }
             val testFile =
                 File(tmp, "src/test/java/AppTest.java").apply {
+                    parentFile.mkdirs()
+                    createNewFile()
+                }
+
+            val filter =
+                detector.buildTestExcludeFilter(listOf(tmp), includeTests = false)
+
+            filter(mainFile) shouldBe true
+            filter(testFile) shouldBe false
+        }
+
+        @Test
+        fun `should exclude KMP test source sets`(
+            @TempDir tmp: File,
+        ) {
+            File(tmp, "build.gradle.kts").createNewFile()
+            val mainFile =
+                File(tmp, "src/commonMain/kotlin/Lib.kt").apply {
+                    parentFile.mkdirs()
+                    createNewFile()
+                }
+            val testFile =
+                File(tmp, "src/commonTest/kotlin/LibTest.kt").apply {
                     parentFile.mkdirs()
                     createNewFile()
                 }

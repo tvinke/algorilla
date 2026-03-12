@@ -6,6 +6,51 @@ import java.io.File
 private val logger = KotlinLogging.logger {}
 
 private val GRADLE_SOURCE_DIRS = listOf("java", "kotlin", "groovy")
+private const val KMP_SOURCE_SET_SUFFIX = "Main"
+
+private fun isKmpSourceDir(dir: File): Boolean {
+    val parent = dir.parentFile ?: return false
+    val grandparent = parent.parentFile ?: return false
+    return dir.name in GRADLE_SOURCE_DIRS &&
+        parent.name.endsWith(KMP_SOURCE_SET_SUFFIX) &&
+        parent.name != "main" &&
+        grandparent.name == "src"
+}
+
+private fun existingSourceDirs(moduleDir: File): List<File> {
+    val dirs = mutableListOf<File>()
+
+    // Standard layout: src/main/{java,kotlin,groovy}
+    GRADLE_SOURCE_DIRS
+        .map { File(moduleDir, "src/main/$it") }
+        .filter { it.isDirectory }
+        .let(dirs::addAll)
+
+    // KMP layout: src/{commonMain,jvmMain,...}/kotlin
+    val srcDir = File(moduleDir, "src")
+    if (srcDir.isDirectory) {
+        srcDir
+            .listFiles()
+            ?.filter { it.isDirectory && it.name.endsWith(KMP_SOURCE_SET_SUFFIX) && it.name != "main" }
+            ?.flatMap { sourceSet ->
+                GRADLE_SOURCE_DIRS.map { File(sourceSet, it) }.filter { it.isDirectory }
+            }?.let(dirs::addAll)
+    }
+
+    return dirs.distinct()
+}
+
+private fun walkForSourceDirs(projectRoot: File): List<File> {
+    val excludeDirNames = setOf("build", ".git", ".gradle", "node_modules")
+    val standardTargets = GRADLE_SOURCE_DIRS.map { "src/main/$it" }.toSet()
+
+    return projectRoot
+        .walkTopDown()
+        .onEnter { dir -> dir == projectRoot || dir.name !in excludeDirNames }
+        .filter {
+            it.isDirectory && (standardTargets.any { t -> it.path.endsWith(t) } || isKmpSourceDir(it))
+        }.toList()
+}
 
 /**
  * Detects project structure (Gradle, Maven, JS/TS) and resolves the project root,
@@ -106,22 +151,6 @@ internal class ProjectStructureDetector {
         return roots
     }
 
-    private fun existingSourceDirs(moduleDir: File): List<File> =
-        GRADLE_SOURCE_DIRS
-            .map { File(moduleDir, "src/main/$it") }
-            .filter { it.isDirectory }
-
-    private fun walkForSourceDirs(projectRoot: File): List<File> {
-        val excludeDirNames = setOf("build", ".git", ".gradle", "node_modules")
-        val sourceTargets = GRADLE_SOURCE_DIRS.map { "src/main/$it" }.toSet()
-
-        return projectRoot
-            .walkTopDown()
-            .onEnter { dir -> dir == projectRoot || dir.name !in excludeDirNames }
-            .filter { it.isDirectory && sourceTargets.any { target -> it.path.endsWith(target) } }
-            .toList()
-    }
-
     /**
      * Returns a predicate that filters out test source files based on the detected
      * project structure. When [includeTests] is true, no files are excluded.
@@ -166,7 +195,7 @@ internal class ProjectStructureDetector {
     }
 
     private fun detectGradleTestDirs(projectRoot: File): Set<String> {
-        val patterns = mutableSetOf("/src/test/")
+        val patterns = mutableSetOf("/src/test/", "Test/kotlin/", "Test/java/")
         val settingsFile = findSettingsFile(projectRoot)
         if (settingsFile != null) {
             for (module in parseGradleModules(settingsFile)) {
@@ -235,6 +264,8 @@ internal class ProjectStructureDetector {
                 "/__tests__/",
                 ".test.",
                 ".spec.",
+                "Test/kotlin/",
+                "Test/java/",
             )
 
         private fun isGradleProject(dir: File): Boolean =
