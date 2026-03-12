@@ -2,56 +2,44 @@
 
 ## Built-in Rule
 
-1. Create a new class in `core/src/main/kotlin/.../rules/builtin/`:
+Create a new class in `core/src/main/kotlin/.../rules/builtin/` implementing the `Rule` interface. The interface requires five fields (`id`, `name`, `severity`, `languages`, `category`) and one method (`evaluate`). Two optional fields have defaults: `aliases` (empty list) and `subsumes` (empty set).
 
-```kotlin
-class MyNewRule : Rule {
-    override val id = "my-new-rule"
-    override val name = "My New Rule"
-    override val severity = Severity.WARNING
-    override val languages = Language.entries.toSet()
+See `Rule.kt` for the full interface definition. Use any existing rule as a starting point — `NestedLookupRule.kt` is a good reference for the standard pattern.
 
-    override fun evaluate(context: AnalysisContext): List<Finding> {
-        val findings = mutableListOf<Finding>()
-        for ((_, fileRoot) in context.irTrees) {
-            scanNode(fileRoot, findings)
-        }
-        return findings
-    }
+Register the rule in `BuiltinRules.kt` (same package) by adding it to the `all()` list.
 
-    private fun scanNode(node: IRNode, findings: MutableList<Finding>) {
-        // Your detection logic here
-        for (child in node.children) {
-            scanNode(child, findings)
-        }
-    }
-}
-```
+??? example "What the Rule interface looks like"
 
-2. Register in `AlgorillaCommand.kt`:
+    From `core/src/main/kotlin/.../rules/Rule.kt`:
 
-```kotlin
-val rules = listOf(
-    // ... existing rules
-    MyNewRule(),
-)
-```
+    - `id` — unique kebab-case identifier, e.g. `"nested-lookup"`
+    - `name` — human-readable, e.g. `"Nested Lookup"`
+    - `severity` — `Severity.WARNING`, `INFO`, or `ERROR`
+    - `languages` — which languages this rule applies to (use `Language.entries.toSet()` for all)
+    - `category` — one of the `RuleCategory` values (`LOOP_AMPLIFIER`, `SORT_ABUSE`, `REDUNDANCY`, etc.)
+    - `evaluate(context: AnalysisContext): List<Finding>` — the detection logic
 
-3. Add test fixtures in `src/test/resources/fixtures/my-new-rule/positive/` and `negative/`.
+    Most rules follow the same scan pattern: iterate `context.irTrees`, recursively walk each `FileRoot`, check nodes against the pattern, produce `Finding` objects.
 
 ## Subsumption
 
-If your rule detects a pattern that overlaps with an existing rule, declare which rule(s) it subsumes:
+If your rule detects a pattern that overlaps with an existing rule — meaning your rule is a strictly more specific version — declare which rule(s) it subsumes via the `subsumes` field. When both rules fire at the same source location, the engine keeps your finding and drops the subsumed one. The subsumed rule's findings at other locations are unaffected.
 
-```kotlin
-class MyNewRule : Rule {
-    override val id = "my-new-rule"
-    override val subsumes = setOf("less-specific-rule")
-    // ...
-}
-```
+!!! example "nested-lookup subsumes expensive-callback"
 
-When both rules fire at the same source location, the engine keeps your finding and drops the subsumed one. The subsumed rule's findings at other locations are unaffected.
+    `expensive-callback` detects any expensive operation inside a callback (date parsing, object creation, linear lookup, etc.). `nested-lookup` specifically detects linear lookups inside loops/callbacks — a strictly narrower pattern. When both fire on the same `list.contains()` inside a `forEach`, the more specific `nested-lookup` finding wins.
+
+    See `NestedLookupRule.kt` line 34: `override val subsumes: Set<String> = setOf("expensive-callback")`
+
+!!! example "redundant-expensive-call subsumes uncached-getter"
+
+    `uncached-getter` flags repeated getter calls with the same argument (`findById(id)` called 3 times). `redundant-expensive-call` detects any repeated expensive call with the same arguments — a broader detection that fully covers what `uncached-getter` finds.
+
+    See `RedundantExpensiveCallRule.kt` line 31: `override val subsumes: Set<String> = setOf("uncached-getter")`
+
+!!! warning "When NOT to use subsumption"
+
+    `string-concat-in-loop` and `in-loop-collection-building` both fire inside loops, but they detect fundamentally different problems (string allocation vs. collection growth). Neither subsumes the other — both findings should survive even when they co-locate.
 
 Guidelines:
 
@@ -61,13 +49,39 @@ Guidelines:
 
 See [Architecture: Rule Subsumption](architecture.md#rule-subsumption) for how the engine implements this.
 
-## Custom Rule via DSL
+## Semantics-driven detection
 
-See [Custom Rules](../guide/custom-rules.md) for the Kotlin Script approach.
+Rules should not hardcode method names. Instead, method categories are read from the semantics YAML files at startup and stored in `LanguageSemanticsRegistry`. Use `AnalysisContext.semantics` to look up whether a method is expensive, a stream operation, etc.
+
+This means adding a new framework method to the relevant YAML file automatically makes existing rules detect it — no rule code changes needed.
+
+??? example "How rules use semantics"
+
+    See any rule that checks method types — e.g. `NestedLookupRule` uses `isCollectionLookup()` (from `core/util/`), which delegates to the semantics registry. The registry is populated from the YAML files under `core/src/main/resources/semantics/`.
 
 ## Testing
 
-- Create positive fixtures (files that should trigger findings)
-- Create negative fixtures (files that should not trigger findings)
-- Write parameterized tests covering both cases
-- Run the full pipeline (parse → IR → rule → finding) in integration tests
+Add test fixtures under `src/test/resources/fixtures/<rule-id>/`:
+
+- `positive/` — source files that should trigger at least one finding from this rule
+- `negative/` — source files that should trigger no finding from this rule
+
+Write a test class that runs the full pipeline (parse → IR → rule → finding) for each fixture.
+
+??? tip "Test pattern to follow"
+
+    The Java rule tests in `lang-java/src/test/kotlin/` follow a consistent pattern: load a fixture file, parse it, run the rule, assert on findings. See `NestedLookupRuleJavaTest.kt` or `HeavyweightObjectPerInvocationRuleJavaTest.kt` for the template.
+
+    Kotlin and Groovy tests in their respective `lang-*/src/test/kotlin/` directories follow the same structure.
+
+Cover at least:
+
+- One or more positive cases per variant of the pattern
+- Negative cases for the most common false-positive triggers (e.g. same method called once, or inside a non-loop context)
+- Evidence fields (file, line, column) in positive cases
+
+Run `./gradlew build` before opening a PR. The build runs ktlint, detekt, and all tests.
+
+## Custom Rule via DSL
+
+See [Custom Rules](../guide/custom-rules.md) for the Kotlin Script approach, which lets users define rules outside the core module.

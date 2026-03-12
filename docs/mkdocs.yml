@@ -115,21 +115,22 @@ nav:
       - Uncached Getter: rules/uncached-getter.md
       - Chained Getters: rules/chained-getters.md
     - Concurrency:
-      - Parallel Stream Bottleneck: rules/parallel-stream-bottleneck.md
+      - Parallel Pipeline Bottleneck: rules/parallel-pipeline-bottleneck.md
   - Languages:
     - Overview: languages/index.md
     - Java: languages/java.md
     - Kotlin: languages/kotlin.md
     - Groovy: languages/groovy.md
     - JavaScript / TypeScript: languages/javascript.md
+    - Framework Support: languages/frameworks.md
   - Developer:
     - Development Guidelines: developer/guidelines.md
     - Coding Conventions: developer/coding-conventions.md
+    - Documentation Guidelines: developer/documentation-guidelines.md
     - Building: developer/building.md
     - Architecture: developer/architecture.md
     - Adding Rules: developer/adding-rules.md
     - Adding Languages: developer/adding-languages.md
     - Testing: developer/testing.md
     - Example Domain: developer/example-domain.md
-    - Documentation Guidelines: developer/documentation-guidelines.md
     - Releasing: developer/releasing.md

@@ -60,15 +60,17 @@ This runs compilation, tests, detekt, and ktlint. Always run the full build befo
 ## Project structure
 
 ```
-core/             Core IR model, analysis engine, rules framework, registry
+core/             Core IR model, analysis engine, rules framework, ParserRegistry
 lang-java/        Java parser (ANTLR)
-lang-groovy/      Groovy parser (extends Java ANTLR grammar)
-lang-kotlin/      Kotlin parser (text-based)
-lang-javascript/  JavaScript/TypeScript parser (text-based)
+lang-groovy/      Groovy parser (Java ANTLR grammar with preprocessing)
+lang-kotlin/      Kotlin parser (tree-sitter + ANTLR fallback)
+lang-javascript/  JavaScript/TypeScript parser (tree-sitter + regex fallback)
+lang-template/    Starter template for adding new languages (not in build)
 reporting/        Console, SARIF, JSON reporters
 cli/              Command-line interface (picocli)
 gradle-plugin/    Gradle plugin
 build-logic/      Gradle convention plugins
+docs/             MkDocs documentation site
 ```
 
 ## Adding a new rule
@@ -91,10 +93,27 @@ build-logic/      Gradle convention plugins
 
 ## Adding a new language
 
-1. Create a new module `lang-<name>`
-2. Implement `LanguageParser` interface
-3. Register the parser in `AlgorillaCommand.kt` and `AlgorillaTask.kt`
-4. Add language to `Language` enum in core
+A starter template is included in the repo — copy `lang-template/` and follow the TODOs. The full guide is at [Adding Languages](docs/docs/developer/adding-languages.md), but in short:
+
+1. Copy `lang-template/` to `lang-<name>/`, add it to `settings.gradle.kts`
+2. Add your language to the `Language` enum in core
+3. Implement `LanguageParser` (the template has the error handling contract and self-registration pattern)
+4. Add `YourLanguageParser.Companion` to `AlgorillaCommand.kt` and `AlgorillaTask.kt` (triggers class loading)
+5. Create a semantics YAML under `core/src/main/resources/semantics/`
+6. Add test fixtures and parser tests
+
+See the [Adding Languages](docs/docs/developer/adding-languages.md) developer guide for the complete walkthrough with IR mapping table and examples.
+
+## Adding a framework overlay
+
+This is the easiest contribution path — no Kotlin code changes needed:
+
+1. Create a YAML file under `core/src/main/resources/semantics/frameworks/` (copy an existing one as template)
+2. Add a `language:` key at the top (e.g. `language: java`)
+3. Add the filename to `core/src/main/resources/semantics/frameworks-index.txt`
+4. Run `./gradlew build` to verify
+
+The YAML defines method classifications (expensive calls, collection operations, etc.) for a specific framework. Once added, all existing rules automatically detect those framework methods. See the existing framework files (spring.yml, guava.yml, react.yml) for the format.
 
 ## Extending the Collection Semantics Registry
 

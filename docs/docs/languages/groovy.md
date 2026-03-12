@@ -5,22 +5,42 @@ tags:
 
 # Groovy
 
-**Parser:** ANTLR 4 (Java grammar + preprocessor) · **File extensions:** `.groovy` · **Rules:** 23/23
+Groovy closures make iteration feel lightweight. That's the trap:
 
-Groovy uses the Java ANTLR grammar with a preprocessing step that normalizes Groovy-specific syntax before parsing.
+```groovy
+def activeIds = orderRepository.getActiveOrderIds()
 
-## What the parser handles
+items.each { item ->
+    if (activeIds.contains(item.id)) {
+        process(item)
+    }
+}
+```
 
-- Groovy closures and GString interpolation
-- `def` keyword and dynamic typing
-- GDK (Groovy Development Kit) collection methods
-- Builder patterns and DSLs
-- Grape annotations
-- Traits
+`activeIds` is a `List` — `contains()` is O(n), called once per item inside the closure. Algorilla catches it:
 
-## GDK method recognition
+```
+warning  · nested-lookup · Loop amplifiers · O(items × activeIds) → O(items + activeIds)
 
-Algorilla knows about Groovy's extensions to the Java collections API:
+  Linear contains on 'activeIds' inside forEach()
+  → Build a HashSet/Map from 'activeIds' before the loop
+
+      4 │     if (activeIds.contains(item.id)) {
+
+  ⎿  forEach() over items   O(items)
+    ⎿  contains on 'activeIds'   O(activeIds) ← bottleneck
+```
+
+For a dozen items, nobody notices. For batch processing with thousands, the difference between `List` and `Set` is the difference between seconds and milliseconds.
+
+## Closures and GDK methods
+
+Algorilla treats Groovy closures as lambda equivalents. GDK methods like `collect`, `find`, `findAll`, `each`, `eachWithIndex`, `inject`, and `groupBy` are recognized as iteration boundaries — the same way `stream().filter()` is in Java.
+
+```groovy
+// Flagged: expensive-callback
+items.findAll { LocalDate.parse(it.dateStr).isAfter(cutoff) }
+```
 
 ```groovy
 // Flagged: sort-for-last via GDK
@@ -30,23 +50,19 @@ def oldest = people.sort { it.age }.last()
 def oldest = people.max { it.age }
 ```
 
-GDK methods like `collect`, `find`, `findAll`, `each`, `eachWithIndex`, `inject`, and `groupBy` are recognized as iteration or lookup operations.
-
-## Closure handling
-
-Groovy closures are treated as lambda equivalents. Rules that detect expensive operations in callbacks work with closures:
-
-```groovy
-// Flagged: expensive-callback
-items.findAll { LocalDate.parse(it.dateStr).isAfter(cutoff) }
-```
-
 ## Dynamic typing
 
-Since Groovy is dynamically typed, collection types often can't be inferred statically. Use [type hints](../getting-started/configuration.md) when algorilla reports false positives on `contains()` calls against Sets or Maps:
+Groovy is dynamically typed, so collection types often can't be inferred statically. When Algorilla reports false positives on `contains()` calls against Sets or Maps, use [type hints](../getting-started/configuration.md):
 
 ```yaml
 type-hints:
   idSet: HashSet
   lookupMap: HashMap
 ```
+
+## See also
+
+- [All rules](../rules/index.md) — the full set of patterns Algorilla detects, all 23 apply to Groovy
+- [Framework support](frameworks.md) — built-in knowledge of Grails/GORM and Spock for fewer false positives
+- [Configuration](../getting-started/configuration.md) — type hints, suppression, severity thresholds
+- [Understanding the output](../guide/understanding-output.md) — severity levels, the complexity chain, confidence scores

@@ -8,6 +8,7 @@
 
 ### Features
 
+* **Rename `parallel-stream-bottleneck` → `parallel-pipeline-bottleneck`** — language-neutral rule ID; old ID kept as alias for backward compatibility
 * **API stability & versioned formats** — JSON output now includes `schemaVersion` and `algorillaVersion` fields; baseline and ignore-list files include a `version` field. Consumers should ignore unknown fields for forward compatibility. ([#80](https://github.com/tvinke/algorilla/issues/80))
 * **Lenient config parsing** — `.algorilla.yml` silently ignores unknown keys, so configs written for newer versions don't crash older ones ([#80](https://github.com/tvinke/algorilla/issues/80))
 * **Experimental config key warnings** — stderr notice when `type-hints` or `heavyweight-types` are used in config
@@ -34,6 +35,14 @@
 * Added compatibility tests for config, baseline, ignore-list, and JSON output formats
 * Added issue templates, PR template, security policy, and code of conduct ([711cd28](https://github.com/tvinke/algorilla/commit/711cd28), [1ecfb0a](https://github.com/tvinke/algorilla/commit/1ecfb0a))
 * Docs: restructured navigation, horizontal tabs, rule subsumption docs, cleaned up rule doc pages
+
+### Contributors
+
+* **Language module blueprint** — consistent parser naming (`{Lang}LanguageParser`), shared utilities extracted to core, `ParserRegistry` for self-registration, standardized error handling across all parsers
+* **Framework auto-discovery** — framework overlays now discovered at runtime via `frameworks-index.txt`; adding a framework is a YAML-only change
+* **`lang-template/` skeleton** — copy-paste starting point for new language modules with TODOs, test templates, and fixture structure
+* **Developer docs rewrite** — `adding-languages.md` expanded to full 7-step guide with IR mapping table; `architecture.md` updated with dependency graph and ParserRegistry docs
+* **Test fixtures** — 10 new Kotlin + 10 new Groovy test classes covering 5 rules each
 
 ## [0.2.0](https://github.com/tvinke/algorilla/compare/v0.1.0...v0.2.0) (2026-03-11)
 
