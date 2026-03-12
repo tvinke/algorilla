@@ -19,8 +19,8 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import java.io.File
 
-internal class KotlinParserTest {
-    private val parser = KotlinParser()
+internal class KotlinLanguageParserTest {
+    private val parser = KotlinLanguageParser()
 
     @Test
     fun `should parse kt and kts files`() {

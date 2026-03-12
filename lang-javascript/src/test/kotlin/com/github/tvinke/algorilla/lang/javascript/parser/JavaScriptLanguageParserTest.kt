@@ -16,8 +16,8 @@ import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 import java.io.File
 
-internal class JavaScriptParserTest {
-    private val parser = JavaScriptParser()
+internal class JavaScriptLanguageParserTest {
+    private val parser = JavaScriptLanguageParser()
 
     @Test
     fun `should parse js files`() {

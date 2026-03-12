@@ -16,8 +16,8 @@ import io.kotest.matchers.string.shouldContain
 import org.junit.jupiter.api.Test
 import java.io.File
 
-internal class GroovyParserTest {
-    private val parser = GroovyParser()
+internal class GroovyLanguageParserTest {
+    private val parser = GroovyLanguageParser()
 
     @Test
     fun `should parse groovy files`() {
