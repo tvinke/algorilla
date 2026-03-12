@@ -5,20 +5,22 @@ import com.github.tvinke.algorilla.engine.ParseException
 import com.github.tvinke.algorilla.lang.java.parser.JavaLexer
 import com.github.tvinke.algorilla.lang.java.parser.JavaParser
 import com.github.tvinke.algorilla.model.FileRoot
+import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.SourceLocation
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
+import org.treesitter.TSParser
+import org.treesitter.TreeSitterKotlin
 import java.io.File
 
 private val logger = KotlinLogging.logger {}
 
 /**
  * Parses Kotlin source files into the unified IR representation.
- * Uses the Java ANTLR grammar as a best-effort parser, since Kotlin syntax
- * is close enough to Java after preprocessing.
- * Files that fail to parse are silently skipped with a warning.
+ * Uses tree-sitter-kotlin for proper Kotlin parsing, falling back to
+ * the preprocessor + Java ANTLR grammar when tree-sitter fails.
  */
 public class KotlinParser : LanguageParser {
     override val language: Language = Language.KOTLIN
@@ -29,30 +31,11 @@ public class KotlinParser : LanguageParser {
         val file = File(filePath)
         if (!file.exists()) throw ParseException("File not found: $filePath")
 
-        return try {
-            parseWithJavaGrammar(file, filePath)
-        } catch (
-            @Suppress("TooGenericExceptionCaught") e: Exception,
-        ) {
-            logger.debug { "Kotlin file not parseable with Java grammar: $filePath (${e.message})" }
-            emptyFileRoot(filePath)
-        }
-    }
-
-    private fun parseWithJavaGrammar(
-        file: File,
-        filePath: String,
-    ): FileRoot {
-        val source = preprocessKotlinSource(file.readText())
-        val input = CharStreams.fromString(source, filePath)
-        val lexer = JavaLexer(input)
-        lexer.removeErrorListeners()
-        val tokens = CommonTokenStream(lexer)
-        val parser = JavaParser(tokens)
-        parser.removeErrorListeners()
-
-        val compilationUnit = parser.compilationUnit()
-        val children = KotlinIRVisitor(filePath).visit(compilationUnit)
+        val source = file.readText()
+        val children =
+            parseWithTreeSitter(filePath, source)
+                ?: parseWithJavaGrammar(filePath, source)
+                ?: emptyList()
 
         return FileRoot(
             filePath = filePath,
@@ -62,11 +45,45 @@ public class KotlinParser : LanguageParser {
         )
     }
 
-    private fun emptyFileRoot(filePath: String): FileRoot =
-        FileRoot(
-            filePath = filePath,
-            language = Language.KOTLIN,
-            location = SourceLocation(filePath, 1, 1),
-            children = emptyList(),
-        )
+    @Suppress("TooGenericExceptionCaught")
+    private fun parseWithTreeSitter(
+        filePath: String,
+        source: String,
+    ): List<IRNode>? =
+        try {
+            val parser = TSParser()
+            parser.setLanguage(TreeSitterKotlin())
+            val tree = parser.parseString(null, source)
+            val root = tree.rootNode
+            if (root.isNull || root.hasError()) {
+                logger.debug { "Tree-sitter parse had errors, falling back: $filePath" }
+                null
+            } else {
+                KotlinTreeSitterVisitor(filePath, source).visit(root)
+            }
+        } catch (e: Exception) {
+            logger.debug { "Tree-sitter failed, falling back to Java grammar: $filePath (${e.message})" }
+            null
+        }
+
+    @Suppress("TooGenericExceptionCaught")
+    private fun parseWithJavaGrammar(
+        filePath: String,
+        source: String,
+    ): List<IRNode>? =
+        try {
+            val preprocessed = preprocessKotlinSource(source)
+            val input = CharStreams.fromString(preprocessed, filePath)
+            val lexer = JavaLexer(input)
+            lexer.removeErrorListeners()
+            val tokens = CommonTokenStream(lexer)
+            val parser = JavaParser(tokens)
+            parser.removeErrorListeners()
+
+            val compilationUnit = parser.compilationUnit()
+            KotlinIRVisitor(filePath).visit(compilationUnit)
+        } catch (e: Exception) {
+            logger.debug { "Kotlin file not parseable with Java grammar: $filePath (${e.message})" }
+            null
+        }
 }

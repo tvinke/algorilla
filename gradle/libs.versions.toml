@@ -14,6 +14,7 @@ shadow = "8.1.1"
 treesitter = "0.25.0"
 treesitter-core = "0.26.6"
 treesitter-typescript = "0.23.2"
+treesitter-kotlin = "0.3.8.1"
 antlr = "4.13.2"
 
 [libraries]
@@ -33,6 +34,7 @@ antlr-tool = { module = "org.antlr:antlr4", version.ref = "antlr" }
 treesitter = { module = "io.github.bonede:tree-sitter", version.ref = "treesitter-core" }
 treesitter-javascript = { module = "io.github.bonede:tree-sitter-javascript", version.ref = "treesitter" }
 treesitter-typescript = { module = "io.github.bonede:tree-sitter-typescript", version.ref = "treesitter-typescript" }
+treesitter-kotlin = { module = "io.github.bonede:tree-sitter-kotlin", version.ref = "treesitter-kotlin" }
 kotlin-scripting-jsr223 = { module = "org.jetbrains.kotlin:kotlin-scripting-jsr223", version.ref = "kotlin" }
 
 [plugins]
