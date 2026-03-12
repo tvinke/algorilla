@@ -1,6 +1,7 @@
 package com.github.tvinke.algorilla.rules.builtin
 
 import com.github.tvinke.algorilla.model.ExecutionContext
+import com.github.tvinke.algorilla.model.FileRoot
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
@@ -11,7 +12,6 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
-import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 
 /**
  * Detects patterns that repeatedly copy or rebuild collections inside loops:
@@ -30,7 +30,14 @@ public class InLoopCollectionBuildingRule : Rule {
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
-            scanNode(fileRoot, emptyList(), findings)
+            val language = (fileRoot as? FileRoot)?.language
+            val methods =
+                if (language != null) {
+                    context.registry.copyOnModifyMethodsFor(language)
+                } else {
+                    context.registry.allCopyOnModifyMethods()
+                }
+            scanNode(fileRoot, emptyList(), methods, findings)
         }
         return findings
     }
@@ -38,21 +45,22 @@ public class InLoopCollectionBuildingRule : Rule {
     private fun scanNode(
         node: IRNode,
         loopStack: List<LoopNode>,
+        copyOnModifyMethods: Set<String>,
         findings: MutableList<Finding>,
     ) {
         if (node is LoopNode) {
             for (child in node.children) {
-                scanNode(child, loopStack + node, findings)
+                scanNode(child, loopStack + node, copyOnModifyMethods, findings)
             }
             return
         }
 
-        if (loopStack.isNotEmpty() && node is FunctionCall && isCopyOnModifyCall(node.name)) {
+        if (loopStack.isNotEmpty() && node is FunctionCall && node.name in copyOnModifyMethods) {
             findings.add(buildFinding(node, loopStack))
         }
 
         for (child in node.children) {
-            scanNode(child, loopStack, findings)
+            scanNode(child, loopStack, copyOnModifyMethods, findings)
         }
     }
 
@@ -70,7 +78,7 @@ public class InLoopCollectionBuildingRule : Rule {
                     "${call.name}() inside loop",
                     ExecutionContext.INSIDE_LOOP,
                     depth = 1,
-                    complexity = "copy \u2190 bottleneck",
+                    complexity = "copy ← bottleneck",
                 ),
             )
         return Finding(
@@ -86,9 +94,3 @@ public class InLoopCollectionBuildingRule : Rule {
         )
     }
 }
-
-private val COPY_ON_MODIFY_METHODS: Set<String> by lazy {
-    LanguageSemanticsRegistry.loadDefaults().allCopyOnModifyMethods()
-}
-
-private fun isCopyOnModifyCall(name: String): Boolean = name in COPY_ON_MODIFY_METHODS

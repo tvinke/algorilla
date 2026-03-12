@@ -53,6 +53,13 @@ internal class InLoopCollectionBuildingRuleJavaTest {
 
             findings.shouldBeEmpty()
         }
+
+        @Test
+        fun `should not flag toLowerCase in loop`() {
+            val findings = analyzeFixture("in-loop-collection-building/negative/to-lower-case-in-loop.java")
+
+            findings.shouldBeEmpty()
+        }
     }
 
     @Nested

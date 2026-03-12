@@ -15,13 +15,18 @@ private val logger = KotlinLogging.logger {}
 
 private const val CACHE_DIR = ".algorilla"
 private const val CACHE_FILE = "analysis-cache.json"
+private const val HASH_PREFIX_LENGTH = 16
 
 /**
  * Manages an on-disk cache of per-file analysis results. Files are identified by
  * content hash; only files whose hash has changed since the last run are re-analyzed.
+ *
+ * The cache includes a version stamp derived from the semantics YAML files. When rules
+ * or language semantics change, the version changes and the entire cache is invalidated.
  */
 public class AnalysisCache(
     private val baseDir: File,
+    private val semanticsVersion: String = computeSemanticsVersion(),
 ) {
     private val cacheFile = File(baseDir, "$CACHE_DIR/$CACHE_FILE")
     private val json =
@@ -31,12 +36,17 @@ public class AnalysisCache(
         }
 
     /**
-     * Loads the cached entries from disk. Returns an empty map if no cache exists.
+     * Loads the cached entries from disk. Returns an empty map if no cache exists
+     * or if the cached version doesn't match the current semantics version.
      */
     public fun load(): Map<String, CachedFileEntry> {
         if (!cacheFile.exists()) return emptyMap()
         return try {
             val data = json.decodeFromString<CacheData>(cacheFile.readText())
+            if (data.version != semanticsVersion) {
+                logger.info { "Cache version mismatch (${data.version} vs $semanticsVersion), re-analyzing all files" }
+                return emptyMap()
+            }
             data.files.associateBy { it.filePath }
         } catch (
             @Suppress("TooGenericExceptionCaught") e: Exception,
@@ -51,7 +61,7 @@ public class AnalysisCache(
      */
     public fun save(entries: List<CachedFileEntry>) {
         cacheFile.parentFile.mkdirs()
-        val data = CacheData(files = entries)
+        val data = CacheData(version = semanticsVersion, files = entries)
         cacheFile.writeText(json.encodeToString(CacheData.serializer(), data))
         logger.debug { "Cache saved: ${entries.size} file entries" }
     }
@@ -78,8 +88,42 @@ public class AnalysisCache(
     }
 }
 
+private val SEMANTICS_RESOURCES =
+    listOf(
+        "semantics/java.yml",
+        "semantics/groovy.yml",
+        "semantics/javascript.yml",
+        "semantics/kotlin.yml",
+        "semantics/frameworks/react.yml",
+        "semantics/frameworks/vue.yml",
+        "semantics/frameworks/angular.yml",
+        "semantics/frameworks/node.yml",
+        "semantics/frameworks/lodash.yml",
+        "semantics/frameworks/rxjs.yml",
+        "semantics/frameworks/spring.yml",
+        "semantics/frameworks/guava.yml",
+        "semantics/frameworks/ktor.yml",
+        "semantics/frameworks/coroutines.yml",
+        "semantics/frameworks/grails.yml",
+        "semantics/frameworks/spock.yml",
+    )
+
+private fun computeSemanticsVersion(): String {
+    val digest = MessageDigest.getInstance("SHA-256")
+    for (resource in SEMANTICS_RESOURCES) {
+        val bytes =
+            AnalysisCache::class.java.classLoader
+                .getResourceAsStream(resource)
+                ?.readBytes()
+                ?: continue
+        digest.update(bytes)
+    }
+    return digest.digest().joinToString("") { "%02x".format(it) }.take(HASH_PREFIX_LENGTH)
+}
+
 @Serializable
 internal data class CacheData(
+    val version: String = "",
     val files: List<CachedFileEntry>,
 )
 
