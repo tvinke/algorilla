@@ -5,6 +5,7 @@ import com.github.tvinke.algorilla.model.CollectionAccess
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.GenericNode
 import com.github.tvinke.algorilla.model.IRNode
+import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LookupCall
 import com.github.tvinke.algorilla.model.LookupKind
 import com.github.tvinke.algorilla.model.LoopKind
@@ -12,7 +13,7 @@ import com.github.tvinke.algorilla.model.LoopNode
 import com.github.tvinke.algorilla.model.SortCall
 import com.github.tvinke.algorilla.model.SortKind
 import com.github.tvinke.algorilla.model.SourceLocation
-import com.github.tvinke.algorilla.semantics.CollectionSemanticsRegistry
+import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 
 @Suppress("CyclomaticComplexMethod", "ReturnCount")
 public fun classifyChainedCall(
@@ -21,12 +22,13 @@ public fun classifyChainedCall(
     targetVar: String?,
     argNodes: List<IRNode>,
     loc: SourceLocation,
+    language: Language = Language.JAVA,
 ): IRNode {
     classifyAsIteration(methodName, targetText, targetVar, argNodes, loc)?.let { return it }
 
-    classifyAsLookup(methodName, targetText, targetVar, argNodes, loc)?.let { return it }
+    classifyAsLookup(methodName, targetText, targetVar, argNodes, loc, language)?.let { return it }
 
-    sortKindFor(methodName)?.let { kind ->
+    sortKindFor(methodName, language)?.let { kind ->
         return SortCall(
             kind = kind,
             hasComparator = argNodes.isNotEmpty(),
@@ -36,7 +38,12 @@ public fun classifyChainedCall(
         )
     }
 
-    accessKindFor(methodName)?.let { kind ->
+    accessKindFor(methodName, language)?.let { kind ->
+        // first/last/firstOrNull/lastOrNull with a predicate lambda is a linear scan (lookup),
+        // not a positional access
+        if (argNodes.isNotEmpty() && kind in setOf(AccessKind.FIRST, AccessKind.LAST)) {
+            return LookupCall(kind = LookupKind.FIND, targetVariable = targetVar, isO1 = false, location = loc, children = argNodes)
+        }
         return CollectionAccess(kind = kind, location = loc, children = argNodes)
     }
 
@@ -81,8 +88,9 @@ private fun classifyAsLookup(
     targetVar: String?,
     argNodes: List<IRNode>,
     loc: SourceLocation,
+    language: Language = Language.JAVA,
 ): IRNode? {
-    val kind = lookupKindFor(methodName) ?: return null
+    val kind = lookupKindFor(methodName, language) ?: return null
     if (kind.isStringApplicable() && isStringTarget(targetText)) {
         return FunctionCall(name = methodName, qualifiedTarget = targetVar, arguments = argNodes, location = loc, children = argNodes)
     }
@@ -98,8 +106,9 @@ public fun classifyStandaloneCall(
     name: String,
     loc: SourceLocation,
     argNodes: List<IRNode>,
+    language: Language = Language.JAVA,
 ): List<IRNode> {
-    val lookupKind = lookupKindFor(name)
+    val lookupKind = lookupKindFor(name, language)
     if (lookupKind != null) {
         return listOf(
             LookupCall(kind = lookupKind, targetVariable = null, isO1 = false, location = loc, children = argNodes),
@@ -110,7 +119,10 @@ public fun classifyStandaloneCall(
     )
 }
 
-public fun lookupKindFor(methodName: String): LookupKind? =
+public fun lookupKindFor(
+    methodName: String,
+    language: Language = Language.JAVA,
+): LookupKind? =
     when (methodName) {
         "contains" -> LookupKind.CONTAINS
         "containsKey", "containsValue" -> LookupKind.CONTAINS
@@ -122,25 +134,31 @@ public fun lookupKindFor(methodName: String): LookupKind? =
         "noneMatch" -> LookupKind.NONE_MATCH
         "some" -> LookupKind.SOME
         "includes" -> LookupKind.INCLUDES
-        else -> null
+        else -> registryInstance.lookupKindFor(methodName, language)
     }
 
-public fun sortKindFor(methodName: String): SortKind? =
+public fun sortKindFor(
+    methodName: String,
+    language: Language = Language.JAVA,
+): SortKind? =
     when (methodName) {
         "sort" -> SortKind.SORT
         "sorted" -> SortKind.SORTED
         "sortBy", "sortedBy" -> SortKind.SORT_BY
         "orderBy" -> SortKind.ORDER_BY
-        else -> null
+        else -> registryInstance.sortKindFor(methodName, language)
     }
 
-public fun accessKindFor(methodName: String): AccessKind? =
+public fun accessKindFor(
+    methodName: String,
+    language: Language = Language.JAVA,
+): AccessKind? =
     when (methodName) {
         "first" -> AccessKind.FIRST
         "last" -> AccessKind.LAST
         "findFirst" -> AccessKind.FIND_FIRST
         "findAny" -> AccessKind.FIND_ANY
-        else -> null
+        else -> registryInstance.accessKindFor(methodName, language)
     }
 
 public fun extractVariableName(expr: String?): String? {
@@ -163,7 +181,7 @@ public fun extractVariableName(expr: String?): String? {
  * This is the single source of truth; to add a new method, update the YAML files.
  */
 private val STREAM_CHAIN_OPS: Set<String> by lazy {
-    CollectionSemanticsRegistry.loadDefaults().allStreamOps()
+    LanguageSemanticsRegistry.loadDefaults().allStreamOps()
 }
 
 /**
@@ -355,6 +373,6 @@ private fun isLiteralZeroArg(argNodes: List<IRNode>): Boolean {
 }
 
 /** Lazily loaded registry instance for parser-time queries. */
-private val registryInstance: CollectionSemanticsRegistry by lazy {
-    CollectionSemanticsRegistry.loadDefaults()
+private val registryInstance: LanguageSemanticsRegistry by lazy {
+    LanguageSemanticsRegistry.loadDefaults()
 }

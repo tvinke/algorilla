@@ -13,7 +13,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
-import com.github.tvinke.algorilla.semantics.CollectionSemanticsRegistry
+import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.findDescendantsWithBranchContext
 import com.github.tvinke.algorilla.util.maxCoExecutableSubset
 
@@ -96,7 +96,7 @@ public class UncachedGetterRule : Rule {
 }
 
 private val GETTER_PREFIXES: List<String> by lazy {
-    CollectionSemanticsRegistry
+    LanguageSemanticsRegistry
         .loadDefaults()
         .allGetterPrefixes()
 }

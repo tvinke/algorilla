@@ -14,7 +14,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
-import com.github.tvinke.algorilla.semantics.CollectionSemanticsRegistry
+import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.findDescendants
 
 /**
@@ -107,7 +107,7 @@ internal fun isBulkLoadCall(call: FunctionCall): Boolean {
 }
 
 private val BULK_LOAD_PREFIXES: List<String> by lazy {
-    CollectionSemanticsRegistry.loadDefaults().allBulkLoadPrefixes()
+    LanguageSemanticsRegistry.loadDefaults().allBulkLoadPrefixes()
 }
 
 private val DOM_TARGETS = setOf("wrapper", "document", "element", "el", "node", "dom", "selector")

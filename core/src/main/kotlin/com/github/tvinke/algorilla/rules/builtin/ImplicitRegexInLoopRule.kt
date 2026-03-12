@@ -13,7 +13,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
-import com.github.tvinke.algorilla.semantics.CollectionSemanticsRegistry
+import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 
 /**
  * Detects String methods that internally compile a regex on every call when used inside loops.
@@ -91,7 +91,7 @@ public class ImplicitRegexInLoopRule : Rule {
 }
 
 private val IMPLICIT_REGEX_METHODS: Set<String> by lazy {
-    CollectionSemanticsRegistry.loadDefaults().allImplicitRegexMethods()
+    LanguageSemanticsRegistry.loadDefaults().allImplicitRegexMethods()
 }
 
 /** Languages where string methods only compile regex when the argument is a regex literal. */

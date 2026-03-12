@@ -4,7 +4,7 @@ import com.github.tvinke.algorilla.model.BranchNode
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.VariableDecl
-import com.github.tvinke.algorilla.semantics.CollectionSemanticsRegistry
+import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 
 /**
  * Finds all descendant nodes of the specified type in this IR tree.
@@ -128,6 +128,6 @@ public fun FunctionDecl.hasO1Type(variableName: String?): Boolean {
     return varType != null && registry.isO1Type(varType)
 }
 
-private val registryInstance: CollectionSemanticsRegistry by lazy {
-    CollectionSemanticsRegistry.loadDefaults()
+private val registryInstance: LanguageSemanticsRegistry by lazy {
+    LanguageSemanticsRegistry.loadDefaults()
 }

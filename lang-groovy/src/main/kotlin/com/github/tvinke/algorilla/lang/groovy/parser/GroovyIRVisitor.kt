@@ -13,6 +13,7 @@ import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.GenericNode
 import com.github.tvinke.algorilla.model.IRNode
+import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LookupCall
 import com.github.tvinke.algorilla.model.LoopKind
 import com.github.tvinke.algorilla.model.LoopNode
@@ -212,7 +213,7 @@ internal class GroovyIRVisitor(
                 )
             return targetChildren + listOf(call)
         }
-        val node = classifyChainedCall(methodName, targetText, targetVar, argNodes, loc)
+        val node = classifyChainedCall(methodName, targetText, targetVar, argNodes, loc, Language.GROOVY)
         if (node is LookupCall && targetChildren.any { it is LookupCall && (it as LookupCall).targetVariable == targetVar }) {
             return targetChildren + argNodes
         }
@@ -228,7 +229,7 @@ internal class GroovyIRVisitor(
         if (groovyLoop != null) {
             return listOf(LoopNode(groovyLoop, null, loc, argNodes))
         }
-        return classifyStandaloneCall(name, loc, argNodes)
+        return classifyStandaloneCall(name, loc, argNodes, Language.GROOVY)
     }
 
     private fun extractParameters(ctx: JavaParser.FormalParametersContext?): List<Parameter> {

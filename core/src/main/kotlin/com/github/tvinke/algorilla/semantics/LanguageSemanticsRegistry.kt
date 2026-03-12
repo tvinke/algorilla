@@ -9,14 +9,14 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 private val logger = KotlinLogging.logger {}
 
 /**
- * Data-driven registry that maps method names to their collection semantics per language.
+ * Data-driven registry that maps method names to their semantics per language.
  * Loaded from YAML resource files at startup, with optional user overrides from `.algorilla.yml`.
  *
  * This is the single source of truth for method classification. All hardcoded method name sets
  * in the codebase should derive from this registry instead of maintaining their own lists.
  */
 @Suppress("TooManyFunctions", "LongParameterList")
-public class CollectionSemanticsRegistry private constructor(
+public class LanguageSemanticsRegistry private constructor(
     private val methodsByLanguage: Map<Language, Map<String, MethodSemantics>>,
     private val heavyweightByLanguage: Map<Language, Set<String>>,
     private val o1ByLanguage: Map<Language, Set<String>>,
@@ -260,6 +260,51 @@ public class CollectionSemanticsRegistry private constructor(
             .flatten()
             .distinct()
 
+    /**
+     * Looks up a method's [LookupKind] for a specific language.
+     * Returns null if the method has no lookup classification in that language.
+     */
+    public fun lookupKindFor(
+        methodName: String,
+        language: Language,
+    ): LookupKind? {
+        val resolved = resolveLanguage(language)
+        return methodsByLanguage[resolved]
+            ?.get(methodName)
+            ?.takeIf { it.category == SemanticCategory.LOOKUP }
+            ?.lookupKind
+    }
+
+    /**
+     * Looks up a method's [SortKind] for a specific language.
+     * Returns null if the method has no sort classification in that language.
+     */
+    public fun sortKindFor(
+        methodName: String,
+        language: Language,
+    ): SortKind? {
+        val resolved = resolveLanguage(language)
+        return methodsByLanguage[resolved]
+            ?.get(methodName)
+            ?.takeIf { it.category == SemanticCategory.SORT }
+            ?.sortKind
+    }
+
+    /**
+     * Looks up a method's [AccessKind] for a specific language.
+     * Returns null if the method has no access classification in that language.
+     */
+    public fun accessKindFor(
+        methodName: String,
+        language: Language,
+    ): AccessKind? {
+        val resolved = resolveLanguage(language)
+        return methodsByLanguage[resolved]
+            ?.get(methodName)
+            ?.takeIf { it.category == SemanticCategory.ACCESS }
+            ?.accessKind
+    }
+
     private fun resolveLanguage(language: Language): Language =
         when (language) {
             Language.TYPESCRIPT, Language.VUE -> Language.JAVASCRIPT
@@ -311,7 +356,7 @@ public class CollectionSemanticsRegistry private constructor(
          * Loads the default registry from classpath YAML resources.
          */
         @Suppress("LongMethod")
-        public fun loadDefaults(): CollectionSemanticsRegistry {
+        public fun loadDefaults(): LanguageSemanticsRegistry {
             val maps = LanguageMaps()
 
             for ((lang, resource) in LANGUAGE_FILES) {
@@ -323,11 +368,11 @@ public class CollectionSemanticsRegistry private constructor(
 
             logger.info {
                 val total = maps.methods.values.sumOf { it.size }
-                "Collection semantics registry loaded: $total methods across ${maps.methods.size} languages" +
+                "Language semantics registry loaded: $total methods across ${maps.methods.size} languages" +
                     if (frameworkCount > 0) " ($frameworkCount framework overlays)" else ""
             }
 
-            return CollectionSemanticsRegistry(
+            return LanguageSemanticsRegistry(
                 maps.methods,
                 maps.heavyweight,
                 maps.o1,
@@ -365,9 +410,9 @@ public class CollectionSemanticsRegistry private constructor(
          */
         @Suppress("LongMethod")
         public fun withOverrides(
-            base: CollectionSemanticsRegistry,
+            base: LanguageSemanticsRegistry,
             userHeavyweightTypes: Set<String>,
-        ): CollectionSemanticsRegistry {
+        ): LanguageSemanticsRegistry {
             if (userHeavyweightTypes.isEmpty()) return base
             val merged = base.heavyweightByLanguage.toMutableMap()
             for (lang in merged.keys) {
@@ -379,7 +424,7 @@ public class CollectionSemanticsRegistry private constructor(
                     merged[lang] = userHeavyweightTypes
                 }
             }
-            return CollectionSemanticsRegistry(
+            return LanguageSemanticsRegistry(
                 methodsByLanguage = base.methodsByLanguage,
                 heavyweightByLanguage = merged,
                 o1ByLanguage = base.o1ByLanguage,
@@ -401,7 +446,7 @@ public class CollectionSemanticsRegistry private constructor(
         }
 
         private fun loadResource(path: String): String? {
-            val stream = CollectionSemanticsRegistry::class.java.classLoader.getResourceAsStream(path)
+            val stream = LanguageSemanticsRegistry::class.java.classLoader.getResourceAsStream(path)
             if (stream == null) {
                 logger.warn { "Semantics resource not found: $path" }
                 return null

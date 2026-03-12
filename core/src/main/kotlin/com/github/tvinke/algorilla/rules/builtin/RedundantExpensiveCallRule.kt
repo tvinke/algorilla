@@ -13,7 +13,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
-import com.github.tvinke.algorilla.semantics.CollectionSemanticsRegistry
+import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.semantics.MethodPurity
 import com.github.tvinke.algorilla.util.findDescendantsWithBranchContext
 import com.github.tvinke.algorilla.util.maxCoExecutableSubset
@@ -131,11 +131,11 @@ private fun containsNonDeterministic(call: FunctionCall): Boolean {
  * in the language YAML files under core/src/main/resources/semantics/.
  */
 private val TRIVIAL_METHODS: Set<String> by lazy {
-    CollectionSemanticsRegistry.loadDefaults().allTrivialMethods()
+    LanguageSemanticsRegistry.loadDefaults().allTrivialMethods()
 }
 
 private val BUILDER_METHODS: Set<String> by lazy {
-    CollectionSemanticsRegistry.loadDefaults().allBuilderMethods()
+    LanguageSemanticsRegistry.loadDefaults().allBuilderMethods()
 }
 
 /**
@@ -143,7 +143,7 @@ private val BUILDER_METHODS: Set<String> by lazy {
  * Loaded from the `cheap-methods` section of the language YAML files.
  */
 private val CHEAP_METHODS: Set<String> by lazy {
-    CollectionSemanticsRegistry.loadDefaults().allCheapMethods()
+    LanguageSemanticsRegistry.loadDefaults().allCheapMethods()
 }
 
 /**
@@ -153,7 +153,7 @@ private val CHEAP_METHODS: Set<String> by lazy {
  * Loaded from the `sequential-read-methods` section of the language YAML files.
  */
 private val SEQUENTIAL_READ_METHODS: Set<String> by lazy {
-    CollectionSemanticsRegistry.loadDefaults().allSequentialReadMethods()
+    LanguageSemanticsRegistry.loadDefaults().allSequentialReadMethods()
 }
 
 private fun isSideEffectCall(call: FunctionCall): Boolean =
