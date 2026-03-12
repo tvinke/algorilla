@@ -25,6 +25,7 @@
 * Treat small inline array lookups (e.g. `["a","b"].includes(x)`) as O(1) in JS parser ([087e436](https://github.com/tvinke/algorilla/commit/087e436))
 * Fix color rendering of language tags in docs ([7a5a97a](https://github.com/tvinke/algorilla/commit/7a5a97a))
 * npm publish is now idempotent on re-tag ([844c91e](https://github.com/tvinke/algorilla/commit/844c91e))
+* Apply `minSeverity` filter correctly and fix file group ordering in console output ([71d5b42](https://github.com/tvinke/algorilla/commit/71d5b42))
 
 ### Maintenance
 

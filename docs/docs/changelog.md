@@ -22,6 +22,7 @@ This release prepares algorilla for public use by locking down the tool's public
 - **Exhaustive stdlib coverage** — collection semantics expanded across Java, Kotlin, Groovy, and JS/TS
 - **JS/TS type inference** — nested-lookup now infers variable types from initializers, cutting false positives on Set/Map usage
 - **Fewer JS/TS false positives** — `implicit-regex` no longer fires for plain string arguments; small inline array lookups treated as O(1)
+- **minSeverity filter** now applied correctly; file groups in console output ordered properly
 
 ### Other
 
