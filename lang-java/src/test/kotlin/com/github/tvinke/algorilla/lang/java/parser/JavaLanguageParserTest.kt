@@ -104,7 +104,7 @@ internal class JavaLanguageParserTest {
         val lookups = root.findDescendants<LookupCall>()
         val containsCalls = lookups.filter { it.kind == LookupKind.CONTAINS }
 
-        containsCalls shouldHaveSize 3
+        containsCalls shouldHaveSize 4
     }
 
     @Test
@@ -113,7 +113,7 @@ internal class JavaLanguageParserTest {
         val lookups = root.findDescendants<LookupCall>()
         val indexOfCalls = lookups.filter { it.kind == LookupKind.INDEX_OF }
 
-        indexOfCalls shouldHaveSize 1
+        indexOfCalls shouldHaveSize 2
     }
 
     @Test
@@ -178,6 +178,25 @@ internal class JavaLanguageParserTest {
         val simpleMethod = methods.find { it.name == "simpleMethod" }!!
 
         simpleMethod.location.line shouldBe 5
+    }
+
+    @Test
+    fun `should mark constant-size factory lookups as isO1`() {
+        val root = parseFixture("method-calls.java")
+        val func = root.findDescendants<FunctionDecl>().single { it.name == "constantSizeFactories" }
+        val lookups = func.findDescendants<LookupCall>()
+
+        lookups.single { it.kind == LookupKind.CONTAINS }.isO1 shouldBe true
+        lookups.single { it.kind == LookupKind.INDEX_OF }.isO1 shouldBe true
+    }
+
+    @Test
+    fun `should suppress loop on constant-size factory forEach`() {
+        val root = parseFixture("method-calls.java")
+        val func = root.findDescendants<FunctionDecl>().single { it.name == "constantSizeFactories" }
+        val loops = func.findDescendants<LoopNode>()
+
+        loops shouldHaveSize 0
     }
 
     private fun parseFixture(name: String): IRNode {

@@ -389,7 +389,7 @@ private fun asCallbackContainer(node: IRNode): CallbackContainer? =
             val varName = node.iteratedVariable ?: "items"
             CallbackContainer(node.location, varName, "forEach/map/filter over $varName", node.children)
         }
-        node is LookupCall -> {
+        node is LookupCall && !node.isO1 -> {
             val varName = node.targetVariable ?: "items"
             CallbackContainer(node.location, varName, "${node.kind.label}() over $varName", node.children)
         }

@@ -28,4 +28,10 @@ public class MethodCallExamples {
         HashMap<String, Integer> map = new HashMap<>();
         Object obj = new Object();
     }
+
+    public void constantSizeFactories() {
+        List.of("a", "b").contains("a");
+        java.util.Arrays.asList("x", "y").indexOf("x");
+        List.of(1, 2, 3).stream().forEach(System.out::println);
+    }
 }

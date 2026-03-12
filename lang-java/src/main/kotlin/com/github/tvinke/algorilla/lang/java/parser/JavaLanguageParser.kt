@@ -303,6 +303,16 @@ internal class JavaIRVisitor(
         if (node is LookupCall && targetChildren.any { it is LookupCall && (it as LookupCall).targetVariable == targetVar }) {
             return targetChildren + argNodes
         }
+
+        // Constant-size factory: Arrays.asList(a,b).contains(x) or List.of(a,b).stream().forEach(...)
+        if (isConstantSizeFactory(targetChildren)) {
+            if (node is LookupCall && !node.isO1) {
+                return targetChildren + listOf(node.copy(isO1 = true))
+            }
+            if (node is LoopNode) {
+                return targetChildren + argNodes
+            }
+        }
         return targetChildren + listOf(node)
     }
 
@@ -348,4 +358,28 @@ internal class JavaIRVisitor(
             line = ctx.start.line,
             column = ctx.start.charPositionInLine + 1,
         )
+}
+
+private val JAVA_CONSTANT_SIZE_FACTORIES =
+    setOf(
+        "asList",
+        "of",
+        "singletonList",
+        "singletonMap",
+        "singleton",
+        "emptyList",
+        "emptySet",
+        "emptyMap",
+        "nCopies",
+    )
+
+private const val SMALL_COLLECTION_THRESHOLD = 8
+
+/**
+ * Returns true when the target of a chained call is a known constant-size factory
+ * like `Arrays.asList(a, b)`, `List.of(a, b)`, or `Collections.emptyList()`.
+ */
+private fun isConstantSizeFactory(targetChildren: List<IRNode>): Boolean {
+    val call = targetChildren.filterIsInstance<FunctionCall>().firstOrNull() ?: return false
+    return call.name in JAVA_CONSTANT_SIZE_FACTORIES && call.arguments.size <= SMALL_COLLECTION_THRESHOLD
 }
