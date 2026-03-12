@@ -8,6 +8,7 @@ import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.GenericNode
 import com.github.tvinke.algorilla.model.IRNode
+import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LookupCall
 import com.github.tvinke.algorilla.model.LoopKind
 import com.github.tvinke.algorilla.model.LoopNode
@@ -15,6 +16,8 @@ import com.github.tvinke.algorilla.model.ObjectCreation
 import com.github.tvinke.algorilla.model.Parameter
 import com.github.tvinke.algorilla.model.SourceLocation
 import com.github.tvinke.algorilla.model.VariableDecl
+import com.github.tvinke.algorilla.semantics.CollectionSemanticsRegistry
+import com.github.tvinke.algorilla.semantics.SemanticCategory
 import org.treesitter.TSNode
 
 /**
@@ -482,10 +485,36 @@ private val TRANSPARENT_TYPES =
         "interpolated_expression",
     )
 
-private fun kotlinLoopKindFor(methodName: String): LoopKind? =
-    when (methodName) {
-        "forEach", "forEachIndexed" -> LoopKind.HIGHER_ORDER
-        "map", "flatMap", "mapNotNull" -> LoopKind.HIGHER_ORDER
-        "removeIf" -> LoopKind.HIGHER_ORDER
-        else -> null
+private val iterationMethods: Set<String> by lazy {
+    val registry = CollectionSemanticsRegistry.loadDefaults()
+    val methods = mutableSetOf<String>()
+    // All methods classified as "iteration" in the semantics YAML
+    for (name in KNOWN_ITERATION_CANDIDATES) {
+        val semantics = registry.classify(Language.KOTLIN, name)
+        if (semantics?.category == SemanticCategory.ITERATION) {
+            methods.add(name)
+        }
     }
+    // Always include removeIf — it's an iteration that mutates
+    methods.add("removeIf")
+    methods
+}
+
+/** Candidate methods to check against the registry (superset of what YAML might contain). */
+private val KNOWN_ITERATION_CANDIDATES =
+    setOf(
+        "forEach",
+        "forEachIndexed",
+        "map",
+        "flatMap",
+        "mapNotNull",
+        "fold",
+        "reduce",
+        "onEach",
+        "groupBy",
+        "associateBy",
+        "associate",
+        "partition",
+    )
+
+private fun kotlinLoopKindFor(methodName: String): LoopKind? = if (methodName in iterationMethods) LoopKind.HIGHER_ORDER else null
