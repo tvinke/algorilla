@@ -28,12 +28,13 @@ import com.github.tvinke.algorilla.util.findDescendants
  *
  * The fix is typically to use `.collect(Collectors.toList())` or a thread-safe accumulator.
  */
-public class ParallelStreamBottleneckRule : Rule {
-    override val id: String = "parallel-stream-bottleneck"
-    override val name: String = "Parallel Stream Bottleneck"
+public class ParallelPipelineBottleneckRule : Rule {
+    override val id: String = "parallel-pipeline-bottleneck"
+    override val name: String = "Parallel Pipeline Bottleneck"
     override val severity: Severity = Severity.WARNING
     override val languages: Set<Language> = setOf(Language.JAVA, Language.KOTLIN, Language.GROOVY)
     override val category: RuleCategory = RuleCategory.CONCURRENCY
+    override val aliases: List<String> = listOf("parallel-stream-bottleneck")
 
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()

@@ -5,59 +5,84 @@ tags:
 
 # JavaScript / TypeScript
 
-**Parser:** Text-based · **File extensions:** `.js`, `.mjs`, `.cjs`, `.ts`, `.tsx`, `.vue` · **Rules:** 21/23
-
-JavaScript, TypeScript, and Vue single-file components share a lightweight text-based parser.
-
-## What the parser handles
-
-- ES6+ syntax (arrow functions, destructuring, template literals, `async`/`await`)
-- TypeScript type annotations (used for collection type inference)
-- Array and object methods (`map`, `filter`, `reduce`, `forEach`, `find`, `some`, `every`)
-- Promise patterns (`.then()`, `await`)
-- Vue SFC `<script>` and `<script setup>` blocks
-- CommonJS and ES module imports
-
-## JavaScript-specific patterns
+JavaScript arrays have a method called `includes()`. It does what you think — and it's O(n):
 
 ```javascript
-// Flagged: nested-lookup
-orders.filter(o => priorityIds.includes(o.id));  // Array.includes is O(n)
+const processed = getProcessedIds();
 
-// Better:
-const prioritySet = new Set(priorityIds);
-orders.filter(o => prioritySet.has(o.id));  // Set.has is O(1)
+for (const event of incoming) {
+    if (processed.includes(event.id)) {
+        skip(event);
+    }
+}
 ```
+
+Algorilla catches it:
+
+```
+warning  · nested-lookup · Loop amplifiers · O(incoming × processed) → O(incoming + processed)
+
+  Linear includes on 'processed' inside for-each loop
+  → Build a HashSet/Map from 'processed' before the loop
+
+      3 │ for (const event of incoming) {
+      4 │     if (processed.includes(event.id)) {
+
+  ⎿  for-each loop over incoming   O(incoming)
+    ⎿  includes on 'processed'   O(processed) ← bottleneck
+```
+
+The fix is `new Set(processed)` and `.has()` instead of `.includes()`. Whether that matters depends on the size of `processed` — but now you can make that call consciously.
+
+## Regex recompilation in loops
+
+This one surprises people. Regex literals inside loops get recompiled on every iteration:
 
 ```javascript
-// Flagged: repeated-regex-in-loop
 for (const line of lines) {
-    if (line.match(/^\d{4}-\d{2}-\d{2}/)) { ... }  // regex compiled each iteration
-}
-
-// Better:
-const datePattern = /^\d{4}-\d{2}-\d{2}/;
-for (const line of lines) {
-    if (line.match(datePattern)) { ... }
+    const parts = line.replace(/\s+/g, ' ');
+    const matched = line.match(/^(\d+)\s+(.*)$/);
 }
 ```
+
+```
+warning  · implicit-regex-in-loop · O(|lines| × compile) → O(|lines|)
+
+  replace() compiles a regex on every call inside for-each loop
+
+  ⎿  for-each loop   O(|lines|)
+    ⎿  line.replace() inside loop   compile ← bottleneck
+```
+
+Pull the regex out of the loop, assign it to a `const`, done.
 
 ## TypeScript type inference
 
-When TypeScript type annotations are present, algorilla uses them for more accurate analysis:
+When TypeScript type annotations are present, Algorilla uses them for more accurate analysis:
 
 ```typescript
 const ids: Set<string> = new Set(rawIds);
 items.filter(i => ids.has(i.id));  // Not flagged — Set.has is O(1)
 ```
 
+Without the type annotation, a `new Set()` is still recognized. But explicit types help in ambiguous cases.
+
 ## Vue single-file components
 
-The parser extracts the `<script>` or `<script setup>` section from `.vue` files and analyzes the JavaScript/TypeScript within. Template expressions are not analyzed.
+The parser extracts `<script>` and `<script setup>` blocks from `.vue` files and analyzes the JavaScript/TypeScript within. Template expressions are not analyzed.
+
+Supported extensions: `.js`, `.mjs`, `.cjs`, `.ts`, `.tsx`, `.vue`
 
 ## Rules not available
 
 Two rules target JVM-specific APIs and don't apply to JavaScript/TypeScript:
 
 - `repeated-reflection-in-loop` — Java reflection has no JS equivalent
-- `parallel-stream-bottleneck` — parallel streams are a JVM concept
+- `parallel-pipeline-bottleneck` — parallel streams are a JVM concept
+
+## See also
+
+- [All rules](../rules/index.md) — 21 of 23 rules apply to JavaScript/TypeScript
+- [Framework support](frameworks.md) — built-in knowledge of Vue, React, Angular, RxJS, Lodash, and Node.js for fewer false positives
+- [Configuration](../getting-started/configuration.md) — type hints, suppression, severity thresholds
+- [Understanding the output](../guide/understanding-output.md) — severity levels, the complexity chain, confidence scores

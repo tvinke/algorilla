@@ -16,6 +16,10 @@ This release prepares algorilla for public use by locking down the tool's public
 - New [Stability & Compatibility](stability.md) page documents what's stable, what's experimental, and the deprecation policy
 - `--list-rules` shows a stability tier per rule
 
+### Rule rename
+
+- **`parallel-stream-bottleneck` → `parallel-pipeline-bottleneck`** — language-neutral ID; the old ID is kept as an alias so existing suppress comments and `.algorilla.yml` configs continue to work
+
 ### Smarter detection
 
 - **Framework semantics overlays** — method classification is now loaded from per-framework YAML packs (Spring, Guava, etc.), replacing hardcoded constants

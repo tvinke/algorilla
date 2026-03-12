@@ -64,7 +64,7 @@ Patterns that undermine parallel execution performance.
 
 | Rule ID | Name | Severity | Detected Complexity |
 |---------|------|----------|-------------------|
-| `parallel-stream-bottleneck` | [Parallel Stream Bottleneck](parallel-stream-bottleneck.md) | WARNING | Synchronization bottleneck in parallel stream |
+| `parallel-pipeline-bottleneck` | [Parallel Pipeline Bottleneck](parallel-pipeline-bottleneck.md) | WARNING | Synchronization bottleneck in parallel pipeline |
 
 ## Disabling Rules
 

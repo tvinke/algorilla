@@ -5,9 +5,11 @@ tags:
   - Groovy
 ---
 
-# Parallel Stream Bottleneck
+# Parallel Pipeline Bottleneck
 
-**Rule ID:** `parallel-stream-bottleneck` · **Severity:** WARNING · **Category:** Concurrency
+**Rule ID:** `parallel-pipeline-bottleneck` · **Severity:** WARNING · **Category:** Concurrency
+
+*Previously:* `parallel-stream-bottleneck` (still accepted as alias in suppress comments and config)
 
 ## Description
 

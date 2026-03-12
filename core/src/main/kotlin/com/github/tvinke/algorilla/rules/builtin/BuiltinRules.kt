@@ -30,6 +30,6 @@ public object BuiltinRules {
             StringConcatInLoopRule(),
             QuadraticRemovalRule(),
             RepeatedReflectionInLoopRule(),
-            ParallelStreamBottleneckRule(),
+            ParallelPipelineBottleneckRule(),
         )
 }

@@ -134,7 +134,7 @@ Requires Java 11+.
 | `redundant-expensive-call` | Same call with same args invoked multiple times | k * O(f) → O(f) |
 | `uncached-getter` | `getXxx(id)` called repeatedly with same argument | Cache in local variable |
 | `chained-getters` | Cascading getter chain: `a=get(x)` → `b=get(a)` → `c=get(b)` | Compound lookup cost |
-| `parallel-stream-bottleneck` | Shared mutable state in `parallelStream().forEach()` | Thread-safety + serialization |
+| `parallel-pipeline-bottleneck` | Shared mutable state in `parallelStream().forEach()` | Thread-safety + serialization |
 
 ## Stability
 

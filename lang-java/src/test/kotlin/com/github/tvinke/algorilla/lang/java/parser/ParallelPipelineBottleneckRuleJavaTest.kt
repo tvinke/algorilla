@@ -6,7 +6,7 @@ import com.github.tvinke.algorilla.graph.SymbolTable
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Finding
-import com.github.tvinke.algorilla.rules.builtin.ParallelStreamBottleneckRule
+import com.github.tvinke.algorilla.rules.builtin.ParallelPipelineBottleneckRule
 import com.github.tvinke.algorilla.util.findDescendants
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
@@ -16,18 +16,18 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import java.io.File
 
-internal class ParallelStreamBottleneckRuleJavaTest {
+internal class ParallelPipelineBottleneckRuleJavaTest {
     private val parser = JavaLanguageParser()
-    private val rule = ParallelStreamBottleneckRule()
+    private val rule = ParallelPipelineBottleneckRule()
 
     @Nested
     inner class PositiveCases {
         @Test
         fun `should detect parallelStream forEach with shared mutation`() {
-            val findings = analyzeFixture("parallel-stream-bottleneck/positive/parallel-foreach-shared-add.java")
+            val findings = analyzeFixture("parallel-pipeline-bottleneck/positive/parallel-foreach-shared-add.java")
 
             findings shouldHaveSize 1
-            findings.first().ruleId shouldBe "parallel-stream-bottleneck"
+            findings.first().ruleId shouldBe "parallel-pipeline-bottleneck"
             findings.first().message shouldContain "results"
             findings.first().message shouldContain "add"
             findings.first().message shouldContain "parallelStream"
@@ -38,14 +38,14 @@ internal class ParallelStreamBottleneckRuleJavaTest {
     inner class NegativeCases {
         @Test
         fun `should not flag parallelStream with collect`() {
-            val findings = analyzeFixture("parallel-stream-bottleneck/negative/parallel-collect-safe.java")
+            val findings = analyzeFixture("parallel-pipeline-bottleneck/negative/parallel-collect-safe.java")
 
             findings.shouldBeEmpty()
         }
 
         @Test
         fun `should not flag sequential stream with shared mutation`() {
-            val findings = analyzeFixture("parallel-stream-bottleneck/negative/sequential-stream-add.java")
+            val findings = analyzeFixture("parallel-pipeline-bottleneck/negative/sequential-stream-add.java")
 
             findings.shouldBeEmpty()
         }
@@ -55,7 +55,7 @@ internal class ParallelStreamBottleneckRuleJavaTest {
     inner class EvidenceAndMetadata {
         @Test
         fun `should include evidence with parallel loop and mutation`() {
-            val findings = analyzeFixture("parallel-stream-bottleneck/positive/parallel-foreach-shared-add.java")
+            val findings = analyzeFixture("parallel-pipeline-bottleneck/positive/parallel-foreach-shared-add.java")
 
             findings shouldHaveSize 1
             val evidence = findings.first().evidence

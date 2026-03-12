@@ -59,4 +59,4 @@ All rules work on the language-agnostic intermediate representation (IR), so mos
 | `uncached-getter` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | `chained-getters` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | `repeated-reflection-in-loop` | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
-| `parallel-stream-bottleneck` | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
+| `parallel-pipeline-bottleneck` | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
