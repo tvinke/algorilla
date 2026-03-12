@@ -27,6 +27,7 @@ public class Baseline(
             Json {
                 prettyPrint = true
                 ignoreUnknownKeys = true
+                encodeDefaults = true
             }
 
         /**
@@ -84,8 +85,11 @@ public class Baseline(
     }
 }
 
+private const val BASELINE_FORMAT_VERSION = 1
+
 @Serializable
 internal data class BaselineData(
+    val version: Int = BASELINE_FORMAT_VERSION,
     val fingerprints: List<BaselineFingerprint>,
 )
 

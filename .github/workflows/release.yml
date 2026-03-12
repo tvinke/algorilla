@@ -50,6 +50,12 @@ jobs:
           files: |
             cli/build/libs/algorilla-*.jar
 
+      - name: Update floating major tag
+        run: |
+          MAJOR_TAG="v$(echo "${{ steps.version.outputs.version }}" | cut -d. -f1)"
+          git tag -f "$MAJOR_TAG" "$GITHUB_REF_NAME"
+          git push -f origin "$MAJOR_TAG"
+
   publish-gradle-plugin:
     needs: build
     runs-on: ubuntu-latest
