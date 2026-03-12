@@ -32,12 +32,14 @@ All secrets are repository secrets in GitHub (Settings > Secrets > Actions).
 The project version lives in one place: `gradle.properties`.
 
 ```properties
-version=0.2.0
+version=0.3.0-SNAPSHOT
 ```
 
 All modules read this at build time. The CLI `--version` flag reads it from a generated properties file in the JAR. There is no hardcoded version string anywhere in source code.
 
-Release Please bumps this file automatically. You should not need to edit it by hand.
+**SNAPSHOT lifecycle:** during development, the version is always `X.Y.0-SNAPSHOT`. The release workflow strips `-SNAPSHOT` when building from a tag. After publishing, a post-release job automatically bumps to the next SNAPSHOT (e.g. `0.3.0` → `0.4.0-SNAPSHOT`).
+
+Release Please manages the CHANGELOG and git tags, but does not touch `gradle.properties` — the release workflow handles that.
 
 ## Manual release
 
@@ -45,7 +47,7 @@ If you need to release without Release Please (e.g., first release, hotfix):
 
 ### 1. Update the version
 
-Edit `gradle.properties`:
+Set `gradle.properties` to the clean release version (strip `-SNAPSHOT`):
 
 ```properties
 version=0.3.0
@@ -130,6 +132,16 @@ npm and Docker publishes are idempotent — re-runs skip gracefully if the versi
 
 **Caution:** `gh run rerun --failed` re-runs with the *original* commit, not the latest. Always move the tag instead.
 
-### Release Please adds `-SNAPSHOT` suffix
+### After a manual release: bump to SNAPSHOT
 
-If `gradle.properties` has a `-SNAPSHOT` suffix, Release Please will include it in the version. The manifest (`.release-please-manifest.json`) and `gradle.properties` should always contain clean versions (e.g., `0.2.0`, not `0.2.0-SNAPSHOT`). Don't use snapshot versions with Release Please.
+After tagging, bump `gradle.properties` to the next SNAPSHOT so local builds are clearly development versions:
+
+```bash
+# After releasing 0.3.0:
+sed -i '' 's/^version=.*/version=0.4.0-SNAPSHOT/' gradle.properties
+git add gradle.properties
+git commit -m "chore: bump to 0.4.0-SNAPSHOT"
+git push origin main
+```
+
+When using the automated release workflow, this happens automatically via the `bump-snapshot` job.

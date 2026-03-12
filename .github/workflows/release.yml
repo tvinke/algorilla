@@ -30,6 +30,9 @@ jobs:
         id: version
         run: echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
 
+      - name: Set release version in gradle.properties
+        run: sed -i "s/^version=.*/version=${{ steps.version.outputs.version }}/" gradle.properties
+
       - name: Build and test
         run: ./gradlew build
 
@@ -115,6 +118,32 @@ jobs:
           }
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  bump-snapshot:
+    needs: [build, publish-gradle-plugin, publish-npm, publish-docker]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Bump to next SNAPSHOT
+        run: |
+          RELEASED="${{ needs.build.outputs.version }}"
+          MAJOR=$(echo "$RELEASED" | cut -d. -f1)
+          MINOR=$(echo "$RELEASED" | cut -d. -f2)
+          NEXT_MINOR=$((MINOR + 1))
+          NEXT="${MAJOR}.${NEXT_MINOR}.0-SNAPSHOT"
+          sed -i "s/^version=.*/version=$NEXT/" gradle.properties
+          echo "Bumping version to $NEXT"
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add gradle.properties
+          git commit -m "chore: bump to ${{ needs.build.outputs.version }} → next SNAPSHOT"
+          git push origin main
 
   publish-docker:
     needs: build
