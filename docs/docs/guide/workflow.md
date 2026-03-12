@@ -125,14 +125,17 @@ See [Baseline Workflow](baseline-workflow.md) for details.
 
 ### CI integration
 
-Use `--fail-on` to control when algorilla fails a build:
+By default, algorilla fails the build (`exit 1`) when it finds warnings or errors. Use `--fail-on` to adjust:
 
 ```bash
-# fail only on errors (warnings are advisory)
+# default: fail on warnings and errors
+algorilla --format sarif -o results.sarif .
+
+# lenient: fail only on errors (warnings are advisory)
 algorilla --fail-on error --format sarif -o results.sarif .
 
-# fail on warnings and errors (strict)
-algorilla --fail-on warning --format sarif -o results.sarif .
+# strict: fail even on info-level findings
+algorilla --fail-on info --format sarif -o results.sarif .
 ```
 
 See [CI Integration](ci-integration.md) for GitHub Actions and GitLab CI examples.
@@ -148,4 +151,5 @@ See [CI Integration](ci-integration.md) for GitHub Actions and GitLab CI example
 | Accept a finding | `algorilla --accept <hash> .` |
 | Save baseline | `algorilla --save-baseline .algorilla/baseline.json .` |
 | Compare to baseline | `algorilla --baseline .algorilla/baseline.json .` |
-| CI (fail on errors) | `algorilla --fail-on error --format sarif -o results.sarif .` |
+| CI (default: fail on warnings) | `algorilla --format sarif -o results.sarif .` |
+| CI (fail on errors only) | `algorilla --fail-on error --format sarif -o results.sarif .` |

@@ -33,6 +33,9 @@ jobs:
 
 This automatically downloads algorilla, runs the analysis, and uploads SARIF results to GitHub Code Scanning — findings show up as annotations on the PR diff.
 
+!!! tip "Version pinning"
+    Pin to an exact version (`@v0.2.0`) for reproducible builds. You can also use the floating `@v0` tag to track the latest 0.x release automatically, but this means your CI may pick up new rules or behavior changes without warning.
+
 #### Action inputs
 
 | Input | Description | Default |
@@ -40,7 +43,7 @@ This automatically downloads algorilla, runs the analysis, and uploads SARIF res
 | `paths` | Directories to scan (space-separated) | `.` |
 | `format` | Output format: `console`, `json`, `sarif` | `sarif` |
 | `severity` | Minimum severity to report | `warning` |
-| `fail-on` | Minimum severity to fail the build | `info` |
+| `fail-on` | Minimum severity to fail the build | `warning` |
 | `rules` | Comma-separated rule IDs (empty = all) | all |
 | `baseline` | Path to baseline file | none |
 | `language` | Comma-separated languages to scan | all |

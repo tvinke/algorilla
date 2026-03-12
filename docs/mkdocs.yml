@@ -72,6 +72,7 @@ nav:
       - How Detection Works: concepts/how-detection-works.md
       - Cross-File Analysis: concepts/cross-file-analysis.md
     - Changelog: changelog.md
+    - Stability & Compatibility: stability.md
     - Using Algorilla:
       - Workflow: guide/workflow.md
       - Understanding Output: guide/understanding-output.md

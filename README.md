@@ -136,6 +136,12 @@ Requires Java 11+.
 | `chained-getters` | Cascading getter chain: `a=get(x)` → `b=get(a)` → `c=get(b)` | Compound lookup cost |
 | `parallel-stream-bottleneck` | Shared mutable state in `parallelStream().forEach()` | Thread-safety + serialization |
 
+## Stability
+
+Algorilla is pre-1.0. Breaking changes may occur between minor versions (0.x → 0.y). Pin your version in CI and check the [CHANGELOG](CHANGELOG.md) before upgrading.
+
+CLI flags, config keys, rule IDs, JSON output fields, and exit codes are treated as stable — we avoid breaking them, and when we must, we document it clearly. See [Stability & Compatibility](docs/docs/stability.md) for the full policy.
+
 ## Documentation
 
 - [Getting started](docs/docs/getting-started/quickstart.md)
