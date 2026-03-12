@@ -1,6 +1,8 @@
 # RxJS — framework overlay for JavaScript/TypeScript
 # Observable operators, subjects, and subscription methods
 
+language: javascript
+
 methods: {}
 
 # RxJS pipe operators and subscription methods — each creates a distinct

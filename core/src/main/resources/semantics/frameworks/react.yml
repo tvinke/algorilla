@@ -1,6 +1,8 @@
 # React — framework overlay for JavaScript
 # Hooks, component factories, and lifecycle methods
 
+language: javascript
+
 methods: {}
 
 # React hooks and factory methods — each call creates a distinct slot

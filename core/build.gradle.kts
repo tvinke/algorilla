@@ -7,4 +7,5 @@ dependencies {
     api(libs.kotlin.logging)
     implementation(libs.logback)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.antlr.runtime)
 }

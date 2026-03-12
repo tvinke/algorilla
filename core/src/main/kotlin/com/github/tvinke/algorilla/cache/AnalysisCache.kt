@@ -88,29 +88,30 @@ public class AnalysisCache(
     }
 }
 
-private val SEMANTICS_RESOURCES =
+private val BASE_SEMANTICS_RESOURCES =
     listOf(
         "semantics/java.yml",
         "semantics/groovy.yml",
         "semantics/javascript.yml",
         "semantics/kotlin.yml",
-        "semantics/frameworks/react.yml",
-        "semantics/frameworks/vue.yml",
-        "semantics/frameworks/angular.yml",
-        "semantics/frameworks/node.yml",
-        "semantics/frameworks/lodash.yml",
-        "semantics/frameworks/rxjs.yml",
-        "semantics/frameworks/spring.yml",
-        "semantics/frameworks/guava.yml",
-        "semantics/frameworks/ktor.yml",
-        "semantics/frameworks/coroutines.yml",
-        "semantics/frameworks/grails.yml",
-        "semantics/frameworks/spock.yml",
     )
+
+private const val FRAMEWORKS_INDEX = "semantics/frameworks-index.txt"
+
+private fun loadFrameworkResources(): List<String> {
+    val stream = AnalysisCache::class.java.classLoader.getResourceAsStream(FRAMEWORKS_INDEX) ?: return emptyList()
+    return stream
+        .bufferedReader()
+        .readLines()
+        .map { it.trim() }
+        .filter { it.isNotEmpty() && !it.startsWith("#") }
+        .map { "semantics/frameworks/$it" }
+}
 
 private fun computeSemanticsVersion(): String {
     val digest = MessageDigest.getInstance("SHA-256")
-    for (resource in SEMANTICS_RESOURCES) {
+    val allResources = BASE_SEMANTICS_RESOURCES + loadFrameworkResources()
+    for (resource in allResources) {
         val bytes =
             AnalysisCache::class.java.classLoader
                 .getResourceAsStream(resource)

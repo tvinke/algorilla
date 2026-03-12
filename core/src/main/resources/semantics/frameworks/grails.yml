@@ -1,6 +1,8 @@
 # Grails / GORM — framework overlay for Groovy
 # Domain class methods, controllers, services, and GSP/Taglib
 
+language: groovy
+
 methods: {}
 
 cheap-methods:

@@ -1,6 +1,8 @@
 # Spock Framework — framework overlay for Groovy
 # Testing DSL, mocking, and data-driven specifications
 
+language: groovy
+
 methods: {}
 
 cheap-methods:

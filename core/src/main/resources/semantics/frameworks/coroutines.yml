@@ -1,6 +1,8 @@
 # Kotlin Coroutines — framework overlay for Kotlin
 # Structured concurrency, Flow, channels, and dispatchers
 
+language: kotlin
+
 methods: {}
 
 cheap-methods:

@@ -1,6 +1,8 @@
 # Vue 3 — framework overlay for JavaScript
 # Composition API, reactivity, and lifecycle hooks
 
+language: javascript
+
 methods: {}
 
 cheap-methods:

@@ -358,37 +358,7 @@ public class LanguageSemanticsRegistry private constructor(
                 Language.KOTLIN to "semantics/kotlin.yml",
             )
 
-        /**
-         * Framework-specific YAML overlays that get merged into their parent language.
-         * Each framework YAML uses the same section format and adds entries additively.
-         */
-        private val FRAMEWORK_FILES =
-            mapOf(
-                Language.JAVASCRIPT to
-                    listOf(
-                        "semantics/frameworks/react.yml",
-                        "semantics/frameworks/vue.yml",
-                        "semantics/frameworks/angular.yml",
-                        "semantics/frameworks/node.yml",
-                        "semantics/frameworks/lodash.yml",
-                        "semantics/frameworks/rxjs.yml",
-                    ),
-                Language.JAVA to
-                    listOf(
-                        "semantics/frameworks/spring.yml",
-                        "semantics/frameworks/guava.yml",
-                    ),
-                Language.KOTLIN to
-                    listOf(
-                        "semantics/frameworks/ktor.yml",
-                        "semantics/frameworks/coroutines.yml",
-                    ),
-                Language.GROOVY to
-                    listOf(
-                        "semantics/frameworks/grails.yml",
-                        "semantics/frameworks/spock.yml",
-                    ),
-            )
+        private const val FRAMEWORKS_INDEX = "semantics/frameworks-index.txt"
 
         /**
          * Loads the default registry from classpath YAML resources.
@@ -433,15 +403,28 @@ public class LanguageSemanticsRegistry private constructor(
         }
 
         private fun mergeFrameworkOverlays(maps: LanguageMaps): Int {
-            var count = 0
-            for ((lang, resources) in FRAMEWORK_FILES) {
-                for (resource in resources) {
-                    val text = loadResource(resource) ?: continue
-                    maps.merge(lang, parseYaml(text))
-                    count++
+            val index =
+                loadResource(FRAMEWORKS_INDEX) ?: run {
+                    logger.warn { "Framework index not found: $FRAMEWORKS_INDEX" }
+                    return 0
                 }
-            }
-            return count
+            val fileNames = index.lines().map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith("#") }
+            return fileNames.count { fileName -> mergeFrameworkFile(maps, fileName) }
+        }
+
+        private fun mergeFrameworkFile(
+            maps: LanguageMaps,
+            fileName: String,
+        ): Boolean {
+            val resource = "semantics/frameworks/$fileName"
+            val text = loadResource(resource) ?: return false
+            val lang =
+                extractLanguageFromYaml(text) ?: run {
+                    logger.warn { "No language: key in framework YAML $fileName — skipping" }
+                    return false
+                }
+            maps.merge(lang, parseYaml(text))
+            return true
         }
 
         /**
@@ -593,6 +576,16 @@ internal fun parseYaml(text: String): ParsedYaml {
         removalMethods = collectListItems(sections["removal-methods"]),
         bulkLoadPrefixes = collectListItems(sections["bulk-load-prefixes"]).toList(),
     )
+}
+
+/**
+ * Extracts the top-level `language:` value from a framework YAML.
+ * Returns the corresponding [Language] enum value, or null if not found / unrecognised.
+ */
+internal fun extractLanguageFromYaml(text: String): Language? {
+    val pattern = Regex("""^language:\s*(\w+)\s*$""", RegexOption.MULTILINE)
+    val name = pattern.find(text)?.groupValues?.get(1) ?: return null
+    return Language.fromName(name)
 }
 
 @Suppress("LoopWithTooManyJumpStatements")

@@ -1,6 +1,8 @@
 # Ktor — framework overlay for Kotlin
 # Server routing, client, serialization, and plugins
 
+language: kotlin
+
 methods: {}
 
 cheap-methods:

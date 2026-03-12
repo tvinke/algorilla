@@ -1,6 +1,8 @@
 # Google Guava — framework overlay for Java
 # Collections, caching, concurrency, strings, I/O utilities
 
+language: java
+
 methods: {}
 
 cheap-methods:

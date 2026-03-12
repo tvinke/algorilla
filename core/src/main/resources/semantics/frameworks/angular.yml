@@ -1,6 +1,8 @@
 # Angular — framework overlay for JavaScript/TypeScript
 # DI, signals, RxJS integration, and lifecycle hooks
 
+language: javascript
+
 methods: {}
 
 cheap-methods:

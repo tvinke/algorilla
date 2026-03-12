@@ -1,6 +1,8 @@
 # Lodash / Underscore — framework overlay for JavaScript/TypeScript
 # Utility functions for collections, objects, strings, and functions
 
+language: javascript
+
 methods: {}
 
 # Lodash collection/object iteration — each call processes a different

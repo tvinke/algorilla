@@ -1,6 +1,8 @@
 # Spring Framework — framework overlay for Java
 # Spring Boot, Spring MVC, Spring Data, Spring Security
 
+language: java
+
 methods: {}
 
 cheap-methods:
