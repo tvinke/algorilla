@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.3.0 (unreleased)
+
+### Breaking changes
+
+**`--fail-on` default changed from `info` to `warning`.** If your CI relied on info-level findings triggering a non-zero exit, add `--fail-on info` explicitly. The GitHub Action default changed too.
+
+### API stability
+
+This release prepares algorilla for public use by locking down the tool's public surface:
+
+- JSON output now includes `schemaVersion` (currently `1`) and `algorillaVersion` fields
+- Baseline and ignore-list files now include a `version` field
+- Config parsing is lenient — unknown YAML keys are silently ignored for forward compatibility
+- New [Stability & Compatibility](stability.md) page documents what's stable, what's experimental, and the deprecation policy
+- `--list-rules` shows a stability tier per rule
+
+### Smarter detection
+
+- **Framework semantics overlays** — method classification is now loaded from per-framework YAML packs (Spring, Guava, etc.), replacing hardcoded constants
+- **Exhaustive stdlib coverage** — collection semantics expanded across Java, Kotlin, Groovy, and JS/TS
+- **JS/TS type inference** — nested-lookup now infers variable types from initializers, cutting false positives on Set/Map usage
+- **Fewer JS/TS false positives** — `implicit-regex` no longer fires for plain string arguments; small inline array lookups treated as O(1)
+
+### Other
+
+- GitHub Action users can now use `@v0` (floating tag) for auto-updates within the 0.x line
+- Language tags on rule docs pages
+- Docs navigation restructured with horizontal tabs
+- Added issue templates, PR template, security policy, and code of conduct
+- npm publish is now idempotent on re-tag
+
 ## 0.2.0 (2026-03-10)
 
 ### New rules

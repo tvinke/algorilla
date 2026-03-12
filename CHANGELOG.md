@@ -1,5 +1,39 @@
 # Changelog
 
+## [0.3.0](https://github.com/tvinke/algorilla/compare/v0.2.0...v0.3.0) (unreleased)
+
+### BREAKING CHANGES
+
+* **`--fail-on` default changed from `info` to `warning`.** If you relied on info-level findings failing your CI build, add `--fail-on info` explicitly. The GitHub Action default changed accordingly. ([#80](https://github.com/tvinke/algorilla/issues/80))
+
+### Features
+
+* **API stability & versioned formats** — JSON output now includes `schemaVersion` and `algorillaVersion` fields; baseline and ignore-list files include a `version` field. Consumers should ignore unknown fields for forward compatibility. ([#80](https://github.com/tvinke/algorilla/issues/80))
+* **Lenient config parsing** — `.algorilla.yml` silently ignores unknown keys, so configs written for newer versions don't crash older ones ([#80](https://github.com/tvinke/algorilla/issues/80))
+* **Experimental config key warnings** — stderr notice when `type-hints` or `heavyweight-types` are used in config
+* **`--list-rules` shows stability tier** per rule
+* **Framework-aware semantics overlays** — language semantics registry now supports per-framework method packs (Spring, Guava, etc.) loaded from YAML ([927e2dd](https://github.com/tvinke/algorilla/commit/927e2dd))
+* **Exhaustive stdlib coverage** — collection semantics expanded with full stdlib method coverage across Java, Kotlin, Groovy, and JS/TS ([87a4ed9](https://github.com/tvinke/algorilla/commit/87a4ed9))
+* **JS/TS variable type inference** — nested-lookup rule now infers variable types from initializers, reducing false positives on Set/Map usage ([cab5575](https://github.com/tvinke/algorilla/commit/cab5575))
+* **Floating `v0` tag** in release workflow — GitHub Action users can use `@v0` for auto-updates within the 0.x line
+* Language tags on rule documentation pages ([08bf1a9](https://github.com/tvinke/algorilla/commit/08bf1a9))
+* Stability & compatibility documentation page with tier classification, deprecation policy, and 1.0 readiness criteria
+
+### Bug Fixes
+
+* Skip `implicit-regex` findings for string literal arguments in JS/TS — `"hello".replace("x", "y")` is not a regex ([11a8132](https://github.com/tvinke/algorilla/commit/11a8132))
+* Treat small inline array lookups (e.g. `["a","b"].includes(x)`) as O(1) in JS parser ([087e436](https://github.com/tvinke/algorilla/commit/087e436))
+* Fix color rendering of language tags in docs ([7a5a97a](https://github.com/tvinke/algorilla/commit/7a5a97a))
+* npm publish is now idempotent on re-tag ([844c91e](https://github.com/tvinke/algorilla/commit/844c91e))
+
+### Maintenance
+
+* Renamed `CollectionSemanticsRegistry` to `LanguageSemanticsRegistry` to reflect broader scope ([2f0069b](https://github.com/tvinke/algorilla/commit/2f0069b))
+* Moved hardcoded framework constants into centralized YAML semantics files ([bdf0b51](https://github.com/tvinke/algorilla/commit/bdf0b51))
+* Added compatibility tests for config, baseline, ignore-list, and JSON output formats
+* Added issue templates, PR template, security policy, and code of conduct ([711cd28](https://github.com/tvinke/algorilla/commit/711cd28), [1ecfb0a](https://github.com/tvinke/algorilla/commit/1ecfb0a))
+* Docs: restructured navigation, horizontal tabs, rule subsumption docs, cleaned up rule doc pages
+
 ## [0.2.0](https://github.com/tvinke/algorilla/compare/v0.1.0...v0.2.0) (2026-03-11)
 
 
