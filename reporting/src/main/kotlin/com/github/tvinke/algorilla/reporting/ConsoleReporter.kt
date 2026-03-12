@@ -26,7 +26,15 @@ public class ConsoleReporter(
         }
 
         val snippetRenderer = SnippetRenderer(color)
-        val grouped = result.findings.groupBy { it.location.file }
+        val grouped =
+            result.findings
+                .groupBy { it.location.file }
+                .entries
+                .sortedWith(
+                    compareByDescending<Map.Entry<String, List<Finding>>> { entry ->
+                        entry.value.maxOf { it.severity.ordinal }
+                    }.thenBy { it.key },
+                )
         for ((file, findings) in grouped) {
             val displayFile = relativize(file)
             val header =
@@ -145,20 +153,15 @@ public class ConsoleReporter(
                 .size
         val cacheInfo = if (result.filesCached > 0) Ansi.dim(" (${result.filesCached} cached)", color) else ""
         val elapsedStr = String.format(Locale.US, "%.1f", result.elapsedMs / MS_PER_SECOND)
-        val errors = result.findings.count { it.severity == Severity.ERROR }
-        val warnings = result.findings.count { it.severity == Severity.WARNING }
-        val infos = result.findings.count { it.severity == Severity.INFO }
-
-        val parts = mutableListOf<String>()
-        if (errors > 0) parts.add(Ansi.red("$errors ${pluralize("error", errors)}", color))
-        if (warnings > 0) parts.add(Ansi.yellow("$warnings ${pluralize("warning", warnings)}", color))
-        if (infos > 0) parts.add(Ansi.cyan("$infos info", color))
-        val breakdown = if (parts.isNotEmpty()) " (${parts.joinToString(", ")})" else ""
+        val breakdown = formatSeverityBreakdown(result.findings)
+        val hiddenSuffix = formatHiddenCounts(result)
 
         val scanned = "Scanned ${result.filesAnalyzed} files$cacheInfo in ${elapsedStr}s."
         val issueCount = result.findings.size
         val foundText = "Found $issueCount ${pluralize("issue", issueCount)}$breakdown"
         val acrossText = if (fileCount > 0) " across $fileCount ${pluralize("file", fileCount)}." else "."
+        val errors = result.findings.count { it.severity == Severity.ERROR }
+        val warnings = result.findings.count { it.severity == Severity.WARNING }
 
         val summaryColor =
             when {
@@ -168,7 +171,33 @@ public class ConsoleReporter(
                 else -> { text: String -> text }
             }
 
-        output.appendLine("$scanned ${summaryColor("$foundText$acrossText")}")
+        output.appendLine("$scanned ${summaryColor("$foundText$acrossText")}$hiddenSuffix")
+    }
+
+    private fun formatSeverityBreakdown(findings: List<Finding>): String {
+        val errors = findings.count { it.severity == Severity.ERROR }
+        val warnings = findings.count { it.severity == Severity.WARNING }
+        val infos = findings.count { it.severity == Severity.INFO }
+        val parts = mutableListOf<String>()
+        if (errors > 0) parts.add(Ansi.red("$errors ${pluralize("error", errors)}", color))
+        if (warnings > 0) parts.add(Ansi.yellow("$warnings ${pluralize("warning", warnings)}", color))
+        if (infos > 0) parts.add(Ansi.cyan("$infos info", color))
+        return if (parts.isNotEmpty()) " (${parts.joinToString(", ")})" else ""
+    }
+
+    private fun formatHiddenCounts(result: AnalysisResult): String {
+        val parts =
+            Severity.entries.mapNotNull { severity ->
+                val total = result.unfilteredCounts.getOrDefault(severity, 0)
+                val shown = result.findings.count { it.severity == severity }
+                val hidden = total - shown
+                if (hidden > 0) "$hidden ${severity.name.lowercase()}" else null
+            }
+        return if (parts.isNotEmpty()) {
+            " " + Ansi.dim("[${parts.joinToString(", ")} hidden — use --severity info to show]", color)
+        } else {
+            ""
+        }
     }
 
     private fun pluralize(

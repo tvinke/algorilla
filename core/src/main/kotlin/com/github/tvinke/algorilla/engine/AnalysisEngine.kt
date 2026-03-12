@@ -12,6 +12,7 @@ import com.github.tvinke.algorilla.model.FileRoot
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.ObjectCreation
+import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.model.VariableDecl
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Finding
@@ -65,12 +66,17 @@ public class AnalysisEngine(
         val elapsed = System.currentTimeMillis() - startTime
         logger.info { "Analysis complete: ${allFindings.size} findings in ${elapsed}ms" }
 
+        val sorted = allFindings.sortedWith(findingOrder)
+        val unfilteredCounts = sorted.groupingBy { it.severity }.eachCount()
+        val filtered = sorted.filter { it.severity >= config.minSeverity }
+
         return AnalysisResult(
-            findings = allFindings.sortedWith(findingOrder),
+            findings = filtered,
             filesAnalyzed = sourceFiles.size,
             filesCached = sourceFiles.size - filesToParse.size,
             errors = errors,
             elapsedMs = elapsed,
+            unfilteredCounts = unfilteredCounts,
         )
     }
 
@@ -269,6 +275,7 @@ public data class AnalysisResult(
     val filesCached: Int = 0,
     val errors: List<AnalysisError>,
     val elapsedMs: Long,
+    val unfilteredCounts: Map<Severity, Int> = emptyMap(),
 )
 
 /**
