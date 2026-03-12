@@ -19,6 +19,7 @@ private val logger = KotlinLogging.logger {}
 public class LanguageSemanticsRegistry private constructor(
     private val methodsByLanguage: Map<Language, Map<String, MethodSemantics>>,
     private val heavyweightByLanguage: Map<Language, Set<String>>,
+    private val collectionTypesByLanguage: Map<Language, Set<String>>,
     private val o1ByLanguage: Map<Language, Set<String>>,
     private val streamOpsByLanguage: Map<Language, Set<String>>,
     private val scopeOpsByLanguage: Map<Language, Set<String>>,
@@ -70,6 +71,19 @@ public class LanguageSemanticsRegistry private constructor(
      * Returns the merged set of all heavyweight types across all languages.
      */
     public fun allHeavyweightTypes(): Set<String> = heavyweightByLanguage.values.flatten().toSet()
+
+    /**
+     * Returns true if the given type name is a known collection type for the language.
+     * Checks both `collection-types` and `o1-types` (the union of all collection-like types).
+     */
+    public fun isCollectionType(
+        language: Language,
+        typeName: String,
+    ): Boolean {
+        val resolved = resolveLanguage(language)
+        return collectionTypesByLanguage[resolved]?.any { typeName.contains(it) } == true ||
+            o1ByLanguage[resolved]?.any { typeName.contains(it) } == true
+    }
 
     /**
      * Returns true if the given type name indicates an O(1) lookup type.
@@ -228,6 +242,14 @@ public class LanguageSemanticsRegistry private constructor(
     public fun allReflectionMethods(): Set<String> = reflectionByLanguage.values.flatten().toSet()
 
     /**
+     * Returns the copy-on-modify methods for a specific language.
+     */
+    public fun copyOnModifyMethodsFor(language: Language): Set<String> {
+        val resolved = resolveLanguage(language)
+        return copyOnModifyByLanguage[resolved] ?: emptySet()
+    }
+
+    /**
      * Returns the union of all copy-on-modify methods across all languages.
      */
     public fun allCopyOnModifyMethods(): Set<String> = copyOnModifyByLanguage.values.flatten().toSet()
@@ -243,6 +265,14 @@ public class LanguageSemanticsRegistry private constructor(
     public fun allImplicitRegexMethods(): Set<String> = implicitRegexByLanguage.values.flatten().toSet()
 
     /**
+     * Returns implicit regex methods for a specific language.
+     */
+    public fun implicitRegexMethods(language: Language): Set<String> {
+        val resolved = resolveLanguage(language)
+        return implicitRegexByLanguage[resolved] ?: emptySet()
+    }
+
+    /**
      * Returns the union of all mutation methods across all languages.
      */
     public fun allMutationMethods(): Set<String> = mutationByLanguage.values.flatten().toSet()
@@ -251,6 +281,14 @@ public class LanguageSemanticsRegistry private constructor(
      * Returns the union of all removal methods across all languages.
      */
     public fun allRemovalMethods(): Set<String> = removalByLanguage.values.flatten().toSet()
+
+    /**
+     * Returns removal methods for a specific language.
+     */
+    public fun removalMethods(language: Language): Set<String> {
+        val resolved = resolveLanguage(language)
+        return removalByLanguage[resolved] ?: emptySet()
+    }
 
     /**
      * Returns the union of all bulk-load prefixes across all languages.
@@ -375,6 +413,7 @@ public class LanguageSemanticsRegistry private constructor(
             return LanguageSemanticsRegistry(
                 maps.methods,
                 maps.heavyweight,
+                maps.collectionTypes,
                 maps.o1,
                 maps.streamOps,
                 maps.scopeOps,
@@ -427,6 +466,7 @@ public class LanguageSemanticsRegistry private constructor(
             return LanguageSemanticsRegistry(
                 methodsByLanguage = base.methodsByLanguage,
                 heavyweightByLanguage = merged,
+                collectionTypesByLanguage = base.collectionTypesByLanguage,
                 o1ByLanguage = base.o1ByLanguage,
                 streamOpsByLanguage = base.streamOpsByLanguage,
                 scopeOpsByLanguage = base.scopeOpsByLanguage,
@@ -460,6 +500,7 @@ public class LanguageSemanticsRegistry private constructor(
 internal class LanguageMaps(
     val methods: MutableMap<Language, Map<String, MethodSemantics>> = mutableMapOf(),
     val heavyweight: MutableMap<Language, Set<String>> = mutableMapOf(),
+    val collectionTypes: MutableMap<Language, Set<String>> = mutableMapOf(),
     val o1: MutableMap<Language, Set<String>> = mutableMapOf(),
     val streamOps: MutableMap<Language, Set<String>> = mutableMapOf(),
     val scopeOps: MutableMap<Language, Set<String>> = mutableMapOf(),
@@ -483,6 +524,7 @@ internal class LanguageMaps(
     ) {
         methods[lang] = (methods[lang] ?: emptyMap()) + parsed.methods
         heavyweight[lang] = (heavyweight[lang] ?: emptySet()) + parsed.heavyweightTypes
+        collectionTypes[lang] = (collectionTypes[lang] ?: emptySet()) + parsed.collectionTypes
         o1[lang] = (o1[lang] ?: emptySet()) + parsed.o1Types
         streamOps[lang] = (streamOps[lang] ?: emptySet()) + parsed.streamOps
         scopeOps[lang] = (scopeOps[lang] ?: emptySet()) + parsed.scopeOps
@@ -504,6 +546,7 @@ internal class LanguageMaps(
 internal data class ParsedYaml(
     val methods: Map<String, MethodSemantics>,
     val heavyweightTypes: Set<String>,
+    val collectionTypes: Set<String>,
     val o1Types: Set<String>,
     val streamOps: Set<String>,
     val scopeOps: Set<String>,
@@ -533,6 +576,7 @@ internal fun parseYaml(text: String): ParsedYaml {
     return ParsedYaml(
         methods = methods,
         heavyweightTypes = collectListItems(sections["heavyweight-types"]),
+        collectionTypes = collectListItems(sections["collection-types"]),
         o1Types = collectListItems(sections["o1-types"]),
         streamOps = collectListItems(sections["stream-ops"]),
         scopeOps = collectListItems(sections["scope-ops"]),

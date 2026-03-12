@@ -16,7 +16,7 @@ import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.util.CrossMethodResolver
-import com.github.tvinke.algorilla.util.hasO1Type
+import com.github.tvinke.algorilla.util.isCollectionLookup
 
 /**
  * Detects linear lookup operations (contains, indexOf, find, filter, etc.) inside loop bodies
@@ -58,7 +58,7 @@ public class NestedLookupRule : Rule {
         }
 
         if (node is LookupCall) {
-            if (iterationStack.isNotEmpty() && !isO1Lookup(node, fn)) {
+            if (iterationStack.isNotEmpty() && node.isCollectionLookup(fn)) {
                 findings.add(buildFinding(node, iterationStack))
             }
             if (node.children.isNotEmpty() && isIteratingLookup(node.kind)) {
@@ -89,16 +89,11 @@ public class NestedLookupRule : Rule {
                 node,
                 context.symbolTable,
                 maxDepth = maxDepth,
-            ) { !it.isO1 }
+            ) { !it.isO1 && !it.isScalar }
         if (hiddenLookup != null) {
             findings.add(buildCrossMethodFinding(node, hiddenLookup, iterationStack))
         }
     }
-
-    private fun isO1Lookup(
-        lookup: LookupCall,
-        fn: FunctionDecl?,
-    ): Boolean = lookup.isO1 || (fn != null && fn.hasO1Type(lookup.targetVariable))
 
     private fun buildFinding(
         lookup: LookupCall,

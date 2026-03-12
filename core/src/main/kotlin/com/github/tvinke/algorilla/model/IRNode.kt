@@ -62,6 +62,7 @@ public data class LookupCall(
     val isO1: Boolean,
     override val location: SourceLocation,
     override val children: List<IRNode>,
+    val isScalar: Boolean = false,
 ) : IRNode
 
 /** The kind of sort operation. */

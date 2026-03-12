@@ -39,6 +39,21 @@ internal class ImplicitRegexInLoopRuleJavaTest {
 
             findings.shouldBeEmpty()
         }
+
+        @Test
+        fun `should not flag split with single-char non-metachar argument`() {
+            val findings = analyzeFixture("implicit-regex-in-loop/negative/single-char-split.java")
+
+            findings.shouldBeEmpty()
+        }
+
+        @Test
+        fun `should still flag split with regex metachar argument`() {
+            val findings = analyzeFixture("implicit-regex-in-loop/positive/regex-metachar-split.java")
+
+            findings shouldHaveSize 1
+            findings.first().message shouldContain "split"
+        }
     }
 
     @Nested

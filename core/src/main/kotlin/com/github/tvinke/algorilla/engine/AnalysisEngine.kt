@@ -11,6 +11,7 @@ import com.github.tvinke.algorilla.graph.SymbolTable
 import com.github.tvinke.algorilla.model.FileRoot
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.IRNode
+import com.github.tvinke.algorilla.model.LookupCall
 import com.github.tvinke.algorilla.model.ObjectCreation
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.model.VariableDecl
@@ -18,6 +19,8 @@ import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
+import com.github.tvinke.algorilla.util.findDescendants
+import com.github.tvinke.algorilla.util.transform
 import io.github.oshai.kotlinlogging.KotlinLogging
 
 private val logger = KotlinLogging.logger {}
@@ -53,7 +56,9 @@ public class AnalysisEngine(
 
         logger.info { "Cache: ${sourceFiles.size - filesToParse.size} files unchanged, ${filesToParse.size} to analyze" }
 
-        val (irTrees, symbolTable, errors) = parseFiles(filesToParse)
+        val (parsedTrees, _, errors) = parseFiles(filesToParse)
+        val irTrees = markScalarLookups(parsedTrees)
+        val symbolTable = rebuildSymbolTable(irTrees)
         val callGraph = buildCallGraph(irTrees, symbolTable)
         annotateComplexity(symbolTable, callGraph)
         val rawFindings = evaluateRules(irTrees, symbolTable, callGraph)
@@ -66,16 +71,25 @@ public class AnalysisEngine(
         val elapsed = System.currentTimeMillis() - startTime
         logger.info { "Analysis complete: ${allFindings.size} findings in ${elapsed}ms" }
 
+        return buildResult(allFindings, sourceFiles.size, filesToParse.size, errors, elapsed)
+    }
+
+    private fun buildResult(
+        allFindings: List<Finding>,
+        totalFiles: Int,
+        parsedFiles: Int,
+        errors: List<AnalysisError>,
+        elapsedMs: Long,
+    ): AnalysisResult {
         val sorted = allFindings.sortedWith(findingOrder)
         val unfilteredCounts = sorted.groupingBy { it.severity }.eachCount()
         val filtered = sorted.filter { it.severity >= config.minSeverity }
-
         return AnalysisResult(
             findings = filtered,
-            filesAnalyzed = sourceFiles.size,
-            filesCached = sourceFiles.size - filesToParse.size,
+            filesAnalyzed = totalFiles,
+            filesCached = totalFiles - parsedFiles,
             errors = errors,
-            elapsedMs = elapsed,
+            elapsedMs = elapsedMs,
             unfilteredCounts = unfilteredCounts,
         )
     }
@@ -129,6 +143,8 @@ public class AnalysisEngine(
         cache.save(entries)
     }
 
+    private fun markScalarLookups(irTrees: Map<String, FileRoot>): Map<String, FileRoot> = markScalarLookups(irTrees, registry)
+
     private fun parseFiles(sourceFiles: List<String>): ParseResult {
         val irTrees = mutableMapOf<String, FileRoot>()
         val symbolTable = SymbolTable()
@@ -147,6 +163,14 @@ public class AnalysisEngine(
         }
         logger.info { "Pass 1 complete: ${irTrees.size} files parsed, ${symbolTable.size()} symbols" }
         return ParseResult(irTrees, symbolTable, errors)
+    }
+
+    private fun rebuildSymbolTable(irTrees: Map<String, FileRoot>): SymbolTable {
+        val symbolTable = SymbolTable()
+        for ((_, tree) in irTrees) {
+            collectSymbols(tree.children, symbolTable)
+        }
+        return symbolTable
     }
 
     private fun buildCallGraph(
@@ -310,6 +334,120 @@ private val findingOrder: Comparator<Finding> =
         .thenBy { it.category?.ordinal ?: Int.MAX_VALUE }
         .thenBy { it.location.file }
         .thenBy { it.location.line }
+
+/**
+ * Post-parse pass that refines [LookupCall] nodes based on declared variable types:
+ * - Marks as `isScalar = true` when the target type is not a known collection (String, Optional, etc.)
+ * - Promotes to `isO1 = true` when the target type is a known O(1) type (Set, Map, etc.)
+ *
+ * Uses both same-file field types and a cross-file field type registry (keyed by declaring class)
+ * so that `this.field` references resolve even when the cross-method resolver follows calls
+ * into other files.
+ */
+public fun markScalarLookups(
+    irTrees: Map<String, FileRoot>,
+    registry: LanguageSemanticsRegistry,
+): Map<String, FileRoot> {
+    val globalFieldTypes = collectGlobalFieldTypes(irTrees)
+    val result = mutableMapOf<String, FileRoot>()
+    for ((file, fileRoot) in irTrees) {
+        val language = fileRoot.language
+        val localFieldTypes = collectFieldTypes(fileRoot)
+        val transformed =
+            fileRoot.transform { node ->
+                if (node is FunctionDecl) {
+                    val classFields = node.declaringClass?.let { globalFieldTypes[it] } ?: emptyMap()
+                    val mergedFields = classFields + localFieldTypes
+                    markScalarLookupsInFunction(node, language, registry, mergedFields)
+                } else {
+                    node
+                }
+            }
+        result[file] = transformed as FileRoot
+    }
+    return result
+}
+
+/**
+ * Builds a cross-file field type registry: className → (fieldName → typeName).
+ * For each file, determines the declaring class from FunctionDecl nodes and associates
+ * all class-level VariableDecl types with that class.
+ */
+private fun collectGlobalFieldTypes(irTrees: Map<String, FileRoot>): Map<String, Map<String, String>> {
+    val global = mutableMapOf<String, MutableMap<String, String>>()
+    for ((_, fileRoot) in irTrees) {
+        val classNames = fileRoot.findDescendants<FunctionDecl>().mapNotNull { it.declaringClass }.toSet()
+        val fieldTypes = collectFieldTypes(fileRoot)
+        for (className in classNames) {
+            global.getOrPut(className) { mutableMapOf() }.putAll(fieldTypes)
+        }
+    }
+    return global
+}
+
+/**
+ * Collects type info from class-level field declarations (VariableDecl nodes that are
+ * direct children of the FileRoot, not nested inside a FunctionDecl).
+ */
+private fun collectFieldTypes(fileRoot: FileRoot): Map<String, String> {
+    val fieldTypes = mutableMapOf<String, String>()
+
+    fun collectFromChildren(children: List<IRNode>) {
+        for (node in children) {
+            if (node is FunctionDecl) continue
+            if (node is VariableDecl && node.typeName != null) {
+                fieldTypes[node.name] = node.typeName
+            }
+            collectFromChildren(node.children)
+        }
+    }
+    collectFromChildren(fileRoot.children)
+    return fieldTypes
+}
+
+private fun buildTypeMap(
+    fn: FunctionDecl,
+    fieldTypes: Map<String, String>,
+): Map<String, String> {
+    val typeMap = mutableMapOf<String, String>()
+    typeMap.putAll(fieldTypes)
+    for (param in fn.parameters) {
+        if (param.typeName != null) typeMap[param.name] = param.typeName
+    }
+    for (varDecl in fn.findDescendants<VariableDecl>()) {
+        val type =
+            varDecl.typeName
+                ?: varDecl.children
+                    .filterIsInstance<ObjectCreation>()
+                    .firstOrNull()
+                    ?.typeName
+        if (type != null) typeMap[varDecl.name] = type
+    }
+    return typeMap
+}
+
+private fun markScalarLookupsInFunction(
+    fn: FunctionDecl,
+    language: com.github.tvinke.algorilla.model.Language,
+    registry: LanguageSemanticsRegistry,
+    fieldTypes: Map<String, String>,
+): FunctionDecl {
+    val typeMap = buildTypeMap(fn, fieldTypes)
+    return fn.transform { node ->
+        if (node is LookupCall && node.targetVariable != null && !node.isO1) {
+            val varName = node.targetVariable.removePrefix("this.")
+            val declaredType = typeMap[varName]
+            when {
+                declaredType == null -> node
+                registry.isO1Type(language, declaredType) -> node.copy(isO1 = true)
+                !registry.isCollectionType(language, declaredType) -> node.copy(isScalar = true)
+                else -> node
+            }
+        } else {
+            node
+        }
+    } as FunctionDecl
+}
 
 private fun createRegistry(config: AnalysisConfig): LanguageSemanticsRegistry {
     val base = LanguageSemanticsRegistry.loadDefaults()

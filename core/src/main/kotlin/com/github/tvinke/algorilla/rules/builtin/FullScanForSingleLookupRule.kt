@@ -56,7 +56,7 @@ public class FullScanForSingleLookupRule : Rule {
         val bulkCalls = fn.findDescendants<FunctionCall>().filter { isBulkLoadCall(it) }
         if (bulkCalls.isEmpty()) return
         val hasFilter =
-            fn.findDescendants<LookupCall>().isNotEmpty() ||
+            fn.findDescendants<LookupCall>().any { !it.isScalar } ||
                 fn.findDescendants<CollectionAccess>().isNotEmpty()
         if (!hasFilter) return
         for (call in bulkCalls) {

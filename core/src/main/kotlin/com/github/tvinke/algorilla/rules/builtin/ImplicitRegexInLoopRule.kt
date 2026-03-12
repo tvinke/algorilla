@@ -13,7 +13,6 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
-import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 
 /**
  * Detects String methods that internally compile a regex on every call when used inside loops.
@@ -31,7 +30,8 @@ public class ImplicitRegexInLoopRule : Rule {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
             val language = (fileRoot as? FileRoot)?.language
-            scanNode(fileRoot, emptyList(), language, findings)
+            val methods = language?.let { context.registry.implicitRegexMethods(it) } ?: emptySet()
+            scanNode(fileRoot, emptyList(), language, methods, findings)
         }
         return findings
     }
@@ -40,21 +40,22 @@ public class ImplicitRegexInLoopRule : Rule {
         node: IRNode,
         loopStack: List<LoopNode>,
         language: Language?,
+        regexMethods: Set<String>,
         findings: MutableList<Finding>,
     ) {
         if (node is LoopNode) {
             for (child in node.children) {
-                scanNode(child, loopStack + node, language, findings)
+                scanNode(child, loopStack + node, language, regexMethods, findings)
             }
             return
         }
 
-        if (loopStack.isNotEmpty() && node is FunctionCall && isImplicitRegexCall(node, language)) {
+        if (loopStack.isNotEmpty() && node is FunctionCall && isImplicitRegexCall(node, language, regexMethods)) {
             findings.add(buildFinding(node, loopStack))
         }
 
         for (child in node.children) {
-            scanNode(child, loopStack, language, findings)
+            scanNode(child, loopStack, language, regexMethods, findings)
         }
     }
 
@@ -90,33 +91,59 @@ public class ImplicitRegexInLoopRule : Rule {
     }
 }
 
-private val IMPLICIT_REGEX_METHODS: Set<String> by lazy {
-    LanguageSemanticsRegistry.loadDefaults().allImplicitRegexMethods()
-}
-
 /** Languages where string methods only compile regex when the argument is a regex literal. */
 private val JS_FAMILY = setOf(Language.JAVASCRIPT, Language.TYPESCRIPT, Language.VUE)
+
+/** JVM languages where String.split() has a single-char fast path that skips regex compilation. */
+private val JVM_FAMILY = setOf(Language.JAVA, Language.KOTLIN, Language.GROOVY)
+
+/** Regex metacharacters — single-char arguments using these still compile a regex in the JDK. */
+private const val REGEX_METACHARACTERS = ".\$|()[{^?*+\\"
 
 private fun isImplicitRegexCall(
     call: FunctionCall,
     language: Language?,
+    regexMethods: Set<String>,
 ): Boolean {
-    if (call.name !in IMPLICIT_REGEX_METHODS || call.qualifiedTarget == null) return false
+    if (call.name !in regexMethods || call.qualifiedTarget == null) return false
     // In JS/TS, split/replace/match with a plain string argument do NOT compile regex.
-    // Only regex literals (/pattern/) or RegExp objects trigger compilation.
     if (language in JS_FAMILY && hasStringLiteralFirstArg(call)) return false
+    // JDK fast path: String.split() with a single non-metachar argument skips regex compilation.
+    if (language in JVM_FAMILY && call.name == "split" && hasSingleCharNonRegexArg(call)) return false
     return true
 }
 
 /**
  * Returns true if the first argument is a string literal (quoted with ' or ").
- * In the IR, arguments from the JS parser are [GenericNode] with the source text as nodeType.
+ * In the IR, arguments are [GenericNode] with the source text as nodeType.
  */
 private fun hasStringLiteralFirstArg(call: FunctionCall): Boolean {
-    val firstArg = call.arguments.firstOrNull() ?: return false
-    if (firstArg !is GenericNode) return false
+    val text = stringLiteralContent(call) ?: return false
+    return text.isNotEmpty()
+}
+
+/**
+ * Returns true if the first argument is a single-character string literal that is NOT
+ * a regex metacharacter. The JDK's String.split() fast path avoids Pattern.compile()
+ * for these cases (e.g. split(","), split("_"), split(" ")).
+ */
+private fun hasSingleCharNonRegexArg(call: FunctionCall): Boolean {
+    val content = stringLiteralContent(call) ?: return false
+    return content.length == 1 && content[0] !in REGEX_METACHARACTERS
+}
+
+/**
+ * Extracts the unquoted content of a string literal first argument, or null if
+ * the first argument is not a recognizable string literal.
+ */
+private fun stringLiteralContent(call: FunctionCall): String? {
+    val firstArg = call.arguments.firstOrNull() ?: return null
+    if (firstArg !is GenericNode) return null
     val text = firstArg.nodeType.trim()
-    return (text.startsWith("'") && text.endsWith("'")) ||
-        (text.startsWith("\"") && text.endsWith("\"")) ||
-        (text.startsWith("`") && text.endsWith("`"))
+    return when {
+        text.length >= 2 && text.startsWith("\"") && text.endsWith("\"") -> text.substring(1, text.length - 1)
+        text.length >= 2 && text.startsWith("'") && text.endsWith("'") -> text.substring(1, text.length - 1)
+        text.length >= 2 && text.startsWith("`") && text.endsWith("`") -> text.substring(1, text.length - 1)
+        else -> null
+    }
 }

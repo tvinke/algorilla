@@ -39,6 +39,13 @@ internal class QuadraticRemovalRuleJavaTest {
 
             findings.shouldBeEmpty()
         }
+
+        @Test
+        fun `should not flag File delete in loop`() {
+            val findings = analyzeFixture("quadratic-removal/negative/files-delete-in-loop.java")
+
+            findings.shouldBeEmpty()
+        }
     }
 
     @Nested

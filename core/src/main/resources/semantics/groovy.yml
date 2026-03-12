@@ -176,6 +176,16 @@ heavyweight-types:
   - XmlSlurper
   - Pattern
 
+collection-types:
+  - List
+  - ArrayList
+  - LinkedList
+  - Vector
+  - Collection
+  - Iterable
+  - IntRange
+  - ObjectRange
+
 o1-types:
   - Set
   - HashSet

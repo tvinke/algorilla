@@ -215,6 +215,17 @@ heavyweight-types:
   - DocumentBuilderFactory
   - TransformerFactory
 
+collection-types:
+  - List
+  - MutableList
+  - ArrayList
+  - LinkedList
+  - Collection
+  - MutableCollection
+  - Iterable
+  - MutableIterable
+  - Sequence
+
 o1-types:
   - Set
   - HashSet

@@ -63,7 +63,7 @@ public class ExpensiveSortComparatorRule : Rule {
 
         // Linear lookups inside comparator
         val lookups = body.filterIsInstance<LookupCall>() + body.flatMap { it.findDescendants<LookupCall>() }
-        for (lookup in lookups) {
+        for (lookup in lookups.filter { !it.isO1 && !it.isScalar }) {
             findings.add(buildLookupFinding(sort, lookup))
         }
 

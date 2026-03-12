@@ -85,7 +85,7 @@ public class ExpensiveCallbackRule : Rule {
         for (call in calls.filter { isCompileCall(it) }) {
             findings.add(buildRegexCompileFinding(container, call))
         }
-        for (lookup in lookups.filter { !it.isO1 }) {
+        for (lookup in lookups.filter { !it.isO1 && !it.isScalar }) {
             findings.add(buildLookupFinding(container, lookup))
         }
         for (nested in nestedLoops) {

@@ -1,6 +1,7 @@
 package com.github.tvinke.algorilla.rules.builtin
 
 import com.github.tvinke.algorilla.model.ExecutionContext
+import com.github.tvinke.algorilla.model.FileRoot
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
@@ -11,7 +12,6 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
-import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 
 /**
  * Detects element-by-element removal from List/Array inside loops. Each remove() on an
@@ -29,7 +29,9 @@ public class QuadraticRemovalRule : Rule {
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
-            scanNode(fileRoot, emptyList(), findings)
+            val language = (fileRoot as? FileRoot)?.language
+            val methods = language?.let { context.registry.removalMethods(it) } ?: emptySet()
+            scanNode(fileRoot, emptyList(), methods, findings)
         }
         return findings
     }
@@ -37,21 +39,22 @@ public class QuadraticRemovalRule : Rule {
     private fun scanNode(
         node: IRNode,
         loopStack: List<LoopNode>,
+        removalMethods: Set<String>,
         findings: MutableList<Finding>,
     ) {
         if (node is LoopNode) {
             for (child in node.children) {
-                scanNode(child, loopStack + node, findings)
+                scanNode(child, loopStack + node, removalMethods, findings)
             }
             return
         }
 
-        if (loopStack.isNotEmpty() && node is FunctionCall && isRemovalCall(node)) {
+        if (loopStack.isNotEmpty() && node is FunctionCall && isRemovalCall(node, removalMethods)) {
             findings.add(buildFinding(node, loopStack))
         }
 
         for (child in node.children) {
-            scanNode(child, loopStack, findings)
+            scanNode(child, loopStack, removalMethods, findings)
         }
     }
 
@@ -87,11 +90,6 @@ public class QuadraticRemovalRule : Rule {
     }
 }
 
-// removeFirst/removeLast are excluded — they strongly indicate Queue/Deque usage (O(1))
-private val REMOVAL_METHODS: Set<String> by lazy {
-    LanguageSemanticsRegistry.loadDefaults().allRemovalMethods()
-}
-
 /** Skip calls on Map targets (map.remove(key) is O(1)) and iterator.remove(). */
 private val NON_LIST_TARGET_SUFFIXES =
     setOf(
@@ -113,8 +111,11 @@ private val NON_LIST_TARGET_SUFFIXES =
 
 private val NON_LIST_EXACT_TARGETS = setOf("it", "map", "set", "entry", "iter", "queue", "stack")
 
-private fun isRemovalCall(call: FunctionCall): Boolean {
-    if (call.name !in REMOVAL_METHODS) return false
+private fun isRemovalCall(
+    call: FunctionCall,
+    removalMethods: Set<String>,
+): Boolean {
+    if (call.name !in removalMethods) return false
     val target = call.qualifiedTarget ?: return false
     val lower = target.lowercase()
     if (lower in NON_LIST_EXACT_TARGETS) return false

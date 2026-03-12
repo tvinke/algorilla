@@ -1,8 +1,16 @@
 package com.github.tvinke.algorilla.util
 
 import com.github.tvinke.algorilla.model.BranchNode
+import com.github.tvinke.algorilla.model.CollectionAccess
+import com.github.tvinke.algorilla.model.FileRoot
+import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
+import com.github.tvinke.algorilla.model.GenericNode
 import com.github.tvinke.algorilla.model.IRNode
+import com.github.tvinke.algorilla.model.LookupCall
+import com.github.tvinke.algorilla.model.LoopNode
+import com.github.tvinke.algorilla.model.ObjectCreation
+import com.github.tvinke.algorilla.model.SortCall
 import com.github.tvinke.algorilla.model.VariableDecl
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 
@@ -127,6 +135,43 @@ public fun FunctionDecl.hasO1Type(variableName: String?): Boolean {
     val varType = findDescendants<VariableDecl>().find { it.name == variableName }?.typeName
     return varType != null && registry.isO1Type(varType)
 }
+
+/**
+ * Returns true if this [LookupCall] targets a collection (worth flagging).
+ * A lookup is a collection lookup when it's not O(1), not on a scalar type,
+ * and the enclosing function doesn't declare the target as an O(1) type.
+ */
+public fun LookupCall.isCollectionLookup(fn: FunctionDecl?): Boolean = !isO1 && !isScalar && (fn == null || !fn.hasO1Type(targetVariable))
+
+/**
+ * Recursively transforms an IR tree by applying [fn] to each node bottom-up.
+ * Only rebuilds the path where nodes actually changed.
+ */
+public fun IRNode.transform(fn: (IRNode) -> IRNode): IRNode {
+    val transformed = fn(this)
+    val newChildren = transformed.children.map { it.transform(fn) }
+    return if (newChildren == transformed.children) transformed else transformed.withChildren(newChildren)
+}
+
+/**
+ * Returns a copy of this node with the given children list.
+ * Uses data class copy() for each concrete IR node type.
+ */
+@Suppress("CyclomaticComplexMethod")
+public fun IRNode.withChildren(newChildren: List<IRNode>): IRNode =
+    when (this) {
+        is LoopNode -> copy(children = newChildren)
+        is LookupCall -> copy(children = newChildren)
+        is SortCall -> copy(children = newChildren)
+        is ObjectCreation -> copy(children = newChildren)
+        is CollectionAccess -> copy(children = newChildren)
+        is FunctionDecl -> copy(children = newChildren)
+        is FunctionCall -> copy(children = newChildren)
+        is VariableDecl -> copy(children = newChildren)
+        is BranchNode -> copy(branches = listOf(newChildren))
+        is GenericNode -> copy(children = newChildren)
+        is FileRoot -> copy(children = newChildren)
+    }
 
 private val registryInstance: LanguageSemanticsRegistry by lazy {
     LanguageSemanticsRegistry.loadDefaults()

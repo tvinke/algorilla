@@ -13,7 +13,7 @@ import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.util.findDescendantsWithBranchContext
-import com.github.tvinke.algorilla.util.hasO1Type
+import com.github.tvinke.algorilla.util.isCollectionLookup
 import com.github.tvinke.algorilla.util.maxCoExecutableSubset
 
 /**
@@ -54,7 +54,8 @@ public class RepeatedLinearScanRule : Rule {
         val lookupsWithContext = fn.findDescendantsWithBranchContext<LookupCall>()
         val filtered =
             lookupsWithContext.filter {
-                it.first.targetVariable != null && !it.first.isO1 && !fn.hasO1Type(it.first.targetVariable)
+                it.first.targetVariable != null &&
+                    it.first.isCollectionLookup(fn)
             }
         val grouped = filtered.groupBy { it.first.targetVariable }
         for ((targetVar, callsWithContext) in grouped) {

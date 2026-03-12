@@ -417,6 +417,20 @@ heavyweight-types:
   - Server
   - Agent
 
+collection-types:
+  - Array
+  - TypedArray
+  - Uint8Array
+  - Int8Array
+  - Uint16Array
+  - Int16Array
+  - Uint32Array
+  - Int32Array
+  - Float32Array
+  - Float64Array
+  - NodeList
+  - HTMLCollection
+
 o1-types:
   - Set
   - Map
@@ -622,21 +636,6 @@ copy-on-modify-methods:
   - intersection
   - difference
   - symmetricDifference
-  # String (all string methods return new strings)
-  - substring
-  - replace
-  - replaceAll
-  - padStart
-  - padEnd
-  - repeat
-  - trim
-  - trimStart
-  - trimEnd
-  - normalize
-  - toLowerCase
-  - toUpperCase
-  - toLocaleLowerCase
-  - toLocaleUpperCase
   # Array/String creation from transformation
   - split
   - Array.from

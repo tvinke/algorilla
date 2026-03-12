@@ -273,6 +273,26 @@ heavyweight-types:
   - MBeanServer
   - ScriptEngine
 
+collection-types:
+  - List
+  - ArrayList
+  - LinkedList
+  - Vector
+  - Stack
+  - CopyOnWriteArrayList
+  - Queue
+  - PriorityQueue
+  - ArrayBlockingQueue
+  - LinkedBlockingQueue
+  - LinkedBlockingDeque
+  - Deque
+  - Collection
+  - Iterable
+  - Stream
+  - IntStream
+  - LongStream
+  - DoubleStream
+
 o1-types:
   - Set
   - HashSet
