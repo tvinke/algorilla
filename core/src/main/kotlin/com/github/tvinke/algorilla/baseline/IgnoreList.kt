@@ -37,6 +37,7 @@ public class IgnoreList(
             Json {
                 prettyPrint = true
                 ignoreUnknownKeys = true
+                encodeDefaults = true
             }
 
         /**
@@ -107,8 +108,11 @@ public class IgnoreList(
     }
 }
 
+private const val IGNORE_LIST_FORMAT_VERSION = 1
+
 @Serializable
 internal data class IgnoreListData(
+    val version: Int = IGNORE_LIST_FORMAT_VERSION,
     val ignored: List<IgnoredEntry>,
 )
 

@@ -6,6 +6,9 @@ repo_name: tvinke/algorilla
 
 theme:
   name: material
+  font:
+    text: Inter
+    code: Fira Code
   palette:
     - scheme: default
       primary: deep purple
@@ -55,17 +58,34 @@ markdown_extensions:
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
 
 nav:
-  - Home:
+  - Guide:
     - index.md
-    - Deep Dives:
+    - Getting Started:
+      - Installation: getting-started/installation.md
+      - Quick Start: getting-started/quickstart.md
+      - Configuration: getting-started/configuration.md
+    - Concepts:
       - The Hidden O(n²) Problem: hidden-complexity.md
       - The Hidden Triple Scan: hidden-duplication.md
       - The Hidden N+1: hidden-io.md
+      - Big-O Primer: concepts/big-o-primer.md
+      - How Detection Works: concepts/how-detection-works.md
+      - Cross-File Analysis: concepts/cross-file-analysis.md
     - Changelog: changelog.md
-  - Getting Started:
-    - Installation: getting-started/installation.md
-    - Quick Start: getting-started/quickstart.md
-    - Configuration: getting-started/configuration.md
+    - Stability & Compatibility: stability.md
+    - Using Algorilla:
+      - Workflow: guide/workflow.md
+      - Understanding Output: guide/understanding-output.md
+      - CLI Reference: guide/cli-reference.md
+      - Project Detection: guide/project-detection.md
+      - Suppression: guide/suppression.md
+    - Advanced:
+      - CI/CD Integration: guide/ci-integration.md
+      - Baseline Workflow: guide/baseline-workflow.md
+      - Incremental Analysis: guide/incremental-analysis.md
+      - Custom Rules: guide/custom-rules.md
+      - Multi-Language Support: guide/multi-language.md
+      - Pre-Commit Hooks: guide/pre-commit.md
   - Rules:
     - Overview: rules/index.md
     - Loop Amplifiers:
@@ -102,22 +122,6 @@ nav:
     - Kotlin: languages/kotlin.md
     - Groovy: languages/groovy.md
     - JavaScript / TypeScript: languages/javascript.md
-  - Guide:
-    - Workflow: guide/workflow.md
-    - Understanding Output: guide/understanding-output.md
-    - CLI Reference: guide/cli-reference.md
-    - Project Detection: guide/project-detection.md
-    - CI/CD Integration: guide/ci-integration.md
-    - Baseline Workflow: guide/baseline-workflow.md
-    - Incremental Analysis: guide/incremental-analysis.md
-    - Custom Rules: guide/custom-rules.md
-    - Multi-Language Support: guide/multi-language.md
-    - Suppression: guide/suppression.md
-    - Pre-Commit Hooks: guide/pre-commit.md
-  - Concepts:
-    - Big-O Primer: concepts/big-o-primer.md
-    - How Detection Works: concepts/how-detection-works.md
-    - Cross-File Analysis: concepts/cross-file-analysis.md
   - Developer:
     - Development Guidelines: developer/guidelines.md
     - Coding Conventions: developer/coding-conventions.md

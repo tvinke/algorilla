@@ -4,7 +4,7 @@ import com.github.tvinke.algorilla.graph.SymbolTable
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.IRNode
-import com.github.tvinke.algorilla.semantics.CollectionSemanticsRegistry
+import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 
 /**
  * Resolves a [FunctionCall] to its [FunctionDecl] using the symbol table, then checks
@@ -140,6 +140,6 @@ public object CrossMethodResolver {
      * collection methods (lookup, sort, access, iteration, etc.).
      */
     private val unresolvableNames: Set<String> by lazy {
-        CollectionSemanticsRegistry.loadDefaults().allUnresolvableNames()
+        LanguageSemanticsRegistry.loadDefaults().allUnresolvableNames()
     }
 }

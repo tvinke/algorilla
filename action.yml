@@ -22,7 +22,7 @@ inputs:
   fail-on:
     description: 'Minimum severity to fail the build: info, warning, error'
     required: false
-    default: 'info'
+    default: 'warning'
   rules:
     description: 'Comma-separated list of rule IDs to run (empty = all)'
     required: false

@@ -6,25 +6,25 @@ Algorilla analyzes source code in four language groups, each with its own parser
 
 <div class="grid cards" markdown>
 
--   :lang-badge-java:{ .lg .middle } **Java**
+-   :fontawesome-brands-java:{ .lg .middle } **Java**
 
     Full ANTLR parser with complete AST. The most mature language support.
 
     [:octicons-arrow-right-24: Java details](java.md)
 
--   :lang-badge-kotlin:{ .lg .middle } **Kotlin**
+-   :simple-kotlin:{ .lg .middle } **Kotlin**
 
     Lightweight text-based parser with Kotlin-specific idiom recognition.
 
     [:octicons-arrow-right-24: Kotlin details](kotlin.md)
 
--   :lang-badge-groovy:{ .lg .middle } **Groovy**
+-   :simple-apachegroovy:{ .lg .middle } **Groovy**
 
     ANTLR parser extending the Java grammar, with GDK method recognition.
 
     [:octicons-arrow-right-24: Groovy details](groovy.md)
 
--   :lang-badge-js:{ .lg .middle } **JavaScript / TypeScript**
+-   :fontawesome-brands-js:{ .lg .middle } **JavaScript / TypeScript**
 
     Lightweight parser covering JS, TS, and Vue single-file components.
 
@@ -60,8 +60,3 @@ All rules work on the language-agnostic intermediate representation (IR), so mos
 | `chained-getters` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | `repeated-reflection-in-loop` | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
 | `parallel-stream-bottleneck` | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
-
-**21 of 23** rules work with all languages. Two rules target JVM-specific APIs:
-
-- **`repeated-reflection-in-loop`** — Java/Kotlin/Groovy only (reflection APIs don't exist in JS/TS)
-- **`parallel-stream-bottleneck`** — Java/Kotlin/Groovy only (parallel streams are a JVM concept)

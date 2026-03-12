@@ -82,9 +82,9 @@ algorilla -v .
 
 | Code | Meaning |
 |------|---------|
-| 0 | No findings |
-| 1 | Findings detected |
+| 0 | No findings (or all findings below `--fail-on` threshold) |
+| 1 | Findings at or above `--fail-on` severity (default: `warning`) |
 | 2 | Analysis error |
 
 !!! info "CI-friendly"
-    Exit code 1 on findings makes algorilla work as a quality gate out of the box — pipe it into your CI pipeline and it will fail the build when issues are found. See [CI/CD integration](../guide/ci-integration.md) for setup guides.
+    Exit code 1 on findings makes algorilla work as a quality gate out of the box. By default, warnings and errors trigger a non-zero exit. Use `--fail-on error` for a more lenient gate. See [CI/CD integration](../guide/ci-integration.md) for setup guides.

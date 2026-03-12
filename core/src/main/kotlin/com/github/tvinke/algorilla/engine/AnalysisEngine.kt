@@ -16,7 +16,7 @@ import com.github.tvinke.algorilla.model.VariableDecl
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
-import com.github.tvinke.algorilla.semantics.CollectionSemanticsRegistry
+import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import io.github.oshai.kotlinlogging.KotlinLogging
 
 private val logger = KotlinLogging.logger {}
@@ -32,7 +32,7 @@ public class AnalysisEngine(
     private val config: AnalysisConfig,
     private val cache: AnalysisCache? = null,
     @Suppress("UNUSED_PARAMETER") verbose: Boolean = false,
-    private val registry: CollectionSemanticsRegistry = createRegistry(config),
+    private val registry: LanguageSemanticsRegistry = createRegistry(config),
 ) {
     /**
      * Runs the full analysis pipeline on the given source files and returns all findings.
@@ -304,7 +304,7 @@ private val findingOrder: Comparator<Finding> =
         .thenBy { it.location.file }
         .thenBy { it.location.line }
 
-private fun createRegistry(config: AnalysisConfig): CollectionSemanticsRegistry {
-    val base = CollectionSemanticsRegistry.loadDefaults()
-    return CollectionSemanticsRegistry.withOverrides(base, config.heavyweightTypes)
+private fun createRegistry(config: AnalysisConfig): LanguageSemanticsRegistry {
+    val base = LanguageSemanticsRegistry.loadDefaults()
+    return LanguageSemanticsRegistry.withOverrides(base, config.heavyweightTypes)
 }

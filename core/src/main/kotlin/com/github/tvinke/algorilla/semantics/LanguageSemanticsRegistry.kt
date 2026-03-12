@@ -9,14 +9,14 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 private val logger = KotlinLogging.logger {}
 
 /**
- * Data-driven registry that maps method names to their collection semantics per language.
+ * Data-driven registry that maps method names to their semantics per language.
  * Loaded from YAML resource files at startup, with optional user overrides from `.algorilla.yml`.
  *
  * This is the single source of truth for method classification. All hardcoded method name sets
  * in the codebase should derive from this registry instead of maintaining their own lists.
  */
 @Suppress("TooManyFunctions", "LongParameterList")
-public class CollectionSemanticsRegistry private constructor(
+public class LanguageSemanticsRegistry private constructor(
     private val methodsByLanguage: Map<Language, Map<String, MethodSemantics>>,
     private val heavyweightByLanguage: Map<Language, Set<String>>,
     private val o1ByLanguage: Map<Language, Set<String>>,
@@ -260,6 +260,51 @@ public class CollectionSemanticsRegistry private constructor(
             .flatten()
             .distinct()
 
+    /**
+     * Looks up a method's [LookupKind] for a specific language.
+     * Returns null if the method has no lookup classification in that language.
+     */
+    public fun lookupKindFor(
+        methodName: String,
+        language: Language,
+    ): LookupKind? {
+        val resolved = resolveLanguage(language)
+        return methodsByLanguage[resolved]
+            ?.get(methodName)
+            ?.takeIf { it.category == SemanticCategory.LOOKUP }
+            ?.lookupKind
+    }
+
+    /**
+     * Looks up a method's [SortKind] for a specific language.
+     * Returns null if the method has no sort classification in that language.
+     */
+    public fun sortKindFor(
+        methodName: String,
+        language: Language,
+    ): SortKind? {
+        val resolved = resolveLanguage(language)
+        return methodsByLanguage[resolved]
+            ?.get(methodName)
+            ?.takeIf { it.category == SemanticCategory.SORT }
+            ?.sortKind
+    }
+
+    /**
+     * Looks up a method's [AccessKind] for a specific language.
+     * Returns null if the method has no access classification in that language.
+     */
+    public fun accessKindFor(
+        methodName: String,
+        language: Language,
+    ): AccessKind? {
+        val resolved = resolveLanguage(language)
+        return methodsByLanguage[resolved]
+            ?.get(methodName)
+            ?.takeIf { it.category == SemanticCategory.ACCESS }
+            ?.accessKind
+    }
+
     private fun resolveLanguage(language: Language): Language =
         when (language) {
             Language.TYPESCRIPT, Language.VUE -> Language.JAVASCRIPT
@@ -276,74 +321,88 @@ public class CollectionSemanticsRegistry private constructor(
             )
 
         /**
+         * Framework-specific YAML overlays that get merged into their parent language.
+         * Each framework YAML uses the same section format and adds entries additively.
+         */
+        private val FRAMEWORK_FILES =
+            mapOf(
+                Language.JAVASCRIPT to
+                    listOf(
+                        "semantics/frameworks/react.yml",
+                        "semantics/frameworks/vue.yml",
+                        "semantics/frameworks/angular.yml",
+                        "semantics/frameworks/node.yml",
+                        "semantics/frameworks/lodash.yml",
+                        "semantics/frameworks/rxjs.yml",
+                    ),
+                Language.JAVA to
+                    listOf(
+                        "semantics/frameworks/spring.yml",
+                        "semantics/frameworks/guava.yml",
+                    ),
+                Language.KOTLIN to
+                    listOf(
+                        "semantics/frameworks/ktor.yml",
+                        "semantics/frameworks/coroutines.yml",
+                    ),
+                Language.GROOVY to
+                    listOf(
+                        "semantics/frameworks/grails.yml",
+                        "semantics/frameworks/spock.yml",
+                    ),
+            )
+
+        /**
          * Loads the default registry from classpath YAML resources.
          */
         @Suppress("LongMethod")
-        public fun loadDefaults(): CollectionSemanticsRegistry {
-            val methods = mutableMapOf<Language, Map<String, MethodSemantics>>()
-            val heavyweight = mutableMapOf<Language, Set<String>>()
-            val o1 = mutableMapOf<Language, Set<String>>()
-            val streamOps = mutableMapOf<Language, Set<String>>()
-            val scopeOps = mutableMapOf<Language, Set<String>>()
-            val trivial = mutableMapOf<Language, Set<String>>()
-            val builder = mutableMapOf<Language, Set<String>>()
-            val getterPrefixes = mutableMapOf<Language, List<String>>()
-            val cheap = mutableMapOf<Language, Set<String>>()
-            val sequentialRead = mutableMapOf<Language, Set<String>>()
-            val reflection = mutableMapOf<Language, Set<String>>()
-            val copyOnModify = mutableMapOf<Language, Set<String>>()
-            val regexTypes = mutableMapOf<Language, Set<String>>()
-            val implicitRegex = mutableMapOf<Language, Set<String>>()
-            val mutation = mutableMapOf<Language, Set<String>>()
-            val removal = mutableMapOf<Language, Set<String>>()
-            val bulkLoadPrefixes = mutableMapOf<Language, List<String>>()
+        public fun loadDefaults(): LanguageSemanticsRegistry {
+            val maps = LanguageMaps()
 
             for ((lang, resource) in LANGUAGE_FILES) {
                 val text = loadResource(resource) ?: continue
-                val parsed = parseYaml(text)
-                methods[lang] = parsed.methods
-                heavyweight[lang] = parsed.heavyweightTypes
-                o1[lang] = parsed.o1Types
-                streamOps[lang] = parsed.streamOps
-                scopeOps[lang] = parsed.scopeOps
-                trivial[lang] = parsed.trivialMethods
-                builder[lang] = parsed.builderMethods
-                getterPrefixes[lang] = parsed.getterPrefixes
-                cheap[lang] = parsed.cheapMethods
-                sequentialRead[lang] = parsed.sequentialReadMethods
-                reflection[lang] = parsed.reflectionMethods
-                copyOnModify[lang] = parsed.copyOnModifyMethods
-                regexTypes[lang] = parsed.regexTypes
-                implicitRegex[lang] = parsed.implicitRegexMethods
-                mutation[lang] = parsed.mutationMethods
-                removal[lang] = parsed.removalMethods
-                bulkLoadPrefixes[lang] = parsed.bulkLoadPrefixes
+                maps.merge(lang, parseYaml(text))
             }
+
+            val frameworkCount = mergeFrameworkOverlays(maps)
 
             logger.info {
-                val total = methods.values.sumOf { it.size }
-                "Collection semantics registry loaded: $total methods across ${methods.size} languages"
+                val total = maps.methods.values.sumOf { it.size }
+                "Language semantics registry loaded: $total methods across ${maps.methods.size} languages" +
+                    if (frameworkCount > 0) " ($frameworkCount framework overlays)" else ""
             }
 
-            return CollectionSemanticsRegistry(
-                methods,
-                heavyweight,
-                o1,
-                streamOps,
-                scopeOps,
-                trivial,
-                builder,
-                getterPrefixes,
-                cheap,
-                sequentialRead,
-                reflection,
-                copyOnModify,
-                regexTypes,
-                implicitRegex,
-                mutation,
-                removal,
-                bulkLoadPrefixes,
+            return LanguageSemanticsRegistry(
+                maps.methods,
+                maps.heavyweight,
+                maps.o1,
+                maps.streamOps,
+                maps.scopeOps,
+                maps.trivial,
+                maps.builder,
+                maps.getterPrefixes,
+                maps.cheap,
+                maps.sequentialRead,
+                maps.reflection,
+                maps.copyOnModify,
+                maps.regexTypes,
+                maps.implicitRegex,
+                maps.mutation,
+                maps.removal,
+                maps.bulkLoadPrefixes,
             )
+        }
+
+        private fun mergeFrameworkOverlays(maps: LanguageMaps): Int {
+            var count = 0
+            for ((lang, resources) in FRAMEWORK_FILES) {
+                for (resource in resources) {
+                    val text = loadResource(resource) ?: continue
+                    maps.merge(lang, parseYaml(text))
+                    count++
+                }
+            }
+            return count
         }
 
         /**
@@ -351,9 +410,9 @@ public class CollectionSemanticsRegistry private constructor(
          */
         @Suppress("LongMethod")
         public fun withOverrides(
-            base: CollectionSemanticsRegistry,
+            base: LanguageSemanticsRegistry,
             userHeavyweightTypes: Set<String>,
-        ): CollectionSemanticsRegistry {
+        ): LanguageSemanticsRegistry {
             if (userHeavyweightTypes.isEmpty()) return base
             val merged = base.heavyweightByLanguage.toMutableMap()
             for (lang in merged.keys) {
@@ -365,7 +424,7 @@ public class CollectionSemanticsRegistry private constructor(
                     merged[lang] = userHeavyweightTypes
                 }
             }
-            return CollectionSemanticsRegistry(
+            return LanguageSemanticsRegistry(
                 methodsByLanguage = base.methodsByLanguage,
                 heavyweightByLanguage = merged,
                 o1ByLanguage = base.o1ByLanguage,
@@ -387,13 +446,58 @@ public class CollectionSemanticsRegistry private constructor(
         }
 
         private fun loadResource(path: String): String? {
-            val stream = CollectionSemanticsRegistry::class.java.classLoader.getResourceAsStream(path)
+            val stream = LanguageSemanticsRegistry::class.java.classLoader.getResourceAsStream(path)
             if (stream == null) {
                 logger.warn { "Semantics resource not found: $path" }
                 return null
             }
             return stream.bufferedReader().readText()
         }
+    }
+}
+
+@Suppress("LongParameterList")
+internal class LanguageMaps(
+    val methods: MutableMap<Language, Map<String, MethodSemantics>> = mutableMapOf(),
+    val heavyweight: MutableMap<Language, Set<String>> = mutableMapOf(),
+    val o1: MutableMap<Language, Set<String>> = mutableMapOf(),
+    val streamOps: MutableMap<Language, Set<String>> = mutableMapOf(),
+    val scopeOps: MutableMap<Language, Set<String>> = mutableMapOf(),
+    val trivial: MutableMap<Language, Set<String>> = mutableMapOf(),
+    val builder: MutableMap<Language, Set<String>> = mutableMapOf(),
+    val getterPrefixes: MutableMap<Language, List<String>> = mutableMapOf(),
+    val cheap: MutableMap<Language, Set<String>> = mutableMapOf(),
+    val sequentialRead: MutableMap<Language, Set<String>> = mutableMapOf(),
+    val reflection: MutableMap<Language, Set<String>> = mutableMapOf(),
+    val copyOnModify: MutableMap<Language, Set<String>> = mutableMapOf(),
+    val regexTypes: MutableMap<Language, Set<String>> = mutableMapOf(),
+    val implicitRegex: MutableMap<Language, Set<String>> = mutableMapOf(),
+    val mutation: MutableMap<Language, Set<String>> = mutableMapOf(),
+    val removal: MutableMap<Language, Set<String>> = mutableMapOf(),
+    val bulkLoadPrefixes: MutableMap<Language, List<String>> = mutableMapOf(),
+) {
+    @Suppress("CyclomaticComplexMethod")
+    fun merge(
+        lang: Language,
+        parsed: ParsedYaml,
+    ) {
+        methods[lang] = (methods[lang] ?: emptyMap()) + parsed.methods
+        heavyweight[lang] = (heavyweight[lang] ?: emptySet()) + parsed.heavyweightTypes
+        o1[lang] = (o1[lang] ?: emptySet()) + parsed.o1Types
+        streamOps[lang] = (streamOps[lang] ?: emptySet()) + parsed.streamOps
+        scopeOps[lang] = (scopeOps[lang] ?: emptySet()) + parsed.scopeOps
+        trivial[lang] = (trivial[lang] ?: emptySet()) + parsed.trivialMethods
+        builder[lang] = (builder[lang] ?: emptySet()) + parsed.builderMethods
+        getterPrefixes[lang] = ((getterPrefixes[lang] ?: emptyList()) + parsed.getterPrefixes).distinct()
+        cheap[lang] = (cheap[lang] ?: emptySet()) + parsed.cheapMethods
+        sequentialRead[lang] = (sequentialRead[lang] ?: emptySet()) + parsed.sequentialReadMethods
+        reflection[lang] = (reflection[lang] ?: emptySet()) + parsed.reflectionMethods
+        copyOnModify[lang] = (copyOnModify[lang] ?: emptySet()) + parsed.copyOnModifyMethods
+        regexTypes[lang] = (regexTypes[lang] ?: emptySet()) + parsed.regexTypes
+        implicitRegex[lang] = (implicitRegex[lang] ?: emptySet()) + parsed.implicitRegexMethods
+        mutation[lang] = (mutation[lang] ?: emptySet()) + parsed.mutationMethods
+        removal[lang] = (removal[lang] ?: emptySet()) + parsed.removalMethods
+        bulkLoadPrefixes[lang] = ((bulkLoadPrefixes[lang] ?: emptyList()) + parsed.bulkLoadPrefixes).distinct()
     }
 }
 

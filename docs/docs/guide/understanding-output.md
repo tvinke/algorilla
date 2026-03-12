@@ -149,3 +149,10 @@ Machine-readable JSON output for custom tooling:
 ```bash
 algorilla --format json --output results.json .
 ```
+
+The JSON output includes metadata for versioning and tooling:
+
+- **`schemaVersion`** — format version number (currently `1`). Bumped when the structure changes.
+- **`algorillaVersion`** — the version of algorilla that produced the output (e.g. `"0.2.0"`).
+
+If you consume JSON output programmatically, **ignore unknown fields** — new fields may be added in any release without bumping `schemaVersion`. See [Stability & Compatibility](../stability.md) for the full contract.

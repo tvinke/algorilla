@@ -11,7 +11,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
-import com.github.tvinke.algorilla.semantics.CollectionSemanticsRegistry
+import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 
 /**
  * Detects Java/Kotlin reflection calls inside loops. Reflection methods like
@@ -90,7 +90,7 @@ public class RepeatedReflectionInLoopRule : Rule {
 // Only the expensive reflection methods that allocate new arrays or do class scanning.
 // Cheap accessors (getModifiers, getReturnType, getName) are excluded.
 private val REFLECTION_METHODS: Set<String> by lazy {
-    CollectionSemanticsRegistry.loadDefaults().allReflectionMethods()
+    LanguageSemanticsRegistry.loadDefaults().allReflectionMethods()
 }
 
 private fun isReflectionCall(call: FunctionCall): Boolean = call.name in REFLECTION_METHODS

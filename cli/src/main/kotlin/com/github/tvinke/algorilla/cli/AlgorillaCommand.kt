@@ -147,10 +147,10 @@ internal class AlgorillaCommand :
 
     @Option(
         names = ["--fail-on"],
-        description = ["Minimum severity that triggers a non-zero exit code: info, warning, error (default: info)"],
-        defaultValue = "info",
+        description = ["Minimum severity that triggers a non-zero exit code: info, warning, error (default: warning)"],
+        defaultValue = "warning",
     )
-    private var failOn: String = "info"
+    private var failOn: String = "warning"
 
     @Option(
         names = ["--accept"],
@@ -328,7 +328,8 @@ private fun exitCodeFor(
     }
 
 private const val SEVERITY_COL_WIDTH = 9
-private const val RULE_TABLE_WIDTH = 85
+private const val STABILITY_COL_WIDTH = 8
+private const val RULE_TABLE_WIDTH = 95
 
 private fun printRuleList(
     rules: List<Rule>,
@@ -338,29 +339,37 @@ private fun printRuleList(
     out.appendLine()
     out.appendLine(
         Ansi.boldWhite(
-            "  %-30s  %-9s  %-20s  %s".format("RULE ID", "SEVERITY", "CATEGORY", "LANGUAGES"),
+            "  %-30s  %-9s  %-20s  %-8s  %s".format("RULE ID", "SEVERITY", "CATEGORY", "STABILITY", "LANGUAGES"),
             color,
         ),
     )
     out.appendLine("  ${"─".repeat(RULE_TABLE_WIDTH)}")
     for (rule in rules.sortedWith(compareBy({ it.category.ordinal }, { it.id }))) {
-        val severityLabel =
-            rule.severity.name
-                .lowercase()
-                .padEnd(SEVERITY_COL_WIDTH)
-        val severityStr =
-            when (rule.severity) {
-                Severity.ERROR -> Ansi.red(severityLabel, color)
-                Severity.WARNING -> Ansi.yellow(severityLabel, color)
-                Severity.INFO -> Ansi.cyan(severityLabel, color)
-            }
-        val langs = rule.languages.joinToString(", ") { it.displayName.lowercase() }
-        out.appendLine("  %-30s  %s  %-20s  %s".format(rule.id, severityStr, rule.category.displayName, langs))
+        out.appendLine(formatRuleRow(rule, color))
     }
     out.appendLine()
     out.appendLine(Ansi.dim("  ${rules.size} rules available", color))
     out.appendLine()
     out.flush()
+}
+
+private fun formatRuleRow(
+    rule: Rule,
+    color: Boolean,
+): String {
+    val severityLabel =
+        rule.severity.name
+            .lowercase()
+            .padEnd(SEVERITY_COL_WIDTH)
+    val severityStr =
+        when (rule.severity) {
+            Severity.ERROR -> Ansi.red(severityLabel, color)
+            Severity.WARNING -> Ansi.yellow(severityLabel, color)
+            Severity.INFO -> Ansi.cyan(severityLabel, color)
+        }
+    val langs = rule.languages.joinToString(", ") { it.displayName.lowercase() }
+    val stabilityStr = Ansi.dim("stable".padEnd(STABILITY_COL_WIDTH), color)
+    return "  %-30s  %s  %-20s  %s  %s".format(rule.id, severityStr, rule.category.displayName, stabilityStr, langs)
 }
 
 private fun resolveColor(

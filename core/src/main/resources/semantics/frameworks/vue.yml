@@ -1,0 +1,79 @@
+# Vue 3 — framework overlay for JavaScript
+# Composition API, reactivity, and lifecycle hooks
+
+methods: {}
+
+cheap-methods:
+  # Reactivity — each call creates a distinct reactive reference
+  - ref
+  - reactive
+  - computed
+  - watch
+  - watchEffect
+  - watchPostEffect
+  - watchSyncEffect
+  - toRef
+  - toRefs
+  - toValue
+  - isRef
+  - unref
+  - shallowRef
+  - triggerRef
+  - customRef
+  - readonly
+  - shallowReadonly
+  - shallowReactive
+  - isProxy
+  - isReactive
+  - isReadonly
+  - toRaw
+  - markRaw
+  # Lifecycle hooks — registration, not invocation
+  - onMounted
+  - onUpdated
+  - onUnmounted
+  - onBeforeMount
+  - onBeforeUpdate
+  - onBeforeUnmount
+  - onActivated
+  - onDeactivated
+  - onErrorCaptured
+  - onRenderTracked
+  - onRenderTriggered
+  - onServerPrefetch
+  # Component definition — factory
+  - defineComponent
+  - defineAsyncComponent
+  - defineProps
+  - defineEmits
+  - defineExpose
+  - defineOptions
+  - defineSlots
+  - defineModel
+  - withDefaults
+  # Provide/Inject
+  - provide
+  - inject
+  # Vue Router
+  - useRouter
+  - useRoute
+  - createRouter
+  - createWebHistory
+  - createWebHashHistory
+  - createMemoryHistory
+  # Pinia
+  - defineStore
+  - storeToRefs
+  - mapState
+  - mapGetters
+  - mapActions
+  # Vuetify
+  - useDisplay
+  - useTheme
+  - useLayout
+
+trivial-methods:
+  - nextTick
+  - h
+  - resolveComponent
+  - resolveDirective

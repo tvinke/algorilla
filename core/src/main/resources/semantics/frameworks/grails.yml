@@ -1,0 +1,115 @@
+# Grails / GORM — framework overlay for Groovy
+# Domain class methods, controllers, services, and GSP/Taglib
+
+methods: {}
+
+cheap-methods:
+  # GORM dynamic finders
+  - findById
+  - findByIdAndVersion
+  - findAll
+  - findAllBy
+  - findWhere
+  - findAllWhere
+  - findOrCreateBy
+  - findOrSaveBy
+  - findOrCreateWhere
+  - findOrSaveWhere
+  - countBy
+  - listOrderBy
+  - list
+  - count
+  - exists
+  - first
+  - last
+  # GORM CRUD
+  - save
+  - delete
+  - merge
+  - refresh
+  - lock
+  - attach
+  - discard
+  - addTo
+  - removeFrom
+  # GORM criteria / where queries
+  - createCriteria
+  - where
+  - whereAny
+  - withCriteria
+  - withNewSession
+  - withTransaction
+  - withNewTransaction
+  - executeQuery
+  - executeUpdate
+  - namedQueries
+  # Criteria builder methods
+  - eq
+  - ne
+  - gt
+  - ge
+  - lt
+  - le
+  - between
+  - like
+  - ilike
+  - rlike
+  - inList
+  - isNull
+  - isNotNull
+  - isEmpty
+  - isNotEmpty
+  - and
+  - or
+  - not
+  - order
+  - maxResults
+  - firstResult
+  - projections
+  - property
+  - rowCount
+  - avg
+  - sum
+  - min
+  - max
+  - countDistinct
+  - groupProperty
+  # Controller methods
+  - render
+  - redirect
+  - respond
+  - forward
+  - chain
+  - withFormat
+  - bindData
+  - flash
+  - params
+  - request
+  - response
+  - session
+  # Service patterns
+  - transactional
+  - afterCommit
+  - afterRollback
+
+trivial-methods:
+  # Domain class helpers
+  - getId
+  - getVersion
+  - ident
+  - isDirty
+  - getDirtyPropertyNames
+  - getPersistentValue
+  - isAttached
+  - hasErrors
+  - getErrors
+  - validate
+  - clearErrors
+  # GrailsApplication
+  - getConfig
+  - getMainContext
+  - getClassLoader
+  - getArtefacts
+  - getArtefact
+  - isArtefact
+  - isArtefactOfType

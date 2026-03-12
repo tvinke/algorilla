@@ -71,6 +71,49 @@ stream-ops:
   - zip
   - chunked
   - windowed
+  - mapToObj
+  - flatMapToInt
+  - flatMapToLong
+  - flatMapToDouble
+  - of
+  - generate
+  - iterate
+  - concat
+  - empty
+  - range
+  - rangeClosed
+  - boxed
+  - asLongStream
+  - asDoubleStream
+  - sum
+  - average
+  - max
+  - min
+  - count
+  - toArray
+  - forEachOrdered
+  - unordered
+  - sequential
+  - parallel
+  - onClose
+  - mapMulti
+  - mapMultiToInt
+  - mapMultiToLong
+  - mapMultiToDouble
+  - takeWhile
+  - dropWhile
+  - toUnmodifiableList
+  - toUnmodifiableSet
+  - toUnmodifiableMap
+  - filtering
+  - flatMapping
+  - teeing
+  - collectingAndThen
+  - reducing
+  - averaging
+  - summingInt
+  - summingLong
+  - summingDouble
 
 # Kotlin-style scope functions that should not be cross-method resolved
 scope-ops:
@@ -160,6 +203,30 @@ trivial-methods:
   - unmodifiableList
   - unmodifiableSet
   - unmodifiableMap
+  - toCharArray
+  - getBytes
+  - intern
+  - compareTo
+  - compareToIgnoreCase
+  - toInstant
+  - toEpochMilli
+  - toEpochSecond
+  - now
+  - parse
+  - isAfter
+  - isBefore
+  - isEqual
+  - getYear
+  - getMonthValue
+  - getDayOfMonth
+  - getHour
+  - getMinute
+  - getSecond
+  - getNano
+  - atZone
+  - toLocalDate
+  - toLocalTime
+  - toLocalDateTime
 
 # Builder-pattern methods called for chaining, not return value
 builder-methods:
@@ -183,6 +250,28 @@ heavyweight-types:
   - Collator
   - RuleBasedCollator
   - MessageDigest
+  - SAXParserFactory
+  - SAXParser
+  - Cipher
+  - KeyGenerator
+  - KeyPairGenerator
+  - SecretKeyFactory
+  - KeyFactory
+  - SSLContext
+  - SSLSocketFactory
+  - HttpClient
+  - HttpURLConnection
+  - ScheduledExecutorService
+  - ThreadPoolExecutor
+  - ForkJoinPool
+  - CompletableFuture
+  - DateTimeFormatter
+  - XPathFactory
+  - SchemaFactory
+  - Validator
+  - JAXBContext
+  - MBeanServer
+  - ScriptEngine
 
 o1-types:
   - Set
@@ -194,6 +283,16 @@ o1-types:
   - TreeMap
   - LinkedHashMap
   - ConcurrentHashMap
+  - EnumSet
+  - EnumMap
+  - ConcurrentSkipListSet
+  - ConcurrentSkipListMap
+  - IdentityHashMap
+  - WeakHashMap
+  - Hashtable
+  - ConcurrentLinkedQueue
+  - ConcurrentLinkedDeque
+  - ArrayDeque
 
 # Method name prefixes for getter-pattern detection (shared across rules)
 getter-prefixes:
@@ -353,6 +452,58 @@ cheap-methods:
   - computeIfPresent
   - getOrDefault
   - merge
+  # Deque / NavigableMap / NavigableSet accessors
+  - addFirst
+  - addLast
+  - getFirst
+  - getLast
+  - peekFirst
+  - peekLast
+  - pollFirst
+  - pollLast
+  - offerFirst
+  - offerLast
+  - removeFirst
+  - removeLast
+  - descendingIterator
+  - descendingKeySet
+  - headMap
+  - tailMap
+  - subMap
+  - headSet
+  - tailSet
+  - subSet
+  - floorKey
+  - ceilingKey
+  - lowerKey
+  - higherKey
+  - floorEntry
+  - ceilingEntry
+  - lowerEntry
+  - higherEntry
+  - firstKey
+  - lastKey
+  - firstEntry
+  - lastEntry
+  # String methods
+  - format
+  - formatted
+  - toCharArray
+  - getBytes
+  - intern
+  - compareTo
+  - compareToIgnoreCase
+  - regionMatches
+  - contentEquals
+  - subSequence
+  - codePoints
+  - chars
+  - repeat
+  - stripLeading
+  - stripTrailing
+  - isBlank
+  - indent
+  - translateEscapes
 
 # Sequential read / stateful iteration methods whose return value changes
 # on each invocation — not redundant even when called with identical arguments
@@ -464,10 +615,33 @@ mutation-methods:
   - push
   - write
   - append
+  - addFirst
+  - addLast
+  - offerFirst
+  - offerLast
+  - removeFirst
+  - removeLast
+  - pollFirst
+  - pollLast
+  - clear
+  - sort
+  - replaceAll
+  - merge
+  - compute
+  - computeIfAbsent
+  - computeIfPresent
 
 removal-methods:
   - remove
   - splice
+  - removeFirst
+  - removeLast
+  - pollFirst
+  - pollLast
+  - clear
+  - removeAll
+  - retainAll
+  - removeIf
 
 bulk-load-prefixes:
   - findAll
@@ -475,3 +649,7 @@ bulk-load-prefixes:
   - listAll
   - loadAll
   - fetchAll
+  - queryAll
+  - selectAll
+  - readAll
+  - searchAll

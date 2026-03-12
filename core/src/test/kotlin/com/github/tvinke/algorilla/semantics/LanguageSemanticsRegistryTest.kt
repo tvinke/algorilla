@@ -12,8 +12,8 @@ import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 
 @Suppress("LargeClass")
-internal class CollectionSemanticsRegistryTest {
-    private val registry = CollectionSemanticsRegistry.loadDefaults()
+internal class LanguageSemanticsRegistryTest {
+    private val registry = LanguageSemanticsRegistry.loadDefaults()
 
     @Test
     fun `should classify Java contains as lookup`() {
@@ -114,7 +114,7 @@ internal class CollectionSemanticsRegistryTest {
 
     @Test
     fun `should merge user heavyweight types`() {
-        val merged = CollectionSemanticsRegistry.withOverrides(registry, setOf("CustomMapper"))
+        val merged = LanguageSemanticsRegistry.withOverrides(registry, setOf("CustomMapper"))
         merged.isHeavyweight(Language.JAVA, "CustomMapper").shouldBeTrue()
         // original types still present
         merged.isHeavyweight(Language.JAVA, "ObjectMapper").shouldBeTrue()

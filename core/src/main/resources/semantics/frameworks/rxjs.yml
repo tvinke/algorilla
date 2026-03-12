@@ -1,0 +1,115 @@
+# RxJS — framework overlay for JavaScript/TypeScript
+# Observable operators, subjects, and subscription methods
+
+methods: {}
+
+# RxJS pipe operators and subscription methods — each creates a distinct
+# subscription or operator chain. Not redundant when called multiple times.
+cheap-methods:
+  # Subscription management
+  - subscribe
+  - unsubscribe
+  - pipe
+  # Creation operators
+  - of
+  - from
+  - interval
+  - timer
+  - fromEvent
+  - defer
+  - empty
+  - never
+  - throwError
+  - generate
+  - range
+  - iif
+  - ajax
+  # Join creation
+  - combineLatest
+  - concat
+  - forkJoin
+  - merge
+  - partition
+  - race
+  - zip
+  # Subject factory
+  - asObservable
+  - next
+  - complete
+  - error
+
+stream-ops:
+  # Transformation
+  - map
+  - switchMap
+  - mergeMap
+  - concatMap
+  - exhaustMap
+  - expand
+  - groupBy
+  - pairwise
+  - scan
+  - pluck
+  - buffer
+  - bufferCount
+  - bufferTime
+  - bufferWhen
+  - window
+  - windowCount
+  - windowTime
+  # Filtering
+  - filter
+  - debounceTime
+  - throttleTime
+  - distinctUntilChanged
+  - distinctUntilKeyChanged
+  - take
+  - takeLast
+  - takeUntil
+  - takeWhile
+  - skip
+  - skipLast
+  - skipUntil
+  - skipWhile
+  - first
+  - last
+  - single
+  - elementAt
+  - ignoreElements
+  - sample
+  - sampleTime
+  - audit
+  - auditTime
+  - distinct
+  # Utility
+  - tap
+  - delay
+  - delayWhen
+  - timeout
+  - timeoutWith
+  - toArray
+  - finalize
+  - observeOn
+  - subscribeOn
+  - timeInterval
+  - timestamp
+  - retry
+  - retryWhen
+  # Multicast
+  - share
+  - shareReplay
+  - publish
+  - publishBehavior
+  - publishLast
+  - publishReplay
+  - refCount
+  # Error handling
+  - catchError
+  # Join
+  - startWith
+  - withLatestFrom
+  - combineLatestAll
+  - concatAll
+  - exhaustAll
+  - mergeAll
+  - switchAll

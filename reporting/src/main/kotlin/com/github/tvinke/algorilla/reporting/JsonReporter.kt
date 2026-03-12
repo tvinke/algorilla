@@ -56,7 +56,11 @@ public class JsonReporter : Reporter {
     }
 
     private companion object {
-        val jsonFormat = Json { prettyPrint = true }
+        val jsonFormat =
+            Json {
+                prettyPrint = true
+                encodeDefaults = true
+            }
     }
 }
 
@@ -77,9 +81,21 @@ private fun com.github.tvinke.algorilla.rules.Evidence.toJsonEvidence(): JsonEvi
  */
 @Serializable
 internal data class JsonReport(
+    val schemaVersion: Int = SCHEMA_VERSION,
+    val algorillaVersion: String = toolVersion(),
     val summary: JsonSummary,
     val findings: List<JsonFinding>,
 )
+
+private const val SCHEMA_VERSION = 1
+
+private fun toolVersion(): String {
+    val props = java.util.Properties()
+    JsonReporter::class.java.classLoader
+        .getResourceAsStream("algorilla-version.properties")
+        ?.use { props.load(it) }
+    return props.getProperty("version", "unknown")
+}
 
 /**
  * Aggregate counts for a scan run.

@@ -8,10 +8,10 @@ import com.github.tvinke.algorilla.model.Severity
  * Each rule targets a specific algorithmic complexity anti-pattern.
  */
 public interface Rule {
-    /** Unique rule identifier, e.g. "CL001". */
+    /** Unique rule identifier in kebab-case, e.g. "nested-lookup", "sort-for-last". */
     public val id: String
 
-    /** Human-readable rule name, e.g. "nested-lookup". */
+    /** Human-readable rule name, e.g. "Nested Lookup". */
     public val name: String
 
     /** Default severity for findings produced by this rule. */

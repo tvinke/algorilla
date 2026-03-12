@@ -1,0 +1,139 @@
+# Node.js / Browser DOM — framework overlay for JavaScript
+# Event registration, DOM factories, and Node.js core APIs
+
+methods: {}
+
+# Event/callback registration and DOM factory methods — intentionally
+# called multiple times to register different handlers or create distinct
+# instances. These should not be flagged as redundant expensive calls.
+cheap-methods:
+  # DOM event registration
+  - addEventListener
+  - removeEventListener
+  # Node.js EventEmitter
+  - on
+  - once
+  - off
+  - addListener
+  - removeListener
+  - removeAllListeners
+  - prependListener
+  - prependOnceListener
+  - emit
+  - setMaxListeners
+  # DOM factory methods — must produce distinct instances
+  - createElement
+  - createTextNode
+  - createDocumentFragment
+  - createEvent
+  - createComment
+  - createAttribute
+  - cloneNode
+  - importNode
+  # DOM query (O(1) for id, cheap for selectors)
+  - getElementById
+  - querySelector
+  - querySelectorAll
+  - getElementsByClassName
+  - getElementsByTagName
+  # DOM manipulation
+  - appendChild
+  - removeChild
+  - insertBefore
+  - replaceChild
+  - setAttribute
+  - removeAttribute
+  - getAttribute
+  - hasAttribute
+  - classList
+  - contains
+  # Timer/scheduler registration
+  - setTimeout
+  - clearTimeout
+  - setInterval
+  - clearInterval
+  - requestAnimationFrame
+  - cancelAnimationFrame
+  - requestIdleCallback
+  - cancelIdleCallback
+  - queueMicrotask
+  # Node.js process
+  - nextTick
+  # Promise creation
+  - resolve
+  - reject
+
+trivial-methods:
+  # console methods
+  - log
+  - warn
+  - error
+  - debug
+  - info
+  - trace
+  - time
+  - timeEnd
+  - timeLog
+  - assert
+  - count
+  - countReset
+  - group
+  - groupEnd
+  - table
+  - dir
+  - dirxml
+  - clear
+  # DOM property reads
+  - getBoundingClientRect
+  - getComputedStyle
+  - closest
+  - matches
+  # URL
+  - encodeURIComponent
+  - decodeURIComponent
+  - encodeURI
+  - decodeURI
+  # Node.js path
+  - join
+  - resolve
+  - basename
+  - dirname
+  - extname
+  - normalize
+  - relative
+  - isAbsolute
+  - parse
+  - format
+  # Node.js Buffer
+  - isBuffer
+  - byteLength
+  - compare
+  - isEncoding
+
+heavyweight-types:
+  - Worker
+  - SharedWorker
+  - WebSocket
+  - XMLHttpRequest
+  - IntersectionObserver
+  - MutationObserver
+  - ResizeObserver
+  - PerformanceObserver
+  - BroadcastChannel
+  - MessageChannel
+
+sequential-read-methods:
+  # Stream reads
+  - read
+  - write
+  - end
+  - pipe
+  - unpipe
+  - destroy
+  - push
+  - cork
+  - uncork
+  # Crypto
+  - update
+  - digest
+  - final

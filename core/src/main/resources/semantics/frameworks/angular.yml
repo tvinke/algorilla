@@ -1,0 +1,34 @@
+# Angular — framework overlay for JavaScript/TypeScript
+# DI, signals, RxJS integration, and lifecycle hooks
+
+methods: {}
+
+cheap-methods:
+  # Signals — each creates a distinct signal
+  - signal
+  - computed
+  - effect
+  - input
+  - output
+  - model
+  - viewChild
+  - contentChild
+  - viewChildren
+  - contentChildren
+  # DI
+  - inject
+  # Change detection
+  - detectChanges
+  - markForCheck
+  # Router
+  - navigate
+  - navigateByUrl
+  # Lifecycle — registration
+  - afterNextRender
+  - afterRender
+  # Template
+  - ViewContainerRef
+
+trivial-methods:
+  - destroyRef
+  - injector

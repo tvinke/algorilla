@@ -5,6 +5,7 @@ import com.github.tvinke.algorilla.model.SourceLocation
 import com.github.tvinke.algorilla.rules.Finding
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -138,6 +139,71 @@ internal class IgnoreListTest {
         ) {
             val file = IgnoreList.defaultFile(tmp)
             file.path shouldBe File(tmp, ".algorilla/ignore-list.json").path
+        }
+    }
+
+    @Nested
+    inner class Compat {
+        @Test
+        fun `ignores unknown fields in ignore list JSON`(
+            @TempDir tmp: File,
+        ) {
+            val ignoreFile = File(tmp, "ignore-list.json")
+            ignoreFile.writeText(
+                """
+                {
+                    "version": 1,
+                    "futureField": "some-value",
+                    "ignored": [
+                        {
+                            "fingerprint": "abc123",
+                            "ruleId": "nested-lookup",
+                            "file": "/src/Main.java",
+                            "message": "Linear lookup inside loop",
+                            "unknownNested": true
+                        }
+                    ]
+                }
+                """.trimIndent(),
+            )
+            val ignoreList = IgnoreList.load(ignoreFile)
+            ignoreList.size shouldBe 1
+        }
+
+        @Test
+        fun `loads ignore list without version field`(
+            @TempDir tmp: File,
+        ) {
+            val ignoreFile = File(tmp, "ignore-list.json")
+            ignoreFile.writeText(
+                """
+                {
+                    "ignored": [
+                        {
+                            "fingerprint": "abc123",
+                            "ruleId": "nested-lookup",
+                            "file": "/src/Main.java",
+                            "message": "Linear lookup inside loop"
+                        }
+                    ]
+                }
+                """.trimIndent(),
+            )
+            val ignoreList = IgnoreList.load(ignoreFile)
+            ignoreList.size shouldBe 1
+        }
+
+        @Test
+        fun `saved ignore list includes version field`(
+            @TempDir tmp: File,
+        ) {
+            val ignoreFile = File(tmp, "ignore-list.json")
+            val f = finding()
+            val hash = Baseline.fingerprintOf(f).contentHash
+            IgnoreList.accept(ignoreFile, listOf(f), setOf(hash))
+
+            val content = ignoreFile.readText()
+            content shouldContain "\"version\""
         }
     }
 }

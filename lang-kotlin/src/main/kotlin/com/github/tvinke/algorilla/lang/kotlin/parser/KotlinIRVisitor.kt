@@ -13,6 +13,7 @@ import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.GenericNode
 import com.github.tvinke.algorilla.model.IRNode
+import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LookupCall
 import com.github.tvinke.algorilla.model.LoopKind
 import com.github.tvinke.algorilla.model.LoopNode
@@ -201,7 +202,7 @@ internal class KotlinIRVisitor(
                 )
             return targetChildren + listOf(call)
         }
-        val node = classifyChainedCall(methodName, targetText, targetVar, argNodes, loc)
+        val node = classifyChainedCall(methodName, targetText, targetVar, argNodes, loc, Language.KOTLIN)
         if (node is LookupCall && targetChildren.any { it is LookupCall && (it as LookupCall).targetVariable == targetVar }) {
             return targetChildren + argNodes
         }
@@ -217,7 +218,7 @@ internal class KotlinIRVisitor(
         if (kotlinLoop != null) {
             return listOf(LoopNode(kotlinLoop, null, loc, argNodes))
         }
-        return classifyStandaloneCall(name, loc, argNodes)
+        return classifyStandaloneCall(name, loc, argNodes, Language.KOTLIN)
     }
 
     private fun extractParameters(ctx: JavaParser.FormalParametersContext?): List<Parameter> {

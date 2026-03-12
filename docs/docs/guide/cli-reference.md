@@ -28,7 +28,7 @@ If no build system is detected, the given path is used as-is.
 | `-o`, `--output` | Write report to file instead of stdout | stdout |
 | `-v`, `--verbose` | Show detailed analysis progress (DEBUG logging) | off |
 | `--severity` | Minimum severity to report: `info`, `warning`, `error` | `warning` |
-| `--fail-on` | Minimum severity that triggers exit code 1: `info`, `warning`, `error` | `info` |
+| `--fail-on` | Minimum severity that triggers exit code 1: `info`, `warning`, `error` | `warning` |
 | `--rule` | Only run specific rule(s), comma-separated or repeated | all rules |
 | `--list-rules` | List all available rules and exit | |
 | `--exclude` | Glob patterns to exclude from scanning | none |

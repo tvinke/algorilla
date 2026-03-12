@@ -48,6 +48,12 @@ Algorilla is a static analysis tool that finds hidden O(n²) and O(n·m) perform
 
     [:octicons-arrow-right-24: Changelog](changelog.md)
 
+-   :material-shield-check:{ .lg .middle } **Stability**
+
+    What's stable, what's experimental, and how we evolve without breaking you.
+
+    [:octicons-arrow-right-24: Stability & Compatibility](stability.md)
+
 </div>
 
 ## Quick example

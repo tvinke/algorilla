@@ -11,7 +11,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
-import com.github.tvinke.algorilla.semantics.CollectionSemanticsRegistry
+import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 
 /**
  * Detects element-by-element removal from List/Array inside loops. Each remove() on an
@@ -89,7 +89,7 @@ public class QuadraticRemovalRule : Rule {
 
 // removeFirst/removeLast are excluded — they strongly indicate Queue/Deque usage (O(1))
 private val REMOVAL_METHODS: Set<String> by lazy {
-    CollectionSemanticsRegistry.loadDefaults().allRemovalMethods()
+    LanguageSemanticsRegistry.loadDefaults().allRemovalMethods()
 }
 
 /** Skip calls on Map targets (map.remove(key) is O(1)) and iterator.remove(). */

@@ -1,6 +1,7 @@
 package com.github.tvinke.algorilla.cli
 
 import com.charleskorn.kaml.Yaml
+import com.charleskorn.kaml.YamlConfiguration
 import com.github.tvinke.algorilla.config.AnalysisConfig
 import com.github.tvinke.algorilla.config.RuleOverride
 import com.github.tvinke.algorilla.model.Severity
@@ -30,14 +31,18 @@ public data class AlgorillaConfig(
     val maxCallDepth: Int? = null,
 )
 
+private val lenientYaml = Yaml(configuration = YamlConfiguration(strictMode = false))
+
 /**
  * Loads an [AlgorillaConfig] from a YAML file and converts it to [AnalysisConfig].
  * When no explicit config file is given, looks for `.algorilla.yml` in the current directory.
+ * Unknown YAML keys are silently ignored so that newer config files work with older versions.
  */
 public fun loadConfig(configFile: File?): AnalysisConfig {
     val file = resolveConfigFile(configFile) ?: return AnalysisConfig()
     val yamlContent = file.readText()
-    val config = Yaml.default.decodeFromString(AlgorillaConfig.serializer(), yamlContent)
+    val config = lenientYaml.decodeFromString(AlgorillaConfig.serializer(), yamlContent)
+    warnExperimentalKeys(config)
     return mapToAnalysisConfig(config)
 }
 
@@ -69,6 +74,15 @@ private fun mapToAnalysisConfig(config: AlgorillaConfig): AnalysisConfig {
         minSeverity = config.minSeverity?.let { parseSeverity(it) } ?: Severity.WARNING,
         maxCallDepth = config.maxCallDepth ?: AnalysisConfig.DEFAULT_MAX_CALL_DEPTH,
     )
+}
+
+private fun warnExperimentalKeys(config: AlgorillaConfig) {
+    if (config.typeHints.isNotEmpty()) {
+        System.err.println("[algorilla] 'type-hints' is experimental and may change in future releases")
+    }
+    if (config.heavyweightTypes.isNotEmpty()) {
+        System.err.println("[algorilla] 'heavyweight-types' is experimental and may change in future releases")
+    }
 }
 
 private fun parseSeverity(value: String): Severity =
