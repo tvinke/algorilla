@@ -34,6 +34,27 @@ internal class RepeatedLinearScanRuleJavaTest {
     }
 
     @Nested
+    inner class FullScanCases {
+        @Test
+        fun `should detect repeated toArray on same collection`() {
+            val findings = analyzeFixture("repeated-linear-scan/positive/repeated-groupby-tomap.java")
+
+            findings shouldHaveSize 1
+            findings.first().ruleId shouldBe "repeated-linear-scan"
+            findings.first().message shouldContain "items"
+            findings.first().message shouldContain "2 times"
+            findings.first().message shouldContain "toArray"
+        }
+
+        @Test
+        fun `should not flag single groupBy`() {
+            val findings = analyzeFixture("repeated-linear-scan/negative/single-groupby.java")
+
+            findings.shouldBeEmpty()
+        }
+    }
+
+    @Nested
     inner class NegativeCases {
         @Test
         fun `should not flag single lookup`() {

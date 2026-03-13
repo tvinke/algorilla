@@ -51,6 +51,16 @@ public enum class LookupKind(
 
     /** Returns true if this lookup kind also exists as a String method (indexOf, contains, includes). */
     public fun isStringApplicable(): Boolean = this == INDEX_OF || this == CONTAINS || this == INCLUDES
+
+    /** Returns the suggested data structure for replacing this linear lookup with an O(1) alternative. */
+    public fun suggestedStructure(): String =
+        when (this) {
+            CONTAINS, INCLUDES, SOME, ANY, ANY_MATCH, ALL_MATCH, NONE_MATCH -> "HashSet"
+            FIND -> "Map (via associateBy/groupBy)"
+            FILTER -> "Map (via groupBy)"
+            INDEX_OF -> "Map (element → index)"
+            COUNT -> "Map (via groupingBy/eachCount)"
+        }
 }
 
 /**

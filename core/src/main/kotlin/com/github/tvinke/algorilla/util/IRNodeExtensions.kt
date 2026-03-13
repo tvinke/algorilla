@@ -144,6 +144,13 @@ public fun FunctionDecl.hasO1Type(variableName: String?): Boolean {
 public fun LookupCall.isCollectionLookup(fn: FunctionDecl?): Boolean = !isO1 && !isScalar && (fn == null || !fn.hasO1Type(targetVariable))
 
 /**
+ * Returns true if the function calls itself directly (recursive method).
+ * Recursive methods (tree walkers, visitors, DFS) contain loops that iterate
+ * child nodes — total work is O(tree_size), not O(n²).
+ */
+public fun FunctionDecl.isRecursive(): Boolean = findDescendants<FunctionCall>().any { it.name == name }
+
+/**
  * Recursively transforms an IR tree by applying [fn] to each node bottom-up.
  * Only rebuilds the path where nodes actually changed.
  */

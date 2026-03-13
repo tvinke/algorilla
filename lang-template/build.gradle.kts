@@ -6,7 +6,7 @@ dependencies {
     api(project(":core"))
 
     // TODO: add the tree-sitter binding for your language.
-    // Browse https://github.com/nicovank/java-tree-sitter/tree/main/languages for available grammars.
+    // Browse https://github.com/bonede/tree-sitter-ng for available grammars (25 built-in languages).
     // Example for Python:
     //   implementation(libs.treesitter)
     //   implementation(libs.treesitter.python)

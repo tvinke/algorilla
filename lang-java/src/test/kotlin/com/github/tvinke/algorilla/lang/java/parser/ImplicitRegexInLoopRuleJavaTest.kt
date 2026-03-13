@@ -54,6 +54,13 @@ internal class ImplicitRegexInLoopRuleJavaTest {
             findings shouldHaveSize 1
             findings.first().message shouldContain "split"
         }
+
+        @Test
+        fun `should not flag Map replaceAll in loop`() {
+            val findings = analyzeFixture("implicit-regex-in-loop/negative/map-replace-all.java")
+
+            findings.shouldBeEmpty()
+        }
     }
 
     @Nested

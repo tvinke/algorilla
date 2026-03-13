@@ -7,6 +7,7 @@ import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LookupCall
 import com.github.tvinke.algorilla.model.LookupKind
+import com.github.tvinke.algorilla.model.LoopKind
 import com.github.tvinke.algorilla.model.LoopNode
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.rules.AnalysisContext
@@ -16,7 +17,9 @@ import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.util.CrossMethodResolver
+import com.github.tvinke.algorilla.util.findDescendants
 import com.github.tvinke.algorilla.util.isCollectionLookup
+import com.github.tvinke.algorilla.util.isRecursive
 
 /**
  * Detects linear lookup operations (contains, indexOf, find, filter, etc.) inside loop bodies
@@ -69,7 +72,7 @@ public class NestedLookupRule : Rule {
             }
         }
 
-        checkCrossMethod(node, iterationStack, context, findings)
+        checkCrossMethod(node, fn, iterationStack, context, findings)
 
         for (child in node.children) {
             scanNode(child, fn, iterationStack, context, findings)
@@ -78,11 +81,16 @@ public class NestedLookupRule : Rule {
 
     private fun checkCrossMethod(
         node: IRNode,
+        enclosingFn: FunctionDecl?,
         iterationStack: List<IRNode>,
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
         if (iterationStack.isEmpty() || node !is FunctionCall) return
+
+        // Skip tree-walk patterns: recursive functions called from higher-order iteration
+        if (isTreeWalkCall(node, enclosingFn, iterationStack, context.symbolTable)) return
+
         val maxDepth = context.config.maxCallDepth.coerceAtMost(2)
         val hiddenLookup =
             CrossMethodResolver.resolveAndFind<LookupCall>(
@@ -93,6 +101,40 @@ public class NestedLookupRule : Rule {
         if (hiddenLookup != null) {
             findings.add(buildCrossMethodFinding(node, hiddenLookup, iterationStack))
         }
+    }
+
+    /**
+     * Detects tree-walk/transform patterns that should not be flagged as nested lookups.
+     * A call is a tree-walk when it's inside a higher-order iteration (.map/.forEach) and:
+     * 1. It's a direct self-recursion (processModule calls processModule), or
+     * 2. The resolved function is itself recursive (processPackage calls processPackage), or
+     * 3. Mutual 2-cycle: resolved function calls back to the enclosing function.
+     */
+    @Suppress("ReturnCount")
+    private fun isTreeWalkCall(
+        call: FunctionCall,
+        enclosingFn: FunctionDecl?,
+        iterationStack: List<IRNode>,
+        symbolTable: com.github.tvinke.algorilla.graph.SymbolTable,
+    ): Boolean {
+        // Only applies inside higher-order iteration (.map{}, .forEach{})
+        val outerLoop = iterationStack.lastOrNull()
+        if (outerLoop !is LoopNode || outerLoop.kind != LoopKind.HIGHER_ORDER) return false
+
+        // Case 1: direct self-recursion (processModule calls processModule)
+        if (enclosingFn != null && call.name == enclosingFn.name) return true
+
+        // Case 2: resolved function is itself recursive (processPackage calls processPackage)
+        val resolved = CrossMethodResolver.resolve(call, symbolTable) ?: return false
+        if (resolved.isRecursive()) return true
+
+        // Case 3: mutual recursion — resolved function calls back to enclosing function
+        if (enclosingFn != null) {
+            val callsBack = resolved.findDescendants<FunctionCall>().any { it.name == enclosingFn.name }
+            if (callsBack) return true
+        }
+
+        return false
     }
 
     private fun buildFinding(
@@ -111,7 +153,7 @@ public class NestedLookupRule : Rule {
             severity = severity,
             location = lookup.location,
             message = "Linear ${lookup.kind.label} on '$targetVar' inside ${iterationLabel(outerIteration)}",
-            suggestion = "Build a HashSet/Map from '$targetVar' before the loop",
+            suggestion = "Build a ${lookup.kind.suggestedStructure()} from '$targetVar' before the loop",
             currentComplexity = cx.current,
             suggestedComplexity = cx.suggested,
             evidence = evidence,
@@ -138,7 +180,7 @@ public class NestedLookupRule : Rule {
             severity = severity,
             location = call.location,
             message = msg,
-            suggestion = "Build a HashSet/Map from '$targetVar' before the loop",
+            suggestion = "Build a ${hiddenLookup.kind.suggestedStructure()} from '$targetVar' before the loop",
             currentComplexity = cx.current,
             suggestedComplexity = cx.suggested,
             evidence = evidence,

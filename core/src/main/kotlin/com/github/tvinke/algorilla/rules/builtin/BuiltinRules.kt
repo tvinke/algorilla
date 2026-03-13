@@ -31,5 +31,6 @@ public object BuiltinRules {
             QuadraticRemovalRule(),
             RepeatedReflectionInLoopRule(),
             ParallelPipelineBottleneckRule(),
+            IOInLoopRule(),
         )
 }

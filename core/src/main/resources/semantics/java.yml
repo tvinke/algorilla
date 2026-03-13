@@ -127,6 +127,24 @@ scope-ops:
   - of
   - ofNullable
 
+# Methods that iterate the full collection — flagged when called repeatedly
+# on the same variable within a single function (repeated-linear-scan rule).
+full-scan-methods:
+  - groupBy
+  - groupingBy
+  - partitioningBy
+  - distinct
+  - toMap
+  - toSet
+  - toList
+  - toArray
+  - toUnmodifiableList
+  - toUnmodifiableSet
+  - toUnmodifiableMap
+  - collect
+  - reduce
+  - count
+
 # Methods too cheap to flag as redundant expensive calls
 trivial-methods:
   - equals
@@ -673,3 +691,38 @@ bulk-load-prefixes:
   - selectAll
   - readAll
   - searchAll
+
+# IO methods — network, database, or file operations that should not appear inside loops.
+# Only names that are unambiguously IO; generic names (get, send, write) are too FP-prone
+# at the language level — put those in framework overlays with context.
+io-methods:
+  # JDBC
+  - executeQuery
+  - executeUpdate
+  - executeBatch
+  - prepareStatement
+  - prepareCall
+  # java.net
+  - openConnection
+  # java.net.http.HttpClient
+  - sendAsync
+
+# Methods that produce O(1) collection types (Set, Map).
+# Used by the type inference engine to mark variables as O(1) when their
+# initializer calls one of these methods. Both factory methods (no receiver)
+# and instance methods whose return type is a Set or Map.
+o1-factory-methods:
+  # Collections utility — wrapping factories
+  - unmodifiableSet
+  - unmodifiableMap
+  - synchronizedSet
+  - synchronizedMap
+  - singletonMap
+  - emptySet
+  - emptyMap
+  # Map instance methods returning Set
+  - keySet
+  - entrySet
+  # Conversion methods
+  - toSet
+  - toMap

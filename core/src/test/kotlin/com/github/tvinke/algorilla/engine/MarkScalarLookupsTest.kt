@@ -1,6 +1,7 @@
 package com.github.tvinke.algorilla.engine
 
 import com.github.tvinke.algorilla.model.FileRoot
+import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LookupCall
@@ -66,6 +67,25 @@ internal class MarkScalarLookupsTest {
         typeName = typeName,
         location = loc,
         children = emptyList(),
+    )
+
+    private fun varWithFactory(
+        name: String,
+        factoryName: String,
+        qualifiedTarget: String? = null,
+    ) = VariableDecl(
+        name = name,
+        typeName = null,
+        location = loc,
+        children =
+            listOf(
+                FunctionCall(
+                    name = factoryName,
+                    qualifiedTarget = qualifiedTarget,
+                    location = loc,
+                    children = emptyList(),
+                ),
+            ),
     )
 
     @Nested
@@ -263,6 +283,213 @@ internal class MarkScalarLookupsTest {
             val lookup = crossFileLookup("ArrayList<String>", "DataHolder")
             lookup.isO1 shouldBe false
             lookup.isScalar shouldBe false
+        }
+    }
+
+    @Nested
+    inner class InheritedFieldTypeResolution {
+        private fun inheritedFieldLookup(
+            fieldName: String,
+            fieldType: String,
+        ): LookupCall {
+            val parentFile =
+                fileRoot(
+                    children =
+                        listOf(
+                            field(fieldName, fieldType),
+                            function(name = "parentMethod", declaringClass = "ParentRegistry"),
+                        ),
+                )
+            val childFile =
+                FileRoot(
+                    filePath = "Child.java",
+                    language = Language.JAVA,
+                    location = loc,
+                    children =
+                        listOf(
+                            function("childMethod", "ChildFactory", children = listOf(lookupCall(fieldName))),
+                        ),
+                )
+            val irTrees = mapOf("Parent.java" to parentFile, "Child.java" to childFile)
+            return markScalarLookups(irTrees, registry)["Child.java"]!!
+                .findDescendants<LookupCall>()
+                .single()
+        }
+
+        @Test
+        fun `should resolve inherited Set field from parent class via fallback`() {
+            val lookup = inheritedFieldLookup("singletonsInCreation", "Set<String>")
+            lookup.isO1 shouldBe true
+        }
+
+        @Test
+        fun `should not promote inherited List field to O1`() {
+            val lookup = inheritedFieldLookup("beanNames", "ArrayList<String>")
+            lookup.isO1 shouldBe false
+            lookup.isScalar shouldBe false
+        }
+    }
+
+    @Nested
+    inner class FactoryMethodInference {
+        @Test
+        fun `should promote setOf initialized variable to O1`() {
+            val fn =
+                function(
+                    children =
+                        listOf(
+                            varWithFactory("allowed", "setOf"),
+                            lookupCall("allowed"),
+                        ),
+                )
+            val root = fileRoot(language = Language.KOTLIN, children = listOf(fn))
+            val lookup =
+                markScalarLookups(mapOf("Test.kt" to root), registry)
+                    .values
+                    .first()
+                    .findDescendants<LookupCall>()
+                    .single()
+            lookup.isO1 shouldBe true
+        }
+
+        @Test
+        fun `should promote Set-dot-of initialized variable to O1`() {
+            val fn =
+                function(
+                    children =
+                        listOf(
+                            varWithFactory("immutable", "of", qualifiedTarget = "Set"),
+                            lookupCall("immutable"),
+                        ),
+                )
+            val root = fileRoot(children = listOf(fn))
+            val lookup =
+                markScalarLookups(mapOf("Test.java" to root), registry)
+                    .values
+                    .first()
+                    .findDescendants<LookupCall>()
+                    .single()
+            lookup.isO1 shouldBe true
+        }
+
+        @Test
+        fun `should promote ConcurrentHashMap-newKeySet to O1`() {
+            val fn =
+                function(
+                    children =
+                        listOf(
+                            varWithFactory("active", "newKeySet", qualifiedTarget = "ConcurrentHashMap"),
+                            lookupCall("active"),
+                        ),
+                )
+            val root = fileRoot(children = listOf(fn))
+            val lookup =
+                markScalarLookups(mapOf("Test.java" to root), registry)
+                    .values
+                    .first()
+                    .findDescendants<LookupCall>()
+                    .single()
+            lookup.isO1 shouldBe true
+        }
+
+        @Test
+        fun `should not promote unknown factory to O1`() {
+            val fn =
+                function(
+                    children =
+                        listOf(
+                            varWithFactory("items", "toList"),
+                            lookupCall("items"),
+                        ),
+                )
+            val root = fileRoot(children = listOf(fn))
+            val lookup =
+                markScalarLookups(mapOf("Test.java" to root), registry)
+                    .values
+                    .first()
+                    .findDescendants<LookupCall>()
+                    .single()
+            lookup.isO1 shouldBe false
+        }
+
+        @Test
+        fun `should promote keySet return to O1`() {
+            val fn =
+                function(
+                    children =
+                        listOf(
+                            varWithFactory("keys", "keySet", qualifiedTarget = "cache"),
+                            lookupCall("keys"),
+                        ),
+                )
+            val root = fileRoot(children = listOf(fn))
+            val lookup =
+                markScalarLookups(mapOf("Test.java" to root), registry)
+                    .values
+                    .first()
+                    .findDescendants<LookupCall>()
+                    .single()
+            lookup.isO1 shouldBe true
+        }
+
+        @Test
+        fun `should promote entrySet return to O1`() {
+            val fn =
+                function(
+                    children =
+                        listOf(
+                            varWithFactory("entries", "entrySet", qualifiedTarget = "map"),
+                            lookupCall("entries"),
+                        ),
+                )
+            val root = fileRoot(children = listOf(fn))
+            val lookup =
+                markScalarLookups(mapOf("Test.java" to root), registry)
+                    .values
+                    .first()
+                    .findDescendants<LookupCall>()
+                    .single()
+            lookup.isO1 shouldBe true
+        }
+
+        @Test
+        fun `should not promote values return to O1`() {
+            val fn =
+                function(
+                    children =
+                        listOf(
+                            varWithFactory("vals", "values", qualifiedTarget = "map"),
+                            lookupCall("vals"),
+                        ),
+                )
+            val root = fileRoot(children = listOf(fn))
+            val lookup =
+                markScalarLookups(mapOf("Test.java" to root), registry)
+                    .values
+                    .first()
+                    .findDescendants<LookupCall>()
+                    .single()
+            lookup.isO1 shouldBe false
+        }
+
+        @Test
+        fun `should promote mutableMapOf initialized variable to O1`() {
+            val fn =
+                function(
+                    children =
+                        listOf(
+                            varWithFactory("cache", "mutableMapOf"),
+                            lookupCall("cache"),
+                        ),
+                )
+            val root = fileRoot(language = Language.KOTLIN, children = listOf(fn))
+            val lookup =
+                markScalarLookups(mapOf("Test.kt" to root), registry)
+                    .values
+                    .first()
+                    .findDescendants<LookupCall>()
+                    .single()
+            lookup.isO1 shouldBe true
         }
     }
 }

@@ -3,6 +3,7 @@ package com.github.tvinke.algorilla.rules.builtin
 import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.FileRoot
 import com.github.tvinke.algorilla.model.FunctionCall
+import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.GenericNode
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
@@ -13,6 +14,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.util.hasO1Type
 
 /**
  * Detects String methods that internally compile a regex on every call when used inside loops.
@@ -31,31 +33,34 @@ public class ImplicitRegexInLoopRule : Rule {
         for ((_, fileRoot) in context.irTrees) {
             val language = (fileRoot as? FileRoot)?.language
             val methods = language?.let { context.registry.implicitRegexMethods(it) } ?: emptySet()
-            scanNode(fileRoot, emptyList(), language, methods, findings)
+            scanNode(fileRoot, null, emptyList(), language, methods, findings)
         }
         return findings
     }
 
     private fun scanNode(
         node: IRNode,
+        enclosingFn: FunctionDecl?,
         loopStack: List<LoopNode>,
         language: Language?,
         regexMethods: Set<String>,
         findings: MutableList<Finding>,
     ) {
+        val fn = if (node is FunctionDecl) node else enclosingFn
+
         if (node is LoopNode) {
             for (child in node.children) {
-                scanNode(child, loopStack + node, language, regexMethods, findings)
+                scanNode(child, fn, loopStack + node, language, regexMethods, findings)
             }
             return
         }
 
-        if (loopStack.isNotEmpty() && node is FunctionCall && isImplicitRegexCall(node, language, regexMethods)) {
+        if (loopStack.isNotEmpty() && node is FunctionCall && isImplicitRegexCall(node, fn, language, regexMethods)) {
             findings.add(buildFinding(node, loopStack))
         }
 
         for (child in node.children) {
-            scanNode(child, loopStack, language, regexMethods, findings)
+            scanNode(child, fn, loopStack, language, regexMethods, findings)
         }
     }
 
@@ -102,6 +107,7 @@ private const val REGEX_METACHARACTERS = ".\$|()[{^?*+\\"
 
 private fun isImplicitRegexCall(
     call: FunctionCall,
+    enclosingFn: FunctionDecl?,
     language: Language?,
     regexMethods: Set<String>,
 ): Boolean {
@@ -110,8 +116,25 @@ private fun isImplicitRegexCall(
     if (language in JS_FAMILY && hasStringLiteralFirstArg(call)) return false
     // JDK fast path: String.split() with a single non-metachar argument skips regex compilation.
     if (language in JVM_FAMILY && call.name == "split" && hasSingleCharNonRegexArg(call)) return false
+    // On JVM, Map.replaceAll(BiFunction) is not a regex method — skip when target is a Map/Set type
+    if (language in JVM_FAMILY && call.name == "replaceAll" && isMapTarget(call, enclosingFn)) return false
     return true
 }
+
+/** Returns true if the call target is a Map type (by declared type or name heuristic). */
+private fun isMapTarget(
+    call: FunctionCall,
+    enclosingFn: FunctionDecl?,
+): Boolean {
+    val target = call.qualifiedTarget ?: return false
+    // Type-aware: check if the target variable is declared as a Map/Set type
+    if (enclosingFn != null && enclosingFn.hasO1Type(target)) return true
+    // Name heuristic fallback for cases without type info
+    val lower = target.lowercase()
+    return MAP_TARGET_NAMES.any { lower.endsWith(it) || lower == it }
+}
+
+private val MAP_TARGET_NAMES = setOf("map", "hashmap", "treemap", "concurrenthashmap", "linkedhashmap")
 
 /**
  * Returns true if the first argument is a string literal (quoted with ' or ").

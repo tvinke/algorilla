@@ -114,6 +114,19 @@ scope-ops:
   - of
   - ofNullable
 
+full-scan-methods:
+  - groupBy
+  - collectEntries
+  - unique
+  - toSet
+  - toList
+  - toSorted
+  - collect
+  - inject
+  - count
+  - countBy
+  - groupEntriesBy
+
 trivial-methods:
   - equals
   - hashCode
@@ -488,3 +501,35 @@ bulk-load-prefixes:
   - selectAll
   - readAll
   - searchAll
+
+io-methods:
+  # JDBC (shared with Java)
+  - executeQuery
+  - executeUpdate
+  - executeBatch
+  - prepareStatement
+  - prepareCall
+  # Groovy SQL
+  - eachRow
+  - rows
+  - firstRow
+  - executeInsert
+  # java.net
+  - openConnection
+  - sendAsync
+
+# Methods that produce O(1) collection types (Set, Map).
+o1-factory-methods:
+  # Groovy collection conversion
+  - toSet
+  - asImmutable
+  # Map instance methods
+  - keySet
+  - entrySet
+  # Java Collections utility
+  - unmodifiableSet
+  - unmodifiableMap
+  - synchronizedSet
+  - synchronizedMap
+  - emptySet
+  - emptyMap

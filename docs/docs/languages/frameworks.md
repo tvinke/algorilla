@@ -55,4 +55,4 @@ This knowledge is loaded automatically based on the language being scanned. No c
 
 ## Missing your framework?
 
-Framework knowledge is defined in YAML overlay files. If your framework isn't listed, you can add method classifications in your `.algorilla.yml` [configuration](../getting-started/configuration.md). If you think it should ship as a built-in overlay, [open an issue](https://github.com/tvinke/algorilla/issues) — framework overlays are one of the easiest ways to contribute.
+Framework knowledge is defined in YAML overlay files. If your framework isn't listed, you can add method classifications in your `.algorilla.yml` [configuration](../getting-started/configuration.md). If you think it should ship as a built-in overlay, [open an issue](https://github.com/tvinke/algorilla/issues) — or see the [Adding Framework Overlays](../developer/adding-frameworks.md) guide and contribute it yourself. It's just YAML, no Kotlin required.

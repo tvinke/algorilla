@@ -15,7 +15,7 @@ private val logger = KotlinLogging.logger {}
  * This is the single source of truth for method classification. All hardcoded method name sets
  * in the codebase should derive from this registry instead of maintaining their own lists.
  */
-@Suppress("TooManyFunctions", "LongParameterList")
+@Suppress("TooManyFunctions", "LongParameterList", "LargeClass")
 public class LanguageSemanticsRegistry private constructor(
     private val methodsByLanguage: Map<Language, Map<String, MethodSemantics>>,
     private val heavyweightByLanguage: Map<Language, Set<String>>,
@@ -35,6 +35,9 @@ public class LanguageSemanticsRegistry private constructor(
     private val mutationByLanguage: Map<Language, Set<String>>,
     private val removalByLanguage: Map<Language, Set<String>>,
     private val bulkLoadPrefixesByLanguage: Map<Language, List<String>>,
+    private val fullScanByLanguage: Map<Language, Set<String>>,
+    private val ioByLanguage: Map<Language, Set<String>>,
+    private val o1FactoryByLanguage: Map<Language, Set<String>>,
 ) {
     /**
      * Classifies a method name for the given language.
@@ -299,6 +302,36 @@ public class LanguageSemanticsRegistry private constructor(
             .distinct()
 
     /**
+     * Returns full-scan methods for a specific language.
+     * These are methods that iterate the full collection (groupBy, distinct, toMap, etc.).
+     */
+    public fun fullScanMethods(language: Language): Set<String> {
+        val resolved = resolveLanguage(language)
+        return fullScanByLanguage[resolved] ?: emptySet()
+    }
+
+    /**
+     * Returns IO methods for a specific language.
+     * These are network, database, or file operations that should not appear inside loops.
+     */
+    public fun ioMethods(language: Language): Set<String> {
+        val resolved = resolveLanguage(language)
+        return ioByLanguage[resolved] ?: emptySet()
+    }
+
+    /**
+     * Returns true if the method name is a known O(1) factory or return-type method.
+     * These are methods like setOf(), keySet(), toSet() that produce O(1) collection types.
+     */
+    public fun isO1Factory(
+        language: Language,
+        methodName: String,
+    ): Boolean {
+        val resolved = resolveLanguage(language)
+        return o1FactoryByLanguage[resolved]?.contains(methodName) == true
+    }
+
+    /**
      * Looks up a method's [LookupKind] for a specific language.
      * Returns null if the method has no lookup classification in that language.
      */
@@ -399,6 +432,9 @@ public class LanguageSemanticsRegistry private constructor(
                 maps.mutation,
                 maps.removal,
                 maps.bulkLoadPrefixes,
+                maps.fullScan,
+                maps.io,
+                maps.o1Factory,
             )
         }
 
@@ -465,6 +501,9 @@ public class LanguageSemanticsRegistry private constructor(
                 mutationByLanguage = base.mutationByLanguage,
                 removalByLanguage = base.removalByLanguage,
                 bulkLoadPrefixesByLanguage = base.bulkLoadPrefixesByLanguage,
+                fullScanByLanguage = base.fullScanByLanguage,
+                ioByLanguage = base.ioByLanguage,
+                o1FactoryByLanguage = base.o1FactoryByLanguage,
             )
         }
 
@@ -499,6 +538,9 @@ internal class LanguageMaps(
     val mutation: MutableMap<Language, Set<String>> = mutableMapOf(),
     val removal: MutableMap<Language, Set<String>> = mutableMapOf(),
     val bulkLoadPrefixes: MutableMap<Language, List<String>> = mutableMapOf(),
+    val fullScan: MutableMap<Language, Set<String>> = mutableMapOf(),
+    val io: MutableMap<Language, Set<String>> = mutableMapOf(),
+    val o1Factory: MutableMap<Language, Set<String>> = mutableMapOf(),
 ) {
     @Suppress("CyclomaticComplexMethod")
     fun merge(
@@ -523,6 +565,9 @@ internal class LanguageMaps(
         mutation[lang] = (mutation[lang] ?: emptySet()) + parsed.mutationMethods
         removal[lang] = (removal[lang] ?: emptySet()) + parsed.removalMethods
         bulkLoadPrefixes[lang] = ((bulkLoadPrefixes[lang] ?: emptyList()) + parsed.bulkLoadPrefixes).distinct()
+        fullScan[lang] = (fullScan[lang] ?: emptySet()) + parsed.fullScanMethods
+        io[lang] = (io[lang] ?: emptySet()) + parsed.ioMethods
+        o1Factory[lang] = (o1Factory[lang] ?: emptySet()) + parsed.o1FactoryMethods
     }
 }
 
@@ -545,6 +590,9 @@ internal data class ParsedYaml(
     val mutationMethods: Set<String>,
     val removalMethods: Set<String>,
     val bulkLoadPrefixes: List<String>,
+    val fullScanMethods: Set<String>,
+    val ioMethods: Set<String>,
+    val o1FactoryMethods: Set<String>,
 )
 
 /**
@@ -575,6 +623,9 @@ internal fun parseYaml(text: String): ParsedYaml {
         mutationMethods = collectListItems(sections["mutation-methods"]),
         removalMethods = collectListItems(sections["removal-methods"]),
         bulkLoadPrefixes = collectListItems(sections["bulk-load-prefixes"]).toList(),
+        fullScanMethods = collectListItems(sections["full-scan-methods"]),
+        ioMethods = collectListItems(sections["io-methods"]),
+        o1FactoryMethods = collectListItems(sections["o1-factory-methods"]),
     )
 }
 

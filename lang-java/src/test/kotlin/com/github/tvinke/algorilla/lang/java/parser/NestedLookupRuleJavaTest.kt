@@ -102,10 +102,17 @@ internal class NestedLookupRuleJavaTest {
     }
 
     @Test
-    fun `should suggest HashSet or Map`() {
+    fun `should suggest HashSet for contains lookup`() {
         val findings = analyzeFixture("nested-lookup/positive/list-contains-in-for.java")
 
-        findings.first().suggestion shouldContain "HashSet/Map"
+        findings.first().suggestion shouldContain "HashSet"
+    }
+
+    @Test
+    fun `should suggest Map for indexOf lookup`() {
+        val findings = analyzeFixture("nested-lookup/positive/foreach-indexOf.java")
+
+        findings.first().suggestion shouldContain "Map (element"
     }
 
     private fun analyzeFixture(fixturePath: String): List<Finding> {

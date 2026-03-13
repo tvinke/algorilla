@@ -3,6 +3,7 @@ package com.github.tvinke.algorilla.rules.builtin
 import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.FileRoot
 import com.github.tvinke.algorilla.model.FunctionCall
+import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LoopNode
@@ -12,6 +13,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.util.hasO1Type
 
 /**
  * Detects element-by-element removal from List/Array inside loops. Each remove() on an
@@ -31,30 +33,33 @@ public class QuadraticRemovalRule : Rule {
         for ((_, fileRoot) in context.irTrees) {
             val language = (fileRoot as? FileRoot)?.language
             val methods = language?.let { context.registry.removalMethods(it) } ?: emptySet()
-            scanNode(fileRoot, emptyList(), methods, findings)
+            scanNode(fileRoot, null, emptyList(), methods, findings)
         }
         return findings
     }
 
     private fun scanNode(
         node: IRNode,
+        enclosingFn: FunctionDecl?,
         loopStack: List<LoopNode>,
         removalMethods: Set<String>,
         findings: MutableList<Finding>,
     ) {
+        val fn = if (node is FunctionDecl) node else enclosingFn
+
         if (node is LoopNode) {
             for (child in node.children) {
-                scanNode(child, loopStack + node, removalMethods, findings)
+                scanNode(child, fn, loopStack + node, removalMethods, findings)
             }
             return
         }
 
-        if (loopStack.isNotEmpty() && node is FunctionCall && isRemovalCall(node, removalMethods)) {
+        if (loopStack.isNotEmpty() && node is FunctionCall && isRemovalCall(node, fn, removalMethods)) {
             findings.add(buildFinding(node, loopStack))
         }
 
         for (child in node.children) {
-            scanNode(child, loopStack, removalMethods, findings)
+            scanNode(child, fn, loopStack, removalMethods, findings)
         }
     }
 
@@ -113,11 +118,14 @@ private val NON_LIST_EXACT_TARGETS = setOf("it", "map", "set", "entry", "iter", 
 
 private fun isRemovalCall(
     call: FunctionCall,
+    enclosingFn: FunctionDecl?,
     removalMethods: Set<String>,
 ): Boolean {
     if (call.name !in removalMethods) return false
     val target = call.qualifiedTarget ?: return false
     val lower = target.lowercase()
     if (lower in NON_LIST_EXACT_TARGETS) return false
-    return NON_LIST_TARGET_SUFFIXES.none { suffix -> lower.endsWith(suffix) }
+    // Skip O(1) targets: name-based heuristic OR declared type (Map/Set/Queue/Deque)
+    return NON_LIST_TARGET_SUFFIXES.none { suffix -> lower.endsWith(suffix) } &&
+        (enclosingFn == null || !enclosingFn.hasO1Type(target))
 }

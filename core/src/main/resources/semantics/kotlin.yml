@@ -138,6 +138,26 @@ scope-ops:
   - takeUnless
   - with
 
+full-scan-methods:
+  - groupBy
+  - groupingBy
+  - associate
+  - associateBy
+  - associateWith
+  - distinct
+  - distinctBy
+  - toMap
+  - toMutableMap
+  - toSet
+  - toMutableSet
+  - toList
+  - toMutableList
+  - toSortedSet
+  - partition
+  - count
+  - fold
+  - reduce
+
 trivial-methods:
   - equals
   - hashCode
@@ -550,3 +570,49 @@ bulk-load-prefixes:
   - listAll
   - loadAll
   - fetchAll
+
+io-methods:
+  # Kotlin file extensions
+  - readText
+  - readLines
+  - readBytes
+  - writeText
+  - writeBytes
+  - appendText
+  - appendBytes
+  # JDBC (shared with Java)
+  - executeQuery
+  - executeUpdate
+  - executeBatch
+  - prepareStatement
+  - prepareCall
+  # java.net
+  - openConnection
+  - sendAsync
+
+# Methods that produce O(1) collection types (Set, Map).
+o1-factory-methods:
+  # Kotlin stdlib factory functions
+  - setOf
+  - hashSetOf
+  - mutableSetOf
+  - linkedSetOf
+  - sortedSetOf
+  - mapOf
+  - hashMapOf
+  - mutableMapOf
+  - linkedMapOf
+  - sortedMapOf
+  - emptySet
+  - emptyMap
+  # Map instance methods returning Set
+  - keySet
+  - entrySet
+  # Conversion methods
+  - toSet
+  - toHashSet
+  - toMutableSet
+  - toSortedSet
+  - toMap
+  - toMutableMap
+  - toSortedMap

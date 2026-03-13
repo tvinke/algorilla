@@ -55,7 +55,7 @@ The template's `TemplateTreeSitterVisitor.kt` has comments per IR node type expl
 
 Create `core/src/main/resources/semantics/<language>.yml` and list the methods relevant for rule detection (expensive calls, cheap calls, stream operations, etc.). See the existing YAML files for the 17-section structure. Then add the filename to `BASE_SEMANTICS_RESOURCES` in `AnalysisCache.kt`.
 
-For framework overlays, add a file under `semantics/frameworks/` and append its name to `semantics/frameworks-index.txt`. Include a `language:` key at the top of the YAML so the registry can load it without any code changes.
+For framework overlays, see [Adding Framework Overlays](adding-frameworks.md) — that's a separate, self-contained contribution that doesn't require parser or language work.
 
 ## 7. Testing
 

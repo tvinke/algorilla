@@ -46,6 +46,13 @@ internal class QuadraticRemovalRuleJavaTest {
 
             findings.shouldBeEmpty()
         }
+
+        @Test
+        fun `should not flag remove on typed Map or ConcurrentHashMap`() {
+            val findings = analyzeFixture("quadratic-removal/negative/typed-map-remove.java")
+
+            findings.shouldBeEmpty()
+        }
     }
 
     @Nested

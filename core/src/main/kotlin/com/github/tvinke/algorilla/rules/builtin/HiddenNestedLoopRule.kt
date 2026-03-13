@@ -15,6 +15,7 @@ import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.util.CrossMethodResolver
 import com.github.tvinke.algorilla.util.findDescendants
+import com.github.tvinke.algorilla.util.isRecursive
 
 /**
  * Detects loops hidden behind method calls: when a loop calls a method that internally
@@ -73,7 +74,7 @@ public class HiddenNestedLoopRule : Rule {
 
         // Skip recursive methods — their internal loop iterates child nodes
         // of the same data structure, not an independent collection
-        if (isRecursive(resolved)) return
+        if (resolved.isRecursive()) return
 
         val hiddenLoop = resolved.findDescendants<LoopNode>().firstOrNull() ?: return
 
@@ -142,14 +143,6 @@ public class HiddenNestedLoopRule : Rule {
                 ),
             )
 }
-
-/**
- * Returns true if the function calls itself directly (recursive method).
- * Recursive methods (tree walkers, visitors, DFS) contain loops that iterate
- * child nodes — flagging them as "hidden nested loops" is a false positive
- * because the total work is O(tree_size), not O(n²).
- */
-private fun isRecursive(fn: FunctionDecl): Boolean = fn.findDescendants<FunctionCall>().any { it.name == fn.name }
 
 /** Filter out trivial loops with no meaningful body or only simple operations. */
 private fun isTrivialLoop(loop: LoopNode): Boolean {

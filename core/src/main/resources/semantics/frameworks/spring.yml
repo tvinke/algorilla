@@ -47,46 +47,17 @@ cheap-methods:
   - lastModified
   - cacheControl
   - allow
-  # RestTemplate / WebClient
-  - getForObject
-  - getForEntity
-  - postForObject
-  - postForEntity
-  - postForLocation
-  - put
-  - patchForObject
-  - delete
-  - exchange
-  - execute
-  - headForHeaders
-  - optionsForAllow
-  # WebClient (reactive)
-  - retrieve
-  - bodyToMono
-  - bodyToFlux
-  - toEntity
-  - toEntityList
-  - toBodilessEntity
-  - onStatus
+  # WebClient builder/config (not IO themselves)
   - uri
   - attribute
   - attributes
-  # Spring Data — Repository query methods
+  - onStatus
+  # Spring Data — query/read methods (cheap at application level, DB handles caching)
   - findById
   - findAll
   - findAllById
-  - save
-  - saveAll
-  - saveAndFlush
-  - saveAllAndFlush
-  - deleteById
-  - deleteAll
-  - deleteAllById
-  - deleteAllInBatch
-  - deleteAllByIdInBatch
   - existsById
   - count
-  - flush
   - getReferenceById
   - getById
   - getOne
@@ -204,3 +175,33 @@ heavyweight-types:
   - KafkaTemplate
   - RedisTemplate
   - MongoTemplate
+
+io-methods:
+  # RestTemplate — each call is an HTTP round-trip
+  - getForObject
+  - getForEntity
+  - postForObject
+  - postForEntity
+  - postForLocation
+  - patchForObject
+  - exchange
+  - headForHeaders
+  - optionsForAllow
+  # WebClient — reactive HTTP calls
+  - retrieve
+  - bodyToMono
+  - bodyToFlux
+  - toEntity
+  - toEntityList
+  - toBodilessEntity
+  # Spring Data — repository persistence (already partially covered by n-plus-one)
+  - save
+  - saveAll
+  - saveAndFlush
+  - saveAllAndFlush
+  - deleteById
+  - deleteAll
+  - deleteAllById
+  - deleteAllInBatch
+  - deleteAllByIdInBatch
+  - flush

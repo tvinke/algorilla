@@ -1,6 +1,6 @@
 # Rules Overview
 
-Algorilla ships with 23 built-in rules that detect common algorithmic complexity anti-patterns, organized in six categories.
+Algorilla ships with 24 built-in rules that detect common algorithmic complexity anti-patterns, organized in six categories.
 
 ## Loop amplifiers
 
@@ -19,6 +19,7 @@ Expensive operations hidden inside loop bodies that multiply the cost per iterat
 | `quadratic-removal` | [Quadratic Removal](quadratic-removal.md) | WARNING | O(n²) where O(n) suffices |
 | `repeated-reflection-in-loop` | [Repeated Reflection in Loop](repeated-reflection-in-loop.md) | INFO | O(n·reflection) where O(n) suffices |
 | `hidden-nested-loop` | [Hidden Nested Loop](hidden-nested-loop.md) | WARNING | O(n·m) hidden behind method call |
+| `io-in-loop` | [IO In Loop](io-in-loop.md) | WARNING | O(n·IO) where O(1·IO+n) suffices |
 | `expensive-callback` | [Expensive Callback](expensive-callback.md) | WARNING | Expensive operations inside HOF callbacks |
 
 ## Sort abuse

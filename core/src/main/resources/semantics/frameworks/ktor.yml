@@ -45,14 +45,9 @@ cheap-methods:
   - queryParameters
   - headers
   - cookies
-  # Ktor Client
-  - request
+  # Ktor Client — builder/config (not IO themselves)
   - prepareRequest
-  - submitForm
-  - submitFormWithBinaryData
   - body
-  - bodyAsText
-  - bodyAsChannel
   # Content negotiation
   - json
   - xml
@@ -101,3 +96,11 @@ trivial-methods:
   - userAgent
   - cookie
   - setCookie
+
+io-methods:
+  # Ktor Client — HTTP round-trip calls
+  - request
+  - submitForm
+  - submitFormWithBinaryData
+  - bodyAsText
+  - bodyAsChannel

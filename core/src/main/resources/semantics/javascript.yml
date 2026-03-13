@@ -106,6 +106,16 @@ scope-ops:
   - call
   - apply
 
+full-scan-methods:
+  - reduce
+  - reduceRight
+  - groupBy
+  - toSorted
+  - toReversed
+  - flatMap
+  - from
+  - count
+
 # O(1) operations too cheap to flag as redundant expensive calls
 trivial-methods:
   # Property reads / type checks
@@ -745,3 +755,23 @@ bulk-load-prefixes:
   - queryAll
   - selectAll
   - readAll
+
+io-methods:
+  # Fetch API — unambiguous network call
+  - fetch
+  # Node.js fs (sync variants are clearly IO in loops)
+  - readFileSync
+  - writeFileSync
+  - readdirSync
+  - statSync
+  - mkdirSync
+  - unlinkSync
+  - renameSync
+  - copyFileSync
+  - accessSync
+
+# Methods that produce O(1) collection types (Set, Map).
+# JS/TS uses new Set() and new Map() (ObjectCreation, handled separately).
+# These are conversion/factory patterns.
+o1-factory-methods:
+  # No standalone factory functions in JS — Set/Map are constructed via `new`
