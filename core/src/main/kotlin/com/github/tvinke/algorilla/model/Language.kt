@@ -6,13 +6,15 @@ package com.github.tvinke.algorilla.model
 public enum class Language(
     public val displayName: String,
     public val extensions: Set<String>,
+    /** Whether the language has mandatory type declarations that Algorilla can leverage for detection. */
+    public val hasTypeDeclarations: Boolean = true,
 ) {
     JAVA("Java", setOf("java")),
-    GROOVY("Groovy", setOf("groovy")),
+    GROOVY("Groovy", setOf("groovy"), hasTypeDeclarations = false),
     KOTLIN("Kotlin", setOf("kt", "kts")),
-    JAVASCRIPT("JavaScript", setOf("js", "mjs", "cjs")),
+    JAVASCRIPT("JavaScript", setOf("js", "mjs", "cjs"), hasTypeDeclarations = false),
     TYPESCRIPT("TypeScript", setOf("ts", "tsx")),
-    VUE("Vue", setOf("vue")),
+    VUE("Vue", setOf("vue"), hasTypeDeclarations = false),
     ;
 
     public companion object {

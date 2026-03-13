@@ -1,5 +1,6 @@
 package com.github.tvinke.algorilla.rules
 
+import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.Severity
 
@@ -24,6 +25,31 @@ public interface Rule {
     public val category: RuleCategory
 
     /**
+     * Baseline confidence the engine assigns to findings from this rule.
+     *
+     * - [Confidence.HIGH] — the pattern is structurally unambiguous (always an anti-pattern
+     *   regardless of types). Example: string concatenation in a loop is always O(n²).
+     * - [Confidence.MEDIUM] — detection is reliable but may depend on context or types.
+     *   This is the default for most rules.
+     * - [Confidence.LOW] — detection relies heavily on heuristics, with a known high
+     *   false-positive rate. Findings are hidden at the default `--confidence medium`.
+     *
+     * The engine may further adjust confidence based on evidence (e.g. cross-method findings
+     * are capped at MEDIUM, untyped languages may demote to LOW when [requiresTypeContext]).
+     */
+    public val defaultConfidence: Confidence
+        get() = Confidence.MEDIUM
+
+    /**
+     * Whether this rule's pattern depends on type resolution to be accurate. When `true`
+     * and the file's language lacks type declarations, the engine demotes findings to
+     * [Confidence.LOW]. This prevents false positives from name-based detection in
+     * dynamically-typed languages (e.g. JS `Array.concat()` ≠ Java `String.concat()`).
+     */
+    public val requiresTypeContext: Boolean
+        get() = false
+
+    /**
      * Previous rule IDs that this rule was known by. Used to keep suppress comments
      * and config overrides working after a rule is renamed or merged.
      */
@@ -34,10 +60,6 @@ public interface Rule {
      * Rule IDs that this rule subsumes (i.e. is a more specific version of).
      * When this rule and a subsumed rule both fire at the same source location,
      * the engine keeps this rule's finding and drops the subsumed one.
-     *
-     * Example: `nested-lookup` subsumes `expensive-callback` because a linear
-     * lookup inside a loop is exactly the pattern both rules detect — `nested-lookup`
-     * just gives a more precise diagnosis.
      */
     public val subsumes: Set<String>
         get() = emptySet()

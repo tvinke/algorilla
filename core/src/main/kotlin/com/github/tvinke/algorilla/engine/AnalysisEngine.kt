@@ -13,6 +13,7 @@ import com.github.tvinke.algorilla.model.FileRoot
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.IRNode
+import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LookupCall
 import com.github.tvinke.algorilla.model.ObjectCreation
 import com.github.tvinke.algorilla.model.Severity
@@ -65,7 +66,9 @@ public class AnalysisEngine(
         annotateComplexity(symbolTable, callGraph)
         val rawFindings = evaluateRules(irTrees, symbolTable, callGraph)
         val deduplicated = applySubsumption(rawFindings, rules)
-        val confidenceAdjusted = adjustConfidence(deduplicated)
+        val fileLanguages = irTrees.mapValues { (_, root) -> root.language }
+        val ruleIndex = rules.associateBy { it.id }
+        val confidenceAdjusted = adjustConfidence(deduplicated, fileLanguages, ruleIndex)
         val freshFindings = SuppressionFilter().filter(confidenceAdjusted, irTrees, aliasIndex)
 
         val allFindings = freshFindings + cachedFindings
@@ -254,76 +257,48 @@ public class AnalysisEngine(
 }
 
 /**
- * Adjusts confidence per finding based on structural certainty, type evidence,
- * and language context. This is the bridge between Phase 1 (infrastructure) and
- * per-rule confidence tuning (Phase 3).
+ * Adjusts confidence per finding based on the rule's declared [Rule.defaultConfidence],
+ * type evidence, and language context.
  *
- * Promotion to HIGH:
- * - Rules whose structural pattern is always an anti-pattern regardless of types.
- *
- * Demotion to LOW:
- * - Findings in JS/TS files where detection relies on name-based heuristics
- *   without type annotations (unless the rule is structurally certain).
- *
- * Cross-method findings (evidence spanning multiple files) stay at MEDIUM —
- * the called function might not behave as inferred.
+ * The rule's [defaultConfidence] is the baseline. The engine may further adjust:
+ * - Demote to LOW when the rule requires type context but the language lacks type declarations.
+ * - Cap at MEDIUM for cross-method findings (evidence spanning multiple files).
+ * - Demote to LOW for non-HIGH rules in languages without type declarations.
  */
-internal fun adjustConfidence(findings: List<Finding>): List<Finding> =
+internal fun adjustConfidence(
+    findings: List<Finding>,
+    fileLanguages: Map<String, Language>,
+    ruleIndex: Map<String, Rule>,
+): List<Finding> =
     findings.map { finding ->
         // Only adjust findings still at the default MEDIUM. If a rule has explicitly
         // set HIGH or LOW, respect that — the rule has more context than the engine.
         if (finding.confidence != Confidence.MEDIUM) return@map finding
-        val adjusted = classifyConfidence(finding)
+        val language = fileLanguages[finding.location.file]
+        val rule = ruleIndex[finding.ruleId]
+        val adjusted = classifyConfidence(finding, language, rule)
         if (adjusted != finding.confidence) finding.copy(confidence = adjusted) else finding
     }
 
-private fun classifyConfidence(finding: Finding): Confidence {
-    // Structural rules: always real regardless of types or context
-    if (finding.ruleId in STRUCTURALLY_CERTAIN_RULES) return Confidence.HIGH
+private fun classifyConfidence(
+    finding: Finding,
+    language: Language?,
+    rule: Rule?,
+): Confidence {
+    val baseline = rule?.defaultConfidence ?: Confidence.MEDIUM
 
-    // High-FP rules: heuristic-heavy, often fire on legitimate tree-walk/transform patterns
-    if (finding.ruleId in HEURISTIC_HEAVY_RULES) return Confidence.LOW
+    // Demote when rule requires type context but language lacks type declarations
+    val lacksTypes = language != null && !language.hasTypeDeclarations
+    if (lacksTypes && rule?.requiresTypeContext == true) return Confidence.LOW
 
-    // Cross-method findings: evidence spans multiple files → MEDIUM (not promoted)
-    val isCrossMethod =
-        finding.evidence.any { it.location.file != finding.location.file }
-    if (isCrossMethod) return Confidence.MEDIUM
+    // Cross-method findings: cap at MEDIUM (inference across files is less certain)
+    val isCrossMethod = finding.evidence.any { it.location.file != finding.location.file }
+    if (isCrossMethod && baseline.ordinal > Confidence.MEDIUM.ordinal) return Confidence.MEDIUM
 
-    // JS/TS files without type info: name-based heuristics only → LOW
-    if (isUntypedScript(finding.location.file)) return Confidence.LOW
+    // Languages without type declarations and non-HIGH rules: demote to LOW
+    if (lacksTypes && baseline != Confidence.HIGH) return Confidence.LOW
 
-    return Confidence.MEDIUM
-}
-
-// Rules where the detected pattern is always an anti-pattern, independent of
-// receiver types, collection sizes, or runtime context.
-private val STRUCTURALLY_CERTAIN_RULES =
-    setOf(
-        "string-concat-in-loop", // String += in loop is always O(n²)
-        "sort-for-last", // Sorting to get min/max is always suboptimal
-        "in-loop-collection-building", // Concat/spread in reduce is always quadratic
-        "filter-after-sort", // Filtering after sort wastes the sort work
-        "expensive-sort-comparator", // O(n log n) comparator in O(n log n) sort = O(n² log² n)
-        "repeated-regex-in-loop", // Compiling regex per iteration is always wasteful
-        "repeated-reflection-in-loop", // Reflection lookup per iteration is always wasteful
-        "quadratic-removal", // List.remove(index) in loop is always O(n²)
-        "sequential-async-join-in-loop", // Await in loop is always sequential
-    )
-
-// Rules with high false-positive rates due to heuristic-heavy detection.
-// These are demoted to LOW so they're hidden at default --confidence medium,
-// but still available with --confidence low for deep exploration.
-private val HEURISTIC_HEAVY_RULES =
-    setOf(
-        "expensive-callback", // Fires on legitimate tree-walk/transform callbacks
-        "chained-getters", // Often flags intentional navigation patterns
-    )
-
-private val UNTYPED_EXTENSIONS = setOf("js", "jsx", "ts", "tsx", "vue", "mjs", "cjs")
-
-private fun isUntypedScript(filePath: String): Boolean {
-    val ext = filePath.substringAfterLast('.', "").lowercase()
-    return ext in UNTYPED_EXTENSIONS
+    return baseline
 }
 
 /**

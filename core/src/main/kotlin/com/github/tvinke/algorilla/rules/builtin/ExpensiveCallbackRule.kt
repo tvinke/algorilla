@@ -1,5 +1,6 @@
 package com.github.tvinke.algorilla.rules.builtin
 
+import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.IRNode
@@ -38,6 +39,8 @@ public class ExpensiveCallbackRule : Rule {
     override val severity: Severity = Severity.WARNING
     override val languages: Set<Language> = Language.entries.toSet()
     override val category: RuleCategory = RuleCategory.LOOP_AMPLIFIER
+    override val defaultConfidence: Confidence = Confidence.LOW
+    override val requiresTypeContext: Boolean = true
     override val aliases: List<String> = listOf("date-in-callback")
 
     override fun evaluate(context: AnalysisContext): List<Finding> {

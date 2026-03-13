@@ -1,5 +1,6 @@
 package com.github.tvinke.algorilla.rules.builtin
 
+import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.GenericNode
@@ -25,6 +26,7 @@ public class RepeatedRegexInLoopRule : Rule {
     override val severity: Severity = Severity.WARNING
     override val languages: Set<Language> = Language.entries.toSet()
     override val category: RuleCategory = RuleCategory.LOOP_AMPLIFIER
+    override val defaultConfidence: Confidence = Confidence.HIGH
 
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()

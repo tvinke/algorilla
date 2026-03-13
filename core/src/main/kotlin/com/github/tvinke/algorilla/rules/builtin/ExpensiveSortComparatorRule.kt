@@ -1,5 +1,6 @@
 package com.github.tvinke.algorilla.rules.builtin
 
+import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.IRNode
@@ -31,6 +32,7 @@ public class ExpensiveSortComparatorRule : Rule {
     override val severity: Severity = Severity.WARNING
     override val languages: Set<Language> = Language.entries.toSet()
     override val category: RuleCategory = RuleCategory.SORT_ABUSE
+    override val defaultConfidence: Confidence = Confidence.HIGH
     override val aliases: List<String> = listOf("date-in-sort")
 
     override fun evaluate(context: AnalysisContext): List<Finding> {

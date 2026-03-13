@@ -1,5 +1,6 @@
 package com.github.tvinke.algorilla.rules.builtin
 
+import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.FileRoot
 import com.github.tvinke.algorilla.model.FunctionCall
@@ -27,6 +28,8 @@ public class QuadraticRemovalRule : Rule {
     override val severity: Severity = Severity.WARNING
     override val languages: Set<Language> = Language.entries.toSet()
     override val category: RuleCategory = RuleCategory.LOOP_AMPLIFIER
+    override val defaultConfidence: Confidence = Confidence.HIGH
+    override val requiresTypeContext: Boolean = true
 
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
@@ -95,26 +98,35 @@ public class QuadraticRemovalRule : Rule {
     }
 }
 
-/** Skip calls on Map targets (map.remove(key) is O(1)) and iterator.remove(). */
+/** Skip calls on Map/Set/Iterator/Queue targets where remove() is O(1). */
 private val NON_LIST_TARGET_SUFFIXES =
     setOf(
         "map",
         "hashmap",
         "treemap",
         "concurrenthashmap",
+        "linkedhashmap",
         "iterator",
         "iter",
         "entry",
+        "entries",
         "set",
         "hashset",
         "treeset",
+        "linkedhashset",
         "queue",
         "deque",
         "stack",
         "linkedlist",
+        "cache",
+        "table",
+        "dictionary",
+        "registry",
+        "index",
     )
 
-private val NON_LIST_EXACT_TARGETS = setOf("it", "map", "set", "entry", "iter", "queue", "stack")
+private val NON_LIST_EXACT_TARGETS =
+    setOf("it", "this", "map", "set", "entry", "entries", "iter", "queue", "stack", "keys", "values", "cache")
 
 private fun isRemovalCall(
     call: FunctionCall,

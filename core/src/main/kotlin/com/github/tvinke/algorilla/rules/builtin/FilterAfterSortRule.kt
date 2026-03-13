@@ -1,5 +1,6 @@
 package com.github.tvinke.algorilla.rules.builtin
 
+import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
@@ -31,6 +32,7 @@ import com.github.tvinke.algorilla.rules.RuleCategory
 public class FilterAfterSortRule : Rule {
     override val id: String = "filter-after-sort"
     override val category: RuleCategory = RuleCategory.SORT_ABUSE
+    override val defaultConfidence: Confidence = Confidence.HIGH
     override val name: String = "Filter After Sort"
     override val severity: Severity = Severity.INFO
     override val languages: Set<Language> = Language.entries.toSet()
