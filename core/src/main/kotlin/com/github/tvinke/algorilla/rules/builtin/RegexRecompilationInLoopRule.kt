@@ -116,7 +116,7 @@ private const val REGEX_METACHARACTERS = ".\$|()[{^?*+\\"
  */
 private val KOTLIN_SAFE_METHODS = setOf("split", "replace")
 
-@Suppress("ReturnCount")
+@Suppress("ReturnCount", "CyclomaticComplexMethod") // Each branch is a distinct language-specific filter
 private fun isRegexRecompilationCall(
     call: FunctionCall,
     enclosingFn: FunctionDecl?,
