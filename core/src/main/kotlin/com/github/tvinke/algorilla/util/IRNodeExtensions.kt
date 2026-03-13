@@ -144,6 +144,21 @@ public fun FunctionDecl.hasO1Type(variableName: String?): Boolean {
 public fun LookupCall.isCollectionLookup(fn: FunctionDecl?): Boolean = !isO1 && !isScalar && (fn == null || !fn.hasO1Type(targetVariable))
 
 /**
+ * Returns true if [node] textually references [name] in any of its identifying fields.
+ * This is a heuristic: it matches variable/target names on IR nodes, not a true
+ * data-flow analysis. False negatives occur when names are aliased or transformed.
+ * False positives are rare because IR field names come directly from the source code.
+ */
+public fun IRNode.referencesName(name: String): Boolean =
+    when (this) {
+        is LoopNode -> iteratedVariable == name
+        is LookupCall -> targetVariable == name
+        is FunctionCall -> qualifiedTarget == name || (qualifiedTarget == null && this.name == name)
+        is VariableDecl -> this.name == name
+        else -> false
+    }
+
+/**
  * Returns true if the function calls itself directly (recursive method).
  * Recursive methods (tree walkers, visitors, DFS) contain loops that iterate
  * child nodes — total work is O(tree_size), not O(n²).

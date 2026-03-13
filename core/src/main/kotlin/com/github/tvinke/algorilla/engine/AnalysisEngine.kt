@@ -7,6 +7,7 @@ import com.github.tvinke.algorilla.config.AnalysisConfig
 import com.github.tvinke.algorilla.graph.CallGraph
 import com.github.tvinke.algorilla.graph.CallGraphBuilder
 import com.github.tvinke.algorilla.graph.ComplexityAnnotator
+import com.github.tvinke.algorilla.graph.ParameterFlowAnnotator
 import com.github.tvinke.algorilla.graph.SymbolTable
 import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.FileRoot
@@ -33,6 +34,7 @@ private val logger = KotlinLogging.logger {}
  * complexity annotation, and rule evaluation. Supports incremental analysis
  * via file content hashing and an on-disk cache.
  */
+@Suppress("LargeClass", "TooManyFunctions") // Pipeline orchestrator — each pass is a method
 public class AnalysisEngine(
     private val parsers: List<LanguageParser>,
     private val rules: List<Rule>,
@@ -63,6 +65,7 @@ public class AnalysisEngine(
         val irTrees = markScalarLookups(parsedTrees)
         val symbolTable = rebuildSymbolTable(irTrees)
         val callGraph = buildCallGraph(irTrees, symbolTable)
+        annotateParameterFlows(irTrees, symbolTable)
         annotateComplexity(symbolTable, callGraph)
         val rawFindings = evaluateRules(irTrees, symbolTable, callGraph)
         val deduplicated = applySubsumption(rawFindings, rules)
@@ -188,6 +191,13 @@ public class AnalysisEngine(
         irTrees: Map<String, FileRoot>,
         symbolTable: SymbolTable,
     ): CallGraph = CallGraphBuilder(symbolTable).build(irTrees)
+
+    private fun annotateParameterFlows(
+        irTrees: Map<String, FileRoot>,
+        symbolTable: SymbolTable,
+    ) {
+        ParameterFlowAnnotator(symbolTable).annotate(irTrees)
+    }
 
     private fun annotateComplexity(
         symbolTable: SymbolTable,
