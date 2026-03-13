@@ -63,6 +63,29 @@ internal class ConfigLoaderTest {
     }
 
     @Nested
+    inner class MinConfidence {
+        @Test
+        fun `parses min-confidence from config`(
+            @TempDir tmp: File,
+        ) {
+            val config = File(tmp, ".algorilla.yml")
+            config.writeText(
+                """
+                min-confidence: high
+                """.trimIndent(),
+            )
+            val result = loadConfig(config)
+            result.minConfidence.name shouldBe "HIGH"
+        }
+
+        @Test
+        fun `defaults to MEDIUM when not specified`() {
+            val result = loadConfig(null)
+            result.minConfidence.name shouldBe "MEDIUM"
+        }
+    }
+
+    @Nested
     inner class ExperimentalKeyWarnings {
         @Test
         fun `warns when type-hints is used`(

@@ -2,6 +2,7 @@ package com.github.tvinke.algorilla.reporting
 
 import com.github.tvinke.algorilla.baseline.Baseline
 import com.github.tvinke.algorilla.engine.AnalysisResult
+import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.model.SourceLocation
 import com.github.tvinke.algorilla.rules.Finding
@@ -31,12 +32,14 @@ internal class ConsoleReporterTest {
     private fun result(
         vararg findings: Finding,
         unfilteredCounts: Map<Severity, Int> = emptyMap(),
+        unfilteredConfidenceCounts: Map<Confidence, Int> = emptyMap(),
     ) = AnalysisResult(
         findings = findings.toList(),
         filesAnalyzed = 1,
         errors = emptyList(),
         elapsedMs = 100,
         unfilteredCounts = unfilteredCounts,
+        unfilteredConfidenceCounts = unfilteredConfidenceCounts,
     )
 
     @Nested
@@ -139,6 +142,39 @@ internal class ConsoleReporterTest {
             reporter.report(r, output)
 
             output.toString() shouldNotContain "hidden"
+        }
+    }
+
+    @Nested
+    inner class ConfidenceHiddenCounts {
+        @Test
+        fun `shows hidden confidence count when findings were filtered`() {
+            val warning = finding(severity = Severity.WARNING)
+            val output = StringBuilder()
+            val r =
+                result(
+                    warning,
+                    unfilteredConfidenceCounts = mapOf(Confidence.MEDIUM to 1, Confidence.LOW to 2),
+                )
+            reporter.report(r, output)
+
+            val text = output.toString()
+            text shouldContain "2 low-confidence hidden"
+            text shouldContain "--confidence low to show"
+        }
+
+        @Test
+        fun `no confidence hidden suffix when all confidence levels shown`() {
+            val warning = finding(severity = Severity.WARNING)
+            val output = StringBuilder()
+            val r =
+                result(
+                    warning,
+                    unfilteredConfidenceCounts = mapOf(Confidence.MEDIUM to 1),
+                )
+            reporter.report(r, output)
+
+            output.toString() shouldNotContain "confidence hidden"
         }
     }
 

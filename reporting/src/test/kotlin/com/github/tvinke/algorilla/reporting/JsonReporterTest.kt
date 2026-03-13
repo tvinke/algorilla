@@ -66,6 +66,16 @@ internal class JsonReporterTest {
     }
 
     @Nested
+    inner class ConfidenceField {
+        @Test
+        fun `output includes confidence field`() {
+            val json = report()
+            json shouldContain "\"confidence\""
+            json shouldContain "\"MEDIUM\""
+        }
+    }
+
+    @Nested
     inner class Structure {
         @Test
         fun `output includes summary`() {

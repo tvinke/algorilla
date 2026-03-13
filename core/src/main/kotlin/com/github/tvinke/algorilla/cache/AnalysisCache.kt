@@ -1,5 +1,6 @@
 package com.github.tvinke.algorilla.cache
 
+import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.model.SourceLocation
@@ -150,6 +151,7 @@ public data class CachedFinding(
     val ruleId: String,
     val ruleName: String,
     val severity: String,
+    val confidence: String = Confidence.MEDIUM.name,
     val file: String,
     val line: Int,
     val column: Int,
@@ -164,6 +166,7 @@ public data class CachedFinding(
             ruleId = ruleId,
             ruleName = ruleName,
             severity = Severity.valueOf(severity),
+            confidence = runCatching { Confidence.valueOf(confidence) }.getOrDefault(Confidence.MEDIUM),
             location = SourceLocation(file, line, column),
             message = message,
             suggestion = suggestion,
@@ -178,6 +181,7 @@ public data class CachedFinding(
                 ruleId = finding.ruleId,
                 ruleName = finding.ruleName,
                 severity = finding.severity.name,
+                confidence = finding.confidence.name,
                 file = finding.location.file,
                 line = finding.location.line,
                 column = finding.location.column,

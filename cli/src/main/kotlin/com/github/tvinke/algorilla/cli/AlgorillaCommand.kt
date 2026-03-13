@@ -11,6 +11,7 @@ import com.github.tvinke.algorilla.lang.groovy.parser.GroovyLanguageParser
 import com.github.tvinke.algorilla.lang.java.parser.JavaLanguageParser
 import com.github.tvinke.algorilla.lang.javascript.parser.JavaScriptLanguageParser
 import com.github.tvinke.algorilla.lang.kotlin.parser.KotlinLanguageParser
+import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.reporting.Ansi
@@ -79,6 +80,13 @@ internal class AlgorillaCommand :
         defaultValue = "warning",
     )
     private var severity: String = "warning"
+
+    @Option(
+        names = ["--confidence"],
+        description = ["Minimum confidence: low, medium, high (default: medium)"],
+        defaultValue = "medium",
+    )
+    private var confidence: String = "medium"
 
     @Option(
         names = ["--exclude"],
@@ -164,7 +172,7 @@ internal class AlgorillaCommand :
     private var scanRoots: List<File> = emptyList()
 
     override fun call(): Int {
-        configureLogging()
+        configureLogging(verbose)
         val useColor = resolveColor(color, outputFile)
 
         if (listRules) {
@@ -191,13 +199,6 @@ internal class AlgorillaCommand :
         return exitCodeFor(accepted, resolveFailOn(failOn))
     }
 
-    private fun configureLogging() {
-        if (verbose) {
-            val loggerContext = org.slf4j.LoggerFactory.getILoggerFactory() as ch.qos.logback.classic.LoggerContext
-            loggerContext.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME).level = ch.qos.logback.classic.Level.DEBUG
-        }
-    }
-
     private fun runAnalysis(): AnalysisResult {
         val config = buildConfig()
         val detector = ProjectStructureDetector()
@@ -206,55 +207,26 @@ internal class AlgorillaCommand :
 
         registerAllParsers()
         val parsers = ParserRegistry.all()
-        val allRules = resolveRules()
+        val languageFilter = resolveLanguageFilter(languages, spec)
+        val allRules = resolveRules(projectRoot, languageFilter, ruleFilter)
         val cache = if (noCache) null else AnalysisCache(projectRoot)
-        val languageFilter = resolveLanguageFilter()
         val collector = SourceFileCollector(detector)
         val sourceFiles = collector.collect(scanRoots, config.excludePatterns, includeTests, languageFilter)
         return AnalysisEngine(parsers = parsers, rules = allRules, config = config, cache = cache, verbose = verbose)
             .analyze(sourceFiles)
     }
 
-    private fun resolveRules(): List<Rule> {
-        val languageFilter = resolveLanguageFilter()
-        return (builtinRules() + CustomRuleLoader.loadRules(projectRoot))
-            .let { list ->
-                if (languageFilter != null) list.filter { r -> r.languages.any { it in languageFilter } } else list
-            }.let { list ->
-                if (ruleFilter.isNotEmpty()) {
-                    val ids = ruleFilter.toSet()
-                    list.filter { it.id in ids || it.name in ids }
-                } else {
-                    list
-                }
-            }
-    }
-
     private fun buildConfig(): AnalysisConfig {
         val fileConfig = loadConfig(configFile)
-        val minSeverity =
-            when (severity.lowercase()) {
-                "info" -> Severity.INFO
-                "error" -> Severity.ERROR
-                else -> Severity.WARNING
-            }
         val mergedExclude = if (excludePatterns.isNotEmpty()) excludePatterns else fileConfig.excludePatterns
-        val mergedSeverity = if (cliSeverityProvided()) minSeverity else fileConfig.minSeverity
-        return fileConfig.copy(excludePatterns = mergedExclude, minSeverity = mergedSeverity)
-    }
-
-    private fun cliSeverityProvided(): Boolean = spec.commandLine().parseResult.hasMatchedOption("severity")
-
-    private fun resolveLanguageFilter(): Set<Language>? {
-        if (languages.isEmpty()) return null
-        return languages
-            .map { name ->
-                Language.fromName(name)
-                    ?: throw CommandLine.ParameterException(
-                        spec.commandLine(),
-                        "Unknown language '$name'. Available: ${Language.entries.joinToString { it.displayName.lowercase() }}",
-                    )
-            }.toSet()
+        val parseResult = spec.commandLine().parseResult
+        val cliSev = if (parseResult.hasMatchedOption("severity")) resolveSeverity(severity) else null
+        val cliConf = if (parseResult.hasMatchedOption("confidence")) resolveConfidence(confidence) else null
+        return fileConfig.copy(
+            excludePatterns = mergedExclude,
+            minSeverity = cliSev ?: fileConfig.minSeverity,
+            minConfidence = cliConf ?: fileConfig.minConfidence,
+        )
     }
 
     internal companion object {
@@ -266,11 +238,50 @@ internal class AlgorillaCommand :
 
 private fun builtinRules(): List<Rule> = BuiltinRules.all()
 
+private fun resolveRules(
+    projectRoot: File,
+    languageFilter: Set<Language>?,
+    ruleFilter: List<String>,
+): List<Rule> =
+    (builtinRules() + CustomRuleLoader.loadRules(projectRoot))
+        .let { list ->
+            if (languageFilter != null) list.filter { r -> r.languages.any { it in languageFilter } } else list
+        }.let { list ->
+            if (ruleFilter.isNotEmpty()) {
+                val ids = ruleFilter.toSet()
+                list.filter { it.id in ids || it.name in ids }
+            } else {
+                list
+            }
+        }
+
+private fun resolveLanguageFilter(
+    languages: List<String>,
+    spec: CommandSpec,
+): Set<Language>? {
+    if (languages.isEmpty()) return null
+    return languages
+        .map { name ->
+            Language.fromName(name)
+                ?: throw CommandLine.ParameterException(
+                    spec.commandLine(),
+                    "Unknown language '$name'. Available: ${Language.entries.joinToString { it.displayName.lowercase() }}",
+                )
+        }.toSet()
+}
+
 /**
  * Ensures all built-in language parsers are registered in [ParserRegistry].
  * Each parser's companion object registers itself, but that only happens when
  * the class is first loaded — so we touch each companion here to trigger it.
  */
+private fun configureLogging(verbose: Boolean) {
+    if (verbose) {
+        val loggerContext = org.slf4j.LoggerFactory.getILoggerFactory() as ch.qos.logback.classic.LoggerContext
+        loggerContext.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME).level = ch.qos.logback.classic.Level.DEBUG
+    }
+}
+
 private fun registerAllParsers() {
     JavaLanguageParser.Companion
     GroovyLanguageParser.Companion
@@ -303,6 +314,20 @@ private fun applyIgnoreList(
     if (ignoreList.size == 0) return result
     return result.copy(findings = ignoreList.filter(result.findings))
 }
+
+private fun resolveSeverity(severity: String): Severity =
+    when (severity.lowercase()) {
+        "info" -> Severity.INFO
+        "error" -> Severity.ERROR
+        else -> Severity.WARNING
+    }
+
+private fun resolveConfidence(confidence: String): Confidence =
+    when (confidence.lowercase()) {
+        "low" -> Confidence.LOW
+        "high" -> Confidence.HIGH
+        else -> Confidence.MEDIUM
+    }
 
 private fun resolveFailOn(failOn: String): Severity =
     when (failOn.lowercase()) {

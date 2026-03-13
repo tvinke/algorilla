@@ -1,5 +1,6 @@
 package com.github.tvinke.algorilla.baseline
 
+import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.model.SourceLocation
 import com.github.tvinke.algorilla.rules.Finding
@@ -108,6 +109,26 @@ internal class BaselineTest {
 
             val content = baselineFile.readText()
             content shouldContain "\"version\""
+        }
+    }
+
+    @Nested
+    inner class ConfidenceIndependence {
+        @Test
+        fun `fingerprint is identical regardless of confidence`() {
+            val low =
+                Finding(
+                    ruleId = "nested-lookup",
+                    ruleName = "Nested Lookup",
+                    severity = Severity.WARNING,
+                    confidence = Confidence.LOW,
+                    location = SourceLocation("/src/Main.java", 10, 1),
+                    message = "Linear lookup inside loop",
+                    suggestion = "Use a HashSet",
+                )
+            val high = low.copy(confidence = Confidence.HIGH)
+
+            Baseline.fingerprintOf(low) shouldBe Baseline.fingerprintOf(high)
         }
     }
 

@@ -1,5 +1,6 @@
 package com.github.tvinke.algorilla.config
 
+import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.Severity
 
@@ -14,6 +15,7 @@ public data class AnalysisConfig(
     val typeHints: Map<String, String> = emptyMap(),
     val maxCallDepth: Int = DEFAULT_MAX_CALL_DEPTH,
     val minSeverity: Severity = Severity.WARNING,
+    val minConfidence: Confidence = Confidence.MEDIUM,
     val heavyweightTypes: Set<String> = DEFAULT_HEAVYWEIGHT_TYPES,
     val includeTests: Boolean = false,
 ) {

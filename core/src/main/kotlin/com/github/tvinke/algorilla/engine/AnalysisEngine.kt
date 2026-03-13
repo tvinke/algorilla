@@ -8,7 +8,9 @@ import com.github.tvinke.algorilla.graph.CallGraph
 import com.github.tvinke.algorilla.graph.CallGraphBuilder
 import com.github.tvinke.algorilla.graph.ComplexityAnnotator
 import com.github.tvinke.algorilla.graph.SymbolTable
+import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.FileRoot
+import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.LookupCall
@@ -63,7 +65,8 @@ public class AnalysisEngine(
         annotateComplexity(symbolTable, callGraph)
         val rawFindings = evaluateRules(irTrees, symbolTable, callGraph)
         val deduplicated = applySubsumption(rawFindings, rules)
-        val freshFindings = SuppressionFilter().filter(deduplicated, irTrees, aliasIndex)
+        val confidenceAdjusted = adjustConfidence(deduplicated)
+        val freshFindings = SuppressionFilter().filter(confidenceAdjusted, irTrees, aliasIndex)
 
         val allFindings = freshFindings + cachedFindings
         saveCache(sourceFiles, filesToParse, freshFindings, cachedEntries)
@@ -83,7 +86,11 @@ public class AnalysisEngine(
     ): AnalysisResult {
         val sorted = allFindings.sortedWith(findingOrder)
         val unfilteredCounts = sorted.groupingBy { it.severity }.eachCount()
-        val filtered = sorted.filter { it.severity >= config.minSeverity }
+        val unfilteredConfidenceCounts = sorted.groupingBy { it.confidence }.eachCount()
+        val filtered =
+            sorted
+                .filter { it.severity >= config.minSeverity }
+                .filter { it.confidence >= config.minConfidence }
         return AnalysisResult(
             findings = filtered,
             filesAnalyzed = totalFiles,
@@ -91,6 +98,7 @@ public class AnalysisEngine(
             errors = errors,
             elapsedMs = elapsedMs,
             unfilteredCounts = unfilteredCounts,
+            unfilteredConfidenceCounts = unfilteredConfidenceCounts,
         )
     }
 
@@ -246,6 +254,67 @@ public class AnalysisEngine(
 }
 
 /**
+ * Adjusts confidence per finding based on structural certainty, type evidence,
+ * and language context. This is the bridge between Phase 1 (infrastructure) and
+ * per-rule confidence tuning (Phase 3).
+ *
+ * Promotion to HIGH:
+ * - Rules whose structural pattern is always an anti-pattern regardless of types.
+ *
+ * Demotion to LOW:
+ * - Findings in JS/TS files where detection relies on name-based heuristics
+ *   without type annotations (unless the rule is structurally certain).
+ *
+ * Cross-method findings (evidence spanning multiple files) stay at MEDIUM —
+ * the called function might not behave as inferred.
+ */
+internal fun adjustConfidence(findings: List<Finding>): List<Finding> =
+    findings.map { finding ->
+        // Only adjust findings still at the default MEDIUM. If a rule has explicitly
+        // set HIGH or LOW, respect that — the rule has more context than the engine.
+        if (finding.confidence != Confidence.MEDIUM) return@map finding
+        val adjusted = classifyConfidence(finding)
+        if (adjusted != finding.confidence) finding.copy(confidence = adjusted) else finding
+    }
+
+private fun classifyConfidence(finding: Finding): Confidence {
+    // Structural rules: always real regardless of types or context
+    if (finding.ruleId in STRUCTURALLY_CERTAIN_RULES) return Confidence.HIGH
+
+    // Cross-method findings: evidence spans multiple files → MEDIUM (not promoted)
+    val isCrossMethod =
+        finding.evidence.any { it.location.file != finding.location.file }
+    if (isCrossMethod) return Confidence.MEDIUM
+
+    // JS/TS files without type info: name-based heuristics only → LOW
+    if (isUntypedScript(finding.location.file)) return Confidence.LOW
+
+    return Confidence.MEDIUM
+}
+
+// Rules where the detected pattern is always an anti-pattern, independent of
+// receiver types, collection sizes, or runtime context.
+private val STRUCTURALLY_CERTAIN_RULES =
+    setOf(
+        "string-concat-in-loop", // String += in loop is always O(n²)
+        "sort-for-last", // Sorting to get min/max is always suboptimal
+        "in-loop-collection-building", // Concat/spread in reduce is always quadratic
+        "filter-after-sort", // Filtering after sort wastes the sort work
+        "expensive-sort-comparator", // O(n log n) comparator in O(n log n) sort = O(n² log² n)
+        "repeated-regex-in-loop", // Compiling regex per iteration is always wasteful
+        "repeated-reflection-in-loop", // Reflection lookup per iteration is always wasteful
+        "quadratic-removal", // List.remove(index) in loop is always O(n²)
+        "sequential-async-join-in-loop", // Await in loop is always sequential
+    )
+
+private val UNTYPED_EXTENSIONS = setOf("js", "jsx", "ts", "tsx", "vue", "mjs", "cjs")
+
+private fun isUntypedScript(filePath: String): Boolean {
+    val ext = filePath.substringAfterLast('.', "").lowercase()
+    return ext in UNTYPED_EXTENSIONS
+}
+
+/**
  * When two rules flag the same source location for overlapping reasons, keep the
  * more specific one. Rules declare which other rules they subsume via [Rule.subsumes].
  *
@@ -300,6 +369,7 @@ public data class AnalysisResult(
     val errors: List<AnalysisError>,
     val elapsedMs: Long,
     val unfilteredCounts: Map<Severity, Int> = emptyMap(),
+    val unfilteredConfidenceCounts: Map<Confidence, Int> = emptyMap(),
 )
 
 /**
@@ -326,11 +396,13 @@ public class ParseException(
 ) : RuntimeException(message, cause)
 
 /**
- * Sort findings so the most actionable ones appear first:
- * severity (ERROR > WARNING > INFO), then category weight, then location.
+ * Sort findings so the most trustworthy and actionable ones appear first:
+ * confidence (HIGH > MEDIUM > LOW), then severity (ERROR > WARNING > INFO),
+ * then category weight, then location.
  */
 private val findingOrder: Comparator<Finding> =
-    compareByDescending<Finding> { it.severity.ordinal }
+    compareByDescending<Finding> { it.confidence.ordinal }
+        .thenByDescending { it.severity.ordinal }
         .thenBy { it.category?.ordinal ?: Int.MAX_VALUE }
         .thenBy { it.location.file }
         .thenBy { it.location.line }
@@ -349,6 +421,9 @@ public fun markScalarLookups(
     registry: LanguageSemanticsRegistry,
 ): Map<String, FileRoot> {
     val globalFieldTypes = collectGlobalFieldTypes(irTrees)
+    // Merge all field types across all classes as a fallback for inherited fields.
+    // Precedence: local file > declaring class > any class in scan scope.
+    val allGlobalFields = globalFieldTypes.values.fold(emptyMap<String, String>()) { acc, m -> acc + m }
     val result = mutableMapOf<String, FileRoot>()
     for ((file, fileRoot) in irTrees) {
         val language = fileRoot.language
@@ -357,7 +432,7 @@ public fun markScalarLookups(
             fileRoot.transform { node ->
                 if (node is FunctionDecl) {
                     val classFields = node.declaringClass?.let { globalFieldTypes[it] } ?: emptyMap()
-                    val mergedFields = classFields + localFieldTypes
+                    val mergedFields = allGlobalFields + classFields + localFieldTypes
                     markScalarLookupsInFunction(node, language, registry, mergedFields)
                 } else {
                     node
@@ -408,6 +483,8 @@ private fun collectFieldTypes(fileRoot: FileRoot): Map<String, String> {
 private fun buildTypeMap(
     fn: FunctionDecl,
     fieldTypes: Map<String, String>,
+    language: com.github.tvinke.algorilla.model.Language,
+    registry: LanguageSemanticsRegistry,
 ): Map<String, String> {
     val typeMap = mutableMapOf<String, String>()
     typeMap.putAll(fieldTypes)
@@ -421,9 +498,29 @@ private fun buildTypeMap(
                     .filterIsInstance<ObjectCreation>()
                     .firstOrNull()
                     ?.typeName
+                ?: inferO1Type(varDecl, language, registry)
         if (type != null) typeMap[varDecl.name] = type
     }
     return typeMap
+}
+
+/**
+ * Infers an O(1) type name when a variable is initialized via a factory method or
+ * instance method that returns a Set or Map. Uses the YAML-driven `o1-factory-methods`
+ * section from LanguageSemanticsRegistry, plus a qualifier check against `o1-types`.
+ */
+private fun inferO1Type(
+    varDecl: VariableDecl,
+    language: com.github.tvinke.algorilla.model.Language,
+    registry: LanguageSemanticsRegistry,
+): String? {
+    val call = varDecl.children.filterIsInstance<FunctionCall>().firstOrNull() ?: return null
+    // Check if the qualified target is an O(1) type: Set.of(), Map.of(), ConcurrentHashMap.newKeySet()
+    val target = call.qualifiedTarget
+    if (target != null && registry.isO1Type(target)) return target
+    // Check if the method name is a known O(1) factory/return-type method (YAML-driven)
+    if (registry.isO1Factory(language, call.name)) return "Set"
+    return null
 }
 
 private fun markScalarLookupsInFunction(
@@ -432,7 +529,7 @@ private fun markScalarLookupsInFunction(
     registry: LanguageSemanticsRegistry,
     fieldTypes: Map<String, String>,
 ): FunctionDecl {
-    val typeMap = buildTypeMap(fn, fieldTypes)
+    val typeMap = buildTypeMap(fn, fieldTypes, language, registry)
     return fn.transform { node ->
         if (node is LookupCall && node.targetVariable != null && !node.isO1) {
             val varName = node.targetVariable.removePrefix("this.")

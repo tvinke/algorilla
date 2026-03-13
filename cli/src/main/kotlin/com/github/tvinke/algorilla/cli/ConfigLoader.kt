@@ -4,6 +4,7 @@ import com.charleskorn.kaml.Yaml
 import com.charleskorn.kaml.YamlConfiguration
 import com.github.tvinke.algorilla.config.AnalysisConfig
 import com.github.tvinke.algorilla.config.RuleOverride
+import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.Severity
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -27,6 +28,8 @@ public data class AlgorillaConfig(
     val heavyweightTypes: List<String> = emptyList(),
     @SerialName("min-severity")
     val minSeverity: String? = null,
+    @SerialName("min-confidence")
+    val minConfidence: String? = null,
     @SerialName("max-call-depth")
     val maxCallDepth: Int? = null,
 )
@@ -72,6 +75,7 @@ private fun mapToAnalysisConfig(config: AlgorillaConfig): AnalysisConfig {
         typeHints = config.typeHints,
         heavyweightTypes = heavyweightTypes,
         minSeverity = config.minSeverity?.let { parseSeverity(it) } ?: Severity.WARNING,
+        minConfidence = config.minConfidence?.let { parseConfidence(it) } ?: Confidence.MEDIUM,
         maxCallDepth = config.maxCallDepth ?: AnalysisConfig.DEFAULT_MAX_CALL_DEPTH,
     )
 }
@@ -90,4 +94,11 @@ private fun parseSeverity(value: String): Severity =
         "info" -> Severity.INFO
         "error" -> Severity.ERROR
         else -> Severity.WARNING
+    }
+
+private fun parseConfidence(value: String): Confidence =
+    when (value.lowercase()) {
+        "low" -> Confidence.LOW
+        "high" -> Confidence.HIGH
+        else -> Confidence.MEDIUM
     }

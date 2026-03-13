@@ -3,6 +3,7 @@ package com.github.tvinke.algorilla.reporting
 import com.github.tvinke.algorilla.baseline.Baseline
 import com.github.tvinke.algorilla.engine.AnalysisResult
 import com.github.tvinke.algorilla.engine.Reporter
+import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.rules.Finding
 import java.util.Locale
@@ -57,12 +58,13 @@ public class ConsoleReporter(
     ) {
         val sep = Ansi.dim(" \u00b7 ", color)
         val severityTag = formatSeverityTag(finding.severity)
+        val confidenceTag = formatConfidenceTag(finding.confidence)
         val ruleId = Ansi.boldWhite(finding.ruleId, color)
         val category = finding.category?.let { sep + Ansi.dim(it.displayName, color) } ?: ""
         val complexity = formatComplexity(finding)
 
         output.appendLine()
-        output.appendLine("    $severityTag$sep$ruleId$category$complexity")
+        output.appendLine("    $severityTag$confidenceTag$sep$ruleId$category$complexity")
         output.appendLine("    ${Ansi.cyan(formatLocation(finding.location.file, finding.location.line), color)}")
         output.appendLine()
         output.appendLine("      ${finding.message}")
@@ -78,6 +80,13 @@ public class ConsoleReporter(
             Severity.ERROR -> Ansi.bgRed(" error ", color)
             Severity.WARNING -> Ansi.bgYellow(" warning ", color)
             Severity.INFO -> Ansi.bgCyan(" info ", color)
+        }
+
+    private fun formatConfidenceTag(confidence: Confidence): String =
+        when (confidence) {
+            Confidence.HIGH -> " " + Ansi.green("\u2714 high confidence", color)
+            Confidence.LOW -> " " + Ansi.dim("\u2022 low confidence", color)
+            Confidence.MEDIUM -> ""
         }
 
     private fun formatComplexity(finding: Finding): String {
@@ -186,15 +195,29 @@ public class ConsoleReporter(
     }
 
     private fun formatHiddenCounts(result: AnalysisResult): String {
-        val parts =
+        val severityParts =
             Severity.entries.mapNotNull { severity ->
                 val total = result.unfilteredCounts.getOrDefault(severity, 0)
                 val shown = result.findings.count { it.severity == severity }
                 val hidden = total - shown
                 if (hidden > 0) "$hidden ${severity.name.lowercase()}" else null
             }
+        val confidenceParts =
+            Confidence.entries.mapNotNull { confidence ->
+                val total = result.unfilteredConfidenceCounts.getOrDefault(confidence, 0)
+                val shown = result.findings.count { it.confidence == confidence }
+                val hidden = total - shown
+                if (hidden > 0) "$hidden ${confidence.name.lowercase()}-confidence" else null
+            }
+        val parts = mutableListOf<String>()
+        if (severityParts.isNotEmpty()) {
+            parts.add("${severityParts.joinToString(", ")} hidden — use --severity info to show")
+        }
+        if (confidenceParts.isNotEmpty()) {
+            parts.add("${confidenceParts.joinToString(", ")} hidden — use --confidence low to show")
+        }
         return if (parts.isNotEmpty()) {
-            " " + Ansi.dim("[${parts.joinToString(", ")} hidden — use --severity info to show]", color)
+            " " + Ansi.dim("[${parts.joinToString("; ")}]", color)
         } else {
             ""
         }

@@ -1,6 +1,7 @@
 package com.github.tvinke.algorilla.engine
 
 import com.github.tvinke.algorilla.config.AnalysisConfig
+import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.FileRoot
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.Severity
@@ -125,13 +126,109 @@ internal class AnalysisEngineTest {
         }
     }
 
+    @Nested
+    inner class ConfidenceFiltering {
+        @Test
+        fun `default minConfidence MEDIUM excludes LOW findings`() {
+            val file = createTempFile("Test.java")
+            val findings =
+                listOf(
+                    finding(file, Severity.WARNING, Confidence.LOW),
+                    finding(file, Severity.WARNING, Confidence.MEDIUM),
+                    finding(file, Severity.WARNING, Confidence.HIGH),
+                )
+            val engine =
+                AnalysisEngine(
+                    parsers = listOf(stubParser(file)),
+                    rules = listOf(stubRule(findings)),
+                    config = AnalysisConfig(minSeverity = Severity.INFO, minConfidence = Confidence.MEDIUM),
+                )
+
+            val result = engine.analyze(listOf(file))
+
+            result.findings shouldHaveSize 2
+            result.findings.none { it.confidence == Confidence.LOW } shouldBe true
+            result.unfilteredConfidenceCounts[Confidence.LOW] shouldBe 1
+            result.unfilteredConfidenceCounts[Confidence.MEDIUM] shouldBe 1
+            result.unfilteredConfidenceCounts[Confidence.HIGH] shouldBe 1
+        }
+
+        @Test
+        fun `minConfidence HIGH excludes MEDIUM and LOW`() {
+            val file = createTempFile("Test.java")
+            val findings =
+                listOf(
+                    finding(file, Severity.WARNING, Confidence.LOW),
+                    finding(file, Severity.WARNING, Confidence.MEDIUM),
+                    finding(file, Severity.WARNING, Confidence.HIGH),
+                )
+            val engine =
+                AnalysisEngine(
+                    parsers = listOf(stubParser(file)),
+                    rules = listOf(stubRule(findings)),
+                    config = AnalysisConfig(minSeverity = Severity.INFO, minConfidence = Confidence.HIGH),
+                )
+
+            val result = engine.analyze(listOf(file))
+
+            result.findings shouldHaveSize 1
+            result.findings.first().confidence shouldBe Confidence.HIGH
+        }
+
+        @Test
+        fun `minConfidence LOW includes all findings`() {
+            val file = createTempFile("Test.java")
+            val findings =
+                listOf(
+                    finding(file, Severity.WARNING, Confidence.LOW),
+                    finding(file, Severity.WARNING, Confidence.MEDIUM),
+                    finding(file, Severity.WARNING, Confidence.HIGH),
+                )
+            val engine =
+                AnalysisEngine(
+                    parsers = listOf(stubParser(file)),
+                    rules = listOf(stubRule(findings)),
+                    config = AnalysisConfig(minSeverity = Severity.INFO, minConfidence = Confidence.LOW),
+                )
+
+            val result = engine.analyze(listOf(file))
+
+            result.findings shouldHaveSize 3
+        }
+
+        @Test
+        fun `confidence and severity filters compose`() {
+            val file = createTempFile("Test.java")
+            val findings =
+                listOf(
+                    finding(file, Severity.INFO, Confidence.HIGH),
+                    finding(file, Severity.WARNING, Confidence.LOW),
+                    finding(file, Severity.WARNING, Confidence.HIGH),
+                )
+            val engine =
+                AnalysisEngine(
+                    parsers = listOf(stubParser(file)),
+                    rules = listOf(stubRule(findings)),
+                    config = AnalysisConfig(minSeverity = Severity.WARNING, minConfidence = Confidence.HIGH),
+                )
+
+            val result = engine.analyze(listOf(file))
+
+            result.findings shouldHaveSize 1
+            result.findings.first().severity shouldBe Severity.WARNING
+            result.findings.first().confidence shouldBe Confidence.HIGH
+        }
+    }
+
     private fun finding(
         file: String,
         severity: Severity,
+        confidence: Confidence = Confidence.MEDIUM,
     ) = Finding(
         ruleId = "test-rule",
         ruleName = "Test Rule",
         severity = severity,
+        confidence = confidence,
         location = SourceLocation(file, 10, 1),
         message = "Test finding",
         suggestion = "Fix it",

@@ -2,6 +2,7 @@ package com.github.tvinke.algorilla.reporting
 
 import com.github.tvinke.algorilla.engine.AnalysisResult
 import com.github.tvinke.algorilla.engine.Reporter
+import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.rules.Finding
 import io.github.detekt.sarif4k.ArtifactLocation
@@ -80,6 +81,7 @@ public class SarifReporter : Reporter {
             ruleID = finding.ruleId,
             ruleIndex = ruleIndex[finding.ruleId]?.toLong(),
             level = finding.severity.toSarifLevel(),
+            rank = finding.confidence.toSarifRank(),
             message = buildMessage(finding),
             locations = listOf(finding.location.toSarifLocation()),
         )
@@ -118,6 +120,17 @@ private fun Severity.toSarifLevel(): Level =
         Severity.ERROR -> Level.Error
         Severity.WARNING -> Level.Warning
         Severity.INFO -> Level.Note
+    }
+
+private const val SARIF_RANK_HIGH = 90.0
+private const val SARIF_RANK_MEDIUM = 50.0
+private const val SARIF_RANK_LOW = 10.0
+
+private fun Confidence.toSarifRank(): Double =
+    when (this) {
+        Confidence.HIGH -> SARIF_RANK_HIGH
+        Confidence.MEDIUM -> SARIF_RANK_MEDIUM
+        Confidence.LOW -> SARIF_RANK_LOW
     }
 
 private fun com.github.tvinke.algorilla.model.SourceLocation.toSarifLocation(): Location =

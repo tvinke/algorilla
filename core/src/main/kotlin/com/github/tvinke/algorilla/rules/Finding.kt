@@ -1,5 +1,6 @@
 package com.github.tvinke.algorilla.rules
 
+import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.model.SourceLocation
 
@@ -10,6 +11,9 @@ import com.github.tvinke.algorilla.model.SourceLocation
  * @property ruleName Human-readable rule name, e.g. `"Nested Lookup"`, `"Sort For Last"`.
  * @property severity How actionable this finding is — [Severity.ERROR] for clear performance bugs,
  *   [Severity.WARNING] for likely issues, [Severity.INFO] for informational hints.
+ * @property confidence How sure Algorilla is that this finding is a true positive. Orthogonal to
+ *   severity: a finding can be high-severity but low-confidence (e.g. a likely O(n²) pattern where
+ *   the receiver type is unknown). Defaults to [Confidence.MEDIUM].
  * @property location Source file, line, and column where the anti-pattern was detected.
  * @property message Explanation of what was detected, e.g.
  *   `"Linear lookup list.contains() inside for-loop over items"`.
@@ -30,6 +34,7 @@ public data class Finding(
     val location: SourceLocation,
     val message: String,
     val suggestion: String,
+    val confidence: Confidence = Confidence.MEDIUM,
     val currentComplexity: String? = null,
     val suggestedComplexity: String? = null,
     val evidence: List<Evidence> = emptyList(),
