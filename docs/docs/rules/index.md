@@ -1,6 +1,6 @@
 # Rules Overview
 
-Algorilla ships with 27 built-in rules that detect common algorithmic complexity anti-patterns, organized in six categories.
+Algorilla ships with 29 built-in rules that detect common algorithmic complexity anti-patterns, organized in six categories.
 
 ## Loop amplifiers
 
@@ -41,6 +41,7 @@ Database and service call patterns that cause excessive I/O.
 |---------|------|----------|-------------------|
 | `n-plus-one-query` | [N+1 Query](n-plus-one-query.md) | WARNING | O(n·IO) where O(1·IO) suffices |
 | `bulk-load-for-single-lookup` | [Bulk Load for Single Lookup](bulk-load-for-single-lookup.md) | WARNING | O(n) where O(1) suffices |
+| `lazy-loading-in-loop` | [Lazy Loading In Loop](lazy-loading-in-loop.md) | WARNING | O(n·IO) lazy-load per iteration |
 
 ## Construction cost
 
@@ -61,6 +62,7 @@ Repeated computations that could be cached.
 | `chained-getters` | [Chained Getters](chained-getters.md) | INFO | O(n^k) where O(n) suffices |
 | `unmemoized-recursion` | [Unmemoized Recursion](unmemoized-recursion.md) | WARNING | O(2^n) where O(n) with memo suffices |
 | `multi-pass-stream-fusion` | [Multi-Pass Stream Fusion](multi-pass-stream-fusion.md) | INFO | O(k·n) where O(n) suffices |
+| `loop-invariant-hoisting` | [Loop-Invariant Hoisting](loop-invariant-hoisting.md) | INFO | O(n·call) where O(call) suffices |
 
 ## Concurrency
 
