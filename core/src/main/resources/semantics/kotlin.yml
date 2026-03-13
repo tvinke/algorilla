@@ -580,13 +580,9 @@ mutation-methods:
 
 removal-methods:
   - remove
-  - removeAll
   - removeAt
   - removeFirst
   - removeLast
-  - clear
-  - retainAll
-  - removeIf
   - splice
 
 bulk-load-prefixes:

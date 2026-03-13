@@ -492,11 +492,8 @@ mutation-methods:
 
 removal-methods:
   - remove
-  - removeAll
   - removeFirst
   - removeLast
-  - clear
-  - retainAll
   - removeElement
   - splice
 

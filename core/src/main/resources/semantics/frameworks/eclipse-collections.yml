@@ -1,0 +1,153 @@
+# Eclipse Collections — framework overlay for Java
+# High-performance collections: FastList, UnifiedSet, UnifiedMap, Bag, Multimap, primitives
+
+language: java
+
+methods: {}
+
+collection-types:
+  # Mutable list/set/bag
+  - FastList
+  - MutableList
+  - MutableSet
+  - MutableBag
+  - MutableSortedSet
+  - MutableSortedBag
+  - MutableSortedMap
+  - MutableStack
+  - MutableMap
+  # Multimap families
+  - MutableListMultimap
+  - MutableSetMultimap
+  - MutableBagMultimap
+  - MutableSortedSetMultimap
+  - MutableSortedBagMultimap
+  # Immutable variants
+  - ImmutableList
+  - ImmutableSet
+  - ImmutableBag
+  - ImmutableSortedSet
+  - ImmutableSortedBag
+  - ImmutableSortedMap
+  - ImmutableStack
+  - ImmutableMap
+  - ImmutableListMultimap
+  - ImmutableSetMultimap
+  - ImmutableBagMultimap
+  # Primitive collections
+  - IntList
+  - LongList
+  - DoubleList
+  - FloatList
+  - IntSet
+  - LongSet
+  - DoubleSet
+  - IntBag
+  - LongBag
+
+o1-types:
+  # Hash-based O(1) types
+  - UnifiedSet
+  - UnifiedMap
+  - UnifiedSetMultimap
+  - HashBag
+  - HashBiMap
+  # Primitive hash maps/sets
+  - IntIntHashMap
+  - IntObjectHashMap
+  - ObjectIntHashMap
+  - LongIntHashMap
+  - LongObjectHashMap
+  - ObjectLongHashMap
+  - IntHashSet
+  - LongHashSet
+  - DoubleHashSet
+  - FloatHashSet
+  # BiMap
+  - BiMap
+  - MutableBiMap
+  - ImmutableBiMap
+  - HashBiMap
+
+cheap-methods:
+  # Filtering / selecting
+  - select
+  - reject
+  - selectWith
+  - rejectWith
+  - partition
+  - partitionWith
+  - selectInstancesOf
+  # Transforming
+  - collect
+  - collectWith
+  - collectIf
+  - collectInt
+  - collectLong
+  - collectDouble
+  - collectFloat
+  - collectBoolean
+  - flatCollect
+  - flatCollectWith
+  # Grouping / aggregating
+  - groupBy
+  - groupByEach
+  - groupByUniqueKey
+  - aggregateBy
+  - aggregateInPlaceBy
+  - sumByInt
+  - sumByLong
+  - sumByFloat
+  - sumByDouble
+  - countBy
+  - countByWith
+  - countByEach
+  # Matching / detecting
+  - detect
+  - detectWith
+  - detectIfNone
+  - detectWithIfNone
+  - detectOptional
+  - anySatisfy
+  - anySatisfyWith
+  - allSatisfy
+  - allSatisfyWith
+  - noneSatisfy
+  - noneSatisfyWith
+  - count
+  - countWith
+  # Zipping / chunking
+  - zip
+  - zipWithIndex
+  - chunk
+  # Conversion
+  - toList
+  - toSet
+  - toBag
+  - toSortedList
+  - toSortedSet
+  - toSortedBag
+  - toMap
+  - toSortedMap
+  - toImmutable
+  - toReversed
+  - toArray
+  - makeString
+  - appendString
+
+trivial-methods:
+  - isEmpty
+  - notEmpty
+  - size
+  - getFirst
+  - getLast
+  - contains
+  - containsAll
+  - containsAllIterable
+  - containsAllArguments
+  - indexOf
+  - each
+  - forEachWith
+  - forEachWithIndex
+  - asLazy
+  - tap

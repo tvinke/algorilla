@@ -753,7 +753,6 @@ removal-methods:
   - pop
   - shift
   - delete
-  - clear
   - remove
 
 # Batch query method prefixes

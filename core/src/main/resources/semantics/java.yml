@@ -688,10 +688,6 @@ removal-methods:
   - removeLast
   - pollFirst
   - pollLast
-  - clear
-  - removeAll
-  - retainAll
-  - removeIf
 
 bulk-load-prefixes:
   - findAll

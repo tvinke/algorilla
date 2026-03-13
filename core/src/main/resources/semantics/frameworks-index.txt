@@ -22,3 +22,4 @@ gson.yml
 caffeine.yml
 netty.yml
 apache-httpclient.yml
+eclipse-collections.yml
