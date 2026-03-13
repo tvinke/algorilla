@@ -19,8 +19,8 @@ import com.github.tvinke.algorilla.util.findDescendantsWithBranchContext
 import com.github.tvinke.algorilla.util.maxCoExecutableSubset
 
 /**
- * Detects multiple passes over the same data source within a single function that could
- * potentially be fused into a single pass. Covers two patterns:
+ * Detects repeated iteration over the same collection within a single function that could
+ * potentially be combined into a single pass. Covers two patterns:
  *
  * - **Stream pipelines:** two `.stream()` calls on the same collection variable.
  * - **For-each loops:** two for-each loops iterating the same variable.
@@ -28,9 +28,9 @@ import com.github.tvinke.algorilla.util.maxCoExecutableSubset
  * These are flagged as informational suggestions — multiple passes are often intentional
  * for readability, but worth calling out for hot paths.
  */
-public class MultiPassStreamFusionRule : Rule {
-    override val id: String = "multi-pass-stream-fusion"
-    override val name: String = "Multi-Pass Stream Fusion"
+public class RepeatedCollectionIterationRule : Rule {
+    override val id: String = "repeated-collection-iteration"
+    override val name: String = "Repeated Collection Iteration"
     override val severity: Severity = Severity.INFO
     override val languages: Set<Language> = Language.entries.toSet()
     override val category: RuleCategory = RuleCategory.REDUNDANCY

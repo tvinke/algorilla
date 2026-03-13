@@ -47,7 +47,7 @@ All rules work on the language-agnostic intermediate representation (IR), so mos
 | `n-plus-one-query` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | `expensive-construction` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | `repeated-regex-in-loop` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| `implicit-regex-in-loop` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| `regex-recompilation-in-loop` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | `expensive-serialization-in-loop` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | `sequential-async-join-in-loop` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | `in-loop-collection-building` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |

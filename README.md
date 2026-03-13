@@ -122,7 +122,7 @@ Requires Java 11+.
 | `n-plus-one-query` | `findById()`/`countBy*` inside a loop | O(n * IO) → O(1 * IO) |
 | `expensive-construction` | `new ObjectMapper()` inside a method body | ~1ms allocation per call |
 | `repeated-regex-in-loop` | `Pattern.compile()` / `new RegExp()` inside loop | Recompilation per iteration |
-| `implicit-regex-in-loop` | `String.matches()`/`replaceAll()` inside loop | Hidden recompilation per iteration |
+| `regex-recompilation-in-loop` | `String.matches()`/`replaceAll()` inside loop | Hidden recompilation per iteration |
 | `expensive-serialization-in-loop` | `writeValueAsString()`/`JSON.parse()` inside loop | O(n * serialize) |
 | `sequential-async-join-in-loop` | `.join()`/`.get()` on futures in loop | Sequential I/O instead of parallel |
 | `in-loop-collection-building` | `addAll()`/`concat()` inside loop | O(n*m) copying per iteration |

@@ -281,8 +281,8 @@ internal class LanguageSemanticsRegistryTest {
     }
 
     @Test
-    fun `should provide implicit regex methods`() {
-        val methods = registry.allImplicitRegexMethods()
+    fun `should provide regex recompilation methods`() {
+        val methods = registry.allRegexRecompilationMethods()
         methods shouldContain "matches"
         methods shouldContain "split"
         methods shouldContain "replaceAll"

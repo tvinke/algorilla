@@ -6,12 +6,12 @@ tags:
   - JavaScript
 ---
 
-# Implicit Regex in Loop
+# Regex Recompilation in Loop
 
 !!! info "Rule details"
     | | |
     |---|---|
-    | **Rule ID** | `implicit-regex-in-loop` |
+    | **Rule ID** | `regex-recompilation-in-loop` |
     | **Severity** | WARNING |
     | **Confidence** | MEDIUM |
     | **Category** | Loop amplifiers |
@@ -19,9 +19,9 @@ tags:
 
 ## Description
 
-Detects `String` methods that internally compile a regular expression on every call when used inside loops. Methods like `matches()`, `split()`, `replaceAll()`, and `replaceFirst()` call `Pattern.compile()` under the hood — compiling the same regex pattern on every iteration wastes CPU.
+Detects methods that recompile a regular expression on every call when used inside loops. On the JVM, methods like `matches()`, `split()`, `replaceAll()`, and `replaceFirst()` call `Pattern.compile()` under the hood. In JS/TS, regex literals passed to `replace`/`match`/`split` are recompiled each iteration.
 
-This rule is a companion to [`repeated-regex-in-loop`](repeated-regex-in-loop.md), which detects explicit `Pattern.compile()` calls. This rule catches the implicit variant hiding inside innocent-looking `String` methods.
+This rule is a companion to [`repeated-regex-in-loop`](repeated-regex-in-loop.md), which detects explicit `Pattern.compile()` or `new RegExp()` calls. This rule catches the hidden recompilation inside innocent-looking string methods and regex literals.
 
 ## Typical
 

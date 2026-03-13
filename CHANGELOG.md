@@ -5,6 +5,8 @@
 ### BREAKING CHANGES
 
 * **`--fail-on` default changed from `info` to `warning`.** If you relied on info-level findings failing your CI build, add `--fail-on info` explicitly. The GitHub Action default changed accordingly. ([#80](https://github.com/tvinke/algorilla/issues/80))
+* **`implicit-regex-in-loop` → `regex-recompilation-in-loop`** — language-neutral rule ID; "implicit" was Java-specific since Go/PHP regex is always explicit
+* **`multi-pass-stream-fusion` → `repeated-collection-iteration`** — language-neutral rule ID; "stream fusion" is FP/JVM jargon
 
 ### Features
 
@@ -24,7 +26,7 @@
   - `io-in-loop` — HTTP/file/DB calls inside loops ([#85](https://github.com/tvinke/algorilla/issues/85))
   - `unmemoized-recursion` — recursive functions without memoization ([#92](https://github.com/tvinke/algorilla/issues/92))
   - `cardinality-explosion` — nested-loop Cartesian products and flatMap cross joins ([#93](https://github.com/tvinke/algorilla/issues/93))
-  - `multi-pass-stream-fusion` — multiple stream pipelines or for-each loops on the same collection ([#90](https://github.com/tvinke/algorilla/issues/90))
+  - `repeated-collection-iteration` — multiple stream pipelines or for-each loops on the same collection ([#90](https://github.com/tvinke/algorilla/issues/90))
   - `loop-invariant-hoisting` — calls inside loops that don't depend on the loop variable ([#89](https://github.com/tvinke/algorilla/issues/89))
   - `lazy-loading-in-loop` — potential JPA/Hibernate lazy-loading N+1 patterns ([#91](https://github.com/tvinke/algorilla/issues/91))
 * **Confidence system** — findings now carry a confidence tier (HIGH / MEDIUM / LOW) indicating detection certainty. `--confidence` CLI flag filters by tier. HIGH-confidence findings appear first in output with a visual marker. Rules declare `defaultConfidence` on the Rule interface. ([ADR-0004](docs/adr/0004-severity-vs-confidence.md))
@@ -36,11 +38,11 @@
 ### Bug Fixes
 
 * `quadratic-removal` skips Map.remove() and Set.remove() via type-aware filtering — only List.remove() is O(n)
-* `implicit-regex-in-loop` skips Map.replaceAll() which is not regex-based
+* `regex-recompilation-in-loop` skips Map.replaceAll() which is not regex-based
 * `nested-lookup` inherited field type fallback + factory method O(1) inference (Set.of(), ConcurrentHashMap.newKeySet())
 * `repeated-linear-scan` skips uppercase targets (Collectors.toList() etc.)
 * `expensive-callback` and `chained-getters` demoted to LOW confidence (high FP rate on tree-walk code)
-* Skip `implicit-regex` findings for string literal arguments in JS/TS — `"hello".replace("x", "y")` is not a regex ([11a8132](https://github.com/tvinke/algorilla/commit/11a8132))
+* Skip `regex-recompilation` findings for string literal arguments in JS/TS — `"hello".replace("x", "y")` is not a regex ([11a8132](https://github.com/tvinke/algorilla/commit/11a8132))
 * Treat small inline array lookups (e.g. `["a","b"].includes(x)`) as O(1) in JS parser ([087e436](https://github.com/tvinke/algorilla/commit/087e436))
 * Fix color rendering of language tags in docs ([7a5a97a](https://github.com/tvinke/algorilla/commit/7a5a97a))
 * npm publish is now idempotent on re-tag ([844c91e](https://github.com/tvinke/algorilla/commit/844c91e))

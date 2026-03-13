@@ -1,40 +1,41 @@
-package com.github.tvinke.algorilla.lang.kotlin.parser
+package com.github.tvinke.algorilla.lang.javascript.parser
 
 import com.github.tvinke.algorilla.config.AnalysisConfig
 import com.github.tvinke.algorilla.graph.CallGraph
 import com.github.tvinke.algorilla.graph.SymbolTable
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Finding
-import com.github.tvinke.algorilla.rules.builtin.MultiPassStreamFusionRule
+import com.github.tvinke.algorilla.rules.builtin.RegexRecompilationInLoopRule
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.string.shouldContain
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import java.io.File
 
-internal class MultiPassStreamFusionRuleKotlinTest {
-    private val parser = KotlinLanguageParser()
-    private val rule = MultiPassStreamFusionRule()
+internal class RegexRecompilationInLoopRuleJsTest {
+    private val parser = JavaScriptLanguageParser()
+    private val rule = RegexRecompilationInLoopRule()
 
     @Nested
     inner class PositiveCases {
         @Test
-        fun `should detect two for-each loops over the same collection`() {
-            val findings = analyzeFixture("multi-pass-stream-fusion/positive/two-sequences.kt")
+        fun `should detect regex literal arguments in loop`() {
+            val findings = analyzeFixture("regex-recompilation-in-loop/positive/regex-in-loop.js")
 
-            findings shouldHaveSize 1
-            findings.first().ruleId shouldBe "multi-pass-stream-fusion"
-            findings.first().message shouldContain "orders"
+            findings shouldHaveSize 3
+            findings.all { it.ruleId == "regex-recompilation-in-loop" } shouldBe true
+            findings.any { it.message.contains("replace") } shouldBe true
+            findings.any { it.message.contains("match") } shouldBe true
+            findings.any { it.message.contains("split") } shouldBe true
         }
     }
 
     @Nested
     inner class NegativeCases {
         @Test
-        fun `should not flag loops over different collections`() {
-            val findings = analyzeFixture("multi-pass-stream-fusion/negative/different-sources.kt")
+        fun `should not flag split and replace with string literal arguments`() {
+            val findings = analyzeFixture("regex-recompilation-in-loop/negative/string-args-in-loop.js")
 
             findings.shouldBeEmpty()
         }

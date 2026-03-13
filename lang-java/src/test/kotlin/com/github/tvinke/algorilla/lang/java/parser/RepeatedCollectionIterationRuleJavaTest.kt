@@ -7,7 +7,7 @@ import com.github.tvinke.algorilla.graph.SymbolTable
 import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Finding
-import com.github.tvinke.algorilla.rules.builtin.MultiPassStreamFusionRule
+import com.github.tvinke.algorilla.rules.builtin.RepeatedCollectionIterationRule
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
@@ -17,18 +17,18 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import java.io.File
 
-internal class MultiPassStreamFusionRuleJavaTest {
+internal class RepeatedCollectionIterationRuleJavaTest {
     private val parser = JavaLanguageParser()
-    private val rule = MultiPassStreamFusionRule()
+    private val rule = RepeatedCollectionIterationRule()
 
     @Nested
     inner class StreamPipelines {
         @Test
         fun `should detect two stream pipelines on same collection`() {
-            val findings = analyzeFixture("multi-pass-stream-fusion/positive/two-stream-pipelines.java")
+            val findings = analyzeFixture("repeated-collection-iteration/positive/two-stream-pipelines.java")
 
             findings shouldHaveSize 1
-            findings.first().ruleId shouldBe "multi-pass-stream-fusion"
+            findings.first().ruleId shouldBe "repeated-collection-iteration"
             findings.first().message shouldContain "orders"
             findings.first().message shouldContain "streamed 2 times"
             findings.first().confidence shouldBe Confidence.MEDIUM
@@ -37,7 +37,7 @@ internal class MultiPassStreamFusionRuleJavaTest {
 
         @Test
         fun `should provide evidence for each stream call`() {
-            val findings = analyzeFixture("multi-pass-stream-fusion/positive/two-stream-pipelines.java")
+            val findings = analyzeFixture("repeated-collection-iteration/positive/two-stream-pipelines.java")
 
             findings shouldHaveSize 1
             val evidence = findings.first().evidence
@@ -53,10 +53,10 @@ internal class MultiPassStreamFusionRuleJavaTest {
     inner class ForEachLoops {
         @Test
         fun `should detect two for-each loops over same collection`() {
-            val findings = analyzeFixture("multi-pass-stream-fusion/positive/two-foreach-loops.java")
+            val findings = analyzeFixture("repeated-collection-iteration/positive/two-foreach-loops.java")
 
             findings shouldHaveSize 1
-            findings.first().ruleId shouldBe "multi-pass-stream-fusion"
+            findings.first().ruleId shouldBe "repeated-collection-iteration"
             findings.first().message shouldContain "items"
             findings.first().message shouldContain "iterated 2 times"
             findings.first().confidence shouldBe Confidence.LOW
@@ -67,14 +67,14 @@ internal class MultiPassStreamFusionRuleJavaTest {
     inner class NegativeCases {
         @Test
         fun `should not flag streams on different collections`() {
-            val findings = analyzeFixture("multi-pass-stream-fusion/negative/different-sources.java")
+            val findings = analyzeFixture("repeated-collection-iteration/negative/different-sources.java")
 
             findings.shouldBeEmpty()
         }
 
         @Test
         fun `should not flag streams in mutually exclusive branches`() {
-            val findings = analyzeFixture("multi-pass-stream-fusion/negative/branched-streams.java")
+            val findings = analyzeFixture("repeated-collection-iteration/negative/branched-streams.java")
 
             findings.shouldBeEmpty()
         }

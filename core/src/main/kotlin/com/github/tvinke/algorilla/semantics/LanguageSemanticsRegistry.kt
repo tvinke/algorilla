@@ -31,7 +31,7 @@ public class LanguageSemanticsRegistry private constructor(
     private val reflectionByLanguage: Map<Language, Set<String>>,
     private val copyOnModifyByLanguage: Map<Language, Set<String>>,
     private val regexTypesByLanguage: Map<Language, Set<String>>,
-    private val implicitRegexByLanguage: Map<Language, Set<String>>,
+    private val regexRecompilationByLanguage: Map<Language, Set<String>>,
     private val mutationByLanguage: Map<Language, Set<String>>,
     private val removalByLanguage: Map<Language, Set<String>>,
     private val bulkLoadPrefixesByLanguage: Map<Language, List<String>>,
@@ -278,16 +278,16 @@ public class LanguageSemanticsRegistry private constructor(
     public fun allRegexTypes(): Set<String> = regexTypesByLanguage.values.flatten().toSet()
 
     /**
-     * Returns the union of all implicit regex methods across all languages.
+     * Returns the union of all regex recompilation methods across all languages.
      */
-    public fun allImplicitRegexMethods(): Set<String> = implicitRegexByLanguage.values.flatten().toSet()
+    public fun allRegexRecompilationMethods(): Set<String> = regexRecompilationByLanguage.values.flatten().toSet()
 
     /**
-     * Returns implicit regex methods for a specific language.
+     * Returns regex recompilation methods for a specific language.
      */
-    public fun implicitRegexMethods(language: Language): Set<String> {
+    public fun regexRecompilationMethods(language: Language): Set<String> {
         val resolved = resolveLanguage(language)
-        return implicitRegexByLanguage[resolved] ?: emptySet()
+        return regexRecompilationByLanguage[resolved] ?: emptySet()
     }
 
     /**
@@ -638,7 +638,7 @@ public class LanguageSemanticsRegistry private constructor(
                 maps.reflection,
                 maps.copyOnModify,
                 maps.regexTypes,
-                maps.implicitRegex,
+                maps.regexRecompilation,
                 maps.mutation,
                 maps.removal,
                 maps.bulkLoadPrefixes,
@@ -717,7 +717,7 @@ public class LanguageSemanticsRegistry private constructor(
                 reflectionByLanguage = base.reflectionByLanguage,
                 copyOnModifyByLanguage = base.copyOnModifyByLanguage,
                 regexTypesByLanguage = base.regexTypesByLanguage,
-                implicitRegexByLanguage = base.implicitRegexByLanguage,
+                regexRecompilationByLanguage = base.regexRecompilationByLanguage,
                 mutationByLanguage = base.mutationByLanguage,
                 removalByLanguage = base.removalByLanguage,
                 bulkLoadPrefixesByLanguage = base.bulkLoadPrefixesByLanguage,
@@ -764,7 +764,7 @@ internal class LanguageMaps(
     val reflection: MutableMap<Language, Set<String>> = mutableMapOf(),
     val copyOnModify: MutableMap<Language, Set<String>> = mutableMapOf(),
     val regexTypes: MutableMap<Language, Set<String>> = mutableMapOf(),
-    val implicitRegex: MutableMap<Language, Set<String>> = mutableMapOf(),
+    val regexRecompilation: MutableMap<Language, Set<String>> = mutableMapOf(),
     val mutation: MutableMap<Language, Set<String>> = mutableMapOf(),
     val removal: MutableMap<Language, Set<String>> = mutableMapOf(),
     val bulkLoadPrefixes: MutableMap<Language, List<String>> = mutableMapOf(),
@@ -801,7 +801,7 @@ internal class LanguageMaps(
         reflection[lang] = (reflection[lang] ?: emptySet()) + parsed.reflectionMethods
         copyOnModify[lang] = (copyOnModify[lang] ?: emptySet()) + parsed.copyOnModifyMethods
         regexTypes[lang] = (regexTypes[lang] ?: emptySet()) + parsed.regexTypes
-        implicitRegex[lang] = (implicitRegex[lang] ?: emptySet()) + parsed.implicitRegexMethods
+        regexRecompilation[lang] = (regexRecompilation[lang] ?: emptySet()) + parsed.regexRecompilationMethods
         mutation[lang] = (mutation[lang] ?: emptySet()) + parsed.mutationMethods
         removal[lang] = (removal[lang] ?: emptySet()) + parsed.removalMethods
         bulkLoadPrefixes[lang] = ((bulkLoadPrefixes[lang] ?: emptyList()) + parsed.bulkLoadPrefixes).distinct()
@@ -840,7 +840,7 @@ internal data class ParsedYaml(
     val reflectionMethods: Set<String>,
     val copyOnModifyMethods: Set<String>,
     val regexTypes: Set<String>,
-    val implicitRegexMethods: Set<String>,
+    val regexRecompilationMethods: Set<String>,
     val mutationMethods: Set<String>,
     val removalMethods: Set<String>,
     val bulkLoadPrefixes: List<String>,
@@ -886,7 +886,7 @@ internal fun parseYaml(text: String): ParsedYaml {
             "reflection-methods",
             "copy-on-modify-methods",
             "regex-types",
-            "implicit-regex-methods",
+            "regex-recompilation-methods",
             "mutation-methods",
             "removal-methods",
             "bulk-load-prefixes",
@@ -926,7 +926,7 @@ internal fun parseYaml(text: String): ParsedYaml {
         reflectionMethods = collectListItems(sections["reflection-methods"]),
         copyOnModifyMethods = collectListItems(sections["copy-on-modify-methods"]),
         regexTypes = collectListItems(sections["regex-types"]),
-        implicitRegexMethods = collectListItems(sections["implicit-regex-methods"]),
+        regexRecompilationMethods = collectListItems(sections["regex-recompilation-methods"]),
         mutationMethods = collectListItems(sections["mutation-methods"]),
         removalMethods = collectListItems(sections["removal-methods"]),
         bulkLoadPrefixes = collectListItems(sections["bulk-load-prefixes"]).toList(),
