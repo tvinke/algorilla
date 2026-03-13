@@ -47,7 +47,7 @@ public class ExpensiveCallbackRule : Rule {
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
-            scanNode(fileRoot, null, context, findings)
+            scanNode(fileRoot, null, fileRoot.language, context, findings)
         }
         return findings
     }
@@ -55,6 +55,7 @@ public class ExpensiveCallbackRule : Rule {
     private fun scanNode(
         node: IRNode,
         enclosingFn: FunctionDecl?,
+        language: Language,
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
@@ -63,16 +64,17 @@ public class ExpensiveCallbackRule : Rule {
         if (fn == null || !fn.isRecursive) {
             val container = asCallbackContainer(node)
             if (container != null) {
-                checkCallbackBody(container, context, findings)
+                checkCallbackBody(container, language, context, findings)
             }
         }
         for (child in node.children) {
-            scanNode(child, fn, context, findings)
+            scanNode(child, fn, language, context, findings)
         }
     }
 
     private fun checkCallbackBody(
         container: CallbackContainer,
+        language: Language,
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
@@ -82,10 +84,10 @@ public class ExpensiveCallbackRule : Rule {
         val lookups = body.filterIsInstance<LookupCall>() + body.flatMap { it.findDescendants<LookupCall>() }
         val nestedLoops = body.filterIsInstance<LoopNode>() + body.flatMap { it.findDescendants<LoopNode>() }
 
-        for (creation in creations.filter { isDateType(it.typeName) }) {
+        for (creation in creations.filter { isDateType(it.typeName, language, context.registry) }) {
             findings.add(buildDateCreationFinding(container, creation))
         }
-        for (call in calls.filter { isDateParseCall(it) }) {
+        for (call in calls.filter { isDateParseCall(it, language, context.registry) }) {
             findings.add(buildDateParseFinding(container, call))
         }
         for (creation in creations.filter { isRegexType(it.typeName) }) {
@@ -100,17 +102,18 @@ public class ExpensiveCallbackRule : Rule {
         for (nested in nestedLoops) {
             findings.add(buildNestedIterationFinding(container, nested))
         }
-        checkHeavyweightCreations(container, creations, context, findings)
-        checkCrossMethod(container, calls, context, findings)
+        checkHeavyweightCreations(container, creations, language, context, findings)
+        checkCrossMethod(container, calls, language, context, findings)
     }
 
     private fun checkHeavyweightCreations(
         container: CallbackContainer,
         creations: List<ObjectCreation>,
+        language: Language,
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
-        for (creation in creations.filter { !isDateType(it.typeName) && !isRegexType(it.typeName) }) {
+        for (creation in creations.filter { !isDateType(it.typeName, language, context.registry) && !isRegexType(it.typeName) }) {
             val isHeavy =
                 context.registry.isHeavyweight(Language.JAVA, creation.typeName) ||
                     context.registry.allHeavyweightTypes().any { creation.typeName.contains(it) }
@@ -123,18 +126,20 @@ public class ExpensiveCallbackRule : Rule {
     private fun checkCrossMethod(
         container: CallbackContainer,
         calls: List<FunctionCall>,
+        language: Language,
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
         val maxDepth = context.config.maxCallDepth.coerceAtMost(2)
-        for (call in calls.filter { !isDateParseCall(it) && !isCompileCall(it) }) {
-            checkCrossMethodForCall(container, call, context, maxDepth, findings)
+        for (call in calls.filter { !isDateParseCall(it, language, context.registry) && !isCompileCall(it) }) {
+            checkCrossMethodForCall(container, call, language, context, maxDepth, findings)
         }
     }
 
     private fun checkCrossMethodForCall(
         container: CallbackContainer,
         call: FunctionCall,
+        language: Language,
         context: AnalysisContext,
         maxDepth: Int,
         findings: MutableList<Finding>,
@@ -144,7 +149,7 @@ public class ExpensiveCallbackRule : Rule {
                 call,
                 context.symbolTable,
                 maxDepth = maxDepth,
-            ) { isDateType(it.typeName) }
+            ) { isDateType(it.typeName, language, context.registry) }
         if (dateOp != null) {
             findings.add(buildIndirectFinding(container, call, dateOp))
             return
@@ -154,7 +159,7 @@ public class ExpensiveCallbackRule : Rule {
                 call,
                 context.symbolTable,
                 maxDepth = maxDepth,
-            ) { isDateParseCall(it) }
+            ) { isDateParseCall(it, language, context.registry) }
         if (parseOp != null) {
             findings.add(buildIndirectFinding(container, call, parseOp))
         }

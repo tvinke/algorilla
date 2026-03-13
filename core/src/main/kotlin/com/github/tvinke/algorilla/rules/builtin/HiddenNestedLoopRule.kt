@@ -39,7 +39,7 @@ public class HiddenNestedLoopRule : Rule {
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
-            scanNode(fileRoot, null, emptyList(), context, findings)
+            scanNode(fileRoot, null, emptyList(), fileRoot.language, context, findings)
         }
         return findings
     }
@@ -48,6 +48,7 @@ public class HiddenNestedLoopRule : Rule {
         node: IRNode,
         enclosingFn: FunctionDecl?,
         loopStack: List<LoopNode>,
+        language: Language,
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
@@ -55,17 +56,17 @@ public class HiddenNestedLoopRule : Rule {
 
         if (node is LoopNode) {
             for (child in node.children) {
-                scanNode(child, fn, loopStack + node, context, findings)
+                scanNode(child, fn, loopStack + node, language, context, findings)
             }
             return
         }
 
         if (loopStack.isNotEmpty() && node is FunctionCall) {
-            checkForHiddenLoop(node, fn, loopStack, context, findings)
+            checkForHiddenLoop(node, fn, loopStack, language, context, findings)
         }
 
         for (child in node.children) {
-            scanNode(child, fn, loopStack, context, findings)
+            scanNode(child, fn, loopStack, language, context, findings)
         }
     }
 
@@ -74,10 +75,11 @@ public class HiddenNestedLoopRule : Rule {
         call: FunctionCall,
         callerFn: FunctionDecl?,
         loopStack: List<LoopNode>,
+        language: Language,
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
-        if (isStringOrCopyMethod(call.name)) return
+        if (isStringOrCopyMethod(call.name, language, context.registry)) return
 
         val resolved = CrossMethodResolver.resolve(call, context.symbolTable) ?: return
 
@@ -88,7 +90,7 @@ public class HiddenNestedLoopRule : Rule {
         val hiddenLoop = resolved.findDescendants<LoopNode>().firstOrNull() ?: return
 
         // Skip trivial methods (single-statement wrappers with no real loop body)
-        if (isTrivialLoop(hiddenLoop)) return
+        if (isTrivialLoop(hiddenLoop, language, context.registry)) return
 
         // Flow-based confidence: if a parameter flows through this call into a loop
         // in the callee, we have proof the nested iteration is on caller data
@@ -166,35 +168,31 @@ public class HiddenNestedLoopRule : Rule {
 }
 
 /** Filter out trivial loops with no meaningful body or only simple operations. */
-private fun isTrivialLoop(loop: LoopNode): Boolean {
+private fun isTrivialLoop(
+    loop: LoopNode,
+    language: Language,
+    registry: LanguageSemanticsRegistry,
+): Boolean {
     if (loop.children.isEmpty()) return true
     // A loop with a single child that is a simple function call to a skip/trivial method
     if (loop.children.size == 1) {
         val child = loop.children.first()
-        if (child is FunctionCall && isStringOrCopyMethod(child.name)) return true
+        if (child is FunctionCall && isStringOrCopyMethod(child.name, language, registry)) return true
     }
     return false
-}
-
-private val skipMethods: Set<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT.allExtraSection("hidden-loop-skip-methods")
-}
-
-private val skipPrefixes: Set<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT.allExtraSection("hidden-loop-skip-prefixes")
-}
-
-private val skipKeywords: Set<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT.allExtraSection("hidden-loop-skip-keywords")
 }
 
 /**
  * Returns true if the method name is a known string/byte iterator or collection-copy
  * operation that should not be flagged as a hidden nested loop.
  */
-private fun isStringOrCopyMethod(name: String): Boolean {
-    if (name in skipMethods) return true
+private fun isStringOrCopyMethod(
+    name: String,
+    language: Language,
+    registry: LanguageSemanticsRegistry,
+): Boolean {
+    if (name in registry.hiddenLoopSkipMethods(language)) return true
     val lower = name.lowercase()
-    if (skipPrefixes.any { lower.startsWith(it) }) return true
-    return skipKeywords.any { lower.contains(it) }
+    if (registry.hiddenLoopSkipPrefixes(language).any { lower.startsWith(it) }) return true
+    return registry.hiddenLoopSkipKeywords(language).any { lower.contains(it) }
 }

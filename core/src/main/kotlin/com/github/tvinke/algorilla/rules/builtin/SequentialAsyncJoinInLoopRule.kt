@@ -52,7 +52,7 @@ public class SequentialAsyncJoinInLoopRule : Rule {
 
         if (loopStack.isNotEmpty() && node is FunctionCall) {
             val semantics = context.registry.classify(language, node.name)
-            if (semantics?.category == SemanticCategory.BLOCKING && looksLikeFutureCall(node)) {
+            if (semantics?.category == SemanticCategory.BLOCKING && looksLikeFutureCall(node, language, context.registry)) {
                 findings.add(buildFinding(node, loopStack))
             }
         }
@@ -93,14 +93,14 @@ public class SequentialAsyncJoinInLoopRule : Rule {
     }
 }
 
-private val FUTURE_INDICATORS: Set<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT.allExtraSection("future-indicators")
-}
-
 /**
  * Heuristic: the call target variable name hints at a Future type.
  */
-private fun looksLikeFutureCall(call: FunctionCall): Boolean {
+private fun looksLikeFutureCall(
+    call: FunctionCall,
+    language: Language,
+    registry: LanguageSemanticsRegistry,
+): Boolean {
     val target = call.qualifiedTarget?.lowercase() ?: return false
-    return FUTURE_INDICATORS.any { target.contains(it) }
+    return registry.futureIndicators(language).any { target.contains(it) }
 }

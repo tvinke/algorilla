@@ -6,9 +6,12 @@ import com.github.tvinke.algorilla.model.SortKind
 import io.kotest.matchers.booleans.shouldBeFalse
 import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.collections.shouldContain
+import io.kotest.matchers.collections.shouldNotBeEmpty
+import io.kotest.matchers.collections.shouldNotContain
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 
 @Suppress("LargeClass")
@@ -317,5 +320,46 @@ internal class LanguageSemanticsRegistryTest {
         loadedRegistry.isMonadicTarget("Optional.of(x)") shouldBe true
         loadedRegistry.isMonadicTarget("result.map") shouldBe true
         loadedRegistry.isMonadicTarget("orders.stream()") shouldBe false
+    }
+
+    @Nested
+    inner class CrossLanguageIsolation {
+        @Test
+        fun `JS dom-target-names should not leak into Java extras`() {
+            val jsDomTargets = registry.domTargetNames(Language.JAVASCRIPT)
+            val javaDomTargets = registry.domTargetNames(Language.JAVA)
+            // JS has DOM targets like "wrapper", "element", "document"
+            jsDomTargets.shouldNotBeEmpty()
+            // Java should not inherit JS-only DOM targets
+            for (jsTarget in jsDomTargets) {
+                if (jsTarget !in javaDomTargets) {
+                    // At least one JS-specific target should NOT be in Java
+                    return
+                }
+            }
+            // If all JS targets are also in Java, that's cross-language pollution
+            throw AssertionError(
+                "Java dom-target-names contains all JS dom-target-names — cross-language pollution detected",
+            )
+        }
+
+        @Test
+        fun `JS-only future-indicators should not appear in Java`() {
+            val jsFuture = registry.futureIndicators(Language.JAVASCRIPT)
+            val javaFuture = registry.futureIndicators(Language.JAVA)
+            // "observable" and "subject" are JS/RxJS-specific
+            jsFuture shouldContain "observable"
+            javaFuture shouldNotContain "observable"
+        }
+
+        @Test
+        fun `per-language extras should be subset of allExtraSection`() {
+            // Any per-language result should be a subset of the cross-language union
+            val javaSkip = registry.hiddenLoopSkipMethods(Language.JAVA)
+            val allSkip = registry.allExtraSection("hidden-loop-skip-methods")
+            for (method in javaSkip) {
+                allSkip shouldContain method
+            }
+        }
     }
 }

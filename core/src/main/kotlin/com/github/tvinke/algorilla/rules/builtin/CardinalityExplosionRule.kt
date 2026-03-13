@@ -16,18 +16,6 @@ import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 
-private val smallCollectionHints: Set<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT.allExtraSection("small-collection-hints")
-}
-
-private val mapValueAccessors: Set<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT.allExtraSection("map-value-accessors")
-}
-
-private val nonGrowthMutations: Set<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT.allExtraSection("non-growth-mutations")
-}
-
 /**
  * Detects cardinality explosion patterns where the output grows as the
  * PRODUCT of input sizes rather than the sum:
@@ -56,7 +44,8 @@ public class CardinalityExplosionRule : Rule {
         for ((_, fileRoot) in context.irTrees) {
             val language = (fileRoot as? FileRoot)?.language
             val mutationMethods = resolveMutationMethods(context, language)
-            scanNode(fileRoot, emptyList(), mutationMethods, findings)
+            val langOrJava = language ?: Language.JAVA
+            scanNode(fileRoot, emptyList(), mutationMethods, langOrJava, context.registry, findings)
             scanFlatMap(fileRoot, findings)
         }
         return findings
@@ -68,21 +57,23 @@ public class CardinalityExplosionRule : Rule {
         node: IRNode,
         loopStack: List<LoopNode>,
         mutationMethods: Set<String>,
+        language: Language,
+        registry: LanguageSemanticsRegistry,
         findings: MutableList<Finding>,
     ) {
         if (node is LoopNode) {
             for (child in node.children) {
-                scanNode(child, loopStack + node, mutationMethods, findings)
+                scanNode(child, loopStack + node, mutationMethods, language, registry, findings)
             }
             return
         }
 
         if (loopStack.size >= 2 && node is FunctionCall && node.name in mutationMethods) {
-            checkCartesianProduct(node, loopStack, findings)
+            checkCartesianProduct(node, loopStack, language, registry, findings)
         }
 
         for (child in node.children) {
-            scanNode(child, loopStack, mutationMethods, findings)
+            scanNode(child, loopStack, mutationMethods, language, registry, findings)
         }
     }
 
@@ -90,6 +81,8 @@ public class CardinalityExplosionRule : Rule {
     private fun checkCartesianProduct(
         call: FunctionCall,
         loopStack: List<LoopNode>,
+        language: Language,
+        registry: LanguageSemanticsRegistry,
         findings: MutableList<Finding>,
     ) {
         val outerLoop = loopStack[loopStack.size - 2]
@@ -100,10 +93,10 @@ public class CardinalityExplosionRule : Rule {
         if (outerVar != innerVar) {
             // Partitioned iteration: inner iterates a property of the outer element.
             // Total work is O(sum of parts), not O(outer × max_parts).
-            if (isPartitionedIteration(outerVar, innerVar)) return
+            if (isPartitionedIteration(outerVar, innerVar, language, registry)) return
 
             val confidence = determineConfidence(outerLoop, innerLoop, loopStack)
-            val effectiveSeverity = determineEffectiveSeverity(outerVar, innerVar)
+            val effectiveSeverity = determineEffectiveSeverity(outerVar, innerVar, language, registry)
             findings.add(
                 buildCartesianFinding(
                     call,
@@ -169,10 +162,12 @@ public class CardinalityExplosionRule : Rule {
     private fun isPartitionedIteration(
         outerVar: String,
         innerVar: String,
+        language: Language,
+        registry: LanguageSemanticsRegistry,
     ): Boolean {
         // Case 1: Map entry unpacking — outer is entrySet()/keySet(), inner accesses values
         val outerIsEntrySet = outerVar.endsWith(".entrySet()") || outerVar.endsWith(".keySet()")
-        if (outerIsEntrySet && mapValueAccessors.any { innerVar.contains(it) }) return true
+        if (outerIsEntrySet && registry.mapValueAccessors(language).any { innerVar.contains(it) }) return true
 
         // Case 2: Inner iterates a property/method of the outer loop element.
         // The inner variable has a dotted path (method call on an element), suggesting it
@@ -206,10 +201,12 @@ public class CardinalityExplosionRule : Rule {
     private fun determineEffectiveSeverity(
         outerVar: String,
         innerVar: String,
+        language: Language,
+        registry: LanguageSemanticsRegistry,
     ): Severity {
         val outerLower = outerVar.lowercase()
         val innerLower = innerVar.lowercase()
-        if (smallCollectionHints.any { it in outerLower || it in innerLower }) {
+        if (registry.smallCollectionHints(language).any { it in outerLower || it in innerLower }) {
             return Severity.INFO
         }
         // Inner is a method call on an element variable (e.g., "ifc.getMethods()", "node.getChildren()").
@@ -363,7 +360,13 @@ public class CardinalityExplosionRule : Rule {
             }
         // Only include mutations that GROW a collection — exclude replacements,
         // removals, and in-place operations that don't produce Cartesian output
-        return (copyOnModify + context.registry.allMutationMethods()) - nonGrowthMutations
+        val nonGrowth =
+            if (language != null) {
+                context.registry.nonGrowthMutations(language)
+            } else {
+                context.registry.allExtraSection("non-growth-mutations")
+            }
+        return (copyOnModify + context.registry.allMutationMethods()) - nonGrowth
     }
 
     private companion object {

@@ -7,6 +7,7 @@ import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.GenericNode
 import com.github.tvinke.algorilla.model.IRNode
+import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LookupCall
 import com.github.tvinke.algorilla.model.LoopNode
 import com.github.tvinke.algorilla.model.ObjectCreation
@@ -145,8 +146,8 @@ public fun FunctionDecl.hasO1Type(variableName: String?): Boolean {
 public fun LookupCall.isCollectionLookup(fn: FunctionDecl?): Boolean =
     !isO1 &&
         !isScalar &&
-        !isStaticUtilityTarget() &&
-        !hasO1TargetName() &&
+        !isStaticUtilityTarget(LanguageSemanticsRegistry.DEFAULT) &&
+        !hasO1TargetName(LanguageSemanticsRegistry.DEFAULT) &&
         (fn == null || !fn.hasO1Type(targetVariable))
 
 /**
@@ -157,9 +158,20 @@ public fun LookupCall.isCollectionLookup(fn: FunctionDecl?): Boolean =
 public fun LookupCall.isCollectionLookup(
     fn: FunctionDecl?,
     typeEnv: TypeEnvironment?,
+): Boolean = isCollectionLookup(fn, typeEnv, null, LanguageSemanticsRegistry.DEFAULT)
+
+/**
+ * Language-aware version that queries per-language extras instead of merging all languages.
+ */
+@Suppress("ReturnCount")
+public fun LookupCall.isCollectionLookup(
+    fn: FunctionDecl?,
+    typeEnv: TypeEnvironment?,
+    language: Language?,
+    registry: LanguageSemanticsRegistry,
 ): Boolean {
     if (isO1 || isScalar) return false
-    if (isStaticUtilityTarget() || hasO1TargetName()) return false
+    if (isStaticUtilityTarget(registry, language) || hasO1TargetName(registry, language)) return false
     // TypeEnvironment has broader coverage (field types, factory inference, chain-end)
     // When available, trust it fully — it already includes everything hasO1Type checks.
     if (typeEnv != null && targetVariable != null) {
@@ -168,28 +180,33 @@ public fun LookupCall.isCollectionLookup(
     return fn == null || !fn.hasO1Type(targetVariable)
 }
 
-/**
- * Static utility classes whose methods operate on strings/primitives, not collections.
- * Loaded from the YAML semantics registry ("static-utility-classes" extra section).
- */
-private val staticUtilityClasses: Set<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT.allExtraSection("static-utility-classes")
-}
-
-/** Target name suffixes that indicate O(1) data structures (cache, map, set, index, etc.). */
-private val o1TargetSuffixes: Set<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT.allExtraSection("non-list-targets-suffixes")
-}
-
-private fun LookupCall.isStaticUtilityTarget(): Boolean {
+private fun LookupCall.isStaticUtilityTarget(
+    registry: LanguageSemanticsRegistry,
+    language: Language? = null,
+): Boolean {
     val target = targetVariable ?: return false
-    return target in staticUtilityClasses
+    val classes =
+        if (language != null) {
+            registry.staticUtilityClasses(language)
+        } else {
+            registry.allExtraSection("static-utility-classes")
+        }
+    return target in classes
 }
 
 /** Returns true if the target variable name suggests an O(1) data structure. */
-private fun LookupCall.hasO1TargetName(): Boolean {
+private fun LookupCall.hasO1TargetName(
+    registry: LanguageSemanticsRegistry,
+    language: Language? = null,
+): Boolean {
     val target = targetVariable?.lowercase() ?: return false
-    return o1TargetSuffixes.any { target.endsWith(it) || target == it }
+    val suffixes =
+        if (language != null) {
+            registry.nonListTargetsSuffixes(language)
+        } else {
+            registry.allExtraSection("non-list-targets-suffixes")
+        }
+    return suffixes.any { target.endsWith(it) || target == it }
 }
 
 /**

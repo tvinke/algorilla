@@ -35,7 +35,7 @@ public class NPlusOneRepositoryCallRule : Rule {
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
-            scanNode(fileRoot, null, emptyList(), context, findings)
+            scanNode(fileRoot, null, emptyList(), fileRoot.language, context, findings)
         }
         return findings
     }
@@ -44,6 +44,7 @@ public class NPlusOneRepositoryCallRule : Rule {
         node: IRNode,
         enclosingFn: FunctionDecl?,
         loopStack: List<LoopNode>,
+        language: Language,
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
@@ -51,7 +52,7 @@ public class NPlusOneRepositoryCallRule : Rule {
 
         if (node is LoopNode) {
             for (child in node.children) {
-                scanNode(child, fn, loopStack + node, context, findings)
+                scanNode(child, fn, loopStack + node, language, context, findings)
             }
             return
         }
@@ -59,7 +60,7 @@ public class NPlusOneRepositoryCallRule : Rule {
         if (loopStack.isNotEmpty() && node is FunctionCall) {
             // Flow-based confidence: loop iterates a confirmed parameter → HIGH
             val loopParamConfirmed = fn != null && loopIteratesParam(fn)
-            if (isSingleRecordFetch(node)) {
+            if (isSingleRecordFetch(node, language, context.registry)) {
                 findings.add(buildFinding(node, loopStack, loopParamConfirmed))
             } else {
                 // Cross-method: check if a helper method internally calls a repository method
@@ -69,7 +70,7 @@ public class NPlusOneRepositoryCallRule : Rule {
                         node,
                         context.symbolTable,
                         maxDepth = maxDepth,
-                    ) { isSingleRecordFetch(it) }
+                    ) { isSingleRecordFetch(it, language, context.registry) }
                 if (hiddenFetch != null) {
                     findings.add(buildCrossMethodFinding(node, hiddenFetch, loopStack))
                 }
@@ -77,7 +78,7 @@ public class NPlusOneRepositoryCallRule : Rule {
         }
 
         for (child in node.children) {
-            scanNode(child, fn, loopStack, context, findings)
+            scanNode(child, fn, loopStack, language, context, findings)
         }
     }
 
@@ -153,10 +154,6 @@ public class NPlusOneRepositoryCallRule : Rule {
     }
 }
 
-private val SINGLE_FETCH_METHOD_PREFIXES: Set<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT.allExtraSection("single-fetch-prefixes")
-}
-
 /** Widened pattern: any verb+By+field pattern (e.g. findByEmail, getOrderByStatus, getBySku) */
 private val SINGLE_FETCH_METHOD_REGEX =
     Regex(
@@ -164,43 +161,38 @@ private val SINGLE_FETCH_METHOD_REGEX =
         RegexOption.IGNORE_CASE,
     )
 
-/** Spring Data batch patterns that return collections, not single records */
-private val BATCH_METHOD_SUFFIXES: Set<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT.allExtraSection("batch-method-suffixes")
-}
-private val BATCH_METHOD_PREFIXES: Set<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT.allExtraSection("batch-method-prefixes")
-}
-
-private val REPO_TARGET_PATTERNS: Set<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT.allExtraSection("repository-patterns")
-}
-
-/** Target names that indicate cache/memo lookups, not DB queries. */
-private val NON_REPO_INDICATORS: Set<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT.allExtraSection("non-repository-targets")
-}
-
 @Suppress("ReturnCount")
-private fun isSingleRecordFetch(call: FunctionCall): Boolean {
+private fun isSingleRecordFetch(
+    call: FunctionCall,
+    language: Language,
+    registry: LanguageSemanticsRegistry,
+): Boolean {
     val name = call.name
     val target = call.qualifiedTarget?.lowercase()
 
     // Exclude cache/memo targets before applying repo patterns
-    if (target != null && NON_REPO_INDICATORS.any { target.contains(it) }) return false
+    if (target != null && registry.nonRepositoryTargets(language).any { target.contains(it) }) return false
 
+    val repoPatterns = registry.repositoryPatterns(language)
     // Exact prefix matches (highest confidence)
-    val matchesPrefixes = SINGLE_FETCH_METHOD_PREFIXES.any { name.startsWith(it, ignoreCase = true) }
+    val matchesPrefixes = registry.singleFetchPrefixes(language).any { name.startsWith(it, ignoreCase = true) }
     if (matchesPrefixes) {
-        if (target == null || REPO_TARGET_PATTERNS.any { target.contains(it) }) return true
+        if (target == null || repoPatterns.any { target.contains(it) }) return true
     }
     // Widened pattern: any findByX/getByX on a repository-like target
     if (SINGLE_FETCH_METHOD_REGEX.matches(name)) {
         // Exclude batch patterns
-        if (BATCH_METHOD_SUFFIXES.any { name.endsWith(it, ignoreCase = true) }) return false
-        if (BATCH_METHOD_PREFIXES.any { name.startsWith(it, ignoreCase = true) && name.contains("By", ignoreCase = true) }) return false
+        val batchSuffixes = registry.batchMethodSuffixes(language)
+        if (batchSuffixes.any { name.endsWith(it, ignoreCase = true) }) return false
+        val batchPrefixes = registry.batchMethodPrefixes(language)
+        if (batchPrefixes.any {
+                name.startsWith(it, ignoreCase = true) && name.contains("By", ignoreCase = true)
+            }
+        ) {
+            return false
+        }
         // For widened pattern, require a repository-like target to reduce FPs
-        if (target != null && REPO_TARGET_PATTERNS.any { target.contains(it) }) return true
+        if (target != null && repoPatterns.any { target.contains(it) }) return true
     }
     return false
 }

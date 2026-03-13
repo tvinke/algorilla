@@ -37,7 +37,7 @@ public class RegexRecompilationInLoopRule : Rule {
         for ((_, fileRoot) in context.irTrees) {
             val language = (fileRoot as? FileRoot)?.language
             val methods = language?.let { context.registry.regexRecompilationMethods(it) } ?: emptySet()
-            scanNode(fileRoot, null, emptyList(), language, methods, findings)
+            scanNode(fileRoot, null, emptyList(), language, methods, context.registry, findings)
         }
         return findings
     }
@@ -48,23 +48,24 @@ public class RegexRecompilationInLoopRule : Rule {
         loopStack: List<LoopNode>,
         language: Language?,
         regexMethods: Set<String>,
+        registry: LanguageSemanticsRegistry,
         findings: MutableList<Finding>,
     ) {
         val fn = if (node is FunctionDecl) node else enclosingFn
 
         if (node is LoopNode) {
             for (child in node.children) {
-                scanNode(child, fn, loopStack + node, language, regexMethods, findings)
+                scanNode(child, fn, loopStack + node, language, regexMethods, registry, findings)
             }
             return
         }
 
-        if (loopStack.isNotEmpty() && node is FunctionCall && isRegexRecompilationCall(node, fn, language, regexMethods)) {
+        if (loopStack.isNotEmpty() && node is FunctionCall && isRegexRecompilationCall(node, fn, language, regexMethods, registry)) {
             findings.add(buildFinding(node, loopStack))
         }
 
         for (child in node.children) {
-            scanNode(child, fn, loopStack, language, regexMethods, findings)
+            scanNode(child, fn, loopStack, language, regexMethods, registry, findings)
         }
     }
 
@@ -122,6 +123,7 @@ private fun isRegexRecompilationCall(
     enclosingFn: FunctionDecl?,
     language: Language?,
     regexMethods: Set<String>,
+    registry: LanguageSemanticsRegistry,
 ): Boolean {
     if (call.name !in regexMethods || call.qualifiedTarget == null) return false
     // In JS/TS, split/replace/match with a plain string argument do NOT compile regex.
@@ -131,9 +133,13 @@ private fun isRegexRecompilationCall(
     // JDK fast path: String.split() with a single non-metachar argument skips regex compilation.
     if (language in JVM_FAMILY && call.name == "split" && hasSingleCharNonRegexArg(call)) return false
     // On JVM, Map.replaceAll(BiFunction) is not a regex method — skip when target is a Map/Set type
-    if (language in JVM_FAMILY && call.name == "replaceAll" && isMapTarget(call, enclosingFn)) return false
+    if (language in JVM_FAMILY && call.name == "replaceAll") {
+        if (isMapTarget(call, enclosingFn, language!!, registry)) return false
+    }
     // Predicate.matches(), Pattern.matches(), Matcher.matches() — not String regex operations
-    if (language in JVM_FAMILY && call.name == "matches" && isNonRegexMatchesTarget(call, enclosingFn)) return false
+    if (language in JVM_FAMILY && call.name == "matches") {
+        if (isNonRegexMatchesTarget(call, enclosingFn, language!!, registry)) return false
+    }
     return true
 }
 
@@ -141,39 +147,37 @@ private fun isRegexRecompilationCall(
 private fun isMapTarget(
     call: FunctionCall,
     enclosingFn: FunctionDecl?,
+    language: Language,
+    registry: LanguageSemanticsRegistry,
 ): Boolean {
     val target = call.qualifiedTarget ?: return false
     // Type-aware: check if the target variable is declared as a Map/Set type
     if (enclosingFn != null && enclosingFn.hasO1Type(target)) return true
     // Name heuristic fallback for cases without type info
     val lower = target.lowercase()
-    return MAP_TARGET_NAMES.any { lower.endsWith(it) || lower == it }
-}
-
-private val MAP_TARGET_NAMES: Set<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT.allExtraSection("non-list-targets-suffixes")
+    val mapNames = registry.nonListTargetsSuffixes(language)
+    return mapNames.any { lower.endsWith(it) || lower == it }
 }
 
 /** Returns true if the call target is a Predicate/Pattern/Matcher type whose matches() is not regex. */
 private fun isNonRegexMatchesTarget(
     call: FunctionCall,
     enclosingFn: FunctionDecl?,
+    language: Language,
+    registry: LanguageSemanticsRegistry,
 ): Boolean {
     val target = call.qualifiedTarget ?: return false
     // Type-aware: check parameter/variable type declarations
+    val nonRegexTypes = registry.nonRegexMatchesTargets(language)
     if (enclosingFn != null) {
         val paramType = enclosingFn.parameters.find { it.name == target }?.typeName
-        if (paramType != null && NON_REGEX_MATCHES_TYPES.any { paramType.contains(it) }) return true
+        if (paramType != null && nonRegexTypes.any { paramType.contains(it) }) return true
         val varType = enclosingFn.findDescendants<VariableDecl>().find { it.name == target }?.typeName
-        if (varType != null && NON_REGEX_MATCHES_TYPES.any { varType.contains(it) }) return true
+        if (varType != null && nonRegexTypes.any { varType.contains(it) }) return true
     }
     // Name heuristic: variable names like "predicate", "matcher", "pattern"
     val lower = target.lowercase()
     return NON_REGEX_MATCHES_NAME_HINTS.any { lower.contains(it) }
-}
-
-private val NON_REGEX_MATCHES_TYPES: Set<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT.allExtraSection("non-regex-matches-targets")
 }
 
 private val NON_REGEX_MATCHES_NAME_HINTS = setOf("predicate", "matcher")

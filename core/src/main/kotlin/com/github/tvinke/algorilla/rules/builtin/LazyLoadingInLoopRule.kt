@@ -14,7 +14,6 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
-import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.findDescendants
 
 /**
@@ -42,21 +41,29 @@ public class LazyLoadingInLoopRule : Rule {
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
+            val repoPatterns = context.registry.repositoryPatterns(fileRoot.language)
+            val fetchPrefixes = context.registry.bulkLoadPrefixes(fileRoot.language)
+            val scalarSuffs = context.registry.scalarSuffixes(fileRoot.language)
+            val collGetterNames = context.registry.collectionGetterNames(fileRoot.language)
             for (fn in fileRoot.findDescendants<FunctionDecl>()) {
-                checkFunction(fn, context, findings)
+                checkFunction(fn, repoPatterns, fetchPrefixes, scalarSuffs, collGetterNames, context, findings)
             }
         }
         return findings
     }
 
-    @Suppress("ReturnCount", "UnusedParameter", "LoopWithTooManyJumpStatements")
+    @Suppress("ReturnCount", "UnusedParameter", "LoopWithTooManyJumpStatements", "LongParameterList")
     private fun checkFunction(
         fn: FunctionDecl,
+        repoPatterns: Set<String>,
+        fetchPrefixes: List<String>,
+        scalarSuffs: Set<String>,
+        collGetterNames: Set<String>,
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
         // Step 1: find variables assigned from repository-like fetches
-        val entityVars = findEntityVariables(fn)
+        val entityVars = findEntityVariables(fn, repoPatterns, fetchPrefixes)
         if (entityVars.isEmpty()) return
 
         // Step 2: find loops and check for collection-getter calls on entity variables
@@ -68,7 +75,7 @@ public class LazyLoadingInLoopRule : Rule {
             if (!entityContext) continue
 
             for (call in loop.findDescendants<FunctionCall>()) {
-                if (isLazyCollectionGetter(call) && isCalledOnLoopEntity(call, loop)) {
+                if (isLazyCollectionGetter(call, scalarSuffs, collGetterNames) && isCalledOnLoopEntity(call, loop)) {
                     findings.add(buildFinding(call, loop))
                 }
             }
@@ -78,22 +85,30 @@ public class LazyLoadingInLoopRule : Rule {
     /**
      * Finds variable names assigned from repository-like fetch calls.
      */
-    private fun findEntityVariables(fn: FunctionDecl): Set<String> {
+    private fun findEntityVariables(
+        fn: FunctionDecl,
+        repoPatterns: Set<String>,
+        fetchPrefixes: List<String>,
+    ): Set<String> {
         val vars = mutableSetOf<String>()
         for (varDecl in fn.findDescendants<VariableDecl>()) {
             val initCalls = varDecl.findDescendants<FunctionCall>()
-            if (initCalls.any { isRepositoryFetch(it) }) {
+            if (initCalls.any { isRepositoryFetch(it, repoPatterns, fetchPrefixes) }) {
                 vars.add(varDecl.name)
             }
         }
         return vars
     }
 
-    private fun isRepositoryFetch(call: FunctionCall): Boolean {
+    private fun isRepositoryFetch(
+        call: FunctionCall,
+        repoPatterns: Set<String>,
+        fetchPrefixes: List<String>,
+    ): Boolean {
         val target = call.qualifiedTarget?.lowercase() ?: return false
-        val isRepoTarget = REPO_PATTERNS.any { target.contains(it) }
+        val isRepoTarget = repoPatterns.any { target.contains(it) }
         if (!isRepoTarget) return false
-        return FETCH_PREFIXES.any { call.name.startsWith(it, ignoreCase = true) }
+        return fetchPrefixes.any { call.name.startsWith(it, ignoreCase = true) }
     }
 
     private fun isIteratingEntityCollection(
@@ -105,7 +120,11 @@ public class LazyLoadingInLoopRule : Rule {
      * Checks if a getter call suggests a lazy-loaded collection.
      * Conservative: only plural names or known collection-returning patterns.
      */
-    private fun isLazyCollectionGetter(call: FunctionCall): Boolean {
+    private fun isLazyCollectionGetter(
+        call: FunctionCall,
+        scalarSuffs: Set<String>,
+        collGetterNames: Set<String>,
+    ): Boolean {
         val name = call.name
         // Must be a getter-style call
         if (!name.startsWith("get") || name.length <= MIN_GETTER_LENGTH) return false
@@ -113,8 +132,8 @@ public class LazyLoadingInLoopRule : Rule {
         val lower = property.lowercase()
         // Strong signals: plural property names that suggest collections
         return lower.endsWith("s") &&
-            !SCALAR_SUFFIXES.any { lower.endsWith(it) } ||
-            COLLECTION_GETTER_NAMES.any { lower.contains(it) }
+            !scalarSuffs.any { lower.endsWith(it) } ||
+            collGetterNames.any { lower.contains(it) }
     }
 
     private fun isCalledOnLoopEntity(
@@ -171,20 +190,5 @@ public class LazyLoadingInLoopRule : Rule {
 
     private companion object {
         private const val MIN_GETTER_LENGTH = 3
-
-        val REPO_PATTERNS: Set<String> by lazy {
-            LanguageSemanticsRegistry.DEFAULT.allExtraSection("repository-patterns")
-        }
-        val FETCH_PREFIXES: List<String> by lazy {
-            LanguageSemanticsRegistry.DEFAULT.allBulkLoadPrefixes()
-        }
-
-        // Suffixes that look plural but are actually scalar (address, status, etc.)
-        val SCALAR_SUFFIXES: Set<String> by lazy {
-            LanguageSemanticsRegistry.DEFAULT.allExtraSection("scalar-suffixes")
-        }
-        val COLLECTION_GETTER_NAMES: Set<String> by lazy {
-            LanguageSemanticsRegistry.DEFAULT.allExtraSection("collection-getter-names")
-        }
     }
 }

@@ -33,30 +33,33 @@ public class RedundantExpensiveCallRule : Rule {
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
-            scanNode(fileRoot, findings)
+            val nonDeterministic = context.registry.nonDeterministicMethods(fileRoot.language)
+            scanNode(fileRoot, nonDeterministic, findings)
         }
         return findings
     }
 
     private fun scanNode(
         node: IRNode,
+        nonDeterministic: Set<String>,
         findings: MutableList<Finding>,
     ) {
         if (node is FunctionDecl) {
-            checkFunction(node, findings)
+            checkFunction(node, nonDeterministic, findings)
         }
         for (child in node.children) {
-            scanNode(child, findings)
+            scanNode(child, nonDeterministic, findings)
         }
     }
 
     private fun checkFunction(
         fn: FunctionDecl,
+        nonDeterministic: Set<String>,
         findings: MutableList<Finding>,
     ) {
         val callsWithContext = fn.findDescendantsWithBranchContext<FunctionCall>()
         val filtered = callsWithContext.filter { it.first.arguments.isNotEmpty() && !isSideEffectCall(it.first) }
-        val grouped = filtered.groupBy { callSignature(it.first) }
+        val grouped = filtered.groupBy { callSignature(it.first, nonDeterministic) }
 
         for ((sig, duplicatesWithContext) in grouped) {
             if (sig.isBlank()) continue
@@ -101,30 +104,34 @@ public class RedundantExpensiveCallRule : Rule {
  * Creates a signature string from a call's name + argument text for grouping.
  * Uses the children's toString as a rough equality check.
  */
-private fun callSignature(call: FunctionCall): String {
+private fun callSignature(
+    call: FunctionCall,
+    nonDeterministic: Set<String>,
+): String {
     val target = call.qualifiedTarget ?: ""
-    val argsKey = call.arguments.joinToString(",") { argFingerprint(it) }
+    val argsKey = call.arguments.joinToString(",") { argFingerprint(it, nonDeterministic) }
     return "$target.${call.name}($argsKey)"
 }
 
-private fun argFingerprint(node: IRNode): String =
+private fun argFingerprint(
+    node: IRNode,
+    nonDeterministic: Set<String>,
+): String =
     when (node) {
         is FunctionCall -> {
-            val base = "${node.qualifiedTarget}.${node.name}(${node.arguments.joinToString(",") { argFingerprint(it) }})"
-            if (containsNonDeterministic(node)) "$base@${node.location.line}" else base
+            val base = "${node.qualifiedTarget}.${node.name}(${node.arguments.joinToString(",") { argFingerprint(it, nonDeterministic) }})"
+            if (containsNonDeterministic(node, nonDeterministic)) "$base@${node.location.line}" else base
         }
         is GenericNode -> node.nodeType
         else -> "${node::class.simpleName}@${node.location.line}:${node.location.column}"
     }
 
-/** Methods whose return value differs on each call — prevents grouping calls with these as arguments. */
-private val NON_DETERMINISTIC: Set<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT.allExtraSection("non-deterministic-methods")
-}
-
-private fun containsNonDeterministic(call: FunctionCall): Boolean {
-    if (call.name in NON_DETERMINISTIC) return true
-    return call.children.any { it is FunctionCall && containsNonDeterministic(it) }
+private fun containsNonDeterministic(
+    call: FunctionCall,
+    nonDeterministic: Set<String>,
+): Boolean {
+    if (call.name in nonDeterministic) return true
+    return call.children.any { it is FunctionCall && containsNonDeterministic(it, nonDeterministic) }
 }
 
 /**

@@ -38,10 +38,11 @@ public class IOInLoopRule : Rule {
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
-            val ioMethods = context.registry.ioMethods(fileRoot.language)
-            val ioCandidates = IO_METHOD_CANDIDATES
+            val language = fileRoot.language
+            val ioMethods = context.registry.ioMethods(language)
+            val ioCandidates = context.registry.ioMethodCandidates(language)
             if (ioMethods.isEmpty() && ioCandidates.isEmpty()) continue
-            scanNode(fileRoot, null, emptyList(), ioMethods, ioCandidates, context, findings)
+            scanNode(fileRoot, null, emptyList(), ioMethods, ioCandidates, language, context, findings)
         }
         return findings
     }
@@ -53,6 +54,7 @@ public class IOInLoopRule : Rule {
         loopStack: List<LoopNode>,
         ioMethods: Set<String>,
         ioCandidates: Set<String>,
+        language: Language,
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
@@ -60,14 +62,14 @@ public class IOInLoopRule : Rule {
 
         if (node is LoopNode) {
             for (child in node.children) {
-                scanNode(child, fn, loopStack + node, ioMethods, ioCandidates, context, findings)
+                scanNode(child, fn, loopStack + node, ioMethods, ioCandidates, language, context, findings)
             }
             return
         }
 
         if (loopStack.isNotEmpty() && node is FunctionCall) {
-            val isDefiniteIO = node.name in ioMethods && !isInMemoryTarget(node)
-            val isCandidateIO = !isDefiniteIO && node.name in ioCandidates && isIOTarget(node)
+            val isDefiniteIO = node.name in ioMethods && !isInMemoryTarget(node, language, context.registry)
+            val isCandidateIO = !isDefiniteIO && node.name in ioCandidates && isIOTarget(node, language, context.registry)
 
             if (isDefiniteIO || isCandidateIO) {
                 val loopParamConfirmed =
@@ -82,7 +84,7 @@ public class IOInLoopRule : Rule {
         }
 
         for (child in node.children) {
-            scanNode(child, fn, loopStack, ioMethods, ioCandidates, context, findings)
+            scanNode(child, fn, loopStack, ioMethods, ioCandidates, language, context, findings)
         }
     }
 
@@ -196,25 +198,14 @@ public class IOInLoopRule : Rule {
         )
 }
 
-/** In-memory buffer/writer types whose write/read methods are NOT real IO. */
-private val NON_IO_TARGETS: Set<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT.allExtraSection("non-io-targets")
-}
-
-/** Ambiguous method names that are IO only when target matches an IO-capable pattern. */
-private val IO_METHOD_CANDIDATES: Set<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT.allExtraSection("io-method-candidates")
-}
-
-/** Target variable name patterns that indicate IO-capable receivers (repository, service, etc.). */
-private val IO_TARGET_PATTERNS: Set<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT.allExtraSection("io-target-patterns")
-}
-
 /** Returns true if the call target is a known in-memory buffer (not real IO). */
-private fun isInMemoryTarget(call: FunctionCall): Boolean {
+private fun isInMemoryTarget(
+    call: FunctionCall,
+    language: Language,
+    registry: LanguageSemanticsRegistry,
+): Boolean {
     val target = call.qualifiedTarget?.lowercase() ?: return false
-    return NON_IO_TARGETS.any { target.contains(it) }
+    return registry.nonIoTargets(language).any { target.contains(it) }
 }
 
 /**
@@ -222,9 +213,13 @@ private fun isInMemoryTarget(call: FunctionCall): Boolean {
  * Patterns prefixed with `*` match anywhere (contains), others match as suffix (endsWith).
  * This prevents "session" from matching "sessionState" while still matching "hibernateSession".
  */
-private fun isIOTarget(call: FunctionCall): Boolean {
+private fun isIOTarget(
+    call: FunctionCall,
+    language: Language,
+    registry: LanguageSemanticsRegistry,
+): Boolean {
     val target = call.qualifiedTarget?.lowercase() ?: return false
-    return IO_TARGET_PATTERNS.any { pattern ->
+    return registry.ioTargetPatterns(language).any { pattern ->
         if (pattern.startsWith("*")) {
             target.contains(pattern.removePrefix("*"))
         } else {

@@ -15,7 +15,6 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
-import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.findDescendants
 
 /**
@@ -34,28 +33,34 @@ public class FullScanForSingleLookupRule : Rule {
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
-            scanNode(fileRoot, findings)
+            val bulkLoadPrefixes = context.registry.bulkLoadPrefixes(fileRoot.language)
+            val domTargets = context.registry.domTargetNames(fileRoot.language)
+            scanNode(fileRoot, bulkLoadPrefixes, domTargets, findings)
         }
         return findings
     }
 
     private fun scanNode(
         node: IRNode,
+        bulkLoadPrefixes: List<String>,
+        domTargets: Set<String>,
         findings: MutableList<Finding>,
     ) {
         if (node is FunctionDecl) {
-            checkFunction(node, findings)
+            checkFunction(node, bulkLoadPrefixes, domTargets, findings)
         }
         for (child in node.children) {
-            scanNode(child, findings)
+            scanNode(child, bulkLoadPrefixes, domTargets, findings)
         }
     }
 
     private fun checkFunction(
         fn: FunctionDecl,
+        bulkLoadPrefixes: List<String>,
+        domTargets: Set<String>,
         findings: MutableList<Finding>,
     ) {
-        val bulkCalls = fn.findDescendants<FunctionCall>().filter { isBulkLoadCall(it) }
+        val bulkCalls = fn.findDescendants<FunctionCall>().filter { isBulkLoadCall(it, bulkLoadPrefixes, domTargets) }
         if (bulkCalls.isEmpty()) return
         val hasFilter =
             fn.findDescendants<LookupCall>().any { !it.isScalar } ||
@@ -100,18 +105,14 @@ public class FullScanForSingleLookupRule : Rule {
     }
 }
 
-internal fun isBulkLoadCall(call: FunctionCall): Boolean {
-    if (!BULK_LOAD_PREFIXES.any { call.name.startsWith(it, ignoreCase = true) }) return false
+internal fun isBulkLoadCall(
+    call: FunctionCall,
+    bulkLoadPrefixes: List<String>,
+    domTargets: Set<String>,
+): Boolean {
+    if (!bulkLoadPrefixes.any { call.name.startsWith(it, ignoreCase = true) }) return false
     // Exclude DOM/test framework targets (e.g., wrapper.findAll in Vue test utils)
     val target = call.qualifiedTarget?.lowercase()
-    if (target != null && DOM_TARGETS.any { target.contains(it) }) return false
+    if (target != null && domTargets.any { target.contains(it) }) return false
     return true
-}
-
-private val BULK_LOAD_PREFIXES: List<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT.allBulkLoadPrefixes()
-}
-
-private val DOM_TARGETS: Set<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT.allExtraSection("dom-target-names")
 }

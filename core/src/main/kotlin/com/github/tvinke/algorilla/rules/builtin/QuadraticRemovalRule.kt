@@ -14,7 +14,6 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
-import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.hasO1Type
 
 /**
@@ -37,7 +36,7 @@ public class QuadraticRemovalRule : Rule {
         for ((_, fileRoot) in context.irTrees) {
             val language = (fileRoot as? FileRoot)?.language
             val methods = language?.let { context.registry.removalMethods(it) } ?: emptySet()
-            scanNode(fileRoot, null, emptyList(), methods, context, findings)
+            scanNode(fileRoot, null, emptyList(), methods, language, context, findings)
         }
         return findings
     }
@@ -47,6 +46,7 @@ public class QuadraticRemovalRule : Rule {
         enclosingFn: FunctionDecl?,
         loopStack: List<LoopNode>,
         removalMethods: Set<String>,
+        language: Language?,
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
@@ -54,17 +54,17 @@ public class QuadraticRemovalRule : Rule {
 
         if (node is LoopNode) {
             for (child in node.children) {
-                scanNode(child, fn, loopStack + node, removalMethods, context, findings)
+                scanNode(child, fn, loopStack + node, removalMethods, language, context, findings)
             }
             return
         }
 
-        if (loopStack.isNotEmpty() && node is FunctionCall && isRemovalCall(node, fn, removalMethods, context)) {
+        if (loopStack.isNotEmpty() && node is FunctionCall && isRemovalCall(node, fn, removalMethods, language, context)) {
             findings.add(buildFinding(node, loopStack))
         }
 
         for (child in node.children) {
-            scanNode(child, fn, loopStack, removalMethods, context, findings)
+            scanNode(child, fn, loopStack, removalMethods, language, context, findings)
         }
     }
 
@@ -100,47 +100,24 @@ public class QuadraticRemovalRule : Rule {
     }
 }
 
-private val nonListTargetSuffixes: Set<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT.allExtraSection("non-list-targets-suffixes")
-}
-
-private val nonListExactTargets: Set<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT
-        .allExtraSection("non-list-targets-exact")
-        .map { it.lowercase() }
-        .toSet()
-}
-
-private val nonListTargetContains: Set<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT.allExtraSection("non-list-targets-contains")
-}
-
-private val bulkRemovalMethods: Set<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT.allExtraSection("bulk-removal-methods")
-}
-
-private val staticUtilityTargets: Set<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT
-        .allExtraSection("static-utility-classes")
-        .map { it.lowercase() }
-        .toSet()
-}
-
 @Suppress("ReturnCount")
 private fun isRemovalCall(
     call: FunctionCall,
     enclosingFn: FunctionDecl?,
     removalMethods: Set<String>,
+    language: Language?,
     context: AnalysisContext,
 ): Boolean {
     if (call.name !in removalMethods) return false
-    if (call.name in bulkRemovalMethods) return false
+    val lang = language ?: Language.JAVA
+    val registry = context.registry
+    if (call.name in registry.bulkRemovalMethods(lang)) return false
     val target = call.qualifiedTarget ?: return false
     val lower = target.lowercase()
-    if (lower in nonListExactTargets) return false
-    if (lower in staticUtilityTargets) return false
-    if (nonListTargetContains.any { lower.contains(it) }) return false
-    if (nonListTargetSuffixes.any { suffix -> lower.endsWith(suffix) }) return false
+    if (lower in registry.nonListTargetsExact(lang).map { it.lowercase() }.toSet()) return false
+    if (lower in registry.staticUtilityClasses(lang).map { it.lowercase() }.toSet()) return false
+    if (registry.nonListTargetsContains(lang).any { lower.contains(it) }) return false
+    if (registry.nonListTargetsSuffixes(lang).any { suffix -> lower.endsWith(suffix) }) return false
     // Use TypeEnvironment for full type resolution (field types, factory inference, chain-end)
     val typeEnv = enclosingFn?.let { context.typeEnvironmentFor(it) }
     if (typeEnv != null) return !typeEnv.isO1(target)

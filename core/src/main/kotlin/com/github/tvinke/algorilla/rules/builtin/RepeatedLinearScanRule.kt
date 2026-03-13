@@ -37,7 +37,7 @@ public class RepeatedLinearScanRule : Rule {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
             val fullScanMethods = context.registry.fullScanMethods(fileRoot.language)
-            scanNode(fileRoot, fullScanMethods, context, findings)
+            scanNode(fileRoot, fullScanMethods, fileRoot.language, context, findings)
         }
         return findings
     }
@@ -45,29 +45,32 @@ public class RepeatedLinearScanRule : Rule {
     private fun scanNode(
         node: IRNode,
         fullScanMethods: Set<String>,
+        language: Language,
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
         if (node is FunctionDecl) {
-            checkFunction(node, fullScanMethods, context, findings)
+            checkFunction(node, fullScanMethods, language, context, findings)
         }
         for (child in node.children) {
-            scanNode(child, fullScanMethods, context, findings)
+            scanNode(child, fullScanMethods, language, context, findings)
         }
     }
 
     private fun checkFunction(
         fn: FunctionDecl,
         fullScanMethods: Set<String>,
+        language: Language,
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
-        val reportedTargets = checkLookupCalls(fn, context, findings)
+        val reportedTargets = checkLookupCalls(fn, language, context, findings)
         checkFullScanCalls(fn, fullScanMethods, reportedTargets, findings)
     }
 
     private fun checkLookupCalls(
         fn: FunctionDecl,
+        language: Language,
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ): Set<String?> {
@@ -76,7 +79,7 @@ public class RepeatedLinearScanRule : Rule {
         val filteredLookups =
             lookupsWithContext.filter {
                 it.first.targetVariable != null &&
-                    it.first.isCollectionLookup(fn, typeEnv)
+                    it.first.isCollectionLookup(fn, typeEnv, language, context.registry)
             }
         val lookupsByTarget = filteredLookups.groupBy { it.first.targetVariable }
         for ((targetVar, callsWithContext) in lookupsByTarget) {

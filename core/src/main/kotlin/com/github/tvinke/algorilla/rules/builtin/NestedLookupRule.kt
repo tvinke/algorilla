@@ -42,7 +42,7 @@ public class NestedLookupRule : Rule {
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
-            scanNode(fileRoot, null, emptyList(), context, findings)
+            scanNode(fileRoot, null, emptyList(), fileRoot.language, context, findings)
         }
         return findings
     }
@@ -51,6 +51,7 @@ public class NestedLookupRule : Rule {
         node: IRNode,
         enclosingFn: FunctionDecl?,
         iterationStack: List<IRNode>,
+        language: Language,
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
@@ -58,28 +59,28 @@ public class NestedLookupRule : Rule {
 
         if (node is LoopNode) {
             for (child in node.children) {
-                scanNode(child, fn, iterationStack + node, context, findings)
+                scanNode(child, fn, iterationStack + node, language, context, findings)
             }
             return
         }
 
         if (node is LookupCall) {
             val typeEnv = fn?.let { context.typeEnvironmentFor(it) }
-            if (iterationStack.isNotEmpty() && node.isCollectionLookup(fn, typeEnv)) {
+            if (iterationStack.isNotEmpty() && node.isCollectionLookup(fn, typeEnv, language, context.registry)) {
                 findings.add(buildFinding(node, iterationStack, fn))
             }
             if (node.children.isNotEmpty() && isIteratingLookup(node.kind)) {
                 for (child in node.children) {
-                    scanNode(child, fn, iterationStack + node, context, findings)
+                    scanNode(child, fn, iterationStack + node, language, context, findings)
                 }
                 return
             }
         }
 
-        checkCrossMethod(node, fn, iterationStack, context, findings)
+        checkCrossMethod(node, fn, iterationStack, language, context, findings)
 
         for (child in node.children) {
-            scanNode(child, fn, iterationStack, context, findings)
+            scanNode(child, fn, iterationStack, language, context, findings)
         }
     }
 
@@ -87,6 +88,7 @@ public class NestedLookupRule : Rule {
         node: IRNode,
         enclosingFn: FunctionDecl?,
         iterationStack: List<IRNode>,
+        language: Language,
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
@@ -101,7 +103,7 @@ public class NestedLookupRule : Rule {
                 node,
                 context.symbolTable,
                 maxDepth = maxDepth,
-            ) { it.isCollectionLookup(null) }
+            ) { it.isCollectionLookup(null, null, language, context.registry) }
         if (hiddenLookup != null) {
             val confidence = crossMethodConfidence(node, hiddenLookup, iterationStack, enclosingFn)
             findings.add(buildCrossMethodFinding(node, hiddenLookup, iterationStack, confidence))

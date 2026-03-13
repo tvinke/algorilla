@@ -32,29 +32,32 @@ public class UncachedGetterRule : Rule {
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
-            scanNode(fileRoot, findings)
+            val excludedNames = context.registry.getterExcludedNames(fileRoot.language)
+            scanNode(fileRoot, excludedNames, findings)
         }
         return findings
     }
 
     private fun scanNode(
         node: IRNode,
+        excludedNames: Set<String>,
         findings: MutableList<Finding>,
     ) {
         if (node is FunctionDecl) {
-            checkFunction(node, findings)
+            checkFunction(node, excludedNames, findings)
         }
         for (child in node.children) {
-            scanNode(child, findings)
+            scanNode(child, excludedNames, findings)
         }
     }
 
     private fun checkFunction(
         fn: FunctionDecl,
+        excludedNames: Set<String>,
         findings: MutableList<Finding>,
     ) {
         val callsWithContext = fn.findDescendantsWithBranchContext<FunctionCall>()
-        val getterCalls = callsWithContext.filter { isGetterPattern(it.first) && it.first.arguments.isNotEmpty() }
+        val getterCalls = callsWithContext.filter { isGetterPattern(it.first, excludedNames) && it.first.arguments.isNotEmpty() }
         val grouped = getterCalls.groupBy { "${it.first.qualifiedTarget}.${it.first.name}(${argKey(it.first)})" }
 
         for ((_, duplicatesWithContext) in grouped) {
@@ -100,13 +103,11 @@ private val GETTER_PREFIXES: List<String> by lazy {
         .allGetterPrefixes()
 }
 
-/** Method names excluded from getter detection. YAML-driven via `getter-excluded-names`. */
-private val EXCLUDED_NAMES: Set<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT.allExtraSection("getter-excluded-names")
-}
-
-private fun isGetterPattern(call: FunctionCall): Boolean {
-    if (call.name in EXCLUDED_NAMES) return false
+private fun isGetterPattern(
+    call: FunctionCall,
+    excludedNames: Set<String>,
+): Boolean {
+    if (call.name in excludedNames) return false
     return GETTER_PREFIXES.any { call.name.startsWith(it, ignoreCase = true) }
 }
 

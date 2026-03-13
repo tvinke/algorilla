@@ -39,26 +39,28 @@ public class ExpensiveSortComparatorRule : Rule {
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
-            scanNode(fileRoot, context, findings)
+            scanNode(fileRoot, fileRoot.language, context, findings)
         }
         return findings
     }
 
     private fun scanNode(
         node: IRNode,
+        language: Language,
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
         if (node is SortCall) {
-            checkComparatorBody(node, context, findings)
+            checkComparatorBody(node, language, context, findings)
         }
         for (child in node.children) {
-            scanNode(child, context, findings)
+            scanNode(child, language, context, findings)
         }
     }
 
     private fun checkComparatorBody(
         sort: SortCall,
+        language: Language,
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
@@ -72,28 +74,29 @@ public class ExpensiveSortComparatorRule : Rule {
 
         // Date creation inside comparator
         val creations = body.filterIsInstance<ObjectCreation>() + body.flatMap { it.findDescendants<ObjectCreation>() }
-        val dateCreations = creations.filter { isDateType(it.typeName) }
+        val dateCreations = creations.filter { isDateType(it.typeName, language, context.registry) }
         for (creation in dateCreations) {
             findings.add(buildDateCreationFinding(sort, creation))
         }
 
         // Date parse calls inside comparator
         val calls = body.filterIsInstance<FunctionCall>() + body.flatMap { it.findDescendants<FunctionCall>() }
-        val dateParseCalls = calls.filter { isDateParseCall(it) }
+        val dateParseCalls = calls.filter { isDateParseCall(it, language, context.registry) }
         for (call in dateParseCalls) {
             findings.add(buildDateParseFinding(sort, call))
         }
 
         // Cross-method: check called methods for hidden date operations
-        val nonDateCalls = calls.filter { !isDateParseCall(it) }
+        val nonDateCalls = calls.filter { !isDateParseCall(it, language, context.registry) }
         for (call in nonDateCalls) {
-            checkCrossMethodDate(sort, call, context, findings)
+            checkCrossMethodDate(sort, call, language, context, findings)
         }
     }
 
     private fun checkCrossMethodDate(
         sort: SortCall,
         call: FunctionCall,
+        language: Language,
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
@@ -103,7 +106,7 @@ public class ExpensiveSortComparatorRule : Rule {
                 call,
                 context.symbolTable,
                 maxDepth = maxDepth,
-            ) { isDateType(it.typeName) }
+            ) { isDateType(it.typeName, language, context.registry) }
         if (dateOp != null) {
             findings.add(buildIndirectFinding(sort, call, dateOp))
             return
@@ -113,7 +116,7 @@ public class ExpensiveSortComparatorRule : Rule {
                 call,
                 context.symbolTable,
                 maxDepth = maxDepth,
-            ) { isDateParseCall(it) }
+            ) { isDateParseCall(it, language, context.registry) }
         if (parseOp != null) {
             findings.add(buildIndirectFinding(sort, call, parseOp))
         }
@@ -269,22 +272,18 @@ public class ExpensiveSortComparatorRule : Rule {
     )
 }
 
-internal val dateTypeNames: Set<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT.allExtraSection("date-type-names")
-}
+internal fun isDateType(
+    typeName: String,
+    language: Language,
+    registry: LanguageSemanticsRegistry,
+): Boolean = registry.dateTypeNames(language).any { typeName.contains(it) }
 
-internal fun isDateType(typeName: String): Boolean = dateTypeNames.any { typeName.contains(it) }
-
-private val DATE_PARSE_METHOD_NAMES: Set<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT.allExtraSection("date-parse-methods")
-}
-
-private val DATE_PARSE_TARGETS: Set<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT.allExtraSection("date-parse-targets")
-}
-
-internal fun isDateParseCall(call: FunctionCall): Boolean {
-    if (call.name !in DATE_PARSE_METHOD_NAMES) return false
+internal fun isDateParseCall(
+    call: FunctionCall,
+    language: Language,
+    registry: LanguageSemanticsRegistry,
+): Boolean {
+    if (call.name !in registry.dateParseMethods(language)) return false
     val target = call.qualifiedTarget ?: return false
-    return DATE_PARSE_TARGETS.any { target.contains(it) }
+    return registry.dateParseTargets(language).any { target.contains(it) }
 }

@@ -318,6 +318,11 @@ public class LanguageSemanticsRegistry private constructor(
             .flatten()
             .distinct()
 
+    public fun bulkLoadPrefixes(language: Language): List<String> {
+        val resolved = resolveLanguage(language)
+        return bulkLoadPrefixesByLanguage[resolved] ?: emptyList()
+    }
+
     /**
      * Returns full-scan methods for a specific language.
      * These are methods that iterate the full collection (groupBy, distinct, toMap, etc.).
@@ -569,6 +574,10 @@ public class LanguageSemanticsRegistry private constructor(
     public fun ioMethodCandidates(language: Language): Set<String> = extraSection(language, "io-method-candidates")
 
     public fun ioTargetPatterns(language: Language): Set<String> = extraSection(language, "io-target-patterns")
+
+    public fun getterExcludedNames(language: Language): Set<String> = extraSection(language, "getter-excluded-names")
+
+    public fun nonRegexMatchesTargets(language: Language): Set<String> = extraSection(language, "non-regex-matches-targets")
 
     /**
      * Looks up a method's [LookupKind] for a specific language.
@@ -1003,7 +1012,7 @@ internal fun extractLanguageFromYaml(text: String): Language? {
 }
 
 @Suppress("LoopWithTooManyJumpStatements")
-private fun splitSections(text: String): Map<String, List<String>> {
+internal fun splitSections(text: String): Map<String, List<String>> {
     val sections = mutableMapOf<String, MutableList<String>>()
     var currentSection: String? = null
     for (rawLine in text.lines()) {
@@ -1020,7 +1029,7 @@ private fun splitSections(text: String): Map<String, List<String>> {
     return sections
 }
 
-private fun collectListItems(lines: List<String>?): Set<String> =
+internal fun collectListItems(lines: List<String>?): Set<String> =
     lines
         ?.mapNotNull { parseListItem(it) }
         ?.toSet()
