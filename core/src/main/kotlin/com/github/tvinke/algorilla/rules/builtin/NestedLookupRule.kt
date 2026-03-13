@@ -1,6 +1,8 @@
 package com.github.tvinke.algorilla.rules.builtin
 
+import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.ExecutionContext
+import com.github.tvinke.algorilla.model.FlowTarget
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.IRNode
@@ -62,7 +64,7 @@ public class NestedLookupRule : Rule {
 
         if (node is LookupCall) {
             if (iterationStack.isNotEmpty() && node.isCollectionLookup(fn)) {
-                findings.add(buildFinding(node, iterationStack))
+                findings.add(buildFinding(node, iterationStack, fn))
             }
             if (node.children.isNotEmpty() && isIteratingLookup(node.kind)) {
                 for (child in node.children) {
@@ -140,6 +142,7 @@ public class NestedLookupRule : Rule {
     private fun buildFinding(
         lookup: LookupCall,
         iterationStack: List<IRNode>,
+        enclosingFn: FunctionDecl? = null,
     ): Finding {
         val targetVar = lookup.targetVariable ?: "collection"
         val outerVar = iteratedVar(iterationStack.first())
@@ -147,10 +150,15 @@ public class NestedLookupRule : Rule {
         val evidence = buildEvidence(iterationStack, lookup, targetVar)
         val cx = ComplexityModel.loopTimesLookup(outerVar, targetVar)
 
+        // Flow-based confidence: if the lookup target is a parameter (or alias of one),
+        // we have proof it's a collection being scanned, not a scalar or O(1) type
+        val paramBacked = enclosingFn != null && isParamBacked(targetVar, enclosingFn)
+
         return Finding(
             ruleId = id,
             ruleName = name,
             severity = severity,
+            confidence = if (paramBacked) Confidence.HIGH else Confidence.MEDIUM,
             location = lookup.location,
             message = "Linear ${lookup.kind.label} on '$targetVar' inside ${iterationLabel(outerIteration)}",
             suggestion = "Build a ${lookup.kind.suggestedStructure()} from '$targetVar' before the loop",
@@ -239,6 +247,21 @@ public class NestedLookupRule : Rule {
                 complexity = ComplexityModel.bottleneckO(targetVar),
             )
     }
+
+    /**
+     * Returns true if the variable name is backed by a function parameter (directly or via alias).
+     * When the target is parameter-backed, we have proof it's a collection being scanned.
+     */
+    private fun isParamBacked(
+        varName: String,
+        fn: FunctionDecl,
+    ): Boolean =
+        fn.parameterFlows.any { flow ->
+            flow.paramName == varName ||
+                flow.flowsInto.any {
+                    it is FlowTarget.MethodCallReceiver && it.methodName == varName
+                }
+        }
 }
 
 /**

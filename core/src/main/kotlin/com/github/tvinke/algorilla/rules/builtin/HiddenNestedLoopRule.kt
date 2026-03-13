@@ -1,6 +1,8 @@
 package com.github.tvinke.algorilla.rules.builtin
 
+import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.ExecutionContext
+import com.github.tvinke.algorilla.model.FlowTarget
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.IRNode
@@ -14,6 +16,7 @@ import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.util.CrossMethodResolver
+import com.github.tvinke.algorilla.util.ParameterFlowQuery
 import com.github.tvinke.algorilla.util.findDescendants
 import com.github.tvinke.algorilla.util.isRecursive
 
@@ -35,35 +38,40 @@ public class HiddenNestedLoopRule : Rule {
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
-            scanNode(fileRoot, emptyList(), context, findings)
+            scanNode(fileRoot, null, emptyList(), context, findings)
         }
         return findings
     }
 
     private fun scanNode(
         node: IRNode,
+        enclosingFn: FunctionDecl?,
         loopStack: List<LoopNode>,
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
+        val fn = if (node is FunctionDecl) node else enclosingFn
+
         if (node is LoopNode) {
             for (child in node.children) {
-                scanNode(child, loopStack + node, context, findings)
+                scanNode(child, fn, loopStack + node, context, findings)
             }
             return
         }
 
         if (loopStack.isNotEmpty() && node is FunctionCall) {
-            checkForHiddenLoop(node, loopStack, context, findings)
+            checkForHiddenLoop(node, fn, loopStack, context, findings)
         }
 
         for (child in node.children) {
-            scanNode(child, loopStack, context, findings)
+            scanNode(child, fn, loopStack, context, findings)
         }
     }
 
+    @Suppress("ReturnCount")
     private fun checkForHiddenLoop(
         call: FunctionCall,
+        callerFn: FunctionDecl?,
         loopStack: List<LoopNode>,
         context: AnalysisContext,
         findings: MutableList<Finding>,
@@ -81,7 +89,17 @@ public class HiddenNestedLoopRule : Rule {
         // Skip trivial methods (single-statement wrappers with no real loop body)
         if (isTrivialLoop(hiddenLoop)) return
 
-        findings.add(buildFinding(call, resolved, hiddenLoop, loopStack))
+        // Flow-based confidence: if a parameter flows through this call into a loop
+        // in the callee, we have proof the nested iteration is on caller data
+        val flowConfirmed =
+            callerFn != null &&
+                ParameterFlowQuery.parameterFlowsThrough(
+                    call,
+                    callerFn,
+                    context.symbolTable,
+                ) { it is FlowTarget.LoopIteration } != null
+
+        findings.add(buildFinding(call, resolved, hiddenLoop, loopStack, flowConfirmed))
     }
 
     private fun buildFinding(
@@ -89,6 +107,7 @@ public class HiddenNestedLoopRule : Rule {
         resolved: FunctionDecl,
         hiddenLoop: LoopNode,
         loopStack: List<LoopNode>,
+        flowConfirmed: Boolean = false,
     ): Finding {
         val outerVar = (loopStack.first().iteratedVariable ?: "items")
         val innerVar = hiddenLoop.iteratedVariable ?: "elements"
@@ -97,6 +116,7 @@ public class HiddenNestedLoopRule : Rule {
             ruleId = id,
             ruleName = name,
             severity = severity,
+            confidence = if (flowConfirmed) Confidence.HIGH else Confidence.MEDIUM,
             location = call.location,
             message =
                 "${call.name}() contains a ${hiddenLoop.kind.label()} \u2014 " +
