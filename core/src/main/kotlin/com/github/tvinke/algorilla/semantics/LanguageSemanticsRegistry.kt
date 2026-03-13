@@ -248,6 +248,11 @@ public class LanguageSemanticsRegistry private constructor(
     public fun allReflectionMethods(): Set<String> = reflectionByLanguage.values.flatten().toSet()
 
     /**
+     * Returns the union of all IO methods across all languages.
+     */
+    public fun allIoMethods(): Set<String> = ioByLanguage.values.flatten().toSet()
+
+    /**
      * Returns the copy-on-modify methods for a specific language.
      */
     public fun copyOnModifyMethodsFor(language: Language): Set<String> {
