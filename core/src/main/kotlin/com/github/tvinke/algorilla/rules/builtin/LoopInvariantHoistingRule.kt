@@ -1,5 +1,6 @@
 package com.github.tvinke.algorilla.rules.builtin
 
+import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.FileRoot
 import com.github.tvinke.algorilla.model.FunctionCall
@@ -31,6 +32,7 @@ public class LoopInvariantHoistingRule : Rule {
     override val id: String = "loop-invariant-hoisting"
     override val name: String = "Loop-Invariant Hoisting"
     override val severity: Severity = Severity.INFO
+    override val defaultConfidence: Confidence = Confidence.LOW
     override val languages: Set<Language> = Language.entries.toSet()
     override val category: RuleCategory = RuleCategory.REDUNDANCY
 

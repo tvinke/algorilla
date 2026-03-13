@@ -26,6 +26,7 @@ public class UnmemoizedRecursionRule : Rule {
     override val id: String = "unmemoized-recursion"
     override val name: String = "Unmemoized Recursion"
     override val severity: Severity = Severity.WARNING
+    override val defaultConfidence: Confidence = Confidence.LOW
     override val languages: Set<Language> = Language.entries.toSet()
     override val category: RuleCategory = RuleCategory.REDUNDANCY
 

@@ -33,6 +33,7 @@ public class CardinalityExplosionRule : Rule {
     override val id: String = "cardinality-explosion"
     override val name: String = "Cardinality Explosion"
     override val severity: Severity = Severity.WARNING
+    override val defaultConfidence: Confidence = Confidence.MEDIUM
     override val languages: Set<Language> = Language.entries.toSet()
     override val category: RuleCategory = RuleCategory.LOOP_AMPLIFIER
     override val subsumes: Set<String> = setOf("in-loop-collection-building")
