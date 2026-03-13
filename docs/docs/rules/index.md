@@ -1,6 +1,6 @@
 # Rules Overview
 
-Algorilla ships with 24 built-in rules that detect common algorithmic complexity anti-patterns, organized in six categories.
+Algorilla ships with 27 built-in rules that detect common algorithmic complexity anti-patterns, organized in six categories.
 
 ## Loop amplifiers
 
@@ -21,6 +21,7 @@ Expensive operations hidden inside loop bodies that multiply the cost per iterat
 | `hidden-nested-loop` | [Hidden Nested Loop](hidden-nested-loop.md) | WARNING | O(n·m) hidden behind method call |
 | `io-in-loop` | [IO In Loop](io-in-loop.md) | WARNING | O(n·IO) where O(1·IO+n) suffices |
 | `expensive-callback` | [Expensive Callback](expensive-callback.md) | WARNING | Expensive operations inside HOF callbacks |
+| `cardinality-explosion` | [Cardinality Explosion](cardinality-explosion.md) | WARNING | O(n×m) cross-product output |
 
 ## Sort abuse
 
@@ -58,6 +59,8 @@ Repeated computations that could be cached.
 | `redundant-expensive-call` | [Redundant Expensive Call](redundant-expensive-call.md) | INFO | k·O(f) where O(f) suffices |
 | `uncached-getter` | [Uncached Getter](uncached-getter.md) | INFO | k·O(lookup) where O(lookup) suffices |
 | `chained-getters` | [Chained Getters](chained-getters.md) | INFO | O(n^k) where O(n) suffices |
+| `unmemoized-recursion` | [Unmemoized Recursion](unmemoized-recursion.md) | WARNING | O(2^n) where O(n) with memo suffices |
+| `multi-pass-stream-fusion` | [Multi-Pass Stream Fusion](multi-pass-stream-fusion.md) | INFO | O(k·n) where O(n) suffices |
 
 ## Concurrency
 
