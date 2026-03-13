@@ -1,7 +1,10 @@
 package com.github.tvinke.algorilla.rules.builtin
 
+import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.ExecutionContext
+import com.github.tvinke.algorilla.model.FlowTarget
 import com.github.tvinke.algorilla.model.FunctionCall
+import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LoopNode
@@ -31,27 +34,32 @@ public class NPlusOneRepositoryCallRule : Rule {
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
-            scanNode(fileRoot, emptyList(), context, findings)
+            scanNode(fileRoot, null, emptyList(), context, findings)
         }
         return findings
     }
 
     private fun scanNode(
         node: IRNode,
+        enclosingFn: FunctionDecl?,
         loopStack: List<LoopNode>,
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
+        val fn = if (node is FunctionDecl) node else enclosingFn
+
         if (node is LoopNode) {
             for (child in node.children) {
-                scanNode(child, loopStack + node, context, findings)
+                scanNode(child, fn, loopStack + node, context, findings)
             }
             return
         }
 
         if (loopStack.isNotEmpty() && node is FunctionCall) {
+            // Flow-based confidence: loop iterates a confirmed parameter → HIGH
+            val loopParamConfirmed = fn != null && loopIteratesParam(fn)
             if (isSingleRecordFetch(node)) {
-                findings.add(buildFinding(node, loopStack))
+                findings.add(buildFinding(node, loopStack, loopParamConfirmed))
             } else {
                 // Cross-method: check if a helper method internally calls a repository method
                 val maxDepth = context.config.maxCallDepth.coerceAtMost(2)
@@ -68,9 +76,14 @@ public class NPlusOneRepositoryCallRule : Rule {
         }
 
         for (child in node.children) {
-            scanNode(child, loopStack, context, findings)
+            scanNode(child, fn, loopStack, context, findings)
         }
     }
+
+    private fun loopIteratesParam(fn: FunctionDecl): Boolean =
+        fn.parameterFlows.any { flow ->
+            flow.flowsInto.any { it is FlowTarget.LoopIteration }
+        }
 
     private fun buildCrossMethodFinding(
         call: FunctionCall,
@@ -108,6 +121,7 @@ public class NPlusOneRepositoryCallRule : Rule {
     private fun buildFinding(
         call: FunctionCall,
         loopStack: List<LoopNode>,
+        flowConfirmed: Boolean = false,
     ): Finding {
         val outerLoop = loopStack.first()
         val loopVar = outerLoop.iteratedVariable ?: "items"
@@ -127,6 +141,7 @@ public class NPlusOneRepositoryCallRule : Rule {
             ruleId = id,
             ruleName = name,
             severity = severity,
+            confidence = if (flowConfirmed) Confidence.HIGH else Confidence.MEDIUM,
             location = call.location,
             message = "Single-record fetch $target.${call.name}() inside ${outerLoop.kind.label()} (N+1)",
             suggestion = "Bulk fetch all needed records before the loop, or build an in-memory Map",

@@ -1,5 +1,6 @@
 package com.github.tvinke.algorilla.rules.builtin
 
+import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
@@ -116,10 +117,12 @@ public class RepeatedLinearScanRule : Rule {
         val cx = ComplexityModel.repeatedScans(lookups.size)
         val opsDesc = lookups.joinToString(" and ") { ".${it.kind.label}()" }
         val structure = dominantStructure(lookups)
+        val paramBacked = fn.parameterFlows.any { it.paramName == targetVar }
         return Finding(
             ruleId = id,
             ruleName = name,
             severity = severity,
+            confidence = if (paramBacked) Confidence.HIGH else Confidence.MEDIUM,
             location = lookups.first().location,
             message =
                 "'$targetVar' is scanned ${lookups.size} times in ${fn.name}(): " +
@@ -153,10 +156,12 @@ public class RepeatedLinearScanRule : Rule {
     ): Finding {
         val cx = ComplexityModel.repeatedScans(calls.size)
         val opsDesc = calls.joinToString(" and ") { ".${it.name}()" }
+        val paramBacked = fn.parameterFlows.any { it.paramName == targetVar }
         return Finding(
             ruleId = id,
             ruleName = name,
             severity = severity,
+            confidence = if (paramBacked) Confidence.HIGH else Confidence.MEDIUM,
             location = calls.first().location,
             message =
                 "'$targetVar' is scanned ${calls.size} times in ${fn.name}(): " +

@@ -1,5 +1,6 @@
 package com.github.tvinke.algorilla.rules.builtin
 
+import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.FlowTarget
 import com.github.tvinke.algorilla.model.FunctionCall
@@ -57,7 +58,13 @@ public class IOInLoopRule : Rule {
 
         if (loopStack.isNotEmpty() && node is FunctionCall) {
             if (node.name in ioMethods) {
-                findings.add(buildFinding(node, loopStack))
+                // Flow-based: if the loop iterates a confirmed parameter, we're certain
+                val loopParamConfirmed =
+                    fn != null &&
+                        fn.parameterFlows.any { flow ->
+                            flow.flowsInto.any { it is FlowTarget.LoopIteration }
+                        }
+                findings.add(buildFinding(node, loopStack, loopParamConfirmed))
             } else if (fn != null) {
                 // Cross-method: check if param flows through this call into an IO operation
                 checkCrossMethodIO(node, fn, loopStack, context, findings)
@@ -95,6 +102,7 @@ public class IOInLoopRule : Rule {
     private fun buildFinding(
         call: FunctionCall,
         loopStack: List<LoopNode>,
+        flowConfirmed: Boolean = false,
     ): Finding {
         val outerLoop = loopStack.first()
         val loopVar = outerLoop.iteratedVariable ?: "items"
@@ -102,6 +110,7 @@ public class IOInLoopRule : Rule {
             ruleId = id,
             ruleName = name,
             severity = severity,
+            confidence = if (flowConfirmed) Confidence.HIGH else Confidence.MEDIUM,
             location = call.location,
             message =
                 "IO call ${call.name}() inside ${outerLoop.kind.label()} — " +
