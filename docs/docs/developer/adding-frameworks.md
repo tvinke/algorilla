@@ -59,6 +59,26 @@ heavyweight-types:
 
 Most frameworks only have a handful of heavyweight types. Don't force it — if a framework has none, leave the section out.
 
+### io-methods
+
+Methods that perform I/O — HTTP calls, database queries, file operations. These are relevant for rules like `n-plus-one-query` that detect I/O inside loops. Unlike cheap methods (which suppress findings), I/O methods *enable* detection.
+
+**The test:** "Does this method hit the network, disk, or a database?" If yes, it's an I/O method.
+
+```yaml
+io-methods:
+  # Each call is a database round-trip
+  - save
+  - saveAll
+  - deleteById
+  # Each call is an HTTP request
+  - getForObject
+  - exchange
+  - block          # triggers reactive subscription
+```
+
+Not every framework has I/O methods. Utility libraries (Guava, Lodash) don't. Persistence and HTTP frameworks do.
+
 ## The workflow
 
 ### 1. Run a scan and collect false positives

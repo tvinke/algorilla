@@ -42,6 +42,12 @@ public object ComplexityModel {
     /** Collection copy inside loop: addAll/concat per iteration → accumulate then copy. */
     public fun loopTimesCopy(loopVar: String): ComplexityEstimate = ComplexityEstimate("O($loopVar \u00d7 copy)", "O($loopVar + copy)")
 
+    /** Cartesian product: nested loops over two different collections → index or join. */
+    public fun cartesianProduct(
+        outerVar: String,
+        innerVar: String,
+    ): ComplexityEstimate = ComplexityEstimate("O($outerVar \u00d7 $innerVar)", "O($outerVar + $innerVar) with index/join")
+
     // ── Sort abuse ───────────────────────────────────────────
 
     /** Sort the entire collection just to get first/last → linear scan instead. */
@@ -66,6 +72,10 @@ public object ComplexityModel {
 
     /** Multiple linear scans on the same collection → combine into single pass. */
     public fun repeatedScans(count: Int): ComplexityEstimate = ComplexityEstimate("O(n \u00d7 $count)", "O(n)")
+
+    /** Recursive function solving overlapping subproblems → add memoization. */
+    public fun exponentialRecursion(paramName: String): ComplexityEstimate =
+        ComplexityEstimate("O(2^$paramName)", "O($paramName) with memo")
 
     // ── Query patterns ───────────────────────────────────────
 

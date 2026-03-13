@@ -775,3 +775,40 @@ io-methods:
 # These are conversion/factory patterns.
 o1-factory-methods:
   # No standalone factory functions in JS — Set/Map are constructed via `new`
+
+# Methods used for caching/memoization of function results.
+memoization-methods:
+  - get
+  - set
+  - has
+  - delete
+
+# Property/method names used to access child nodes in tree structures.
+tree-traversal-accessors:
+  - left
+  - right
+  - children
+  - next
+  - prev
+  - parent
+  - firstChild
+  - lastChild
+  - childNodes
+  - firstElementChild
+  - lastElementChild
+  - nextSibling
+  - previousSibling
+  - nextElementSibling
+  - previousElementSibling
+  - parentNode
+  - parentElement
+
+# Variable names that indicate visited-set tracking in recursive functions.
+visited-set-names:
+  - visited
+  - seen
+  - processed
+  - explored
+  - memo
+  - cache
+  - dp

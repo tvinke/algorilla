@@ -616,3 +616,43 @@ o1-factory-methods:
   - toMap
   - toMutableMap
   - toSortedMap
+
+# Methods used for caching/memoization of function results.
+memoization-methods:
+  - getOrPut
+  - computeIfAbsent
+  - getOrDefault
+  - putIfAbsent
+  - get
+  - put
+  - containsKey
+  - getOrElse
+
+# Property/method names used to access child nodes in tree structures.
+tree-traversal-accessors:
+  - left
+  - right
+  - children
+  - next
+  - prev
+  - parent
+  - firstChild
+  - lastChild
+  - getChildren
+  - getLeft
+  - getRight
+  - getNext
+  - getPrev
+  - getParent
+  - getFirstChild
+  - getLastChild
+
+# Variable names that indicate visited-set tracking in recursive functions.
+visited-set-names:
+  - visited
+  - seen
+  - processed
+  - explored
+  - memo
+  - cache
+  - dp

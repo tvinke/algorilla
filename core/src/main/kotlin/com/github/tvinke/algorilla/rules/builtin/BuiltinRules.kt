@@ -20,6 +20,7 @@ public object BuiltinRules {
             ExpensiveSerializationInLoopRule(),
             SequentialAsyncJoinInLoopRule(),
             InLoopCollectionBuildingRule(),
+            CardinalityExplosionRule(),
             NPlusOneRepositoryCallRule(),
             RedundantExpensiveCallRule(),
             UncachedGetterRule(),
@@ -32,5 +33,7 @@ public object BuiltinRules {
             RepeatedReflectionInLoopRule(),
             ParallelPipelineBottleneckRule(),
             IOInLoopRule(),
+            MultiPassStreamFusionRule(),
+            UnmemoizedRecursionRule(),
         )
 }

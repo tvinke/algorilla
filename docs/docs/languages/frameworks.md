@@ -21,6 +21,8 @@ This knowledge is loaded automatically based on the language being scanned. No c
 
 **Guava** — Immutable collection factories, `Cache`/`LoadingCache`, `CacheBuilder`, `Multimap`, `BiMap`, `Table`, `RangeSet`, `Optional`, `Ordering`, `Preconditions`, `Joiner`/`Splitter`, `CharMatcher`, `Hashing`, `Futures`/`ListenableFuture`, `EventBus`, and primitive utilities.
 
+**Project Reactor** — `Mono` and `Flux` transformations (map, flatMap, filter, zip, merge, concat, etc.), factory methods (just, empty, defer, fromCallable, create, generate), Schedulers, context propagation, and signal inspection. I/O-triggering methods (`block`, `subscribe`, `toFuture`) are classified separately. Heavyweight types include deprecated processors (`FluxProcessor`, `EmitterProcessor`).
+
 ### Kotlin
 
 **Kotlin Coroutines** — Coroutine builders, `Flow` (builders, operators, combining, terminal operations), `Channel`, `Deferred`, `Dispatchers`, `Job` management, `Mutex`/`Semaphore`, and structured concurrency patterns.

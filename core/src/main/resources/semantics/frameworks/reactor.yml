@@ -1,0 +1,154 @@
+# Project Reactor — framework overlay for Java
+# Mono/Flux reactive streams, Schedulers, and context propagation
+
+language: java
+
+methods: {}
+
+cheap-methods:
+  # Mono — transformations (lazy, no work until subscribed)
+  - map
+  - flatMap
+  - flatMapMany
+  - then
+  - thenReturn
+  - thenMany
+  - thenEmpty
+  - switchIfEmpty
+  - defaultIfEmpty
+  - filter
+  - filterWhen
+  - doOnNext
+  - doOnError
+  - doOnComplete
+  - doOnSubscribe
+  - doOnTerminate
+  - doFinally
+  - onErrorResume
+  - onErrorReturn
+  - onErrorMap
+  - onErrorContinue
+  - onErrorStop
+  - retry
+  - retryWhen
+  - timeout
+  - delayElement
+  - delaySubscription
+  - cache
+  - log
+  - checkpoint
+  - contextWrite
+  - transformDeferred
+  - transform
+  - as
+  - cast
+  - ofType
+  - hasElement
+  - hasElements
+  - zipWith
+  - zipWhen
+  # Flux — transformations
+  - concatWith
+  - concatMap
+  - mergeWith
+  - mergeSequential
+  - groupBy
+  - window
+  - buffer
+  - bufferTimeout
+  - sample
+  - sampleFirst
+  - sampleTimeout
+  - distinct
+  - distinctUntilChanged
+  - take
+  - takeLast
+  - takeUntil
+  - takeWhile
+  - skip
+  - skipLast
+  - skipUntil
+  - skipWhile
+  - sort
+  - collectList
+  - collectMap
+  - collectMultimap
+  - collectSortedList
+  - count
+  - reduce
+  - reduceWith
+  - scan
+  - scanWith
+  - single
+  - singleOrEmpty
+  - next
+  - last
+  - elementAt
+  - index
+  - repeat
+  - expand
+  - expandDeep
+  # Mono/Flux — factory methods (lazy, create a pipeline definition)
+  - just
+  - empty
+  - error
+  - never
+  - defer
+  - fromCallable
+  - fromRunnable
+  - fromSupplier
+  - fromFuture
+  - fromCompletionStage
+  - fromIterable
+  - fromArray
+  - fromStream
+  - range
+  - interval
+  - create
+  - push
+  - generate
+  - using
+  - usingWhen
+  - merge
+  - concat
+  - zip
+  - first
+  - firstWithSignal
+  - firstWithValue
+  - combineLatest
+  # Schedulers
+  - boundedElastic
+  - parallel
+  - single
+  - immediate
+  - fromExecutorService
+  - subscribeOn
+  - publishOn
+
+trivial-methods:
+  # Signal inspection
+  - isDisposed
+  - isTerminated
+  # Context
+  - currentContext
+  - contextView
+  - hasKey
+
+io-methods:
+  # These trigger actual subscription / blocking
+  - block
+  - blockFirst
+  - blockLast
+  - blockOptional
+  - subscribe
+  - toFuture
+  - toStream
+
+heavyweight-types:
+  - Sinks.Many
+  - Sinks.One
+  - FluxProcessor
+  - DirectProcessor
+  - EmitterProcessor
+  - ReplayProcessor
+  - UnicastProcessor

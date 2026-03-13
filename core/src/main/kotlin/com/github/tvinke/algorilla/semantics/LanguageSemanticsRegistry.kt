@@ -38,6 +38,9 @@ public class LanguageSemanticsRegistry private constructor(
     private val fullScanByLanguage: Map<Language, Set<String>>,
     private val ioByLanguage: Map<Language, Set<String>>,
     private val o1FactoryByLanguage: Map<Language, Set<String>>,
+    private val memoizationByLanguage: Map<Language, Set<String>>,
+    private val treeTraversalByLanguage: Map<Language, Set<String>>,
+    private val visitedSetNamesByLanguage: Map<Language, Set<String>>,
 ) {
     /**
      * Classifies a method name for the given language.
@@ -332,6 +335,39 @@ public class LanguageSemanticsRegistry private constructor(
     }
 
     /**
+     * Returns true if the method name is a known memoization/caching method for the language.
+     */
+    public fun isMemoizationMethod(
+        language: Language,
+        methodName: String,
+    ): Boolean {
+        val resolved = resolveLanguage(language)
+        return memoizationByLanguage[resolved]?.contains(methodName) == true
+    }
+
+    /**
+     * Returns true if the accessor name is a known tree-traversal accessor for the language.
+     */
+    public fun isTreeTraversalAccessor(
+        language: Language,
+        accessorName: String,
+    ): Boolean {
+        val resolved = resolveLanguage(language)
+        return treeTraversalByLanguage[resolved]?.contains(accessorName) == true
+    }
+
+    /**
+     * Returns true if the name is a known visited-set variable name for the language.
+     */
+    public fun isVisitedSetName(
+        language: Language,
+        name: String,
+    ): Boolean {
+        val resolved = resolveLanguage(language)
+        return visitedSetNamesByLanguage[resolved]?.contains(name.lowercase()) == true
+    }
+
+    /**
      * Looks up a method's [LookupKind] for a specific language.
      * Returns null if the method has no lookup classification in that language.
      */
@@ -435,6 +471,9 @@ public class LanguageSemanticsRegistry private constructor(
                 maps.fullScan,
                 maps.io,
                 maps.o1Factory,
+                maps.memoization,
+                maps.treeTraversal,
+                maps.visitedSetNames,
             )
         }
 
@@ -504,6 +543,9 @@ public class LanguageSemanticsRegistry private constructor(
                 fullScanByLanguage = base.fullScanByLanguage,
                 ioByLanguage = base.ioByLanguage,
                 o1FactoryByLanguage = base.o1FactoryByLanguage,
+                memoizationByLanguage = base.memoizationByLanguage,
+                treeTraversalByLanguage = base.treeTraversalByLanguage,
+                visitedSetNamesByLanguage = base.visitedSetNamesByLanguage,
             )
         }
 
@@ -541,6 +583,9 @@ internal class LanguageMaps(
     val fullScan: MutableMap<Language, Set<String>> = mutableMapOf(),
     val io: MutableMap<Language, Set<String>> = mutableMapOf(),
     val o1Factory: MutableMap<Language, Set<String>> = mutableMapOf(),
+    val memoization: MutableMap<Language, Set<String>> = mutableMapOf(),
+    val treeTraversal: MutableMap<Language, Set<String>> = mutableMapOf(),
+    val visitedSetNames: MutableMap<Language, Set<String>> = mutableMapOf(),
 ) {
     @Suppress("CyclomaticComplexMethod")
     fun merge(
@@ -568,6 +613,9 @@ internal class LanguageMaps(
         fullScan[lang] = (fullScan[lang] ?: emptySet()) + parsed.fullScanMethods
         io[lang] = (io[lang] ?: emptySet()) + parsed.ioMethods
         o1Factory[lang] = (o1Factory[lang] ?: emptySet()) + parsed.o1FactoryMethods
+        memoization[lang] = (memoization[lang] ?: emptySet()) + parsed.memoizationMethods
+        treeTraversal[lang] = (treeTraversal[lang] ?: emptySet()) + parsed.treeTraversalAccessors
+        visitedSetNames[lang] = (visitedSetNames[lang] ?: emptySet()) + parsed.visitedSetNames
     }
 }
 
@@ -593,12 +641,16 @@ internal data class ParsedYaml(
     val fullScanMethods: Set<String>,
     val ioMethods: Set<String>,
     val o1FactoryMethods: Set<String>,
+    val memoizationMethods: Set<String>,
+    val treeTraversalAccessors: Set<String>,
+    val visitedSetNames: Set<String>,
 )
 
 /**
  * Lightweight YAML parser for the semantics files. These files have a simple, predictable
  * structure so we avoid pulling in a full YAML library dependency for core.
  */
+@Suppress("LongMethod") // Straightforward field-to-section mapping, splitting would reduce readability
 internal fun parseYaml(text: String): ParsedYaml {
     val sections = splitSections(text)
     val methods = mutableMapOf<String, MethodSemantics>()
@@ -626,6 +678,9 @@ internal fun parseYaml(text: String): ParsedYaml {
         fullScanMethods = collectListItems(sections["full-scan-methods"]),
         ioMethods = collectListItems(sections["io-methods"]),
         o1FactoryMethods = collectListItems(sections["o1-factory-methods"]),
+        memoizationMethods = collectListItems(sections["memoization-methods"]),
+        treeTraversalAccessors = collectListItems(sections["tree-traversal-accessors"]),
+        visitedSetNames = collectListItems(sections["visited-set-names"]),
     )
 }
 

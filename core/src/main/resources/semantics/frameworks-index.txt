@@ -10,3 +10,4 @@ angular.yml
 node.yml
 lodash.yml
 rxjs.yml
+reactor.yml
