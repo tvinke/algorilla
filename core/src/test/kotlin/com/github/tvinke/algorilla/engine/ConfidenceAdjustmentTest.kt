@@ -117,6 +117,17 @@ internal class ConfidenceAdjustmentTest {
     }
 
     @Nested
+    inner class HeuristicHeavyDemotion {
+        @ParameterizedTest
+        @ValueSource(strings = ["expensive-callback", "chained-getters"])
+        fun `heuristic-heavy rules are demoted to LOW`(ruleId: String) {
+            val findings = listOf(finding(ruleId = ruleId))
+            val adjusted = adjustConfidence(findings)
+            adjusted.first().confidence shouldBe Confidence.LOW
+        }
+    }
+
+    @Nested
     inner class EmptyAndPreserve {
         @Test
         fun `empty list returns empty`() {

@@ -281,6 +281,9 @@ private fun classifyConfidence(finding: Finding): Confidence {
     // Structural rules: always real regardless of types or context
     if (finding.ruleId in STRUCTURALLY_CERTAIN_RULES) return Confidence.HIGH
 
+    // High-FP rules: heuristic-heavy, often fire on legitimate tree-walk/transform patterns
+    if (finding.ruleId in HEURISTIC_HEAVY_RULES) return Confidence.LOW
+
     // Cross-method findings: evidence spans multiple files → MEDIUM (not promoted)
     val isCrossMethod =
         finding.evidence.any { it.location.file != finding.location.file }
@@ -305,6 +308,15 @@ private val STRUCTURALLY_CERTAIN_RULES =
         "repeated-reflection-in-loop", // Reflection lookup per iteration is always wasteful
         "quadratic-removal", // List.remove(index) in loop is always O(n²)
         "sequential-async-join-in-loop", // Await in loop is always sequential
+    )
+
+// Rules with high false-positive rates due to heuristic-heavy detection.
+// These are demoted to LOW so they're hidden at default --confidence medium,
+// but still available with --confidence low for deep exploration.
+private val HEURISTIC_HEAVY_RULES =
+    setOf(
+        "expensive-callback", // Fires on legitimate tree-walk/transform callbacks
+        "chained-getters", // Often flags intentional navigation patterns
     )
 
 private val UNTYPED_EXTENSIONS = setOf("js", "jsx", "ts", "tsx", "vue", "mjs", "cjs")
