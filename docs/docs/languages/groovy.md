@@ -5,6 +5,9 @@ tags:
 
 # Groovy
 
+!!! note "Beta"
+    Groovy analysis is usable with caveats. Some false positives expected around GDK-specific patterns. Use `--confidence high` for best results.
+
 Groovy closures make iteration feel lightweight. That's the trap:
 
 ```groovy

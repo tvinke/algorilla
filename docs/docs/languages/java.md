@@ -5,6 +5,9 @@ tags:
 
 # Java
 
+!!! success "GA — Production Ready"
+    Java is Algorilla's most mature language. Findings are trustworthy with a low false-positive rate, validated against enterprise codebases.
+
 Here's a pattern that shows up in reviewed, production-quality code:
 
 ```java

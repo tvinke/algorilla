@@ -6,27 +6,27 @@ Algorilla analyzes source code in four language groups, each with its own parser
 
 <div class="grid cards" markdown>
 
--   :fontawesome-brands-java:{ .lg .middle } **Java**
+-   :fontawesome-brands-java:{ .lg .middle } **Java** · GA
 
-    Full ANTLR parser with complete AST. The most mature language support.
+    Full ANTLR parser with complete AST. The most mature language support — production-ready with low false-positive rate.
 
     [:octicons-arrow-right-24: Java details](java.md)
 
--   :simple-kotlin:{ .lg .middle } **Kotlin**
+-   :simple-kotlin:{ .lg .middle } **Kotlin** · Alpha
 
-    Lightweight text-based parser with Kotlin-specific idiom recognition.
+    Lightweight text-based parser with Kotlin-specific idiom recognition. Early support — higher false-positive rates expected.
 
     [:octicons-arrow-right-24: Kotlin details](kotlin.md)
 
--   :simple-apachegroovy:{ .lg .middle } **Groovy**
+-   :simple-apachegroovy:{ .lg .middle } **Groovy** · Beta
 
-    ANTLR parser extending the Java grammar, with GDK method recognition.
+    ANTLR parser extending the Java grammar, with GDK method recognition. Usable with caveats — use `--confidence high` for best results.
 
     [:octicons-arrow-right-24: Groovy details](groovy.md)
 
--   :fontawesome-brands-js:{ .lg .middle } **JavaScript / TypeScript**
+-   :fontawesome-brands-js:{ .lg .middle } **JavaScript / TypeScript** · Beta
 
-    Lightweight parser covering JS, TS, and Vue single-file components.
+    Lightweight parser covering JS, TS, and Vue single-file components. Usable with caveats — use `--confidence high` for best results.
 
     [:octicons-arrow-right-24: JS/TS details](javascript.md)
 

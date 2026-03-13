@@ -22,6 +22,23 @@ This release prepares algorilla for public use by locking down the tool's public
 - **`implicit-regex-in-loop` → `regex-recompilation-in-loop`** — language-neutral ID; "implicit" was Java-specific. No alias — update suppress comments and `.algorilla.yml` configs
 - **`multi-pass-stream-fusion` → `repeated-collection-iteration`** — language-neutral ID; "stream fusion" is FP/JVM jargon. No alias — update suppress comments and `.algorilla.yml` configs
 
+### Language maturity tiers
+
+Language pages now show a maturity tier — GA, Beta, or Alpha — so you know what to expect from each language's analysis quality. See [Language Maturity](stability.md#language-maturity) for promotion criteria.
+
+- **Java: GA** — production-ready, validated against enterprise codebases
+- **Groovy: Beta** — usable, some false positives on framework code
+- **JavaScript / TypeScript: Beta** — name-based heuristics, wider variance
+- **Kotlin: Alpha** — early support, limited enterprise validation
+
+### Cross-language isolation
+
+Rules now query YAML extras per-language instead of merging all languages together. This fixes false positives where JavaScript-specific patterns (DOM targets, promise indicators) leaked into Java/Kotlin/Groovy analysis.
+
+### YAML schema validation
+
+A new test suite validates language YAML files and framework overlays against the known schema on every `./gradlew check`. Catches typos like `io-method` vs `io-methods` that would silently disable rules.
+
 ### Smarter detection
 
 - **Framework semantics overlays** — method classification is now loaded from per-framework YAML packs (Spring, Guava, etc.), replacing hardcoded constants

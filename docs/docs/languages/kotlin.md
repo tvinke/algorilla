@@ -5,6 +5,9 @@ tags:
 
 # Kotlin
 
+!!! warning "Alpha"
+    Kotlin support is early-stage. Expect higher false-positive rates, especially on non-standard codebases. Feedback welcome — file issues for patterns that don't look right.
+
 Kotlin's concise syntax is a feature — until it hides the cost of what's happening underneath:
 
 ```kotlin

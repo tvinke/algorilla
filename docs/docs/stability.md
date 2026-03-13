@@ -78,6 +78,33 @@ Minimum 2 minor releases between deprecation notice and removal.
 
 **JSON output fields:** new field added alongside old, old field documented as deprecated. Never remove a field without a `schemaVersion` bump.
 
+## Language Maturity
+
+Each supported language has its own maturity tier, independent of the API stability tiers above. Language maturity reflects how reliable the analysis results are for that language.
+
+| Tier | What it means |
+|------|---------------|
+| **GA** | Production-ready. Findings are trustworthy. Low false-positive rate. |
+| **Beta** | Usable with caveats. Some false positives expected. Use `--confidence high` for best results. |
+| **Alpha** | Early support. Higher false-positive rates. Feedback welcome. |
+
+### Current Language Tiers
+
+| Language | Tier | Notes |
+|----------|------|-------|
+| Java | GA | Validated against enterprise codebases (shopizer, keycloak, conductor). |
+| Groovy | Beta | Usable but higher FP rate on framework code. |
+| JavaScript / TypeScript | Beta | Name-based heuristics; wider variance across codebases. |
+| Kotlin | Alpha | Early support, limited enterprise validation. |
+
+### Promotion Criteria
+
+**Alpha to Beta:** 40+ regression fixtures, 2+ ground-truth repos, aggregate precision ≥ 0.60, no parser crashes on 3+ real-world repos.
+
+**Beta to GA:** 80+ regression fixtures, 4+ ground-truth repos (including enterprise apps), aggregate precision ≥ 0.80, enterprise app precision ≥ 0.85 on at least one app.
+
+Tier changes are tracked in the CHANGELOG.
+
 ## JSON Output Contract
 
 If you consume the JSON output (`--format json`), follow these rules for forward compatibility:
