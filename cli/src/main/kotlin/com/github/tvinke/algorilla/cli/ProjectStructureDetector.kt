@@ -7,6 +7,20 @@ private val logger = KotlinLogging.logger {}
 
 private val GRADLE_SOURCE_DIRS = listOf("java", "kotlin", "groovy")
 
+private val KMP_SOURCE_SETS =
+    listOf(
+        "commonMain",
+        "jvmMain",
+        "jsMain",
+        "nativeMain",
+        "iosMain",
+        "linuxMain",
+        "macosMain",
+        "mingwMain",
+        "androidMain",
+        "wasmMain",
+    )
+
 /**
  * Detects project structure (Gradle, Maven, JS/TS) and resolves the project root,
  * source roots, and test-exclusion patterns from build-system conventions.
@@ -80,6 +94,14 @@ internal class ProjectStructureDetector {
             }
         }
 
+        // Fallback: scan immediate child directories for source roots
+        if (roots.isEmpty()) {
+            projectRoot
+                .listFiles()
+                ?.filter { it.isDirectory && !it.name.startsWith(".") }
+                ?.forEach { roots.addAll(existingSourceDirs(it)) }
+        }
+
         return roots
     }
 
@@ -99,10 +121,17 @@ internal class ProjectStructureDetector {
         return roots
     }
 
-    private fun existingSourceDirs(moduleDir: File): List<File> =
-        GRADLE_SOURCE_DIRS
-            .map { File(moduleDir, "src/main/$it") }
+    private fun existingSourceDirs(moduleDir: File): List<File> {
+        val standard =
+            GRADLE_SOURCE_DIRS
+                .map { File(moduleDir, "src/main/$it") }
+                .filter { it.isDirectory }
+        if (standard.isNotEmpty()) return standard
+        // KMP source sets: src/{commonMain,jvmMain,...}/kotlin
+        return KMP_SOURCE_SETS
+            .map { File(moduleDir, "src/$it/kotlin") }
             .filter { it.isDirectory }
+    }
 
     /**
      * Returns a predicate that filters out test source files based on the detected

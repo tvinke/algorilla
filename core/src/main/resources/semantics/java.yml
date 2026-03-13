@@ -1471,3 +1471,18 @@ getter-excluded-names:
   - load_arg
   - load_this
   - getfield
+
+monadic-types:
+  - Optional
+  - CompletableFuture
+  - CompletionStage
+  - Stream  # Single-value stream from Optional.stream()
+
+monadic-variable-names:
+  - result
+  - optional
+  - maybe
+  - future
+  - promise
+  - completion
+  - either

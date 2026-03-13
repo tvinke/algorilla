@@ -47,6 +47,8 @@ public class LanguageSemanticsRegistry private constructor(
     private val stringIndicatorsByLanguage: Map<Language, Set<String>>,
     private val stringNameSuffixesByLanguage: Map<Language, Set<String>>,
     private val stringExactNamesByLanguage: Map<Language, Set<String>>,
+    private val monadicTypesByLanguage: Map<Language, Set<String>>,
+    private val monadicVarNamesByLanguage: Map<Language, Set<String>>,
     private val extrasByLanguage: Map<Language, Map<String, Set<String>>> = emptyMap(),
 ) {
     /**
@@ -470,6 +472,36 @@ public class LanguageSemanticsRegistry private constructor(
      */
     public fun allStringExactNames(): Set<String> = stringExactNamesByLanguage.values.flatten().toSet()
 
+    // --- Monadic type detection ---
+
+    /**
+     * Returns true if the target expression matches a monadic type or variable name
+     * across all languages.
+     */
+    public fun isMonadicTarget(targetText: String): Boolean {
+        val allTypes = monadicTypesByLanguage.values.flatten().toSet()
+        val allVarNames = monadicVarNamesByLanguage.values.flatten().toSet()
+        return allTypes.any { targetText.contains(it) } ||
+            matchesCamelCasePrefix(extractBaseVarName(targetText), allVarNames) ||
+            extractBaseVarName(targetText) in allVarNames
+    }
+
+    /**
+     * Returns true if the target expression matches a monadic type or variable name
+     * for the given language.
+     */
+    public fun isMonadicTarget(
+        language: Language,
+        targetText: String,
+    ): Boolean {
+        val resolved = resolveLanguage(language)
+        val types = monadicTypesByLanguage[resolved] ?: emptySet()
+        val varNames = monadicVarNamesByLanguage[resolved] ?: emptySet()
+        return types.any { targetText.contains(it) } ||
+            matchesCamelCasePrefix(extractBaseVarName(targetText), varNames) ||
+            extractBaseVarName(targetText) in varNames
+    }
+
     /** Generic query for extra YAML sections not covered by explicit fields. */
     public fun extraSection(
         language: Language,
@@ -654,6 +686,8 @@ public class LanguageSemanticsRegistry private constructor(
                 maps.stringIndicators,
                 maps.stringNameSuffixes,
                 maps.stringExactNames,
+                maps.monadicTypes,
+                maps.monadicVarNames,
                 maps.extras,
             )
         }
@@ -733,6 +767,8 @@ public class LanguageSemanticsRegistry private constructor(
                 stringIndicatorsByLanguage = base.stringIndicatorsByLanguage,
                 stringNameSuffixesByLanguage = base.stringNameSuffixesByLanguage,
                 stringExactNamesByLanguage = base.stringExactNamesByLanguage,
+                monadicTypesByLanguage = base.monadicTypesByLanguage,
+                monadicVarNamesByLanguage = base.monadicVarNamesByLanguage,
                 extrasByLanguage = base.extrasByLanguage,
             )
         }
@@ -780,6 +816,8 @@ internal class LanguageMaps(
     val stringIndicators: MutableMap<Language, Set<String>> = mutableMapOf(),
     val stringNameSuffixes: MutableMap<Language, Set<String>> = mutableMapOf(),
     val stringExactNames: MutableMap<Language, Set<String>> = mutableMapOf(),
+    val monadicTypes: MutableMap<Language, Set<String>> = mutableMapOf(),
+    val monadicVarNames: MutableMap<Language, Set<String>> = mutableMapOf(),
     val extras: MutableMap<Language, MutableMap<String, Set<String>>> = mutableMapOf(),
 ) {
     @Suppress("CyclomaticComplexMethod", "LongMethod")
@@ -817,6 +855,8 @@ internal class LanguageMaps(
         stringIndicators[lang] = (stringIndicators[lang] ?: emptySet()) + parsed.stringIndicators
         stringNameSuffixes[lang] = (stringNameSuffixes[lang] ?: emptySet()) + parsed.stringNameSuffixes
         stringExactNames[lang] = (stringExactNames[lang] ?: emptySet()) + parsed.stringExactNames
+        monadicTypes[lang] = (monadicTypes[lang] ?: emptySet()) + parsed.monadicTypes
+        monadicVarNames[lang] = (monadicVarNames[lang] ?: emptySet()) + parsed.monadicVarNames
         // Merge all extra sections
         val langExtras = extras.getOrPut(lang) { mutableMapOf() }
         for ((key, values) in parsed.extras) {
@@ -856,6 +896,8 @@ internal data class ParsedYaml(
     val stringIndicators: Set<String>,
     val stringNameSuffixes: Set<String>,
     val stringExactNames: Set<String>,
+    val monadicTypes: Set<String>,
+    val monadicVarNames: Set<String>,
     val extras: Map<String, Set<String>> = emptyMap(),
 )
 
@@ -902,6 +944,8 @@ internal fun parseYaml(text: String): ParsedYaml {
             "string-indicators",
             "string-name-suffixes",
             "string-exact-names",
+            "monadic-types",
+            "monadic-variable-names",
             "language",
         )
     val extras = mutableMapOf<String, Set<String>>()
@@ -942,6 +986,8 @@ internal fun parseYaml(text: String): ParsedYaml {
         stringIndicators = collectListItems(sections["string-indicators"]),
         stringNameSuffixes = collectListItems(sections["string-name-suffixes"]),
         stringExactNames = collectListItems(sections["string-exact-names"]),
+        monadicTypes = collectListItems(sections["monadic-types"]),
+        monadicVarNames = collectListItems(sections["monadic-variable-names"]),
         extras = extras,
     )
 }
@@ -1072,3 +1118,26 @@ private fun parseAccessKind(value: String): AccessKind? =
     } catch (_: IllegalArgumentException) {
         null
     }
+
+private fun matchesCamelCasePrefix(
+    varName: String,
+    prefixes: Set<String>,
+): Boolean =
+    prefixes.any { prefix ->
+        varName.length > prefix.length &&
+            varName.startsWith(prefix) &&
+            (varName[prefix.length].isUpperCase() || varName[prefix.length].isDigit())
+    }
+
+private fun extractBaseVarName(targetText: String): String {
+    val cleaned = targetText.trim()
+    val dotIdx = cleaned.indexOf('.')
+    val base = if (dotIdx > 0) cleaned.substring(0, dotIdx) else cleaned
+    return if (base == "this" && dotIdx > 0) {
+        val rest = cleaned.substring(dotIdx + 1)
+        val nextDot = rest.indexOf('.')
+        if (nextDot > 0) rest.substring(0, nextDot) else rest
+    } else {
+        base
+    }
+}

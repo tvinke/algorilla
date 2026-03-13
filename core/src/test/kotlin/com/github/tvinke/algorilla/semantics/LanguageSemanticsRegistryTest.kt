@@ -310,4 +310,12 @@ internal class LanguageSemanticsRegistryTest {
         prefixes shouldContain "getAll"
         prefixes shouldContain "loadAll"
     }
+
+    @Test
+    fun `should detect monadic targets`() {
+        val loadedRegistry = LanguageSemanticsRegistry.loadDefaults()
+        loadedRegistry.isMonadicTarget("Optional.of(x)") shouldBe true
+        loadedRegistry.isMonadicTarget("result.map") shouldBe true
+        loadedRegistry.isMonadicTarget("orders.stream()") shouldBe false
+    }
 }

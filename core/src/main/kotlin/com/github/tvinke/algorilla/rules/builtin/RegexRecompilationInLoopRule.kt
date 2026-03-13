@@ -109,6 +109,13 @@ private val JVM_FAMILY = setOf(Language.JAVA, Language.KOTLIN, Language.GROOVY)
 /** Regex metacharacters — single-char arguments using these still compile a regex in the JDK. */
 private const val REGEX_METACHARACTERS = ".\$|()[{^?*+\\"
 
+/**
+ * Kotlin's String.split(String) does NOT compile a regex — it calls
+ * String.split(Regex.fromLiteral(delimiter)) which uses Pattern.LITERAL.
+ * Same for replace(). Only matches() and replaceFirst() still compile.
+ */
+private val KOTLIN_SAFE_METHODS = setOf("split", "replace")
+
 @Suppress("ReturnCount")
 private fun isRegexRecompilationCall(
     call: FunctionCall,
@@ -119,6 +126,8 @@ private fun isRegexRecompilationCall(
     if (call.name !in regexMethods || call.qualifiedTarget == null) return false
     // In JS/TS, split/replace/match with a plain string argument do NOT compile regex.
     if (language in JS_FAMILY && hasStringLiteralFirstArg(call)) return false
+    // Kotlin's split() and replace() with String args use literal matching, not regex.
+    if (language == Language.KOTLIN && call.name in KOTLIN_SAFE_METHODS) return false
     // JDK fast path: String.split() with a single non-metachar argument skips regex compilation.
     if (language in JVM_FAMILY && call.name == "split" && hasSingleCharNonRegexArg(call)) return false
     // On JVM, Map.replaceAll(BiFunction) is not a regex method — skip when target is a Map/Set type

@@ -1,6 +1,7 @@
 package com.github.tvinke.algorilla.reporting
 
 import com.github.tvinke.algorilla.baseline.Baseline
+import com.github.tvinke.algorilla.engine.AnalysisError
 import com.github.tvinke.algorilla.engine.AnalysisResult
 import com.github.tvinke.algorilla.engine.Reporter
 import com.github.tvinke.algorilla.model.Confidence
@@ -12,6 +13,7 @@ import java.util.Locale
  * Formats analysis results for console display, grouped by file with evidence chains,
  * code snippets, and a summary line showing file/language breakdown.
  */
+@Suppress("LargeClass")
 public class ConsoleReporter(
     private val color: Boolean = false,
     private val baseDir: String? = null,
@@ -151,6 +153,7 @@ public class ConsoleReporter(
         return "$fileName:$line"
     }
 
+    @Suppress("LongMethod")
     private fun formatSummary(
         result: AnalysisResult,
         output: Appendable,
@@ -161,11 +164,18 @@ public class ConsoleReporter(
                 .toSet()
                 .size
         val cacheInfo = if (result.filesCached > 0) Ansi.dim(" (${result.filesCached} cached)", color) else ""
+        val parseFailures = result.errors.count { it is AnalysisError.Parse }
+        val parseInfo =
+            if (parseFailures > 0) {
+                Ansi.dim(" ($parseFailures parse ${pluralize("failure", parseFailures)})", color)
+            } else {
+                ""
+            }
         val elapsedStr = String.format(Locale.US, "%.1f", result.elapsedMs / MS_PER_SECOND)
         val breakdown = formatSeverityBreakdown(result.findings)
         val hiddenSuffix = formatHiddenCounts(result)
 
-        val scanned = "Scanned ${result.filesAnalyzed} files$cacheInfo in ${elapsedStr}s."
+        val scanned = "Scanned ${result.filesAnalyzed} files$cacheInfo$parseInfo in ${elapsedStr}s."
         val issueCount = result.findings.size
         val foundText = "Found $issueCount ${pluralize("issue", issueCount)}$breakdown"
         val acrossText = if (fileCount > 0) " across $fileCount ${pluralize("file", fileCount)}." else "."
