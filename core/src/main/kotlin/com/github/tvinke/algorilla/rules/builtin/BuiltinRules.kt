@@ -7,6 +7,7 @@ import com.github.tvinke.algorilla.rules.Rule
  * any other entry point that needs the default rule set.
  */
 public object BuiltinRules {
+    @Suppress("LongMethod")
     public fun all(): List<Rule> =
         listOf(
             NestedLookupRule(),
@@ -35,5 +36,7 @@ public object BuiltinRules {
             IOInLoopRule(),
             MultiPassStreamFusionRule(),
             UnmemoizedRecursionRule(),
+            LoopInvariantHoistingRule(),
+            LazyLoadingInLoopRule(),
         )
 }
