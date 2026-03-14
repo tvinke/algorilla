@@ -20,8 +20,26 @@
 * Language tags on rule documentation pages ([08bf1a9](https://github.com/tvinke/algorilla/commit/08bf1a9))
 * Stability & compatibility documentation page with tier classification, deprecation policy, and 1.0 readiness criteria
 
+* **6 new detection rules:**
+  - `io-in-loop` — HTTP/file/DB calls inside loops ([#85](https://github.com/tvinke/algorilla/issues/85))
+  - `unmemoized-recursion` — recursive functions without memoization ([#92](https://github.com/tvinke/algorilla/issues/92))
+  - `cardinality-explosion` — nested-loop Cartesian products and flatMap cross joins ([#93](https://github.com/tvinke/algorilla/issues/93))
+  - `multi-pass-stream-fusion` — multiple stream pipelines or for-each loops on the same collection ([#90](https://github.com/tvinke/algorilla/issues/90))
+  - `loop-invariant-hoisting` — calls inside loops that don't depend on the loop variable ([#89](https://github.com/tvinke/algorilla/issues/89))
+  - `lazy-loading-in-loop` — potential JPA/Hibernate lazy-loading N+1 patterns ([#91](https://github.com/tvinke/algorilla/issues/91))
+* **Confidence system** — findings now carry a confidence tier (HIGH / MEDIUM / LOW) indicating detection certainty. `--confidence` CLI flag filters by tier. HIGH-confidence findings appear first in output with a visual marker. Rules declare `defaultConfidence` on the Rule interface. ([ADR-0004](docs/adr/0004-severity-vs-confidence.md))
+* **Parameter-flow analysis** — new engine pass tracks where function parameters flow (loops, method calls, function arguments). Rules use `ParameterFlowQuery` to detect cross-method patterns like IO through helpers. Flow-confirmed findings get promoted to HIGH confidence. ([#94](https://github.com/tvinke/algorilla/issues/94))
+* **Smarter fix suggestions** — `nested-lookup` and `repeated-linear-scan` now suggest Map+groupBy vs HashSet vs indexed Map based on the actual LookupKind ([#86](https://github.com/tvinke/algorilla/issues/86))
+* **Repeated sort/groupBy detection** — `repeated-linear-scan` extended to catch repeated `groupBy`, `distinct`, `toMap` on the same collection ([#87](https://github.com/tvinke/algorilla/issues/87))
+* **`Language.hasTypeDeclarations`** — engine uses language abstractions instead of file-extension checks for confidence adjustment
+
 ### Bug Fixes
 
+* `quadratic-removal` skips Map.remove() and Set.remove() via type-aware filtering — only List.remove() is O(n)
+* `implicit-regex-in-loop` skips Map.replaceAll() which is not regex-based
+* `nested-lookup` inherited field type fallback + factory method O(1) inference (Set.of(), ConcurrentHashMap.newKeySet())
+* `repeated-linear-scan` skips uppercase targets (Collectors.toList() etc.)
+* `expensive-callback` and `chained-getters` demoted to LOW confidence (high FP rate on tree-walk code)
 * Skip `implicit-regex` findings for string literal arguments in JS/TS — `"hello".replace("x", "y")` is not a regex ([11a8132](https://github.com/tvinke/algorilla/commit/11a8132))
 * Treat small inline array lookups (e.g. `["a","b"].includes(x)`) as O(1) in JS parser ([087e436](https://github.com/tvinke/algorilla/commit/087e436))
 * Fix color rendering of language tags in docs ([7a5a97a](https://github.com/tvinke/algorilla/commit/7a5a97a))

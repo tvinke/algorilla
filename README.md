@@ -109,7 +109,7 @@ Requires Java 11+.
 
 ## Rules
 
-23 built-in rules across 6 categories. See [all rules](docs/docs/rules/index.md) for details.
+29 built-in rules across 6 categories, each with a confidence tier (HIGH / MEDIUM / LOW) so you know which findings to act on first. See [all rules](docs/docs/rules/index.md) for details.
 
 | Rule | What it catches | Impact |
 |------|----------------|--------|

@@ -100,7 +100,9 @@ nav:
       - Quadratic Removal: rules/quadratic-removal.md
       - Repeated Reflection in Loop: rules/repeated-reflection-in-loop.md
       - Hidden Nested Loop: rules/hidden-nested-loop.md
+      - IO In Loop: rules/io-in-loop.md
       - Expensive Callback: rules/expensive-callback.md
+      - Cardinality Explosion: rules/cardinality-explosion.md
     - Sort Abuse:
       - Sort for Last: rules/sort-for-last.md
       - Expensive Sort Comparator: rules/expensive-sort-comparator.md
@@ -108,12 +110,16 @@ nav:
     - Query Patterns:
       - N+1 Query: rules/n-plus-one-query.md
       - Bulk Load for Single Lookup: rules/bulk-load-for-single-lookup.md
+      - Lazy Loading In Loop: rules/lazy-loading-in-loop.md
     - Construction Cost:
       - Expensive Construction: rules/expensive-construction.md
     - Redundancy:
       - Redundant Expensive Call: rules/redundant-expensive-call.md
       - Uncached Getter: rules/uncached-getter.md
       - Chained Getters: rules/chained-getters.md
+      - Unmemoized Recursion: rules/unmemoized-recursion.md
+      - Multi-Pass Stream Fusion: rules/multi-pass-stream-fusion.md
+      - Loop-Invariant Hoisting: rules/loop-invariant-hoisting.md
     - Concurrency:
       - Parallel Pipeline Bottleneck: rules/parallel-pipeline-bottleneck.md
   - Languages:
