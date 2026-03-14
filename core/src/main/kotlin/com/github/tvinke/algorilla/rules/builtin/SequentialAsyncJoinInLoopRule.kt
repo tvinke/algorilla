@@ -12,6 +12,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.semantics.SemanticCategory
 
 /**
@@ -92,15 +93,9 @@ public class SequentialAsyncJoinInLoopRule : Rule {
     }
 }
 
-private val FUTURE_INDICATORS =
-    setOf(
-        "future",
-        "promise",
-        "async",
-        "completable",
-        "deferred",
-        "task",
-    )
+private val FUTURE_INDICATORS: Set<String> by lazy {
+    LanguageSemanticsRegistry.DEFAULT.allExtraSection("future-indicators")
+}
 
 /**
  * Heuristic: the call target variable name hints at a Future type.

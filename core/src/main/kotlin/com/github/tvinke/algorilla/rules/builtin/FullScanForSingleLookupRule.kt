@@ -107,7 +107,9 @@ internal fun isBulkLoadCall(call: FunctionCall): Boolean {
 }
 
 private val BULK_LOAD_PREFIXES: List<String> by lazy {
-    LanguageSemanticsRegistry.loadDefaults().allBulkLoadPrefixes()
+    LanguageSemanticsRegistry.DEFAULT.allBulkLoadPrefixes()
 }
 
-private val DOM_TARGETS = setOf("wrapper", "document", "element", "el", "node", "dom", "selector")
+private val DOM_TARGETS: Set<String> by lazy {
+    LanguageSemanticsRegistry.DEFAULT.allExtraSection("dom-target-names")
+}

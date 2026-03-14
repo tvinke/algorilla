@@ -812,3 +812,557 @@ visited-set-names:
   - memo
   - cache
   - dp
+
+# ── Method purity classification ──
+
+pure-prefixes:
+  - get
+  - find
+  - compute
+  - calculate
+  - parse
+  - format
+  - convert
+  - resolve
+  - to
+  - is
+  - has
+  - can
+  - should
+  - matches
+  - contains
+  - compare
+  - equals
+  - hash
+  - size
+  - length
+  - count
+  - index
+  - check
+  - validate
+  - determine
+  - derive
+  - extract
+  - build
+  - create
+  - make
+  - of
+  - from
+  - with
+  - map
+  - flat
+  - collect
+  - filter
+  - sort
+  - reduce
+  - join
+  - split
+  - replace
+  - trim
+  - strip
+  - substring
+  - slice
+
+side-effect-prefixes:
+  - set
+  - add
+  - put
+  - remove
+  - delete
+  - clear
+  - reset
+  - write
+  - save
+  - persist
+  - store
+  - insert
+  - update
+  - send
+  - emit
+  - dispatch
+  - publish
+  - notify
+  - fire
+  - log
+  - print
+  - debug
+  - info
+  - warn
+  - error
+  - trace
+  - import
+  - export
+  - upload
+  - download
+  - close
+  - shutdown
+  - destroy
+  - dispose
+  - assert
+  - verify
+  - expect
+  - should
+  - require
+  - throw
+  - fail
+  - register
+  - subscribe
+  - on
+  - append
+  - enable
+  - disable
+  - configure
+  - init
+  - apply
+  - release
+  - free
+  - flush
+  - commit
+  - rollback
+  - cancel
+  - interrupt
+  - stop
+  - disconnect
+  - lock
+  - unlock
+  - customize
+  - render
+  - mount
+  - unmount
+
+side-effect-targets:
+  - log
+  - logger
+  - console
+  - process.stdout
+  - process.stderr
+  - builder
+  - response
+  - res
+  - request
+  - req
+  - visitor
+  - emitter
+  - generator
+  - encoder
+  - printer
+  - output
+  - socket
+  - ws
+
+# ── String detection ──
+
+string-indicators:
+  - toString()
+  - substring(
+  - toLowerCase()
+  - toUpperCase()
+  - trim()
+  - replace(
+  - replaceAll(
+  - split(
+  - concat(
+  - startsWith(
+  - endsWith(
+  - padStart(
+  - padEnd(
+  - trimStart()
+  - trimEnd()
+  - normalize(
+  - repeat(
+  - charAt(
+  - charCodeAt(
+
+string-name-suffixes:
+  - Name
+  - name
+  - Text
+  - text
+  - Str
+  - String
+  - string
+  - Line
+  - line
+  - Path
+  - path
+  - Url
+  - url
+  - Key
+  - key
+  - Value
+  - value
+  - Id
+  - id
+  - Message
+  - message
+  - msg
+  - Description
+  - description
+  - Label
+  - label
+  - Title
+  - title
+  - Field
+  - field
+  - Selector
+  - selector
+  - Prefix
+  - prefix
+  - Suffix
+  - suffix
+  - Pattern
+  - pattern
+  - Content
+  - content
+  - Source
+  - source
+  - Token
+  - token
+  - Tag
+  - tag
+  - Class
+  - className
+  - Attr
+  - attr
+  - Prop
+  - prop
+  - Query
+  - query
+  - Html
+  - html
+  - Css
+  - css
+
+string-exact-names:
+  - s
+  - str
+  - desc
+  - buf
+  - buffer
+  - input
+  - output
+  - line
+  - word
+  - query
+  - sql
+  - html
+  - css
+  - json
+  - xml
+  - href
+  - src
+  - alt
+
+# ── Hidden-nested-loop rule: methods/patterns to skip ──
+
+hidden-loop-skip-methods:
+  # String utility
+  - replace
+  - replaceAll
+  - includes
+  - indexOf
+  - lastIndexOf
+  - startsWith
+  - endsWith
+  - match
+  - matchAll
+  - search
+  - trim
+  - trimStart
+  - trimEnd
+  - split
+  - join
+  - concat
+  - padStart
+  - padEnd
+  - normalize
+  - repeat
+  # Fundamental object operations
+  - toString
+  - valueOf
+  - toJSON
+  - localeCompare
+  # DOM queries (return collections but are native)
+  - querySelector
+  - querySelectorAll
+  - getElementById
+  - getElementsByClassName
+  - getElementsByTagName
+  - closest
+  - matches
+  # Array copy / restructure
+  - concat
+  - slice
+  - flat
+  - from
+  - of
+  # JSON
+  - stringify
+  - parse
+  # Object utilities
+  - keys
+  - values
+  - entries
+  - assign
+  - freeze
+  - seal
+  - create
+  - defineProperty
+  - defineProperties
+  - getOwnPropertyNames
+  - getOwnPropertyDescriptor
+  - getPrototypeOf
+
+hidden-loop-skip-prefixes:
+  - encode
+  - decode
+  - parse
+  - format
+  - read
+  - write
+  - trim
+  - strip
+  - serialize
+  - deserialize
+  - stringify
+
+hidden-loop-skip-keywords:
+  - string
+  - char
+  - uri
+  - url
+  - regex
+  - pattern
+  - token
+  - buffer
+  - encoding
+  - dom
+  - html
+  - css
+  - json
+  - xml
+
+# ── Static utility classes ──
+
+static-utility-classes:
+  - Math
+  - Number
+  - String
+  - Boolean
+  - Object
+  - Array
+  - JSON
+  - Date
+  - RegExp
+  - Symbol
+  - console
+  - process
+  - Buffer
+  - Promise
+  - Reflect
+  - Proxy
+  - Intl
+  - URL
+
+# ── Quadratic removal rule ──
+
+non-list-targets-exact:
+  - this
+  - map
+  - set
+  - entry
+  - entries
+  - iter
+  - queue
+  - stack
+  - keys
+  - values
+  - cache
+
+non-list-targets-suffixes:
+  - map
+  - hashmap
+  - weakmap
+  - iterator
+  - iter
+  - entry
+  - entries
+  - set
+  - weakset
+  - queue
+  - deque
+  - stack
+  - cache
+  - table
+  - dictionary
+  - registry
+  - index
+  - store
+
+non-list-targets-contains:
+  - store
+  - repository
+  - dao
+  - reducer
+  - middleware
+
+bulk-removal-methods:
+  - clear
+
+# ── Cardinality explosion rule ──
+
+non-growth-mutations:
+  - splice
+  - pop
+  - shift
+  - delete
+  - clear
+  - sort
+  - reverse
+  - fill
+  - copyWithin
+
+small-collection-hints:
+  - type
+  - status
+  - enum
+  - config
+  - option
+
+map-value-accessors:
+  - ".values()"
+  - ".values"
+  - values
+
+# ── N+1 / Repository patterns ──
+
+single-fetch-prefixes:
+  - findById
+  - getById
+  - findOne
+  - getOne
+  - loadById
+  - findByKey
+  - getByKey
+  - loadByKey
+  - countBy
+  - findByPk
+
+batch-method-suffixes:
+  - In
+  - Between
+  - Containing
+  - Like
+  - NotIn
+  - IsIn
+
+batch-method-prefixes:
+  - findAll
+  - getAll
+  - loadAll
+  - fetchAll
+  - listAll
+  - queryAll
+
+repository-patterns:
+  - repository
+  - repo
+  - dao
+  - store
+  - service
+  - client
+  - proxy
+  - model
+  - collection
+
+# ── Date/time patterns ──
+
+date-type-names:
+  - Date
+  - Moment
+  - DateTime
+  - Temporal
+
+date-parse-methods:
+  - parse
+  - from
+  - fromISO
+  - fromMillis
+  - fromSeconds
+  - utc
+  - local
+
+date-parse-targets:
+  - Date
+  - moment
+  - dayjs
+  - luxon
+  - DateTime
+
+# ── Other rule-specific patterns ──
+
+dom-target-names:
+  - wrapper
+  - document
+  - element
+  - el
+  - node
+  - dom
+  - selector
+  - container
+  - ref
+  - root
+  - parent
+  - child
+
+non-deterministic-methods:
+  - random
+  - now
+  - uuid
+  - v4
+  - nanoid
+  - cuid
+
+future-indicators:
+  - promise
+  - async
+  - deferred
+  - task
+  - observable
+  - subject
+  - signal
+
+collection-getter-names:
+  - children
+  - items
+  - elements
+  - entries
+  - members
+  - nodes
+  - childNodes
+  - rows
+  - cells
+
+scalar-suffixes:
+  - ss
+  - us
+  - is
+  - as
+  - ness
+  - less
+  - ous
+  - ius
+
+non-repository-targets:
+  - cache
+  - memo
+  - buffer
+  - pool
+  - lru
+  - caffeine
+
+non-io-targets:
+  - buffer
+  - arraybuffer
+  - stringbuilder
+  - blob

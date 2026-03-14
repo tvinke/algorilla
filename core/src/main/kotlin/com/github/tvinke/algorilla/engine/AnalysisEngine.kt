@@ -69,9 +69,10 @@ public class AnalysisEngine(
         annotateComplexity(symbolTable, callGraph)
         val rawFindings = evaluateRules(irTrees, symbolTable, callGraph)
         val deduplicated = applySubsumption(rawFindings, rules)
+        val vendoredDemoted = demoteVendoredCode(deduplicated)
         val fileLanguages = irTrees.mapValues { (_, root) -> root.language }
         val ruleIndex = rules.associateBy { it.id }
-        val confidenceAdjusted = adjustConfidence(deduplicated, fileLanguages, ruleIndex)
+        val confidenceAdjusted = adjustConfidence(vendoredDemoted, fileLanguages, ruleIndex)
         val freshFindings = SuppressionFilter().filter(confidenceAdjusted, irTrees, aliasIndex)
 
         val allFindings = freshFindings + cachedFindings
@@ -265,6 +266,39 @@ public class AnalysisEngine(
         }
     }
 }
+
+/**
+ * Demotes findings in vendored/generated code to LOW confidence.
+ * Vendored libraries (e.g. Spring's embedded ASM, cglib) produce noise from rules
+ * designed for application code. The patterns are technically correct but not actionable.
+ */
+internal fun demoteVendoredCode(findings: List<Finding>): List<Finding> =
+    findings.map { finding ->
+        if (isVendoredCode(finding.location.file)) {
+            finding.copy(confidence = Confidence.LOW)
+        } else {
+            finding
+        }
+    }
+
+/** Known vendored/generated package path fragments. */
+private val VENDORED_PATH_PATTERNS =
+    listOf(
+        // Spring Framework vendors ASM and cglib
+        "/asm/",
+        "/cglib/",
+        // Vendored code markers
+        "/internal/shaded/",
+        "/shaded/",
+        "/vendor/",
+        "/thirdparty/",
+        "/repackaged/",
+        // Generated code
+        "/generated/",
+        "/generated-sources/",
+    )
+
+private fun isVendoredCode(filePath: String): Boolean = VENDORED_PATH_PATTERNS.any { filePath.contains(it) }
 
 /**
  * Adjusts confidence per finding based on the rule's declared [Rule.defaultConfidence],
@@ -508,6 +542,8 @@ private fun buildTypeMap(
                     .firstOrNull()
                     ?.typeName
                 ?: inferO1Type(varDecl, language, registry)
+                ?: inferChainEndType(varDecl, language, registry)
+                ?: inferFromMethodNameSuffix(varDecl)
         if (type != null) typeMap[varDecl.name] = type
     }
     return typeMap
@@ -530,6 +566,85 @@ private fun inferO1Type(
     // Check if the method name is a known O(1) factory/return-type method (YAML-driven)
     if (registry.isO1Factory(language, call.name)) return "Set"
     return null
+}
+
+/**
+ * Chain-end type inference: when a variable is initialized via a stream pipeline,
+ * the terminal operation determines the result type.
+ * Examples: `.collect(Collectors.toSet())` → Set, `.toList()` → List.
+ */
+@Suppress("ReturnCount")
+private fun inferChainEndType(
+    varDecl: VariableDecl,
+    language: com.github.tvinke.algorilla.model.Language,
+    registry: LanguageSemanticsRegistry,
+): String? {
+    // Search ALL FunctionCall descendants for terminal operations
+    val allCalls = varDecl.findDescendants<FunctionCall>()
+    val terminal = allCalls.lastOrNull { it.name in TERMINAL_OPS } ?: return null
+
+    // Direct terminal: .toSet(), .toList(), .toMap(), etc.
+    if (registry.isO1Factory(language, terminal.name)) return "Set"
+    if (terminal.name in LIST_TERMINALS) return "List"
+    if (terminal.name == "toArray") return "Array"
+
+    // Collector terminal: .collect(Collectors.toSet())
+    if (terminal.name == "collect" && terminal.arguments.isNotEmpty()) {
+        val collector = terminal.arguments.filterIsInstance<FunctionCall>().firstOrNull()
+        if (collector != null) return inferCollectorType(collector)
+    }
+    return null
+}
+
+private val TERMINAL_OPS =
+    setOf(
+        "collect",
+        "toList",
+        "toSet",
+        "toMap",
+        "toMutableList",
+        "toMutableSet",
+        "toMutableMap",
+        "toSortedSet",
+        "toSortedMap",
+        "toHashSet",
+        "toArray",
+        "toUnmodifiableList",
+        "toUnmodifiableSet",
+        "toUnmodifiableMap",
+    )
+
+private val LIST_TERMINALS = setOf("toList", "toMutableList", "toUnmodifiableList")
+
+private fun inferCollectorType(collector: FunctionCall): String? =
+    when (collector.name) {
+        "toSet", "toUnmodifiableSet" -> "Set"
+        "toList", "toUnmodifiableList" -> "List"
+        "toMap", "toUnmodifiableMap", "toConcurrentMap" -> "Map"
+        "groupingBy", "partitioningBy" -> "Map"
+        else -> null
+    }
+
+/**
+ * Method name suffix heuristic: last resort when no other inference succeeds.
+ * Infers collection type from common method name patterns.
+ */
+@Suppress("CyclomaticComplexMethod")
+private fun inferFromMethodNameSuffix(varDecl: VariableDecl): String? {
+    val call =
+        varDecl.children.filterIsInstance<FunctionCall>().lastOrNull()
+            ?: varDecl.findDescendants<FunctionCall>().lastOrNull()
+            ?: return null
+    val name = call.name
+    // Suffix must follow a meaningful prefix (not just "Set" alone)
+    val minLen = "getX".length
+    return when {
+        name.endsWith("Stream") || name.endsWith("stream") -> "Stream"
+        name.endsWith("Set") && name.length > minLen && name[0].isLowerCase() -> "Set"
+        name.endsWith("Map") && name.length > minLen && name[0].isLowerCase() -> "Map"
+        name.endsWith("List") && name.length > minLen && name[0].isLowerCase() -> "List"
+        else -> null
+    }
 }
 
 private fun markScalarLookupsInFunction(
@@ -556,6 +671,6 @@ private fun markScalarLookupsInFunction(
 }
 
 private fun createRegistry(config: AnalysisConfig): LanguageSemanticsRegistry {
-    val base = LanguageSemanticsRegistry.loadDefaults()
+    val base = LanguageSemanticsRegistry.DEFAULT
     return LanguageSemanticsRegistry.withOverrides(base, config.heavyweightTypes)
 }

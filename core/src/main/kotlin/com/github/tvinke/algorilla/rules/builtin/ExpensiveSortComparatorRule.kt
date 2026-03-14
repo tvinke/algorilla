@@ -15,6 +15,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.CrossMethodResolver
 import com.github.tvinke.algorilla.util.findDescendants
 
@@ -268,23 +269,19 @@ public class ExpensiveSortComparatorRule : Rule {
     )
 }
 
-internal val dateTypeNames: Set<String> =
-    setOf("Date", "LocalDate", "LocalDateTime", "ZonedDateTime", "Instant", "OffsetDateTime")
+internal val dateTypeNames: Set<String> by lazy {
+    LanguageSemanticsRegistry.DEFAULT.allExtraSection("date-type-names")
+}
 
 internal fun isDateType(typeName: String): Boolean = dateTypeNames.any { typeName.contains(it) }
 
-private val DATE_PARSE_METHOD_NAMES = setOf("parse", "from", "ofEpochMilli", "ofEpochSecond")
+private val DATE_PARSE_METHOD_NAMES: Set<String> by lazy {
+    LanguageSemanticsRegistry.DEFAULT.allExtraSection("date-parse-methods")
+}
 
-private val DATE_PARSE_TARGETS =
-    setOf(
-        "LocalDate",
-        "LocalDateTime",
-        "ZonedDateTime",
-        "Instant",
-        "OffsetDateTime",
-        "DateTimeFormatter",
-        "SimpleDateFormat",
-    )
+private val DATE_PARSE_TARGETS: Set<String> by lazy {
+    LanguageSemanticsRegistry.DEFAULT.allExtraSection("date-parse-targets")
+}
 
 internal fun isDateParseCall(call: FunctionCall): Boolean {
     if (call.name !in DATE_PARSE_METHOD_NAMES) return false

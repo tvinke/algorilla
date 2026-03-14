@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test
 
 @Suppress("LargeClass")
 internal class LanguageSemanticsRegistryTest {
-    private val registry = LanguageSemanticsRegistry.loadDefaults()
+    private val registry = LanguageSemanticsRegistry.DEFAULT
 
     @Test
     fun `should classify Java contains as lookup`() {
@@ -267,8 +267,9 @@ internal class LanguageSemanticsRegistryTest {
     @Test
     fun `should provide copy-on-modify methods`() {
         val methods = registry.allCopyOnModifyMethods()
-        methods shouldContain "addAll"
-        methods shouldContain "putAll"
+        // concat creates new String/Array (true copy-on-modify)
+        // addAll/putAll are in-place mutations, NOT copy-on-modify
+        methods shouldContain "concat"
     }
 
     @Test

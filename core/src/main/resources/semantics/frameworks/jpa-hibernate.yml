@@ -1,0 +1,192 @@
+# JPA / Hibernate — framework overlay for Java
+# JPA 2.x, Hibernate ORM, Spring Data JPA
+
+language: java
+
+methods: {}
+
+cheap-methods:
+  # EntityManager — metadata / state queries (no DB round-trip)
+  - isOpen
+  - isJoinedToTransaction
+  - getProperties
+  - getEntityManagerFactory
+  - getCriteriaBuilder
+  - getMetamodel
+  - getDelegate
+  - unwrap
+  - getReference
+  - contains
+  # Session — metadata / state queries
+  - isOpen
+  - isConnected
+  - isDirty
+  - getSessionFactory
+  - getStatistics
+  - getIdentifier
+  - getCurrentLockMode
+  - getEntityName
+  - enableFilter
+  - disableFilter
+  - getEnabledFilter
+  - setReadOnly
+  - isReadOnly
+  - getTransaction
+  - setDefaultReadOnly
+  - isDefaultReadOnly
+  # CriteriaBuilder — predicate construction (no DB)
+  - equal
+  - notEqual
+  - greaterThan
+  - greaterThanOrEqualTo
+  - lessThan
+  - lessThanOrEqualTo
+  - between
+  - like
+  - notLike
+  - isNull
+  - isNotNull
+  - in
+  - asc
+  - desc
+  - and
+  - or
+  - not
+  - conjunction
+  - disjunction
+  - literal
+  - parameter
+  - sum
+  - avg
+  - max
+  - min
+  - count
+  - countDistinct
+  - exists
+  # CriteriaQuery — query composition (no DB)
+  - select
+  - multiselect
+  - from
+  - where
+  - groupBy
+  - having
+  - orderBy
+  - distinct
+  - subquery
+  # Root / Join / Path — navigation (no DB)
+  - get
+  - join
+  - joinList
+  - joinSet
+  - joinMap
+  - fetch
+  - getModel
+  - getParent
+  - getJoins
+  - getFetches
+  # TypedQuery / Query — config (no DB until getResultList/getSingleResult)
+  - setParameter
+  - setFirstResult
+  - setMaxResults
+  - setHint
+  - setLockMode
+  - setFlushMode
+  - getParameter
+  - getParameters
+  - getFirstResult
+  - getMaxResults
+  - getHints
+  - getLockMode
+  - getFlushMode
+  - unwrap
+  # Transaction
+  - begin
+  - commit
+  - rollback
+  - setRollbackOnly
+  - getRollbackOnly
+  - isActive
+  # Specification (Spring Data JPA)
+  - where
+  - and
+  - or
+  - not
+  - toPredicate
+
+trivial-methods:
+  # JPA Metamodel — class/attribute introspection
+  - entity
+  - managedType
+  - embeddable
+  - getEntities
+  - getManagedTypes
+  - getEmbeddables
+  - getAttribute
+  - getAttributes
+  - getDeclaredAttribute
+  - getDeclaredAttributes
+  - getSingularAttribute
+  - getCollectionAttribute
+  - getListAttribute
+  - getSetAttribute
+  - getMapAttribute
+
+heavyweight-types:
+  - EntityManager
+  - EntityManagerFactory
+  - Session
+  - SessionFactory
+  - StatelessSession
+  - Criteria
+  - CriteriaBuilder
+  - CriteriaQuery
+  - TypedQuery
+  - Query
+  - NativeQuery
+  - StoredProcedureQuery
+  - ScrollableResults
+
+io-methods:
+  # EntityManager — DB round-trips
+  - find
+  - persist
+  - merge
+  - remove
+  - refresh
+  - detach
+  - flush
+  - clear
+  - createQuery
+  - createNamedQuery
+  - createNativeQuery
+  - createStoredProcedureQuery
+  - getResultList
+  - getResultStream
+  - getSingleResult
+  - executeUpdate
+  # Session — DB round-trips
+  - save
+  - saveOrUpdate
+  - update
+  - delete
+  - load
+  - get
+  - evict
+  - replicate
+  - doWork
+  - doReturningWork
+  - createSQLQuery
+  - createFilter
+  - iterate
+  - scroll
+  # ScrollableResults
+  - next
+  - previous
+  - first
+  - last
+  - scroll
+  - get
+  # Criteria (legacy Hibernate)
+  - list
+  - uniqueResult
+  - scroll

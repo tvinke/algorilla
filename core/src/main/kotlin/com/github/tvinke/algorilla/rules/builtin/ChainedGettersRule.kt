@@ -131,8 +131,7 @@ public class ChainedGettersRule : Rule {
 }
 
 private val GETTER_PREFIXES: List<String> by lazy {
-    LanguageSemanticsRegistry
-        .loadDefaults()
+    LanguageSemanticsRegistry.DEFAULT
         .allGetterPrefixes()
 }
 

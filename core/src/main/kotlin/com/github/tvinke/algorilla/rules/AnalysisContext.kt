@@ -16,5 +16,5 @@ public data class AnalysisContext(
     val symbolTable: SymbolTable,
     val callGraph: CallGraph,
     val config: AnalysisConfig,
-    val registry: LanguageSemanticsRegistry = LanguageSemanticsRegistry.loadDefaults(),
+    val registry: LanguageSemanticsRegistry = LanguageSemanticsRegistry.DEFAULT,
 )

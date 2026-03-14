@@ -95,7 +95,7 @@ public class RepeatedRegexInLoopRule : Rule {
 }
 
 private val REGEX_TYPES: Set<String> by lazy {
-    LanguageSemanticsRegistry.loadDefaults().allRegexTypes()
+    LanguageSemanticsRegistry.DEFAULT.allRegexTypes()
 }
 
 private fun isRegexType(typeName: String): Boolean = typeName in REGEX_TYPES

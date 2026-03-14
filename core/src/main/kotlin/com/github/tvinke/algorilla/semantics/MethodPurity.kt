@@ -2,151 +2,18 @@ package com.github.tvinke.algorilla.semantics
 
 /**
  * Classifies a method call as pure, side-effectful, or unknown based on naming conventions.
+ * All heuristics are loaded from the YAML semantics registry — no hardcoded lists.
  */
 public enum class Purity { PURE, SIDE_EFFECT, UNKNOWN }
 
 public object MethodPurity {
-    // Methods starting with these prefixes are likely pure (return value is the point)
-    private val PURE_PREFIXES =
-        listOf(
-            "get",
-            "find",
-            "compute",
-            "calculate",
-            "parse",
-            "format",
-            "convert",
-            "resolve",
-            "to",
-            "is",
-            "has",
-            "can",
-            "should",
-            "matches",
-            "contains",
-            "compare",
-            "equals",
-            "hash",
-            "size",
-            "length",
-            "count",
-            "index",
-            "check",
-            "validate",
-            "determine",
-            "derive",
-            "extract",
-            "build",
-            "create",
-            "make",
-            "of",
-            "from",
-            "with",
-            "map",
-            "flat",
-            "collect",
-            "stream",
-            "filter",
-            "sort",
-            "reduce",
-            "join",
-            "split",
-            "replace",
-            "trim",
-            "strip",
-            "substring",
-        )
+    private val registry: LanguageSemanticsRegistry by lazy {
+        LanguageSemanticsRegistry.DEFAULT
+    }
 
-    // Methods starting with these prefixes are likely side-effectful
-    private val SIDE_EFFECT_PREFIXES =
-        listOf(
-            "set",
-            "add",
-            "put",
-            "remove",
-            "delete",
-            "clear",
-            "reset",
-            "write",
-            "save",
-            "persist",
-            "store",
-            "insert",
-            "update",
-            "send",
-            "emit",
-            "dispatch",
-            "publish",
-            "notify",
-            "fire",
-            "log",
-            "print",
-            "debug",
-            "info",
-            "warn",
-            "error",
-            "trace",
-            "import",
-            "export",
-            "upload",
-            "download",
-            "close",
-            "shutdown",
-            "destroy",
-            "dispose",
-            "assert",
-            "verify",
-            "expect",
-            "should",
-            "require",
-            "throw",
-            "fail",
-            "register",
-            "subscribe",
-            "on",
-            "append",
-            "enable",
-            "disable",
-            "configure",
-            "init",
-            "apply",
-            "release",
-            "free",
-            "flush",
-            "commit",
-            "rollback",
-            "cancel",
-            "interrupt",
-            "stop",
-            "disconnect",
-            "lock",
-            "unlock",
-            "customize",
-        )
-
-    // Targets that indicate side-effectful context regardless of method name
-    private val SIDE_EFFECT_TARGETS =
-        listOf(
-            "log",
-            "logger",
-            "console",
-            "system.out",
-            "system.err",
-            "builder",
-            "uriBuilder",
-            "response",
-            "request",
-            // ASM / bytecode visitors and code-generation targets
-            "visitor",
-            "mv",
-            "cw",
-            "cv",
-            "emitter",
-            "generator",
-            "encoder",
-            "printer",
-            "output",
-        )
+    private val purePrefixes: List<String> by lazy { registry.allPurePrefixes() }
+    private val sideEffectPrefixes: List<String> by lazy { registry.allSideEffectPrefixes() }
+    private val sideEffectTargets: List<String> by lazy { registry.allSideEffectTargets() }
 
     /**
      * Classifies a method name by its likely purity.
@@ -154,8 +21,8 @@ public object MethodPurity {
      */
     public fun classify(methodName: String): Purity {
         val lower = methodName.lowercase()
-        if (SIDE_EFFECT_PREFIXES.any { lower.startsWith(it) }) return Purity.SIDE_EFFECT
-        if (PURE_PREFIXES.any { lower.startsWith(it) }) return Purity.PURE
+        if (sideEffectPrefixes.any { lower.startsWith(it) }) return Purity.SIDE_EFFECT
+        if (purePrefixes.any { lower.startsWith(it) }) return Purity.PURE
         return Purity.UNKNOWN
     }
 
@@ -169,7 +36,7 @@ public object MethodPurity {
     ): Purity {
         if (qualifiedTarget != null) {
             val lowerTarget = qualifiedTarget.lowercase()
-            if (SIDE_EFFECT_TARGETS.any { lowerTarget.contains(it) }) return Purity.SIDE_EFFECT
+            if (sideEffectTargets.any { lowerTarget.contains(it) }) return Purity.SIDE_EFFECT
         }
         return classify(methodName)
     }

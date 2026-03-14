@@ -14,6 +14,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.hasO1Type
 
 /**
@@ -134,7 +135,9 @@ private fun isMapTarget(
     return MAP_TARGET_NAMES.any { lower.endsWith(it) || lower == it }
 }
 
-private val MAP_TARGET_NAMES = setOf("map", "hashmap", "treemap", "concurrenthashmap", "linkedhashmap")
+private val MAP_TARGET_NAMES: Set<String> by lazy {
+    LanguageSemanticsRegistry.DEFAULT.allExtraSection("non-list-targets-suffixes")
+}
 
 /**
  * Returns true if the first argument is a string literal (quoted with ' or ").

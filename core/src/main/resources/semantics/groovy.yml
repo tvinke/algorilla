@@ -446,9 +446,8 @@ reflection-methods:
   - getExceptionTypes
 
 copy-on-modify-methods:
-  - addAll
+  # Groovy's addAll/putAll are in-place mutations like Java.
   - concat
-  - putAll
 
 regex-types:
   - Pattern
@@ -574,3 +573,538 @@ visited-set-names:
   - memo
   - cache
   - dp
+
+# ── Method purity classification ──
+
+pure-prefixes:
+  - get
+  - find
+  - compute
+  - calculate
+  - parse
+  - format
+  - convert
+  - resolve
+  - to
+  - is
+  - has
+  - can
+  - should
+  - matches
+  - contains
+  - compare
+  - equals
+  - hash
+  - size
+  - length
+  - count
+  - index
+  - check
+  - validate
+  - determine
+  - derive
+  - extract
+  - build
+  - create
+  - make
+  - of
+  - from
+  - with
+  - map
+  - flat
+  - collect
+  - stream
+  - filter
+  - sort
+  - reduce
+  - join
+  - split
+  - replace
+  - trim
+  - strip
+  - substring
+
+side-effect-prefixes:
+  - set
+  - add
+  - put
+  - remove
+  - delete
+  - clear
+  - reset
+  - write
+  - save
+  - persist
+  - store
+  - insert
+  - update
+  - send
+  - emit
+  - dispatch
+  - publish
+  - notify
+  - fire
+  - log
+  - print
+  - debug
+  - info
+  - warn
+  - error
+  - trace
+  - import
+  - export
+  - upload
+  - download
+  - close
+  - shutdown
+  - destroy
+  - dispose
+  - assert
+  - verify
+  - expect
+  - should
+  - require
+  - throw
+  - fail
+  - register
+  - subscribe
+  - on
+  - append
+  - enable
+  - disable
+  - configure
+  - init
+  - apply
+  - release
+  - free
+  - flush
+  - commit
+  - rollback
+  - cancel
+  - interrupt
+  - stop
+  - disconnect
+  - lock
+  - unlock
+  - customize
+
+side-effect-targets:
+  - log
+  - logger
+  - console
+  - system.out
+  - system.err
+  - builder
+  - uriBuilder
+  - response
+  - request
+  - visitor
+  - emitter
+  - generator
+  - encoder
+  - printer
+  - output
+
+# ── String detection ──
+
+string-indicators:
+  - toString()
+  - substring(
+  - toLowerCase()
+  - toUpperCase()
+  - trim()
+  - replace(
+  - replaceAll(
+  - strip(
+  - split(
+  - concat(
+  - startsWith(
+  - endsWith(
+  - .padLeft(
+  - .padRight(
+
+string-name-suffixes:
+  - Name
+  - name
+  - Text
+  - text
+  - Str
+  - String
+  - string
+  - Line
+  - line
+  - Path
+  - path
+  - Url
+  - url
+  - Key
+  - key
+  - Value
+  - value
+  - Id
+  - id
+  - Message
+  - message
+  - Description
+  - description
+  - Label
+  - label
+  - Title
+  - title
+  - Field
+  - field
+  - Signature
+  - signature
+  - Property
+  - property
+  - Qualifier
+  - qualifier
+  - Separator
+  - separator
+  - Delimiter
+  - delimiter
+  - Prefix
+  - prefix
+  - Suffix
+  - suffix
+  - Pattern
+  - pattern
+  - Expression
+  - expression
+  - Descriptor
+  - descriptor
+  - Content
+  - content
+  - Location
+  - location
+  - Source
+  - source
+  - Token
+  - token
+  - Spec
+  - spec
+  - Tag
+  - tag
+
+string-exact-names:
+  - s
+  - sb
+  - str
+  - desc
+  - buf
+  - buffer
+  - input
+  - output
+  - line
+  - word
+  - query
+  - sql
+
+# ── Hidden-nested-loop rule: methods/patterns to skip ──
+
+hidden-loop-skip-methods:
+  # String utility
+  - hasText
+  - hasLength
+  - replace
+  - replaceAll
+  - replaceFirst
+  - contains
+  - indexOf
+  - lastIndexOf
+  - startsWith
+  - endsWith
+  - matches
+  - strip
+  - stripLeading
+  - stripTrailing
+  - trim
+  - split
+  - join
+  - concat
+  # Fundamental object operations
+  - equals
+  - hashCode
+  - toString
+  - compareTo
+  # GDK extensions
+  - each
+  - eachWithIndex
+  - collect
+  - inject
+  - findAll
+  - findResult
+  - groupBy
+  - collectEntries
+  # Collection copy
+  - addAll
+  - putAll
+  - removeAll
+  - retainAll
+  - containsAll
+  # Reflection / annotation introspection
+  - getDeclaredFields
+  - getDeclaredMethods
+  - getDeclaredConstructors
+  - getDeclaredAnnotations
+  - getAnnotations
+  - getAnnotation
+  - getFields
+  - getMethods
+  - getConstructors
+  - getMetaClass
+  - getProperties
+  - respondsTo
+  - hasProperty
+
+hidden-loop-skip-prefixes:
+  - encode
+  - decode
+  - parse
+  - format
+  - read
+  - write
+  - trim
+  - strip
+  - canonical
+  - delete
+  - substring
+
+hidden-loop-skip-keywords:
+  - string
+  - char
+  - uri
+  - url
+  - regex
+  - pattern
+  - token
+  - annotation
+  - reflect
+  - introspect
+  - metadata
+  - descriptor
+
+# ── Static utility classes ──
+
+static-utility-classes:
+  - StringUtils
+  - ArrayUtils
+  - Collections
+  - Arrays
+  - Objects
+  - Math
+  - Integer
+  - Long
+  - Boolean
+  - Character
+  - Byte
+  - Short
+  - Float
+  - Double
+  - String
+  - System
+  - Class
+  - StringGroovyMethods
+  - DefaultGroovyMethods
+
+# ── Quadratic removal rule ──
+
+non-list-targets-exact:
+  - it
+  - this
+  - delegate
+  - map
+  - set
+  - entry
+  - entries
+  - iter
+  - itr
+  - queue
+  - stack
+  - keys
+  - values
+  - cache
+
+non-list-targets-suffixes:
+  - map
+  - hashmap
+  - treemap
+  - concurrenthashmap
+  - linkedhashmap
+  - iterator
+  - iter
+  - entry
+  - entries
+  - set
+  - hashset
+  - treeset
+  - linkedhashset
+  - queue
+  - deque
+  - stack
+  - linkedlist
+  - cache
+  - table
+  - dictionary
+  - registry
+  - index
+
+non-list-targets-contains:
+  - store
+  - repository
+  - dao
+
+bulk-removal-methods:
+  - clear
+  - removeAll
+  - retainAll
+  - removeIf
+
+# ── Cardinality explosion rule ──
+
+non-growth-mutations:
+  - set
+  - remove
+  - removeAll
+  - removeFirst
+  - removeLast
+  - clear
+  - sort
+  - replaceAll
+  - retainAll
+  - delete
+
+small-collection-hints:
+  - type
+  - status
+  - enum
+  - config
+
+map-value-accessors:
+  - ".getValue()"
+  - ".values"
+  - values
+  - ".value"
+
+# ── N+1 / Repository patterns ──
+
+single-fetch-prefixes:
+  - findById
+  - getById
+  - findOne
+  - getOne
+  - loadById
+  - findByKey
+  - getByKey
+  - loadByKey
+  - countBy
+
+batch-method-suffixes:
+  - In
+  - Between
+  - Containing
+  - Like
+  - NotIn
+  - IsIn
+
+batch-method-prefixes:
+  - findAll
+  - getAll
+  - loadAll
+  - fetchAll
+  - listAll
+
+repository-patterns:
+  - repository
+  - repo
+  - dao
+  - store
+  - service
+  - client
+  - proxy
+
+# ── Date/time patterns ──
+
+date-type-names:
+  - Date
+  - LocalDate
+  - LocalDateTime
+  - ZonedDateTime
+  - Instant
+  - OffsetDateTime
+
+date-parse-methods:
+  - parse
+  - from
+  - ofEpochMilli
+  - ofEpochSecond
+
+date-parse-targets:
+  - LocalDate
+  - LocalDateTime
+  - ZonedDateTime
+  - Instant
+  - OffsetDateTime
+  - DateTimeFormatter
+  - SimpleDateFormat
+
+# ── Other rule-specific patterns ──
+
+non-deterministic-methods:
+  - randomUUID
+  - random
+  - now
+  - currentTimeMillis
+  - nanoTime
+
+future-indicators:
+  - future
+  - promise
+  - async
+  - completable
+  - deferred
+  - task
+
+collection-getter-names:
+  - children
+  - items
+  - elements
+  - entries
+  - members
+  - roles
+  - permissions
+
+scalar-suffixes:
+  - ss
+  - us
+  - is
+  - as
+  - ness
+  - less
+  - ous
+  - ius
+
+non-repository-targets:
+  - cache
+  - memo
+  - buffer
+  - pool
+  - lru
+  - caffeine
+
+non-io-targets:
+  - bytearrayoutputstream
+  - bytearrayinputstream
+  - stringbuilder
+  - stringbuffer
+  - stringwriter
+  - stringreader
+  - chararraywriter
+  - chararrayreader
+  - bytebuffer
+  - charbuffer
+  - printstream
+  - baos
+  - sb
+  - buf
+  - buffer

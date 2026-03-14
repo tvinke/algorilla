@@ -626,9 +626,10 @@ reflection-methods:
   - getExceptionTypes
 
 copy-on-modify-methods:
-  - addAll
+  # Only methods that create a NEW collection/string on every call.
+  # ArrayList.addAll() and HashMap.putAll() are in-place mutations (O(arg size)),
+  # not copy-on-modify — they're in mutation-methods instead.
   - concat
-  - putAll
 
 regex-types:
   - Pattern
@@ -769,3 +770,632 @@ visited-set-names:
   - memo
   - cache
   - dp
+
+# Method purity: prefixes indicating a method is likely pure (return value is the point).
+# Checked AFTER side-effect-prefixes — ordering matters.
+pure-prefixes:
+  - get
+  - find
+  - compute
+  - calculate
+  - parse
+  - format
+  - convert
+  - resolve
+  - to
+  - is
+  - has
+  - can
+  - should
+  - matches
+  - contains
+  - compare
+  - equals
+  - hash
+  - size
+  - length
+  - count
+  - index
+  - check
+  - validate
+  - determine
+  - derive
+  - extract
+  - build
+  - create
+  - make
+  - of
+  - from
+  - with
+  - map
+  - flat
+  - collect
+  - stream
+  - filter
+  - sort
+  - reduce
+  - join
+  - split
+  - replace
+  - trim
+  - strip
+  - substring
+
+# Method purity: prefixes indicating side-effectful methods. Checked BEFORE pure-prefixes.
+side-effect-prefixes:
+  - set
+  - add
+  - put
+  - remove
+  - delete
+  - clear
+  - reset
+  - write
+  - save
+  - persist
+  - store
+  - insert
+  - update
+  - send
+  - emit
+  - dispatch
+  - publish
+  - notify
+  - fire
+  - log
+  - print
+  - debug
+  - info
+  - warn
+  - error
+  - trace
+  - import
+  - export
+  - upload
+  - download
+  - close
+  - shutdown
+  - destroy
+  - dispose
+  - assert
+  - verify
+  - expect
+  - should
+  - require
+  - throw
+  - fail
+  - register
+  - subscribe
+  - on
+  - append
+  - enable
+  - disable
+  - configure
+  - init
+  - apply
+  - release
+  - free
+  - flush
+  - commit
+  - rollback
+  - cancel
+  - interrupt
+  - stop
+  - disconnect
+  - lock
+  - unlock
+  - customize
+
+# Targets that indicate side-effectful context regardless of method name.
+side-effect-targets:
+  - log
+  - logger
+  - console
+  - system.out
+  - system.err
+  - builder
+  - uriBuilder
+  - response
+  - request
+  - visitor
+  - mv
+  - cw
+  - cv
+  - emitter
+  - generator
+  - encoder
+  - printer
+  - output
+
+# String detection: method patterns that indicate a String receiver.
+string-indicators:
+  - toString()
+  - substring(
+  - toLowerCase()
+  - toUpperCase()
+  - trim()
+  - replace(
+  - replaceAll(
+  - strip(
+  - split(
+  - concat(
+  - charAt(
+  - startsWith(
+  - endsWith(
+  - .append(
+
+# String detection: variable name suffixes that suggest String type.
+string-name-suffixes:
+  - Name
+  - name
+  - Text
+  - text
+  - Str
+  - String
+  - string
+  - Line
+  - line
+  - Path
+  - path
+  - Url
+  - url
+  - Key
+  - key
+  - Value
+  - value
+  - Id
+  - id
+  - Message
+  - message
+  - Description
+  - description
+  - Label
+  - label
+  - Title
+  - title
+  - Field
+  - field
+  - Signature
+  - signature
+  - Property
+  - property
+  - Qualifier
+  - qualifier
+  - Separator
+  - separator
+  - Delimiter
+  - delimiter
+  - Prefix
+  - prefix
+  - Suffix
+  - suffix
+  - Pattern
+  - pattern
+  - Expression
+  - expression
+  - Descriptor
+  - descriptor
+  - Content
+  - content
+  - Location
+  - location
+  - Source
+  - source
+  - Token
+  - token
+  - Spec
+  - spec
+  - Tag
+  - tag
+
+# String detection: exact variable names almost always referring to Strings.
+string-exact-names:
+  - s
+  - sb
+  - str
+  - desc
+  - buf
+  - buffer
+  - input
+  - output
+  - line
+  - word
+  - query
+  - sql
+
+# ── Hidden-nested-loop rule: methods/patterns to skip ──
+
+hidden-loop-skip-methods:
+  # String utility — char iteration
+  - hasText
+  - hasLength
+  - trimWhitespace
+  - trimAllWhitespace
+  - replace
+  - replaceAll
+  - replaceFirst
+  - contains
+  - indexOf
+  - lastIndexOf
+  - startsWith
+  - endsWith
+  - matches
+  - strip
+  - stripLeading
+  - stripTrailing
+  - trim
+  - chars
+  - codePoints
+  - deleteAny
+  - substringMatch
+  - split
+  - join
+  - concat
+  # Fundamental object operations
+  - equals
+  - hashCode
+  - toString
+  - compareTo
+  - deepEquals
+  # Synchronization / waiting
+  - await
+  - awaitTermination
+  - awaitNanos
+  # DOM / XML traversal
+  - getChildElementsByTagName
+  - getElementsByTagName
+  - getElementsByTagNameNS
+  # XML / encoding helpers
+  - writeXmlEncoded
+  - writeCDATA
+  - writeCharacterReference
+  # Canonical / parsing
+  - canonicalPropertyName
+  # Bytecode reader methods
+  - readElementValues
+  - readTypeAnnotationTarget
+  # URI / template processing
+  - expandUriComponent
+  - verifyUriComponent
+  # Collection copy — captured by collection-building rule
+  - addAll
+  - addAllFirst
+  - putAll
+  - removeAll
+  - retainAll
+  - containsAll
+  # Reflection / annotation introspection
+  - getDeclaredFields
+  - getDeclaredMethods
+  - getDeclaredConstructors
+  - getDeclaredAnnotations
+  - getAnnotations
+  - getAnnotation
+  - getDeclaredAnnotation
+  - getFields
+  - getMethods
+  - getConstructors
+  - getInterfaces
+  - getGenericInterfaces
+  - getParameterTypes
+  - getExceptionTypes
+  - getSuperclass
+  - isAnnotationPresent
+  - findAnnotation
+  - hasAnnotation
+  # Spring annotation utils
+  - getMergedAnnotation
+  - findMergedAnnotation
+  - getMergedAnnotationAttributes
+  - getAnnotationAttributes
+  - findAnnotationAttributes
+  - getMetaAnnotationTypes
+  # Bean / property introspection
+  - getPropertyDescriptors
+  - findPropertyType
+  - getReadMethod
+  - getWriteMethod
+  # Class scanning / classpath
+  - getResources
+  - getSystemResources
+  # Spring ReflectionUtils
+  - doWithLocalMethods
+  - doWithLocalFields
+  - doWithMethods
+  - doWithFields
+  # XML StAX / SAX parser
+  - getNextStartElement
+  - getNextEndElement
+  - peekNextStartElement
+  - getNextTag
+  - nextTag
+  - nextEvent
+  - nextElement
+  - firstChildElement
+  - nextSiblingElement
+  - findLabelKeyInElement
+  # Error / message formatting
+  - getErrorMessage
+  - getErrorMessages
+  - getMessage
+  - formatMessage
+  # Name conversion
+  - toDashCase
+  - toSnakeCase
+  - toCamelCase
+  - dbNameToVarName
+  - javaNameToDbName
+  - underscoreName
+  # Collection equality
+  - collectionEquals
+  # Keyword expansion
+  - expandKeywordForSearch
+
+hidden-loop-skip-prefixes:
+  - encode
+  - decode
+  - parse
+  - format
+  - read
+  - write
+  - trim
+  - strip
+  - canonical
+  - delete
+  - substring
+
+hidden-loop-skip-keywords:
+  - string
+  - char
+  - uri
+  - url
+  - regex
+  - pattern
+  - token
+  - annotation
+  - reflect
+  - introspect
+  - metadata
+  - descriptor
+  - bytecode
+  - classinfo
+
+# ── Static utility classes (not collections) ──
+
+static-utility-classes:
+  - StringUtils
+  - ArrayUtils
+  - Collections
+  - Arrays
+  - Objects
+  - Math
+  - Integer
+  - Long
+  - Boolean
+  - Character
+  - Byte
+  - Short
+  - Float
+  - Double
+  - String
+  - System
+  - Class
+
+# ── Quadratic removal rule: non-list target patterns ──
+
+non-list-targets-exact:
+  - it
+  - this
+  - map
+  - set
+  - entry
+  - entries
+  - iter
+  - itr
+  - queue
+  - stack
+  - keys
+  - values
+  - cache
+  - em
+  - entityManager
+  - session
+  - hibernateSession
+
+non-list-targets-suffixes:
+  - map
+  - hashmap
+  - treemap
+  - concurrenthashmap
+  - linkedhashmap
+  - iterator
+  - iter
+  - entry
+  - entries
+  - set
+  - hashset
+  - treeset
+  - linkedhashset
+  - queue
+  - deque
+  - stack
+  - linkedlist
+  - cache
+  - table
+  - dictionary
+  - registry
+  - index
+
+non-list-targets-contains:
+  - entitymanager
+  - ldapstore
+  - ldapidentitystore
+  - store
+  - repository
+  - dao
+
+bulk-removal-methods:
+  - clear
+  - removeAll
+  - retainAll
+  - removeIf
+
+# ── Cardinality explosion rule ──
+
+non-growth-mutations:
+  - set
+  - remove
+  - removeAll
+  - removeFirst
+  - removeLast
+  - pollFirst
+  - pollLast
+  - clear
+  - sort
+  - replaceAll
+  - retainAll
+  - delete
+
+small-collection-hints:
+  - type
+  - status
+  - enum
+  - config
+
+map-value-accessors:
+  - ".getValue()"
+  - ".values"
+  - values
+  - ".value"
+
+# ── N+1 / Repository patterns ──
+
+single-fetch-prefixes:
+  - findById
+  - getById
+  - findOne
+  - getOne
+  - loadById
+  - findByKey
+  - getByKey
+  - loadByKey
+  - countBy
+
+batch-method-suffixes:
+  - In
+  - Between
+  - Containing
+  - Like
+  - NotIn
+  - IsIn
+
+batch-method-prefixes:
+  - findAll
+  - getAll
+  - loadAll
+  - fetchAll
+  - listAll
+
+repository-patterns:
+  - repository
+  - repo
+  - dao
+  - store
+  - service
+  - client
+  - proxy
+
+# ── Date/time patterns ──
+
+date-type-names:
+  - Date
+  - LocalDate
+  - LocalDateTime
+  - ZonedDateTime
+  - Instant
+  - OffsetDateTime
+
+date-parse-methods:
+  - parse
+  - from
+  - ofEpochMilli
+  - ofEpochSecond
+
+date-parse-targets:
+  - LocalDate
+  - LocalDateTime
+  - ZonedDateTime
+  - Instant
+  - OffsetDateTime
+  - DateTimeFormatter
+  - SimpleDateFormat
+
+# ── Other rule-specific patterns ──
+
+dom-target-names:
+  - wrapper
+  - document
+  - element
+  - el
+  - node
+  - dom
+  - selector
+
+non-deterministic-methods:
+  - randomUUID
+  - random
+  - now
+  - currentTimeMillis
+  - nanoTime
+
+future-indicators:
+  - future
+  - promise
+  - async
+  - completable
+  - deferred
+  - task
+
+collection-getter-names:
+  - children
+  - items
+  - elements
+  - entries
+  - members
+  - roles
+  - permissions
+
+scalar-suffixes:
+  - ss
+  - us
+  - is
+  - as
+  - ness
+  - less
+  - ous
+  - ius
+
+non-repository-targets:
+  - cache
+  - memo
+  - buffer
+  - pool
+  - lru
+  - caffeine
+
+non-io-targets:
+  - bytearrayoutputstream
+  - bytearrayinputstream
+  - stringbuilder
+  - stringbuffer
+  - stringwriter
+  - stringreader
+  - chararraywriter
+  - chararrayreader
+  - bytebuffer
+  - charbuffer
+  - printstream
+  - baos
+  - sb
+  - buf
+  - buffer

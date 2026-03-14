@@ -140,6 +140,6 @@ public object CrossMethodResolver {
      * collection methods (lookup, sort, access, iteration, etc.).
      */
     private val unresolvableNames: Set<String> by lazy {
-        LanguageSemanticsRegistry.loadDefaults().allUnresolvableNames()
+        LanguageSemanticsRegistry.DEFAULT.allUnresolvableNames()
     }
 }

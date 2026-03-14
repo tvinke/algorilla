@@ -119,5 +119,5 @@ public class ParallelPipelineBottleneckRule : Rule {
 }
 
 private val MUTATION_METHODS: Set<String> by lazy {
-    LanguageSemanticsRegistry.loadDefaults().allMutationMethods()
+    LanguageSemanticsRegistry.DEFAULT.allMutationMethods()
 }

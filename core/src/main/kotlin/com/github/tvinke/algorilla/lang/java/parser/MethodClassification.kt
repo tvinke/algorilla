@@ -181,7 +181,7 @@ public fun extractVariableName(expr: String?): String? {
  * This is the single source of truth; to add a new method, update the YAML files.
  */
 private val STREAM_CHAIN_OPS: Set<String> by lazy {
-    LanguageSemanticsRegistry.loadDefaults().allStreamOps()
+    LanguageSemanticsRegistry.DEFAULT.allStreamOps()
 }
 
 /**
@@ -269,96 +269,26 @@ public fun isImplicitlyO1(methodName: String): Boolean {
     return methodName in registry.allImplicitlyO1Methods()
 }
 
-private val STRING_METHOD_INDICATORS =
-    setOf(
-        "toString()",
-        "substring(",
-        "toLowerCase()",
-        "toUpperCase()",
-        "trim()",
-        "replace(",
-        "replaceAll(",
-        "strip(",
-        "split(",
-        "concat(",
-        "charAt(",
-        "startsWith(",
-        "endsWith(",
-        ".append(",
-    )
+/** YAML-driven string method indicators. */
+private val STRING_METHOD_INDICATORS: Set<String> by lazy {
+    LanguageSemanticsRegistry.DEFAULT.allStringIndicators()
+}
 
-private val STRING_NAME_SUFFIXES =
-    setOf(
-        "Name",
-        "name",
-        "Text",
-        "text",
-        "Str",
-        "String",
-        "string",
-        "Line",
-        "line",
-        "Path",
-        "path",
-        "Url",
-        "url",
-        "Key",
-        "key",
-        "Value",
-        "value",
-        "Id",
-        "id",
-        "Message",
-        "message",
-        "Description",
-        "description",
-        "Label",
-        "label",
-        "Title",
-        "title",
-        "Field",
-        "field",
-        "Signature",
-        "signature",
-        "Property",
-        "property",
-        "Qualifier",
-        "qualifier",
-        "Separator",
-        "separator",
-        "Delimiter",
-        "delimiter",
-        "Prefix",
-        "prefix",
-        "Suffix",
-        "suffix",
-        "Pattern",
-        "pattern",
-        "Expression",
-        "expression",
-        "Descriptor",
-        "descriptor",
-        "Content",
-        "content",
-        "Location",
-        "location",
-        "Source",
-        "source",
-        "Token",
-        "token",
-        "Spec",
-        "spec",
-        "Tag",
-        "tag",
-    )
+/** YAML-driven string name suffixes. */
+private val STRING_NAME_SUFFIXES: Set<String> by lazy {
+    LanguageSemanticsRegistry.DEFAULT.allStringNameSuffixes()
+}
 
-/** Common short variable names that are almost always strings or StringBuilders. */
-private val STRING_EXACT_NAMES =
-    setOf("s", "sb", "str", "desc", "buf", "buffer", "input", "output", "line", "word", "query", "sql")
+/** YAML-driven exact string variable names. */
+private val STRING_EXACT_NAMES: Set<String> by lazy {
+    LanguageSemanticsRegistry.DEFAULT.allStringExactNames()
+}
 
 /**
  * Heuristic: returns true when the target expression is likely a String rather than a List.
  * This avoids treating `someString.indexOf(...)` as a collection lookup.
+ * All name sets are YAML-driven — see string-indicators, string-name-suffixes,
+ * and string-exact-names sections in the language YAML files.
  */
 public fun isStringTarget(targetText: String): Boolean =
     STRING_METHOD_INDICATORS.any { targetText.contains(it) } ||
@@ -374,5 +304,5 @@ private fun isLiteralZeroArg(argNodes: List<IRNode>): Boolean {
 
 /** Lazily loaded registry instance for parser-time queries. */
 private val registryInstance: LanguageSemanticsRegistry by lazy {
-    LanguageSemanticsRegistry.loadDefaults()
+    LanguageSemanticsRegistry.DEFAULT
 }

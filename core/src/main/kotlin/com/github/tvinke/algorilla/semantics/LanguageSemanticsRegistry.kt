@@ -41,6 +41,13 @@ public class LanguageSemanticsRegistry private constructor(
     private val memoizationByLanguage: Map<Language, Set<String>>,
     private val treeTraversalByLanguage: Map<Language, Set<String>>,
     private val visitedSetNamesByLanguage: Map<Language, Set<String>>,
+    private val purePrefixesByLanguage: Map<Language, List<String>>,
+    private val sideEffectPrefixesByLanguage: Map<Language, List<String>>,
+    private val sideEffectTargetsByLanguage: Map<Language, List<String>>,
+    private val stringIndicatorsByLanguage: Map<Language, Set<String>>,
+    private val stringNameSuffixesByLanguage: Map<Language, Set<String>>,
+    private val stringExactNamesByLanguage: Map<Language, Set<String>>,
+    private val extrasByLanguage: Map<Language, Map<String, Set<String>>> = emptyMap(),
 ) {
     /**
      * Classifies a method name for the given language.
@@ -372,6 +379,161 @@ public class LanguageSemanticsRegistry private constructor(
         return visitedSetNamesByLanguage[resolved]?.contains(name.lowercase()) == true
     }
 
+    // --- Purity classification ---
+
+    /**
+     * Returns pure-method prefixes for the given language.
+     */
+    public fun purePrefixes(language: Language): List<String> {
+        val resolved = resolveLanguage(language)
+        return purePrefixesByLanguage[resolved] ?: emptyList()
+    }
+
+    /**
+     * Returns the union of all pure prefixes across all languages.
+     */
+    public fun allPurePrefixes(): List<String> =
+        purePrefixesByLanguage.values
+            .flatten()
+            .distinct()
+
+    /**
+     * Returns side-effect prefixes for the given language.
+     */
+    public fun sideEffectPrefixes(language: Language): List<String> {
+        val resolved = resolveLanguage(language)
+        return sideEffectPrefixesByLanguage[resolved] ?: emptyList()
+    }
+
+    /**
+     * Returns the union of all side-effect prefixes across all languages.
+     */
+    public fun allSideEffectPrefixes(): List<String> =
+        sideEffectPrefixesByLanguage.values
+            .flatten()
+            .distinct()
+
+    /**
+     * Returns side-effect targets for the given language.
+     */
+    public fun sideEffectTargets(language: Language): List<String> {
+        val resolved = resolveLanguage(language)
+        return sideEffectTargetsByLanguage[resolved] ?: emptyList()
+    }
+
+    /**
+     * Returns the union of all side-effect targets across all languages.
+     */
+    public fun allSideEffectTargets(): List<String> =
+        sideEffectTargetsByLanguage.values
+            .flatten()
+            .distinct()
+
+    // --- String detection ---
+
+    /**
+     * Returns string indicator method names for the given language.
+     */
+    public fun stringIndicators(language: Language): Set<String> {
+        val resolved = resolveLanguage(language)
+        return stringIndicatorsByLanguage[resolved] ?: emptySet()
+    }
+
+    /**
+     * Returns the union of all string indicators across all languages.
+     */
+    public fun allStringIndicators(): Set<String> = stringIndicatorsByLanguage.values.flatten().toSet()
+
+    /**
+     * Returns string name suffixes for the given language.
+     */
+    public fun stringNameSuffixes(language: Language): Set<String> {
+        val resolved = resolveLanguage(language)
+        return stringNameSuffixesByLanguage[resolved] ?: emptySet()
+    }
+
+    /**
+     * Returns the union of all string name suffixes across all languages.
+     */
+    public fun allStringNameSuffixes(): Set<String> = stringNameSuffixesByLanguage.values.flatten().toSet()
+
+    /**
+     * Returns string exact names for the given language.
+     */
+    public fun stringExactNames(language: Language): Set<String> {
+        val resolved = resolveLanguage(language)
+        return stringExactNamesByLanguage[resolved] ?: emptySet()
+    }
+
+    /**
+     * Returns the union of all string exact names across all languages.
+     */
+    public fun allStringExactNames(): Set<String> = stringExactNamesByLanguage.values.flatten().toSet()
+
+    /** Generic query for extra YAML sections not covered by explicit fields. */
+    public fun extraSection(
+        language: Language,
+        key: String,
+    ): Set<String> {
+        val resolved = resolveLanguage(language)
+        return extrasByLanguage[resolved]?.get(key) ?: emptySet()
+    }
+
+    /** Merges an extra section across all languages. */
+    public fun allExtraSection(key: String): Set<String> = extrasByLanguage.values.flatMap { it[key] ?: emptySet() }.toSet()
+
+    // ── Rule-specific convenience methods (all delegate to extraSection) ──
+
+    public fun hiddenLoopSkipMethods(language: Language): Set<String> = extraSection(language, "hidden-loop-skip-methods")
+
+    public fun hiddenLoopSkipPrefixes(language: Language): Set<String> = extraSection(language, "hidden-loop-skip-prefixes")
+
+    public fun hiddenLoopSkipKeywords(language: Language): Set<String> = extraSection(language, "hidden-loop-skip-keywords")
+
+    public fun staticUtilityClasses(language: Language): Set<String> = extraSection(language, "static-utility-classes")
+
+    public fun nonListTargetsExact(language: Language): Set<String> = extraSection(language, "non-list-targets-exact")
+
+    public fun nonListTargetsSuffixes(language: Language): Set<String> = extraSection(language, "non-list-targets-suffixes")
+
+    public fun nonListTargetsContains(language: Language): Set<String> = extraSection(language, "non-list-targets-contains")
+
+    public fun bulkRemovalMethods(language: Language): Set<String> = extraSection(language, "bulk-removal-methods")
+
+    public fun nonGrowthMutations(language: Language): Set<String> = extraSection(language, "non-growth-mutations")
+
+    public fun smallCollectionHints(language: Language): Set<String> = extraSection(language, "small-collection-hints")
+
+    public fun mapValueAccessors(language: Language): Set<String> = extraSection(language, "map-value-accessors")
+
+    public fun singleFetchPrefixes(language: Language): Set<String> = extraSection(language, "single-fetch-prefixes")
+
+    public fun batchMethodSuffixes(language: Language): Set<String> = extraSection(language, "batch-method-suffixes")
+
+    public fun batchMethodPrefixes(language: Language): Set<String> = extraSection(language, "batch-method-prefixes")
+
+    public fun repositoryPatterns(language: Language): Set<String> = extraSection(language, "repository-patterns")
+
+    public fun dateTypeNames(language: Language): Set<String> = extraSection(language, "date-type-names")
+
+    public fun dateParseMethods(language: Language): Set<String> = extraSection(language, "date-parse-methods")
+
+    public fun dateParseTargets(language: Language): Set<String> = extraSection(language, "date-parse-targets")
+
+    public fun domTargetNames(language: Language): Set<String> = extraSection(language, "dom-target-names")
+
+    public fun nonDeterministicMethods(language: Language): Set<String> = extraSection(language, "non-deterministic-methods")
+
+    public fun futureIndicators(language: Language): Set<String> = extraSection(language, "future-indicators")
+
+    public fun collectionGetterNames(language: Language): Set<String> = extraSection(language, "collection-getter-names")
+
+    public fun scalarSuffixes(language: Language): Set<String> = extraSection(language, "scalar-suffixes")
+
+    public fun nonRepositoryTargets(language: Language): Set<String> = extraSection(language, "non-repository-targets")
+
+    public fun nonIoTargets(language: Language): Set<String> = extraSection(language, "non-io-targets")
+
     /**
      * Looks up a method's [LookupKind] for a specific language.
      * Returns null if the method has no lookup classification in that language.
@@ -424,6 +586,9 @@ public class LanguageSemanticsRegistry private constructor(
         }
 
     public companion object {
+        /** Cached singleton — avoids re-parsing ~5K lines of YAML on every call. */
+        public val DEFAULT: LanguageSemanticsRegistry by lazy { loadDefaults() }
+
         private val LANGUAGE_FILES =
             mapOf(
                 Language.JAVA to "semantics/java.yml",
@@ -479,6 +644,13 @@ public class LanguageSemanticsRegistry private constructor(
                 maps.memoization,
                 maps.treeTraversal,
                 maps.visitedSetNames,
+                maps.purePrefixes,
+                maps.sideEffectPrefixes,
+                maps.sideEffectTargets,
+                maps.stringIndicators,
+                maps.stringNameSuffixes,
+                maps.stringExactNames,
+                maps.extras,
             )
         }
 
@@ -551,6 +723,13 @@ public class LanguageSemanticsRegistry private constructor(
                 memoizationByLanguage = base.memoizationByLanguage,
                 treeTraversalByLanguage = base.treeTraversalByLanguage,
                 visitedSetNamesByLanguage = base.visitedSetNamesByLanguage,
+                purePrefixesByLanguage = base.purePrefixesByLanguage,
+                sideEffectPrefixesByLanguage = base.sideEffectPrefixesByLanguage,
+                sideEffectTargetsByLanguage = base.sideEffectTargetsByLanguage,
+                stringIndicatorsByLanguage = base.stringIndicatorsByLanguage,
+                stringNameSuffixesByLanguage = base.stringNameSuffixesByLanguage,
+                stringExactNamesByLanguage = base.stringExactNamesByLanguage,
+                extrasByLanguage = base.extrasByLanguage,
             )
         }
 
@@ -591,8 +770,15 @@ internal class LanguageMaps(
     val memoization: MutableMap<Language, Set<String>> = mutableMapOf(),
     val treeTraversal: MutableMap<Language, Set<String>> = mutableMapOf(),
     val visitedSetNames: MutableMap<Language, Set<String>> = mutableMapOf(),
+    val purePrefixes: MutableMap<Language, List<String>> = mutableMapOf(),
+    val sideEffectPrefixes: MutableMap<Language, List<String>> = mutableMapOf(),
+    val sideEffectTargets: MutableMap<Language, List<String>> = mutableMapOf(),
+    val stringIndicators: MutableMap<Language, Set<String>> = mutableMapOf(),
+    val stringNameSuffixes: MutableMap<Language, Set<String>> = mutableMapOf(),
+    val stringExactNames: MutableMap<Language, Set<String>> = mutableMapOf(),
+    val extras: MutableMap<Language, MutableMap<String, Set<String>>> = mutableMapOf(),
 ) {
-    @Suppress("CyclomaticComplexMethod")
+    @Suppress("CyclomaticComplexMethod", "LongMethod")
     fun merge(
         lang: Language,
         parsed: ParsedYaml,
@@ -621,6 +807,17 @@ internal class LanguageMaps(
         memoization[lang] = (memoization[lang] ?: emptySet()) + parsed.memoizationMethods
         treeTraversal[lang] = (treeTraversal[lang] ?: emptySet()) + parsed.treeTraversalAccessors
         visitedSetNames[lang] = (visitedSetNames[lang] ?: emptySet()) + parsed.visitedSetNames
+        purePrefixes[lang] = ((purePrefixes[lang] ?: emptyList()) + parsed.purePrefixes).distinct()
+        sideEffectPrefixes[lang] = ((sideEffectPrefixes[lang] ?: emptyList()) + parsed.sideEffectPrefixes).distinct()
+        sideEffectTargets[lang] = ((sideEffectTargets[lang] ?: emptyList()) + parsed.sideEffectTargets).distinct()
+        stringIndicators[lang] = (stringIndicators[lang] ?: emptySet()) + parsed.stringIndicators
+        stringNameSuffixes[lang] = (stringNameSuffixes[lang] ?: emptySet()) + parsed.stringNameSuffixes
+        stringExactNames[lang] = (stringExactNames[lang] ?: emptySet()) + parsed.stringExactNames
+        // Merge all extra sections
+        val langExtras = extras.getOrPut(lang) { mutableMapOf() }
+        for ((key, values) in parsed.extras) {
+            langExtras[key] = (langExtras[key] ?: emptySet()) + values
+        }
     }
 }
 
@@ -649,6 +846,13 @@ internal data class ParsedYaml(
     val memoizationMethods: Set<String>,
     val treeTraversalAccessors: Set<String>,
     val visitedSetNames: Set<String>,
+    val purePrefixes: List<String>,
+    val sideEffectPrefixes: List<String>,
+    val sideEffectTargets: List<String>,
+    val stringIndicators: Set<String>,
+    val stringNameSuffixes: Set<String>,
+    val stringExactNames: Set<String>,
+    val extras: Map<String, Set<String>> = emptyMap(),
 )
 
 /**
@@ -660,6 +864,48 @@ internal fun parseYaml(text: String): ParsedYaml {
     val sections = splitSections(text)
     val methods = mutableMapOf<String, MethodSemantics>()
     sections["methods"]?.forEach { parseMethodLine(it, methods) }
+
+    // Collect all section keys that aren't explicitly parsed into extras
+    val knownSections =
+        setOf(
+            "methods",
+            "heavyweight-types",
+            "collection-types",
+            "o1-types",
+            "stream-ops",
+            "scope-ops",
+            "trivial-methods",
+            "builder-methods",
+            "getter-prefixes",
+            "cheap-methods",
+            "sequential-read-methods",
+            "reflection-methods",
+            "copy-on-modify-methods",
+            "regex-types",
+            "implicit-regex-methods",
+            "mutation-methods",
+            "removal-methods",
+            "bulk-load-prefixes",
+            "full-scan-methods",
+            "io-methods",
+            "o1-factory-methods",
+            "memoization-methods",
+            "tree-traversal-accessors",
+            "visited-set-names",
+            "pure-prefixes",
+            "side-effect-prefixes",
+            "side-effect-targets",
+            "string-indicators",
+            "string-name-suffixes",
+            "string-exact-names",
+            "language",
+        )
+    val extras = mutableMapOf<String, Set<String>>()
+    for ((key, lines) in sections) {
+        if (key !in knownSections) {
+            extras[key] = collectListItems(lines)
+        }
+    }
 
     return ParsedYaml(
         methods = methods,
@@ -686,6 +932,13 @@ internal fun parseYaml(text: String): ParsedYaml {
         memoizationMethods = collectListItems(sections["memoization-methods"]),
         treeTraversalAccessors = collectListItems(sections["tree-traversal-accessors"]),
         visitedSetNames = collectListItems(sections["visited-set-names"]),
+        purePrefixes = collectListItems(sections["pure-prefixes"]).toList(),
+        sideEffectPrefixes = collectListItems(sections["side-effect-prefixes"]).toList(),
+        sideEffectTargets = collectListItems(sections["side-effect-targets"]).toList(),
+        stringIndicators = collectListItems(sections["string-indicators"]),
+        stringNameSuffixes = collectListItems(sections["string-name-suffixes"]),
+        stringExactNames = collectListItems(sections["string-exact-names"]),
+        extras = extras,
     )
 }
 
@@ -774,7 +1027,11 @@ private fun parseBraceProps(value: String): Map<String, String> {
 private fun parseListItem(line: String): String? {
     val trimmed = line.trim()
     if (!trimmed.startsWith("- ")) return null
-    return trimmed.removePrefix("- ").trim()
+    val value = trimmed.removePrefix("- ").trim()
+    // Strip YAML-style quotes (single or double)
+    if (value.length >= 2 && value.first() == '"' && value.last() == '"') return value.substring(1, value.length - 1)
+    if (value.length >= 2 && value.first() == '\'' && value.last() == '\'') return value.substring(1, value.length - 1)
+    return value
 }
 
 private fun parseCategory(value: String): SemanticCategory? =

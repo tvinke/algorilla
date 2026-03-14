@@ -14,6 +14,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.hasO1Type
 
 /**
@@ -98,46 +99,45 @@ public class QuadraticRemovalRule : Rule {
     }
 }
 
-/** Skip calls on Map/Set/Iterator/Queue targets where remove() is O(1). */
-private val NON_LIST_TARGET_SUFFIXES =
-    setOf(
-        "map",
-        "hashmap",
-        "treemap",
-        "concurrenthashmap",
-        "linkedhashmap",
-        "iterator",
-        "iter",
-        "entry",
-        "entries",
-        "set",
-        "hashset",
-        "treeset",
-        "linkedhashset",
-        "queue",
-        "deque",
-        "stack",
-        "linkedlist",
-        "cache",
-        "table",
-        "dictionary",
-        "registry",
-        "index",
-    )
+private val nonListTargetSuffixes: Set<String> by lazy {
+    LanguageSemanticsRegistry.DEFAULT.allExtraSection("non-list-targets-suffixes")
+}
 
-private val NON_LIST_EXACT_TARGETS =
-    setOf("it", "this", "map", "set", "entry", "entries", "iter", "queue", "stack", "keys", "values", "cache")
+private val nonListExactTargets: Set<String> by lazy {
+    LanguageSemanticsRegistry.DEFAULT
+        .allExtraSection("non-list-targets-exact")
+        .map { it.lowercase() }
+        .toSet()
+}
 
+private val nonListTargetContains: Set<String> by lazy {
+    LanguageSemanticsRegistry.DEFAULT.allExtraSection("non-list-targets-contains")
+}
+
+private val bulkRemovalMethods: Set<String> by lazy {
+    LanguageSemanticsRegistry.DEFAULT.allExtraSection("bulk-removal-methods")
+}
+
+private val staticUtilityTargets: Set<String> by lazy {
+    LanguageSemanticsRegistry.DEFAULT
+        .allExtraSection("static-utility-classes")
+        .map { it.lowercase() }
+        .toSet()
+}
+
+@Suppress("ReturnCount")
 private fun isRemovalCall(
     call: FunctionCall,
     enclosingFn: FunctionDecl?,
     removalMethods: Set<String>,
 ): Boolean {
     if (call.name !in removalMethods) return false
+    if (call.name in bulkRemovalMethods) return false
     val target = call.qualifiedTarget ?: return false
     val lower = target.lowercase()
-    if (lower in NON_LIST_EXACT_TARGETS) return false
-    // Skip O(1) targets: name-based heuristic OR declared type (Map/Set/Queue/Deque)
-    return NON_LIST_TARGET_SUFFIXES.none { suffix -> lower.endsWith(suffix) } &&
+    if (lower in nonListExactTargets) return false
+    if (lower in staticUtilityTargets) return false
+    if (nonListTargetContains.any { lower.contains(it) }) return false
+    return nonListTargetSuffixes.none { suffix -> lower.endsWith(suffix) } &&
         (enclosingFn == null || !enclosingFn.hasO1Type(target))
 }

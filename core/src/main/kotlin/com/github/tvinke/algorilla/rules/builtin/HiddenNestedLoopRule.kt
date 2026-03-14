@@ -15,6 +15,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.CrossMethodResolver
 import com.github.tvinke.algorilla.util.ParameterFlowQuery
 import com.github.tvinke.algorilla.util.findDescendants
@@ -175,103 +176,25 @@ private fun isTrivialLoop(loop: LoopNode): Boolean {
     return false
 }
 
-/**
- * Methods whose internal loop iterates over characters/bytes rather than business
- * collections, or that are simple collection-copy operations already covered by
- * the `in-loop-collection-building` rule. Flagging these as "hidden nested loops"
- * produces false positives because their cost is O(string_length) or O(copy_size),
- * not O(collection_size).
- */
-private val SKIP_METHODS =
-    setOf(
-        // String utility — char iteration
-        "hasText",
-        "hasLength",
-        "trimWhitespace",
-        "trimAllWhitespace",
-        "replace",
-        "replaceAll",
-        "replaceFirst",
-        "contains",
-        "indexOf",
-        "lastIndexOf",
-        "startsWith",
-        "endsWith",
-        "matches",
-        "strip",
-        "stripLeading",
-        "stripTrailing",
-        "trim",
-        "chars",
-        "codePoints",
-        "deleteAny",
-        "substringMatch",
-        "split",
-        "join",
-        "concat",
-        // Fundamental object operations — loop inside equals/hashCode/compareTo is unavoidable
-        "equals",
-        "hashCode",
-        "toString",
-        "compareTo",
-        "deepEquals",
-        // Synchronization / waiting — while-loop is polling, not iteration
-        "await",
-        "awaitTermination",
-        "awaitNanos",
-        // DOM / XML traversal — inherently iterates child nodes
-        "getChildElementsByTagName",
-        "getElementsByTagName",
-        "getElementsByTagNameNS",
-        // XML / encoding helpers
-        "writeXmlEncoded",
-        "writeCDATA",
-        "writeCharacterReference",
-        // Canonical / parsing
-        "canonicalPropertyName",
-        // Bytecode reader methods
-        "readElementValues",
-        "readTypeAnnotationTarget",
-        // URI / template processing — iterates chars, not business collections
-        "expandUriComponent",
-        "verifyUriComponent",
-        // Collection copy — cost is already O(n) and captured by collection-building rule
-        "addAll",
-        "addAllFirst",
-        "putAll",
-        "removeAll",
-        "retainAll",
-        "containsAll",
-    )
+private val skipMethods: Set<String> by lazy {
+    LanguageSemanticsRegistry.DEFAULT.allExtraSection("hidden-loop-skip-methods")
+}
 
-/** Prefixes that indicate string/byte processing rather than collection iteration. */
-private val STRING_PROCESSING_PREFIXES =
-    listOf(
-        "encode",
-        "decode",
-        "parse",
-        "format",
-        "read",
-        "write",
-        "trim",
-        "strip",
-        "canonical",
-        "delete",
-        "substring",
-    )
+private val skipPrefixes: Set<String> by lazy {
+    LanguageSemanticsRegistry.DEFAULT.allExtraSection("hidden-loop-skip-prefixes")
+}
+
+private val skipKeywords: Set<String> by lazy {
+    LanguageSemanticsRegistry.DEFAULT.allExtraSection("hidden-loop-skip-keywords")
+}
 
 /**
  * Returns true if the method name is a known string/byte iterator or collection-copy
  * operation that should not be flagged as a hidden nested loop.
  */
 private fun isStringOrCopyMethod(name: String): Boolean {
-    if (name in SKIP_METHODS) return true
+    if (name in skipMethods) return true
     val lower = name.lowercase()
-    if (STRING_PROCESSING_PREFIXES.any { lower.startsWith(it) }) return true
-    // Methods with "String", "Char", "Uri" in name are typically string processors
-    return STRING_CONTENT_KEYWORDS.any { lower.contains(it) }
+    if (skipPrefixes.any { lower.startsWith(it) }) return true
+    return skipKeywords.any { lower.contains(it) }
 }
-
-/** Keywords in method names that indicate string/char/URI processing. */
-private val STRING_CONTENT_KEYWORDS =
-    listOf("string", "char", "uri", "url", "regex", "pattern", "token")

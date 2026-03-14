@@ -14,6 +14,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.findDescendants
 
 /**
@@ -170,11 +171,20 @@ public class LazyLoadingInLoopRule : Rule {
 
     private companion object {
         private const val MIN_GETTER_LENGTH = 3
-        val REPO_PATTERNS = setOf("repository", "repo", "dao", "store", "service")
-        val FETCH_PREFIXES = listOf("findAll", "getAll", "loadAll", "fetchAll", "listAll", "findBy", "getBy")
+
+        val REPO_PATTERNS: Set<String> by lazy {
+            LanguageSemanticsRegistry.DEFAULT.allExtraSection("repository-patterns")
+        }
+        val FETCH_PREFIXES: List<String> by lazy {
+            LanguageSemanticsRegistry.DEFAULT.allBulkLoadPrefixes()
+        }
 
         // Suffixes that look plural but are actually scalar (address, status, etc.)
-        val SCALAR_SUFFIXES = setOf("ss", "us", "is", "as", "ness", "less", "ous", "ius")
-        val COLLECTION_GETTER_NAMES = setOf("children", "items", "elements", "entries", "members", "roles", "permissions")
+        val SCALAR_SUFFIXES: Set<String> by lazy {
+            LanguageSemanticsRegistry.DEFAULT.allExtraSection("scalar-suffixes")
+        }
+        val COLLECTION_GETTER_NAMES: Set<String> by lazy {
+            LanguageSemanticsRegistry.DEFAULT.allExtraSection("collection-getter-names")
+        }
     }
 }

@@ -118,7 +118,9 @@ private fun argFingerprint(node: IRNode): String =
     }
 
 /** Methods whose return value differs on each call — prevents grouping calls with these as arguments. */
-private val NON_DETERMINISTIC = setOf("randomUUID", "random", "now", "currentTimeMillis", "nanoTime")
+private val NON_DETERMINISTIC: Set<String> by lazy {
+    LanguageSemanticsRegistry.DEFAULT.allExtraSection("non-deterministic-methods")
+}
 
 private fun containsNonDeterministic(call: FunctionCall): Boolean {
     if (call.name in NON_DETERMINISTIC) return true
@@ -131,11 +133,11 @@ private fun containsNonDeterministic(call: FunctionCall): Boolean {
  * in the language YAML files under core/src/main/resources/semantics/.
  */
 private val TRIVIAL_METHODS: Set<String> by lazy {
-    LanguageSemanticsRegistry.loadDefaults().allTrivialMethods()
+    LanguageSemanticsRegistry.DEFAULT.allTrivialMethods()
 }
 
 private val BUILDER_METHODS: Set<String> by lazy {
-    LanguageSemanticsRegistry.loadDefaults().allBuilderMethods()
+    LanguageSemanticsRegistry.DEFAULT.allBuilderMethods()
 }
 
 /**
@@ -143,7 +145,7 @@ private val BUILDER_METHODS: Set<String> by lazy {
  * Loaded from the `cheap-methods` section of the language YAML files.
  */
 private val CHEAP_METHODS: Set<String> by lazy {
-    LanguageSemanticsRegistry.loadDefaults().allCheapMethods()
+    LanguageSemanticsRegistry.DEFAULT.allCheapMethods()
 }
 
 /**
@@ -153,7 +155,7 @@ private val CHEAP_METHODS: Set<String> by lazy {
  * Loaded from the `sequential-read-methods` section of the language YAML files.
  */
 private val SEQUENTIAL_READ_METHODS: Set<String> by lazy {
-    LanguageSemanticsRegistry.loadDefaults().allSequentialReadMethods()
+    LanguageSemanticsRegistry.DEFAULT.allSequentialReadMethods()
 }
 
 private fun isSideEffectCall(call: FunctionCall): Boolean =
