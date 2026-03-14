@@ -32,6 +32,8 @@ public class StringConcatInLoopRule : Rule {
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
+            // Skip JS/TS — Array.concat() is not string concatenation
+            if (fileRoot.language !in languages) continue
             scanNode(fileRoot, emptyList(), findings)
         }
         return findings
