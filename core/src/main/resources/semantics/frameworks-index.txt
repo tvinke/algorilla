@@ -15,3 +15,10 @@ jpa-hibernate.yml
 apache-commons.yml
 mybatis.yml
 jakarta-ee.yml
+jackson.yml
+logging.yml
+okhttp.yml
+gson.yml
+caffeine.yml
+netty.yml
+apache-httpclient.yml

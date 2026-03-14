@@ -1,0 +1,94 @@
+# Apache HttpClient — framework overlay for Java
+# Apache HttpClient 4.x / 5.x
+
+language: java
+
+methods: {}
+
+cheap-methods:
+  # HttpRequestBase — request building (no IO)
+  - setURI
+  - setHeader
+  - addHeader
+  - removeHeaders
+  - setEntity
+  - setConfig
+  - getURI
+  - getMethod
+  - getAllHeaders
+  - getFirstHeader
+  - getLastHeader
+  - containsHeader
+  - getParams
+  # HttpResponse — metadata access (already fetched)
+  - getStatusLine
+  - getStatusCode
+  - getReasonPhrase
+  - getAllHeaders
+  - getFirstHeader
+  - getLastHeader
+  - containsHeader
+  - getProtocolVersion
+  - getLocale
+  # RequestBuilder — construction (no IO)
+  - create
+  - get
+  - post
+  - put
+  - delete
+  - patch
+  - head
+  - options
+  - setUri
+  - setHeader
+  - addHeader
+  - addParameter
+  - addParameters
+  - setEntity
+  - setCharset
+  - setConfig
+  - build
+  # HttpClientBuilder — configuration
+  - custom
+  - setDefaultHeaders
+  - setDefaultRequestConfig
+  - setProxy
+  - setDefaultCredentialsProvider
+  - setDefaultCookieStore
+  - setConnectionManager
+  - setRetryHandler
+  - setRedirectStrategy
+  - setSSLContext
+  - setSSLSocketFactory
+  - setMaxConnTotal
+  - setMaxConnPerRoute
+  - build
+  # URIBuilder
+  - setScheme
+  - setHost
+  - setPort
+  - setPath
+  - addParameter
+  - setParameter
+  - setFragment
+  - build
+  # EntityUtils — response body parsing
+  - toString
+  - toByteArray
+  - consume
+  - consumeQuietly
+
+heavyweight-types:
+  - CloseableHttpClient
+  - HttpClient
+  - HttpClientBuilder
+  - PoolingHttpClientConnectionManager
+
+io-methods:
+  # CloseableHttpClient — HTTP round-trips
+  - execute
+  - close
+  # HttpEntity — reading response body (IO from connection)
+  - getContent
+  - writeTo
+  - isStreaming

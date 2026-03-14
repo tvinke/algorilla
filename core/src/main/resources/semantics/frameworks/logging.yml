@@ -1,0 +1,78 @@
+# Logging — framework overlay for Java
+# SLF4J, Logback, Log4j2, java.util.logging
+# Logging calls should NEVER be flagged as expensive, IO, or redundant.
+
+language: java
+
+methods: {}
+
+cheap-methods:
+  # SLF4J Logger
+  - trace
+  - debug
+  - info
+  - warn
+  - error
+  - isTraceEnabled
+  - isDebugEnabled
+  - isInfoEnabled
+  - isWarnEnabled
+  - isErrorEnabled
+  - atTrace
+  - atDebug
+  - atInfo
+  - atWarn
+  - atError
+  - getName
+  # SLF4J Marker
+  - getMarker
+  - isMarkerPresent
+  # SLF4J MDC
+  - put
+  - remove
+  - clear
+  - getCopyOfContextMap
+  - setContextMap
+  # Log4j2 Logger
+  - fatal
+  - log
+  - printf
+  - entry
+  - exit
+  - traceEntry
+  - traceExit
+  - catching
+  - throwing
+  - isEnabled
+  - getLevel
+  - getMessageFactory
+  # Log4j2 LogManager
+  - getLogger
+  - getContext
+  - getRootLogger
+  - getFormatterLogger
+  # java.util.logging
+  - severe
+  - warning
+  - config
+  - fine
+  - finer
+  - finest
+  - isLoggable
+  - getLevel
+  - setLevel
+  - addHandler
+  - removeHandler
+  # Logback-specific
+  - addAppender
+  - detachAppender
+  - iteratorForAppenders
+  - getAppender
+
+trivial-methods:
+  # LoggerFactory
+  - getLogger
+  - getILoggerFactory
+  # String formatting helpers often used with logging
+  - format
+  - formatted

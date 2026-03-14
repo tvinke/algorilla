@@ -1,0 +1,139 @@
+# Netty — framework overlay for Java
+# Netty 4.x async event-driven network framework
+
+language: java
+
+methods: {}
+
+cheap-methods:
+  # Channel — metadata (no IO)
+  - isActive
+  - isOpen
+  - isRegistered
+  - isWritable
+  - id
+  - metadata
+  - localAddress
+  - remoteAddress
+  - pipeline
+  - alloc
+  - eventLoop
+  - parent
+  - config
+  - bytesBeforeUnwritable
+  - bytesBeforeWritable
+  # ChannelHandlerContext — metadata
+  - channel
+  - handler
+  - name
+  - pipeline
+  - alloc
+  - executor
+  - attr
+  - hasAttr
+  # ChannelPipeline — configuration (no IO)
+  - addFirst
+  - addLast
+  - addBefore
+  - addAfter
+  - remove
+  - removeFirst
+  - removeLast
+  - replace
+  - first
+  - last
+  - get
+  - names
+  - toMap
+  # ByteBuf — in-memory buffer (NOT IO)
+  - readByte
+  - readShort
+  - readInt
+  - readLong
+  - readFloat
+  - readDouble
+  - readChar
+  - readBoolean
+  - readBytes
+  - readSlice
+  - readRetainedSlice
+  - readCharSequence
+  - writeByte
+  - writeShort
+  - writeInt
+  - writeLong
+  - writeFloat
+  - writeDouble
+  - writeChar
+  - writeBoolean
+  - writeBytes
+  - writeCharSequence
+  - getByte
+  - getShort
+  - getInt
+  - getLong
+  - setByte
+  - setShort
+  - setInt
+  - setLong
+  - capacity
+  - readableBytes
+  - writableBytes
+  - readerIndex
+  - writerIndex
+  - markReaderIndex
+  - resetReaderIndex
+  - markWriterIndex
+  - resetWriterIndex
+  - retain
+  - release
+  - refCnt
+  - duplicate
+  - copy
+  - slice
+  - retainedSlice
+  - retainedDuplicate
+  - clear
+  - discardReadBytes
+  - ensureWritable
+  # Bootstrap — configuration
+  - group
+  - channel
+  - channelFactory
+  - localAddress
+  - remoteAddress
+  - option
+  - attr
+  - handler
+  - childHandler
+  - childOption
+  - childAttr
+  - validate
+
+heavyweight-types:
+  - Bootstrap
+  - ServerBootstrap
+  - NioEventLoopGroup
+  - EpollEventLoopGroup
+  - KQueueEventLoopGroup
+
+io-methods:
+  # Channel — network IO
+  - write
+  - writeAndFlush
+  - flush
+  - read
+  - close
+  - disconnect
+  - deregister
+  - bind
+  - connect
+  # ChannelHandlerContext — IO delegation
+  - write
+  - writeAndFlush
+  - flush
+  - read
+  - close
+  - disconnect
+  - fireChannelRead
+  - fireChannelReadComplete

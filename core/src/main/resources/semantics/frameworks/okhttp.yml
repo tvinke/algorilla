@@ -1,0 +1,94 @@
+# OkHttp — framework overlay for Java
+# Square OkHttp 4.x / 5.x
+
+language: java
+
+methods: {}
+
+cheap-methods:
+  # Request.Builder — construction (no IO)
+  - url
+  - header
+  - addHeader
+  - removeHeader
+  - headers
+  - method
+  - get
+  - post
+  - put
+  - delete
+  - patch
+  - head
+  - tag
+  - cacheControl
+  - build
+  # HttpUrl.Builder
+  - scheme
+  - host
+  - port
+  - addPathSegment
+  - addPathSegments
+  - addQueryParameter
+  - addEncodedQueryParameter
+  - encodedPath
+  - query
+  - fragment
+  # Response — metadata access (already fetched)
+  - code
+  - message
+  - isSuccessful
+  - isRedirect
+  - protocol
+  - header
+  - headers
+  - handshake
+  - cacheControl
+  - cacheResponse
+  - networkResponse
+  - priorResponse
+  - request
+  - sentRequestAtMillis
+  - receivedResponseAtMillis
+  # ResponseBody — metadata
+  - contentType
+  - contentLength
+  # OkHttpClient.Builder — configuration
+  - connectTimeout
+  - readTimeout
+  - writeTimeout
+  - callTimeout
+  - followRedirects
+  - followSslRedirects
+  - retryOnConnectionFailure
+  - addInterceptor
+  - addNetworkInterceptor
+  - cache
+  - dns
+  - proxy
+  - proxySelector
+  - cookieJar
+  - connectionPool
+  - dispatcher
+  - authenticator
+  - sslSocketFactory
+  - hostnameVerifier
+  - certificatePinner
+
+heavyweight-types:
+  - OkHttpClient
+
+io-methods:
+  # Call — HTTP round-trip
+  - execute
+  - enqueue
+  # ResponseBody — reading body (IO)
+  - string
+  - bytes
+  - byteStream
+  - charStream
+  - source
+  - close
+  # WebSocket
+  - send
+  - close
+  - cancel

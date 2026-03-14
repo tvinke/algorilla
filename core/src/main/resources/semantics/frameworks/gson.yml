@@ -1,0 +1,94 @@
+# Gson — framework overlay for Java
+# Google Gson 2.x
+
+language: java
+
+methods: {}
+
+cheap-methods:
+  # GsonBuilder — configuration (no IO)
+  - setPrettyPrinting
+  - setDateFormat
+  - serializeNulls
+  - disableHtmlEscaping
+  - excludeFieldsWithoutExposeAnnotation
+  - enableComplexMapKeySerialization
+  - setFieldNamingPolicy
+  - setFieldNamingStrategy
+  - registerTypeAdapter
+  - registerTypeAdapterFactory
+  - registerTypeHierarchyAdapter
+  - setExclusionStrategies
+  - addSerializationExclusionStrategy
+  - addDeserializationExclusionStrategy
+  - setLenient
+  - setVersion
+  - create
+  # JsonElement — navigation (in-memory)
+  - getAsString
+  - getAsInt
+  - getAsLong
+  - getAsDouble
+  - getAsFloat
+  - getAsBoolean
+  - getAsBigDecimal
+  - getAsBigInteger
+  - getAsByte
+  - getAsShort
+  - getAsCharacter
+  - getAsNumber
+  - getAsJsonObject
+  - getAsJsonArray
+  - getAsJsonPrimitive
+  - getAsJsonNull
+  - isJsonObject
+  - isJsonArray
+  - isJsonPrimitive
+  - isJsonNull
+  # JsonObject — access
+  - has
+  - get
+  - getAsJsonObject
+  - getAsJsonArray
+  - getAsJsonPrimitive
+  - add
+  - addProperty
+  - remove
+  - entrySet
+  - keySet
+  - size
+  # JsonArray — access
+  - get
+  - add
+  - set
+  - remove
+  - contains
+  - size
+  - iterator
+  - asList
+
+heavyweight-types:
+  - Gson
+  - GsonBuilder
+
+io-methods:
+  # Gson — serialization/deserialization
+  - toJson
+  - fromJson
+  # JsonReader / JsonWriter (stream-based IO)
+  - beginObject
+  - endObject
+  - beginArray
+  - endArray
+  - nextName
+  - nextString
+  - nextInt
+  - nextLong
+  - nextDouble
+  - nextBoolean
+  - nextNull
+  - skipValue
+  - peek
+  - value
+  - name
+  - jsonValue

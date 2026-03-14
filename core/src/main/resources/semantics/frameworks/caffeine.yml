@@ -1,0 +1,59 @@
+# Caffeine — framework overlay for Java
+# Caffeine 3.x cache library (successor to Guava Cache)
+
+language: java
+
+methods: {}
+
+cheap-methods:
+  # Cache — O(1) operations
+  - getIfPresent
+  - get
+  - put
+  - putAll
+  - invalidate
+  - invalidateAll
+  - estimatedSize
+  - stats
+  - asMap
+  - cleanUp
+  # LoadingCache — O(1) with lazy loading
+  - get
+  - getAll
+  - refresh
+  - refreshAll
+  # AsyncCache / AsyncLoadingCache
+  - getIfPresent
+  - get
+  - put
+  - synchronous
+  # CacheStats — metadata
+  - hitCount
+  - missCount
+  - loadSuccessCount
+  - loadFailureCount
+  - totalLoadTime
+  - evictionCount
+  - hitRate
+  - missRate
+  - requestCount
+  - averageLoadPenalty
+  # Caffeine builder — configuration
+  - newBuilder
+  - initialCapacity
+  - maximumSize
+  - maximumWeight
+  - weigher
+  - expireAfterWrite
+  - expireAfterAccess
+  - refreshAfterWrite
+  - weakKeys
+  - weakValues
+  - softValues
+  - removalListener
+  - recordStats
+  - scheduler
+  - executor
+  - ticker
+  - build
+  - buildAsync

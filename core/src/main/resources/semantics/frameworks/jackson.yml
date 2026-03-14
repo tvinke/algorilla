@@ -1,0 +1,175 @@
+# Jackson — framework overlay for Java
+# Jackson Databind, Jackson Core, Jackson Annotations
+
+language: java
+
+methods: {}
+
+cheap-methods:
+  # ObjectMapper — configuration (no IO, no parsing)
+  - configure
+  - enable
+  - disable
+  - setSerializationInclusion
+  - setVisibility
+  - registerModule
+  - registerModules
+  - findAndRegisterModules
+  - setDateFormat
+  - setTimeZone
+  - setPropertyNamingStrategy
+  - setAnnotationIntrospector
+  - copy
+  - getFactory
+  - getSerializerFactory
+  - getSerializerProvider
+  - getDeserializationConfig
+  - getSerializationConfig
+  - getTypeFactory
+  - constructType
+  - canSerialize
+  - canDeserialize
+  # ObjectMapper — in-memory object conversion (no IO, just object mapping)
+  - convertValue
+  - valueToTree
+  - treeToValue
+  - createObjectNode
+  - createArrayNode
+  # JsonNode — navigation (in-memory tree traversal)
+  - get
+  - path
+  - at
+  - has
+  - hasNonNull
+  - isNull
+  - isMissingNode
+  - isArray
+  - isObject
+  - isTextual
+  - isNumber
+  - isInt
+  - isLong
+  - isFloat
+  - isDouble
+  - isBoolean
+  - asText
+  - asInt
+  - asLong
+  - asDouble
+  - asBoolean
+  - textValue
+  - intValue
+  - longValue
+  - doubleValue
+  - booleanValue
+  - numberValue
+  - size
+  - fieldNames
+  - fields
+  - elements
+  - iterator
+  - findValue
+  - findValues
+  - findPath
+  # ObjectNode / ArrayNode — builder methods (in-memory)
+  - put
+  - putNull
+  - putArray
+  - putObject
+  - putPOJO
+  - set
+  - setAll
+  - add
+  - addNull
+  - addArray
+  - addObject
+  - addPOJO
+  - remove
+  - removeAll
+  - without
+  - deepCopy
+  # JsonParser — token inspection (already parsed)
+  - getCurrentToken
+  - currentToken
+  - getCurrentName
+  - currentName
+  - hasCurrentToken
+  - hasTokenId
+  - getText
+  - getTextCharacters
+  - getValueAsString
+  - getValueAsInt
+  - getValueAsLong
+  - getValueAsDouble
+  - getValueAsBoolean
+  - getNumberType
+  - getNumberValue
+  - getIntValue
+  - getLongValue
+  - getFloatValue
+  - getDoubleValue
+  - getBooleanValue
+  - isExpectedStartArrayToken
+  - isExpectedStartObjectToken
+  # JsonGenerator — write methods (in-memory buffer writes, not IO)
+  - writeStartObject
+  - writeEndObject
+  - writeStartArray
+  - writeEndArray
+  - writeFieldName
+  - writeString
+  - writeNumber
+  - writeBoolean
+  - writeNull
+  - writeRaw
+  - writeRawValue
+  - writeBinary
+  - writeObject
+  - writeTree
+  - copyCurrentEvent
+  - copyCurrentStructure
+  - flush
+  # ObjectWriter / ObjectReader — factory methods (no IO)
+  - writerWithDefaultPrettyPrinter
+  - writerFor
+  - writerWithView
+  - writer
+  - readerFor
+  - readerForUpdating
+  - reader
+
+trivial-methods:
+  # Simple value extraction from JsonNode
+  - asText
+  - asInt
+  - asLong
+  - asDouble
+  - asBoolean
+  - textValue
+  - intValue
+  - longValue
+  - doubleValue
+  - booleanValue
+
+heavyweight-types:
+  - ObjectMapper
+  - XmlMapper
+  - JsonMapper
+  - ObjectWriter
+  - ObjectReader
+  - JsonFactory
+  - JsonParser
+  - JsonGenerator
+
+io-methods:
+  # ObjectMapper — IO operations (read from stream/file/URL)
+  - readValue
+  - readTree
+  - writeValue
+  - writeValueAsString
+  - writeValueAsBytes
+  # JsonParser — IO (advancing the parser reads from underlying stream)
+  - nextToken
+  - nextValue
+  - nextFieldName
+  - skipChildren
