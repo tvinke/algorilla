@@ -8,13 +8,20 @@ tags:
 
 # Filter After Sort
 
-**Rule ID:** `filter-after-sort` · **Severity:** INFO · **Complexity:** O(n log n + k) → O(k log k + n)
+!!! info "Rule details"
+    | | |
+    |---|---|
+    | **Rule ID** | `filter-after-sort` |
+    | **Severity** | INFO |
+    | **Confidence** | HIGH |
+    | **Category** | Sort abuse |
+    | **Complexity** | O(n log n + k) → O(k log k + n) |
 
 ## Description
 
 Detects stream or collection pipelines where `filter()` comes after `sorted()`. Sorting first processes all N elements at O(n log n), then filter discards some. Filtering first reduces the input to k elements, making the sort O(k log k) where k ≤ n.
 
-## Bad Example
+## Typical
 
 ```java
 List<Order> paidByTotal = orders.stream()
@@ -23,7 +30,7 @@ List<Order> paidByTotal = orders.stream()
     .collect(Collectors.toList());
 ```
 
-## Good Example
+## After
 
 ```java
 List<Order> paidByTotal = orders.stream()

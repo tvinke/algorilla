@@ -8,13 +8,20 @@ tags:
 
 # Expensive Callback
 
-**Rule ID:** `expensive-callback` · **Severity:** WARNING · **Category:** Loop amplifiers
+!!! info "Rule details"
+    | | |
+    |---|---|
+    | **Rule ID** | `expensive-callback` |
+    | **Severity** | WARNING |
+    | **Confidence** | LOW |
+    | **Category** | Loop amplifiers |
+    | **Complexity** | O(n × cost) → O(n) |
 
 ## Description
 
 Detects expensive operations inside higher-order function callbacks like `filter`, `map`, `forEach`, and `removeIf`. These callbacks execute once per element — an expensive operation inside them multiplies across the entire collection.
 
-## Bad Example
+## Typical
 
 ```java
 List<Order> recent = orders.stream()
@@ -32,7 +39,7 @@ List<Boolean> flags = items.stream()
 
 `List.contains()` inside `map` makes this O(n × m).
 
-## Good Example
+## After
 
 ```java
 // Pre-parse dates before filtering

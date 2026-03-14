@@ -8,7 +8,14 @@ tags:
 
 # Quadratic Removal
 
-**Rule ID:** `quadratic-removal` · **Severity:** WARNING · **Complexity:** O(n²) → O(n)
+!!! info "Rule details"
+    | | |
+    |---|---|
+    | **Rule ID** | `quadratic-removal` |
+    | **Severity** | WARNING |
+    | **Confidence** | MEDIUM |
+    | **Category** | Loop amplifiers |
+    | **Complexity** | O(n²) → O(n) |
 
 ## Description
 
@@ -16,7 +23,7 @@ Detects `remove()` calls on lists inside loops. Each `ArrayList.remove()` shifts
 
 This rule excludes `Map.remove()` (O(1) for HashMap), `Set.remove()` (O(1) for HashSet), `Iterator.remove()` (safe), and `removeFirst()`/`removeLast()` (which indicate Queue/Deque usage where removal is O(1)).
 
-## Bad Example
+## Typical
 
 === "Java"
 
@@ -26,7 +33,7 @@ This rule excludes `Map.remove()` (O(1) for HashMap), `Set.remove()` (O(1) for H
     }
     ```
 
-## Good Example
+## After
 
 === "Java"
 

@@ -8,13 +8,20 @@ tags:
 
 # N+1 Query
 
-**Rule ID:** `n-plus-one-query` · **Severity:** WARNING · **Complexity:** O(n·IO) → O(1·IO + n)
+!!! info "Rule details"
+    | | |
+    |---|---|
+    | **Rule ID** | `n-plus-one-query` |
+    | **Severity** | WARNING |
+    | **Confidence** | MEDIUM |
+    | **Category** | Query patterns |
+    | **Complexity** | O(n·IO) → O(1·IO + n) |
 
 ## Description
 
 Detects single-record fetch calls (`findById()`, `getById()`, `countBy*`) inside loops. Each iteration triggers a separate database or service call, turning what could be a single bulk fetch into N sequential round-trips.
 
-## Bad Example
+## Typical
 
 === "Java"
 
@@ -34,7 +41,7 @@ Detects single-record fetch calls (`findById()`, `getById()`, `countBy*`) inside
     }
     ```
 
-## Good Example
+## After
 
 ```java
 Map<Long, Order> orderMap = orderRepository.findAllById(orderIds)

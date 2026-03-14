@@ -8,13 +8,20 @@ tags:
 
 # In-Loop Collection Building
 
-**Rule ID:** `in-loop-collection-building` · **Severity:** WARNING · **Complexity:** O(n·m) → O(n+m)
+!!! info "Rule details"
+    | | |
+    |---|---|
+    | **Rule ID** | `in-loop-collection-building` |
+    | **Severity** | WARNING |
+    | **Confidence** | MEDIUM |
+    | **Category** | Loop amplifiers |
+    | **Complexity** | O(n·m) → O(n+m) |
 
 ## Description
 
 Detects patterns that repeatedly copy or rebuild collections inside loops. Calling `addAll()`, `putAll()`, or `concat()` inside a loop copies elements on every iteration, turning an O(n) loop into O(n·m) due to repeated array/list copying.
 
-## Bad Example
+## Typical
 
 === "Java"
 
@@ -34,7 +41,7 @@ Detects patterns that repeatedly copy or rebuild collections inside loops. Calli
     });
     ```
 
-## Good Example
+## After
 
 === "Java"
 

@@ -8,13 +8,20 @@ tags:
 
 # Repeated Regex in Loop
 
-**Rule ID:** `repeated-regex-in-loop` · **Severity:** WARNING · **Complexity:** O(n·compile) → O(n)
+!!! info "Rule details"
+    | | |
+    |---|---|
+    | **Rule ID** | `repeated-regex-in-loop` |
+    | **Severity** | WARNING |
+    | **Confidence** | HIGH |
+    | **Category** | Loop amplifiers |
+    | **Complexity** | O(n·compile) → O(n) |
 
 ## Description
 
 Detects regex pattern compilation inside loops. Compiling a regular expression is expensive — doing it on every iteration wastes CPU cycles when the compiled pattern could be reused.
 
-## Bad Example
+## Typical
 
 === "Java"
 
@@ -38,7 +45,7 @@ Detects regex pattern compilation inside loops. Compiling a regular expression i
     });
     ```
 
-## Good Example
+## After
 
 === "Java"
 

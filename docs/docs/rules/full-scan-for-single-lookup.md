@@ -1,12 +1,19 @@
 # Bulk Load for Single Lookup
 
-**Rule ID:** `bulk-load-for-single-lookup` · **Severity:** WARNING · **Complexity:** O(n) → O(1)
+!!! info "Rule details"
+    | | |
+    |---|---|
+    | **Rule ID** | `bulk-load-for-single-lookup` |
+    | **Severity** | WARNING |
+    | **Confidence** | MEDIUM |
+    | **Category** | Query patterns |
+    | **Complexity** | O(n) → O(1) |
 
 ## Description
 
 Detects patterns where all records are loaded from a data source (e.g., `findAll()`, `getAll()`, `list()`) and then immediately filtered in memory to find a single item. This is O(n) when a targeted query could retrieve the item directly in O(1).
 
-## Bad Example
+## Typical
 
 ```java
 List<Payment> allPayments = paymentRepository.findAll();
@@ -16,7 +23,7 @@ Payment target = allPayments.stream()
     .orElse(null);
 ```
 
-## Good Example
+## After
 
 ```java
 Payment target = paymentRepository.findByOrderId(orderId).orElse(null);

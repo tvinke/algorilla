@@ -7,15 +7,20 @@ tags:
 
 # Parallel Pipeline Bottleneck
 
-**Rule ID:** `parallel-pipeline-bottleneck` · **Severity:** WARNING · **Category:** Concurrency
-
-*Previously:* `parallel-stream-bottleneck` (still accepted as alias in suppress comments and config)
+!!! info "Rule details"
+    | | |
+    |---|---|
+    | **Rule ID** | `parallel-pipeline-bottleneck` |
+    | **Severity** | WARNING |
+    | **Confidence** | MEDIUM |
+    | **Category** | Concurrency |
+    | **Complexity** | O(n) contended → O(n) lock-free |
 
 ## Description
 
 Detects `parallelStream().forEach()` where the callback mutates shared state. Mutating a shared collection from parallel threads negates the benefits of parallelism and risks data corruption — `ArrayList`, `HashMap`, and most standard collections are not thread-safe.
 
-## Bad Example
+## Typical
 
 ```java
 List<String> results = new ArrayList<>();
@@ -26,7 +31,7 @@ items.parallelStream().forEach(item ->
 
 Multiple threads call `results.add()` concurrently on a non-thread-safe `ArrayList`. This can silently lose elements, throw `ConcurrentModificationException`, or corrupt internal state.
 
-## Good Example
+## After
 
 ```java
 List<String> results = items.parallelStream()

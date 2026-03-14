@@ -8,7 +8,14 @@ tags:
 
 # IO In Loop
 
-**Rule ID:** `io-in-loop` · **Severity:** WARNING · **Complexity:** O(n·IO) → O(1·IO + n)
+!!! info "Rule details"
+    | | |
+    |---|---|
+    | **Rule ID** | `io-in-loop` |
+    | **Severity** | WARNING |
+    | **Confidence** | MEDIUM |
+    | **Category** | Loop amplifiers |
+    | **Complexity** | O(n·IO) → O(1·IO + n) |
 
 ## Description
 
@@ -16,7 +23,7 @@ Detects network, database, or file system calls inside loops. Each iteration inc
 
 This is one of the most impactful performance patterns in production code. A loop that makes 100 HTTP calls takes 100× the latency of a single batch call, regardless of how fast the server responds.
 
-## Bad Example
+## Typical
 
 === "Java"
 
@@ -48,7 +55,7 @@ This is one of the most impactful performance patterns in production code. A loo
     }
     ```
 
-## Good Example
+## After
 
 === "Java"
 

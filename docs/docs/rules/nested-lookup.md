@@ -8,13 +8,20 @@ tags:
 
 # Nested Lookup
 
-**Rule ID:** `nested-lookup` · **Severity:** WARNING · **Complexity:** O(n²) → O(n)
+!!! info "Rule details"
+    | | |
+    |---|---|
+    | **Rule ID** | `nested-lookup` |
+    | **Severity** | WARNING |
+    | **Confidence** | MEDIUM |
+    | **Category** | Loop amplifiers |
+    | **Complexity** | O(n²) → O(n) |
 
 ## Description
 
 Detects linear lookup operations (`contains`, `indexOf`, `find`, `filter`, `any`, `some`, `includes`) inside loop bodies. When a collection is searched linearly on every iteration, the combined complexity becomes O(n·m) or O(n²) where O(n) would suffice with a pre-built Set or Map.
 
-## Bad Example
+## Typical
 
 === "Java"
 
@@ -46,7 +53,7 @@ Detects linear lookup operations (`contains`, `indexOf`, `find`, `filter`, `any`
     });
     ```
 
-## Good Example
+## After
 
 === "Java"
 

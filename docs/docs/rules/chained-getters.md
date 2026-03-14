@@ -8,13 +8,20 @@ tags:
 
 # Chained Getters
 
-**Rule ID:** `chained-getters` · **Severity:** INFO · **Complexity:** O(n^k) → O(n)
+!!! info "Rule details"
+    | | |
+    |---|---|
+    | **Rule ID** | `chained-getters` |
+    | **Severity** | INFO |
+    | **Confidence** | LOW |
+    | **Category** | Redundancy |
+    | **Complexity** | O(n^k) → O(n) |
 
 ## Description
 
 Detects cascading getter patterns where the result of one lookup feeds into another. If each getter performs a linear scan, the chain multiplies to O(n^k) where k is the chain length.
 
-## Bad Example
+## Typical
 
 ```java
 public String getCustomerName(Long orderId) {
@@ -25,7 +32,7 @@ public String getCustomerName(Long orderId) {
 }
 ```
 
-## Good Example
+## After
 
 ```java
 // Pre-build lookup maps

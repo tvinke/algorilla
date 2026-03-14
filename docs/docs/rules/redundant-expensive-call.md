@@ -8,13 +8,20 @@ tags:
 
 # Redundant Expensive Call
 
-**Rule ID:** `redundant-expensive-call` · **Severity:** INFO · **Complexity:** k·O(f) → O(f)
+!!! info "Rule details"
+    | | |
+    |---|---|
+    | **Rule ID** | `redundant-expensive-call` |
+    | **Severity** | INFO |
+    | **Confidence** | MEDIUM |
+    | **Category** | Redundancy |
+    | **Complexity** | k·O(f) → O(f) |
 
 ## Description
 
 Detects the same parameterized method call invoked multiple times with identical arguments within a single function. The result should be computed once and cached in a local variable.
 
-## Bad Example
+## Typical
 
 ```java
 public void processOrder(Order order) {
@@ -25,7 +32,7 @@ public void processOrder(Order order) {
 }
 ```
 
-## Good Example
+## After
 
 ```java
 public void processOrder(Order order) {

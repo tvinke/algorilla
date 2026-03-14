@@ -8,13 +8,20 @@ tags:
 
 # Sequential Async Join in Loop
 
-**Rule ID:** `sequential-async-join-in-loop` · **Severity:** WARNING · **Complexity:** O(n·wait) → O(max-wait)
+!!! info "Rule details"
+    | | |
+    |---|---|
+    | **Rule ID** | `sequential-async-join-in-loop` |
+    | **Severity** | WARNING |
+    | **Confidence** | HIGH |
+    | **Category** | Loop amplifiers |
+    | **Complexity** | O(n·wait) → O(max-wait) |
 
 ## Description
 
 Detects blocking calls (`.join()`, `.get()`) on futures inside loops. Awaiting each future sequentially negates the benefit of async execution — the total wall time becomes the sum of all individual waits instead of the maximum.
 
-## Bad Example
+## Typical
 
 === "Java"
 
@@ -34,7 +41,7 @@ Detects blocking calls (`.join()`, `.get()`) on futures inside loops. Awaiting e
     }
     ```
 
-## Good Example
+## After
 
 === "Java"
 

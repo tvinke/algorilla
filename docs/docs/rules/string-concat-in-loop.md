@@ -8,13 +8,20 @@ tags:
 
 # String Concat in Loop
 
-**Rule ID:** `string-concat-in-loop` · **Severity:** WARNING · **Complexity:** O(n²) → O(n)
+!!! info "Rule details"
+    | | |
+    |---|---|
+    | **Rule ID** | `string-concat-in-loop` |
+    | **Severity** | WARNING |
+    | **Confidence** | HIGH |
+    | **Category** | Loop amplifiers |
+    | **Complexity** | O(n²) → O(n) |
 
 ## Description
 
 Detects `String.concat()` calls inside loops. Each `concat()` creates a new `String` object and copies the entire accumulated content, turning an O(n) loop into O(n²). For a loop of 1000 items building a string, that's ~500,000 character copies instead of ~1000.
 
-## Bad Example
+## Typical
 
 === "Java"
 
@@ -25,7 +32,7 @@ Detects `String.concat()` calls inside loops. Each `concat()` creates a new `Str
     }
     ```
 
-## Good Example
+## After
 
 === "Java"
 

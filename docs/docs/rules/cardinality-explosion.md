@@ -1,6 +1,13 @@
 # Cardinality Explosion
 
-**ID:** `cardinality-explosion` · **Category:** Loop amplifiers · **Severity:** WARNING
+!!! info "Rule details"
+    | | |
+    |---|---|
+    | **Rule ID** | `cardinality-explosion` |
+    | **Severity** | WARNING |
+    | **Confidence** | MEDIUM |
+    | **Category** | Loop amplifiers |
+    | **Complexity** | O(n × m) → O(n + m) |
 
 Flags code where the output grows as the **product** of input sizes rather than the sum — nested-loop Cartesian products and flatMap cross joins.
 

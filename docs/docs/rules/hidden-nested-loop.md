@@ -8,7 +8,14 @@ tags:
 
 # Hidden Nested Loop
 
-**Rule ID:** `hidden-nested-loop` · **Severity:** WARNING · **Category:** Loop amplifiers
+!!! info "Rule details"
+    | | |
+    |---|---|
+    | **Rule ID** | `hidden-nested-loop` |
+    | **Severity** | WARNING |
+    | **Confidence** | MEDIUM |
+    | **Category** | Loop amplifiers |
+    | **Complexity** | O(n × m) → O(n + m) |
 
 ## Description
 
@@ -16,7 +23,7 @@ Detects loops hidden behind method calls. When a loop calls a method that intern
 
 Algorilla resolves the called method via cross-method analysis and checks whether its body contains a loop.
 
-## Bad Example
+## Typical
 
 ```java
 public void processOrders(List<Order> orders) {
@@ -34,7 +41,7 @@ private void validateItems(Order order) {
 
 The outer loop is O(orders), the inner loop is O(items per order). Total: O(orders × items). But at the call site in `processOrders`, it looks like a simple O(n) loop.
 
-## Good Example
+## After
 
 If the nested iteration is necessary, make the cost visible and consider batching:
 

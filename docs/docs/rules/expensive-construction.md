@@ -8,13 +8,20 @@ tags:
 
 # Expensive Construction
 
-**Rule ID:** `expensive-construction` · **Severity:** INFO · **Category:** Construction cost
+!!! info "Rule details"
+    | | |
+    |---|---|
+    | **Rule ID** | `expensive-construction` |
+    | **Severity** | INFO |
+    | **Confidence** | MEDIUM |
+    | **Category** | Construction cost |
+    | **Complexity** | O(init) per call → O(1) amortized |
 
 ## Description
 
 Detects creation of heavyweight objects (like `ObjectMapper`, `Gson`, `DocumentBuilderFactory`) inside method bodies. These objects are expensive to construct and should typically be reused as static fields or injected dependencies.
 
-## Bad Example
+## Typical
 
 ```java
 public String generateJson(Invoice invoice) {
@@ -23,7 +30,7 @@ public String generateJson(Invoice invoice) {
 }
 ```
 
-## Good Example
+## After
 
 ```java
 private static final ObjectMapper MAPPER = new ObjectMapper();

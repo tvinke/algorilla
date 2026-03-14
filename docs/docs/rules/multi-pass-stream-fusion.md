@@ -1,6 +1,13 @@
 # Multi-Pass Stream Fusion
 
-**ID:** `multi-pass-stream-fusion` · **Category:** Redundancy · **Severity:** INFO
+!!! info "Rule details"
+    | | |
+    |---|---|
+    | **Rule ID** | `multi-pass-stream-fusion` |
+    | **Severity** | INFO |
+    | **Confidence** | MEDIUM |
+    | **Category** | Redundancy |
+    | **Complexity** | O(k·n) → O(n) |
 
 Flags multiple passes over the same collection that could potentially be fused into a single pass.
 

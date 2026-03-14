@@ -1,6 +1,13 @@
 # Unmemoized Recursion
 
-**ID:** `unmemoized-recursion` · **Category:** Redundancy · **Severity:** WARNING (HIGH confidence) or INFO (LOW confidence)
+!!! info "Rule details"
+    | | |
+    |---|---|
+    | **Rule ID** | `unmemoized-recursion` |
+    | **Severity** | WARNING |
+    | **Confidence** | HIGH (2+ calls) · MEDIUM (loop) · LOW (single call) |
+    | **Category** | Redundancy |
+    | **Complexity** | O(2^n) → O(n) |
 
 Flags recursive functions that recompute the same subproblem multiple times because there's no caching or memoization.
 

@@ -8,7 +8,14 @@ tags:
 
 # Expensive Sort Comparator
 
-**Rule ID:** `expensive-sort-comparator` · **Severity:** WARNING · **Category:** Sort abuse · **Complexity:** O(n² log n) → O(n log n)
+!!! info "Rule details"
+    | | |
+    |---|---|
+    | **Rule ID** | `expensive-sort-comparator` |
+    | **Severity** | WARNING |
+    | **Confidence** | HIGH |
+    | **Category** | Sort abuse |
+    | **Complexity** | O(n² log n) → O(n log n) |
 
 ## Description
 
@@ -18,7 +25,7 @@ Detects expensive operations inside sort comparators. When a comparator performs
 - **Date parsing** — `LocalDate.parse()`, `new Date()`, `DateTimeFormatter` calls
 - **Indirect expensive calls** — helper methods that internally do the above (detected via cross-method analysis)
 
-## Bad Examples
+## Typical
 
 ```java
 // Linear lookup in comparator
@@ -36,7 +43,7 @@ orders.sort((a, b) -> {
 });
 ```
 
-## Good Examples
+## After
 
 ```java
 // Pre-build lookup map

@@ -8,13 +8,20 @@ tags:
 
 # Sort for Last
 
-**Rule ID:** `sort-for-last` · **Severity:** WARNING · **Complexity:** O(n log n) → O(n)
+!!! info "Rule details"
+    | | |
+    |---|---|
+    | **Rule ID** | `sort-for-last` |
+    | **Severity** | WARNING |
+    | **Confidence** | HIGH |
+    | **Category** | Sort abuse |
+    | **Complexity** | O(n log n) → O(n) |
 
 ## Description
 
 Detects patterns where a collection is sorted only to retrieve the first or last element. Sorting the entire collection to find a single extreme value is O(n log n) when a linear scan with `max()` or `min()` achieves the same result in O(n).
 
-## Bad Example
+## Typical
 
 ```java
 List<Order> sorted = orders.stream()
@@ -23,7 +30,7 @@ List<Order> sorted = orders.stream()
 Order highestValue = sorted.get(0); // Sorted just for this
 ```
 
-## Good Example
+## After
 
 ```java
 Order highestValue = orders.stream()

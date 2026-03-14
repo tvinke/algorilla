@@ -8,13 +8,20 @@ tags:
 
 # Uncached Getter
 
-**Rule ID:** `uncached-getter` · **Severity:** INFO · **Complexity:** k·O(lookup) → O(lookup)
+!!! info "Rule details"
+    | | |
+    |---|---|
+    | **Rule ID** | `uncached-getter` |
+    | **Severity** | INFO |
+    | **Confidence** | MEDIUM |
+    | **Category** | Redundancy |
+    | **Complexity** | k·O(lookup) → O(lookup) |
 
 ## Description
 
 Detects getter-style calls invoked multiple times with the same argument in a function. When a method like `getProduct(id)` is called repeatedly with the same ID, the result should be stored in a local variable.
 
-## Bad Example
+## Typical
 
 ```java
 public void enrichLineItem(LineItem lineItem) {
@@ -25,7 +32,7 @@ public void enrichLineItem(LineItem lineItem) {
 }
 ```
 
-## Good Example
+## After
 
 ```java
 public void enrichLineItem(LineItem lineItem) {

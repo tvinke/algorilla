@@ -7,7 +7,14 @@ tags:
 
 # Repeated Reflection in Loop
 
-**Rule ID:** `repeated-reflection-in-loop` · **Severity:** INFO · **Complexity:** O(n·reflection) → O(n)
+!!! info "Rule details"
+    | | |
+    |---|---|
+    | **Rule ID** | `repeated-reflection-in-loop` |
+    | **Severity** | INFO |
+    | **Confidence** | MEDIUM |
+    | **Category** | Loop amplifiers |
+    | **Complexity** | O(n·reflection) → O(n) |
 
 ## Description
 
@@ -15,7 +22,7 @@ Detects Java/Kotlin reflection calls inside loops. Reflection methods like `getD
 
 This rule only flags the expensive reflection methods that perform class scanning or array allocation. Cheap accessors like `getModifiers()`, `getName()`, and `getReturnType()` are excluded.
 
-## Bad Example
+## Typical
 
 === "Java"
 
@@ -30,7 +37,7 @@ This rule only flags the expensive reflection methods that perform class scannin
     }
     ```
 
-## Good Example
+## After
 
 === "Java"
 

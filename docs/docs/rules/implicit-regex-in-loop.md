@@ -8,7 +8,14 @@ tags:
 
 # Implicit Regex in Loop
 
-**Rule ID:** `implicit-regex-in-loop` · **Severity:** WARNING · **Complexity:** O(n·compile) → O(n)
+!!! info "Rule details"
+    | | |
+    |---|---|
+    | **Rule ID** | `implicit-regex-in-loop` |
+    | **Severity** | WARNING |
+    | **Confidence** | MEDIUM |
+    | **Category** | Loop amplifiers |
+    | **Complexity** | O(n·compile) → O(n) |
 
 ## Description
 
@@ -16,7 +23,7 @@ Detects `String` methods that internally compile a regular expression on every c
 
 This rule is a companion to [`repeated-regex-in-loop`](repeated-regex-in-loop.md), which detects explicit `Pattern.compile()` calls. This rule catches the implicit variant hiding inside innocent-looking `String` methods.
 
-## Bad Example
+## Typical
 
 === "Java"
 
@@ -37,7 +44,7 @@ This rule is a companion to [`repeated-regex-in-loop`](repeated-regex-in-loop.md
     }
     ```
 
-## Good Example
+## After
 
 === "Java"
 

@@ -8,13 +8,20 @@ tags:
 
 # Expensive Serialization in Loop
 
-**Rule ID:** `expensive-serialization-in-loop` · **Severity:** WARNING · **Complexity:** O(n·serialize) → O(n)
+!!! info "Rule details"
+    | | |
+    |---|---|
+    | **Rule ID** | `expensive-serialization-in-loop` |
+    | **Severity** | WARNING |
+    | **Confidence** | MEDIUM |
+    | **Category** | Loop amplifiers |
+    | **Complexity** | O(n·serialize) → O(n) |
 
 ## Description
 
 Detects serialization or deserialization calls inside loops. Operations like `writeValueAsString()`, `readValue()`, or `JSON.stringify()` are themselves O(n) over the object graph — calling them inside a loop compounds the cost.
 
-## Bad Example
+## Typical
 
 === "Java"
 
@@ -34,7 +41,7 @@ Detects serialization or deserialization calls inside loops. Operations like `wr
     });
     ```
 
-## Good Example
+## After
 
 ```java
 String json = objectMapper.writeValueAsString(orders); // Serialize the whole batch once
