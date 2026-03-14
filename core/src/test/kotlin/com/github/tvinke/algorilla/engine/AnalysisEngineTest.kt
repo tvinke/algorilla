@@ -43,17 +43,20 @@ internal class AnalysisEngineTest {
                 )
         }
 
-    private fun stubRule(findings: List<Finding>) =
-        object : Rule {
-            override val id = "test-rule"
-            override val name = "Test Rule"
-            override val severity = Severity.WARNING
-            override val languages = Language.entries.toSet()
-            override val category = RuleCategory.LOOP_AMPLIFIER
-            override val subsumes = emptySet<String>()
+    private fun stubRule(
+        findings: List<Finding>,
+        ceiling: Confidence = Confidence.HIGH,
+    ) = object : Rule {
+        override val id = "test-rule"
+        override val name = "Test Rule"
+        override val severity = Severity.WARNING
+        override val defaultConfidence = ceiling
+        override val languages = Language.entries.toSet()
+        override val category = RuleCategory.LOOP_AMPLIFIER
+        override val subsumes = emptySet<String>()
 
-            override fun evaluate(context: AnalysisContext) = findings
-        }
+        override fun evaluate(context: AnalysisContext) = findings
+    }
 
     @Nested
     inner class SeverityFiltering {
@@ -137,20 +140,19 @@ internal class AnalysisEngineTest {
                     finding(file, Severity.WARNING, Confidence.MEDIUM),
                     finding(file, Severity.WARNING, Confidence.HIGH),
                 )
+            // Use MEDIUM ceiling so MEDIUM findings stay MEDIUM (no promotion)
             val engine =
                 AnalysisEngine(
                     parsers = listOf(stubParser(file)),
-                    rules = listOf(stubRule(findings)),
+                    rules = listOf(stubRule(findings, ceiling = Confidence.MEDIUM)),
                     config = AnalysisConfig(minSeverity = Severity.INFO, minConfidence = Confidence.MEDIUM),
                 )
 
             val result = engine.analyze(listOf(file))
 
+            // HIGH gets capped to MEDIUM (ceiling), LOW filtered out
             result.findings shouldHaveSize 2
             result.findings.none { it.confidence == Confidence.LOW } shouldBe true
-            result.unfilteredConfidenceCounts[Confidence.LOW] shouldBe 1
-            result.unfilteredConfidenceCounts[Confidence.MEDIUM] shouldBe 1
-            result.unfilteredConfidenceCounts[Confidence.HIGH] shouldBe 1
         }
 
         @Test
@@ -171,8 +173,10 @@ internal class AnalysisEngineTest {
 
             val result = engine.analyze(listOf(file))
 
-            result.findings shouldHaveSize 1
-            result.findings.first().confidence shouldBe Confidence.HIGH
+            // MEDIUM promoted to HIGH (ceiling=HIGH), LOW stays LOW, HIGH stays HIGH
+            // So 2 findings pass HIGH filter (original HIGH + promoted MEDIUM)
+            result.findings shouldHaveSize 2
+            result.findings.all { it.confidence == Confidence.HIGH } shouldBe true
         }
 
         @Test

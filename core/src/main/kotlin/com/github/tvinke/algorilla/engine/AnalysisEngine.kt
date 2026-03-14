@@ -281,34 +281,46 @@ internal fun adjustConfidence(
     ruleIndex: Map<String, Rule>,
 ): List<Finding> =
     findings.map { finding ->
-        // Only adjust findings still at the default MEDIUM. If a rule has explicitly
-        // set HIGH or LOW, respect that — the rule has more context than the engine.
-        if (finding.confidence != Confidence.MEDIUM) return@map finding
         val language = fileLanguages[finding.location.file]
         val rule = ruleIndex[finding.ruleId]
-        val adjusted = classifyConfidence(finding, language, rule)
+        val ceiling = rule?.defaultConfidence ?: Confidence.MEDIUM
+
+        // Step 1: Set baseline from rule's defaultConfidence for MEDIUM findings (promotion/demotion).
+        //         Cap non-MEDIUM findings at the ceiling (prevents LOW rules from emitting HIGH).
+        val baselined =
+            when {
+                finding.confidence == Confidence.MEDIUM -> ceiling
+                finding.confidence.ordinal > ceiling.ordinal -> ceiling
+                else -> finding.confidence
+            }
+
+        // Step 2: Apply language/evidence-based demotions (never promotes).
+        val adjusted = applyDemotions(baselined, finding, language, rule)
         if (adjusted != finding.confidence) finding.copy(confidence = adjusted) else finding
     }
 
-private fun classifyConfidence(
+/**
+ * Applies language and evidence-based demotions. Never promotes — only lowers confidence
+ * when the evidence is weaker than the baseline suggests.
+ */
+private fun applyDemotions(
+    confidence: Confidence,
     finding: Finding,
     language: Language?,
     rule: Rule?,
 ): Confidence {
-    val baseline = rule?.defaultConfidence ?: Confidence.MEDIUM
-
     // Demote when rule requires type context but language lacks type declarations
     val lacksTypes = language != null && !language.hasTypeDeclarations
     if (lacksTypes && rule?.requiresTypeContext == true) return Confidence.LOW
 
     // Cross-method findings: cap at MEDIUM (inference across files is less certain)
     val isCrossMethod = finding.evidence.any { it.location.file != finding.location.file }
-    if (isCrossMethod && baseline.ordinal > Confidence.MEDIUM.ordinal) return Confidence.MEDIUM
+    if (isCrossMethod && confidence.ordinal > Confidence.MEDIUM.ordinal) return Confidence.MEDIUM
 
-    // Languages without type declarations and non-HIGH rules: demote to LOW
-    if (lacksTypes && baseline != Confidence.HIGH) return Confidence.LOW
+    // Languages without type declarations and non-HIGH confidence: demote to LOW
+    if (lacksTypes && confidence != Confidence.HIGH) return Confidence.LOW
 
-    return baseline
+    return confidence
 }
 
 /**

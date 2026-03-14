@@ -24,7 +24,7 @@ public class StringConcatInLoopRule : Rule {
     override val id: String = "string-concat-in-loop"
     override val name: String = "String Concat In Loop"
     override val severity: Severity = Severity.WARNING
-    override val languages: Set<Language> = Language.entries.toSet()
+    override val languages: Set<Language> = setOf(Language.JAVA, Language.KOTLIN, Language.GROOVY)
     override val category: RuleCategory = RuleCategory.LOOP_AMPLIFIER
     override val defaultConfidence: Confidence = Confidence.HIGH
     override val requiresTypeContext: Boolean = true
