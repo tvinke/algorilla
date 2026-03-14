@@ -123,15 +123,9 @@ heavyweight-types:
 
 io-methods:
   # JAX-RS Client — HTTP round-trips
+  # Note: generic names (get, put, delete, post) removed to avoid collisions
+  # with HashMap.put(), List.get(), etc. Use 'invoke' as the primary IO indicator.
   - invoke
-  - get
-  - post
-  - put
-  - delete
-  - head
-  - options
-  - method
-  - rx
   - submit
   # JMS — messaging
   - send

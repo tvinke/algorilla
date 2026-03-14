@@ -75,20 +75,11 @@ io-methods:
   # Gson — serialization/deserialization
   - toJson
   - fromJson
-  # JsonReader / JsonWriter (stream-based IO)
+  # JsonReader / JsonWriter — removed generic names (name, value, peek) that
+  # collide with common POJO accessors. Keep only the clearly IO-specific ones.
   - beginObject
   - endObject
   - beginArray
   - endArray
-  - nextName
-  - nextString
-  - nextInt
-  - nextLong
-  - nextDouble
-  - nextBoolean
-  - nextNull
   - skipValue
-  - peek
-  - value
-  - name
   - jsonValue
