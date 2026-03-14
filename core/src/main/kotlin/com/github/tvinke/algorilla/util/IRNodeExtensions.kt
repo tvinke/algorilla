@@ -141,7 +141,36 @@ public fun FunctionDecl.hasO1Type(variableName: String?): Boolean {
  * A lookup is a collection lookup when it's not O(1), not on a scalar type,
  * and the enclosing function doesn't declare the target as an O(1) type.
  */
-public fun LookupCall.isCollectionLookup(fn: FunctionDecl?): Boolean = !isO1 && !isScalar && (fn == null || !fn.hasO1Type(targetVariable))
+public fun LookupCall.isCollectionLookup(fn: FunctionDecl?): Boolean =
+    !isO1 &&
+        !isScalar &&
+        !isStaticUtilityTarget() &&
+        !hasO1TargetName() &&
+        (fn == null || !fn.hasO1Type(targetVariable))
+
+/**
+ * Static utility classes whose methods operate on strings/primitives, not collections.
+ * Loaded from the YAML semantics registry ("static-utility-classes" extra section).
+ */
+private val staticUtilityClasses: Set<String> by lazy {
+    LanguageSemanticsRegistry.DEFAULT.allExtraSection("static-utility-classes")
+}
+
+/** Target name suffixes that indicate O(1) data structures (cache, map, set, index, etc.). */
+private val o1TargetSuffixes: Set<String> by lazy {
+    LanguageSemanticsRegistry.DEFAULT.allExtraSection("non-list-targets-suffixes")
+}
+
+private fun LookupCall.isStaticUtilityTarget(): Boolean {
+    val target = targetVariable ?: return false
+    return target in staticUtilityClasses
+}
+
+/** Returns true if the target variable name suggests an O(1) data structure. */
+private fun LookupCall.hasO1TargetName(): Boolean {
+    val target = targetVariable?.lowercase() ?: return false
+    return o1TargetSuffixes.any { target.endsWith(it) || target == it }
+}
 
 /**
  * Returns true if [node] textually references [name] in any of its identifying fields.
@@ -196,5 +225,5 @@ public fun IRNode.withChildren(newChildren: List<IRNode>): IRNode =
     }
 
 private val registryInstance: LanguageSemanticsRegistry by lazy {
-    LanguageSemanticsRegistry.loadDefaults()
+    LanguageSemanticsRegistry.DEFAULT
 }

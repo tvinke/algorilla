@@ -227,10 +227,27 @@ internal class JavaIRVisitor(
         return results
     }
 
+    @Suppress("LongMethod")
     override fun visitLocalVariableDeclaration(ctx: JavaParser.LocalVariableDeclarationContext): List<IRNode> {
         val typeName = ctx.typeType()?.text
         val results = mutableListOf<IRNode>()
 
+        // Java 10+ var: grammar uses `VAR identifier ASSIGN expression` (no variableDeclarators)
+        if (ctx.VAR() != null && ctx.identifier() != null && ctx.expression() != null) {
+            val varName = ctx.identifier().text
+            val initChildren = visit(ctx.expression())
+            results.add(
+                VariableDecl(
+                    name = varName,
+                    typeName = null,
+                    location = locationOf(ctx),
+                    children = initChildren,
+                ),
+            )
+            return results
+        }
+
+        // Standard path: `typeType variableDeclarators`
         for (declarator in ctx.variableDeclarators()?.variableDeclarator() ?: emptyList()) {
             val varName = declarator.variableDeclaratorId()?.text ?: continue
             val initChildren = declarator.variableInitializer()?.let { visitChildren(it) } ?: emptyList()

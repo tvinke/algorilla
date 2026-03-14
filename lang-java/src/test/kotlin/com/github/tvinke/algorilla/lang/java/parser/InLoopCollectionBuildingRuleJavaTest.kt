@@ -7,9 +7,6 @@ import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.builtin.InLoopCollectionBuildingRule
 import io.kotest.matchers.collections.shouldBeEmpty
-import io.kotest.matchers.collections.shouldHaveSize
-import io.kotest.matchers.shouldBe
-import io.kotest.matchers.string.shouldContain
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import java.io.File
@@ -19,22 +16,21 @@ internal class InLoopCollectionBuildingRuleJavaTest {
     private val rule = InLoopCollectionBuildingRule()
 
     @Nested
-    inner class PositiveCases {
+    inner class InPlaceMutationCases {
         @Test
-        fun `should detect addAll inside warehouse aggregation loop`() {
+        fun `should not flag addAll - in-place mutation`() {
+            // ArrayList.addAll() is an in-place mutation, not copy-on-modify
             val findings = analyzeFixture("in-loop-collection-building/positive/add-all-in-order-aggregation.java")
 
-            findings shouldHaveSize 1
-            findings.first().ruleId shouldBe "in-loop-collection-building"
-            findings.first().message shouldContain "addAll"
+            findings.shouldBeEmpty()
         }
 
         @Test
-        fun `should detect putAll inside config merge loop`() {
+        fun `should not flag putAll - in-place mutation`() {
+            // HashMap.putAll() is an in-place mutation, not copy-on-modify
             val findings = analyzeFixture("in-loop-collection-building/positive/put-all-in-config-merge.java")
 
-            findings shouldHaveSize 1
-            findings.first().message shouldContain "putAll"
+            findings.shouldBeEmpty()
         }
     }
 
@@ -59,21 +55,6 @@ internal class InLoopCollectionBuildingRuleJavaTest {
             val findings = analyzeFixture("in-loop-collection-building/negative/to-lower-case-in-loop.java")
 
             findings.shouldBeEmpty()
-        }
-    }
-
-    @Nested
-    inner class EvidenceAndComplexity {
-        @Test
-        fun `should include loop and copy bottleneck evidence`() {
-            val findings = analyzeFixture("in-loop-collection-building/positive/add-all-in-order-aggregation.java")
-
-            findings shouldHaveSize 1
-            val evidence = findings.first().evidence
-            evidence shouldHaveSize 2
-            evidence[0].label shouldContain "for-each"
-            evidence[1].label shouldContain "addAll"
-            evidence[1].complexity shouldContain "bottleneck"
         }
     }
 

@@ -14,6 +14,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.CrossMethodResolver
 
 /**
@@ -152,18 +153,9 @@ public class NPlusOneRepositoryCallRule : Rule {
     }
 }
 
-private val SINGLE_FETCH_METHOD_PREFIXES =
-    listOf(
-        "findById",
-        "getById",
-        "findOne",
-        "getOne",
-        "loadById",
-        "findByKey",
-        "getByKey",
-        "loadByKey",
-        "countBy",
-    )
+private val SINGLE_FETCH_METHOD_PREFIXES: Set<String> by lazy {
+    LanguageSemanticsRegistry.DEFAULT.allExtraSection("single-fetch-prefixes")
+}
 
 /** Widened pattern: any verb+By+field pattern (e.g. findByEmail, getOrderByStatus, getBySku) */
 private val SINGLE_FETCH_METHOD_REGEX =
@@ -173,26 +165,33 @@ private val SINGLE_FETCH_METHOD_REGEX =
     )
 
 /** Spring Data batch patterns that return collections, not single records */
-private val BATCH_METHOD_SUFFIXES = listOf("In", "Between", "Containing", "Like", "NotIn", "IsIn")
-private val BATCH_METHOD_PREFIXES = listOf("findAll", "getAll", "loadAll", "fetchAll", "listAll")
+private val BATCH_METHOD_SUFFIXES: Set<String> by lazy {
+    LanguageSemanticsRegistry.DEFAULT.allExtraSection("batch-method-suffixes")
+}
+private val BATCH_METHOD_PREFIXES: Set<String> by lazy {
+    LanguageSemanticsRegistry.DEFAULT.allExtraSection("batch-method-prefixes")
+}
 
-private val REPO_TARGET_PATTERNS =
-    listOf(
-        "repository",
-        "repo",
-        "dao",
-        "store",
-        "service",
-        "client",
-        "proxy",
-    )
+private val REPO_TARGET_PATTERNS: Set<String> by lazy {
+    LanguageSemanticsRegistry.DEFAULT.allExtraSection("repository-patterns")
+}
 
+/** Target names that indicate cache/memo lookups, not DB queries. */
+private val NON_REPO_INDICATORS: Set<String> by lazy {
+    LanguageSemanticsRegistry.DEFAULT.allExtraSection("non-repository-targets")
+}
+
+@Suppress("ReturnCount")
 private fun isSingleRecordFetch(call: FunctionCall): Boolean {
     val name = call.name
+    val target = call.qualifiedTarget?.lowercase()
+
+    // Exclude cache/memo targets before applying repo patterns
+    if (target != null && NON_REPO_INDICATORS.any { target.contains(it) }) return false
+
     // Exact prefix matches (highest confidence)
     val matchesPrefixes = SINGLE_FETCH_METHOD_PREFIXES.any { name.startsWith(it, ignoreCase = true) }
     if (matchesPrefixes) {
-        val target = call.qualifiedTarget?.lowercase()
         if (target == null || REPO_TARGET_PATTERNS.any { target.contains(it) }) return true
     }
     // Widened pattern: any findByX/getByX on a repository-like target
@@ -201,7 +200,6 @@ private fun isSingleRecordFetch(call: FunctionCall): Boolean {
         if (BATCH_METHOD_SUFFIXES.any { name.endsWith(it, ignoreCase = true) }) return false
         if (BATCH_METHOD_PREFIXES.any { name.startsWith(it, ignoreCase = true) && name.contains("By", ignoreCase = true) }) return false
         // For widened pattern, require a repository-like target to reduce FPs
-        val target = call.qualifiedTarget?.lowercase()
         if (target != null && REPO_TARGET_PATTERNS.any { target.contains(it) }) return true
     }
     return false

@@ -14,6 +14,19 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
+
+private val smallCollectionHints: Set<String> by lazy {
+    LanguageSemanticsRegistry.DEFAULT.allExtraSection("small-collection-hints")
+}
+
+private val mapValueAccessors: Set<String> by lazy {
+    LanguageSemanticsRegistry.DEFAULT.allExtraSection("map-value-accessors")
+}
+
+private val nonGrowthMutations: Set<String> by lazy {
+    LanguageSemanticsRegistry.DEFAULT.allExtraSection("non-growth-mutations")
+}
 
 /**
  * Detects cardinality explosion patterns where the output grows as the
@@ -85,6 +98,10 @@ public class CardinalityExplosionRule : Rule {
         val innerVar = innerLoop.iteratedVariable ?: return
 
         if (outerVar != innerVar) {
+            // Partitioned iteration: inner iterates a property of the outer element.
+            // Total work is O(sum of parts), not O(outer × max_parts).
+            if (isPartitionedIteration(outerVar, innerVar)) return
+
             val confidence = determineConfidence(outerLoop, innerLoop, loopStack)
             val effectiveSeverity = determineEffectiveSeverity(outerVar, innerVar)
             findings.add(
@@ -139,13 +156,55 @@ public class CardinalityExplosionRule : Rule {
         return false
     }
 
+    /**
+     * Detects partitioned iteration where inner collection is derived from outer element.
+     * Total work is O(sum of parts), not O(outer × max_parts).
+     *
+     * Covers:
+     * - Map entry unpacking: `map.entrySet()` → `entry.getValue()`
+     * - Parent-child: `nodes` → `node.getChildren()`
+     * - Enum values: `MyEnum.values()` → `type.getSubtypes()`
+     */
+    @Suppress("ReturnCount")
+    private fun isPartitionedIteration(
+        outerVar: String,
+        innerVar: String,
+    ): Boolean {
+        // Case 1: Map entry unpacking — outer is entrySet()/keySet(), inner accesses values
+        val outerIsEntrySet = outerVar.endsWith(".entrySet()") || outerVar.endsWith(".keySet()")
+        if (outerIsEntrySet && mapValueAccessors.any { innerVar.contains(it) }) return true
+
+        // Case 2: Inner iterates a property of the outer loop variable.
+        // e.g., outer="nodes", inner="node.getChildren()" → inner starts with singular of outer
+        // More precisely: extract the base variable from inner and check if it matches
+        // the typical loop variable derived from outer (outerVar minus trailing 's' or collection suffix)
+        val innerBase = innerVar.substringBefore(".")
+        if (innerBase.isNotEmpty() && innerBase != innerVar) {
+            // Inner has a dotted path — check if the base could be the loop element
+            // from the outer collection. The IR typically gives us the iterated variable name
+            // in the inner loop, so `entry.getValue()` has outerVar="map.entrySet()" already caught.
+            // Here we catch: outer="departments", inner="department.getEmployees()"
+            val outerBase = outerVar.substringBefore(".")
+            val outerClean = outerBase.trimEnd('s', 'S')
+            if (outerClean.isNotEmpty() && innerBase.startsWith(outerClean, ignoreCase = true)) return true
+        }
+
+        // Case 3: Enum/constant iteration — outer is Type.values() (uppercase initial)
+        if (outerVar.endsWith(".values()")) {
+            val typePrefix = outerVar.substringBefore(".values()")
+            if (typePrefix.isNotEmpty() && typePrefix[0].isUpperCase()) return true
+        }
+
+        return false
+    }
+
     private fun determineEffectiveSeverity(
         outerVar: String,
         innerVar: String,
     ): Severity {
         val outerLower = outerVar.lowercase()
         val innerLower = innerVar.lowercase()
-        if (SMALL_COLLECTION_HINTS.any { it in outerLower || it in innerLower }) {
+        if (smallCollectionHints.any { it in outerLower || it in innerLower }) {
             return Severity.INFO
         }
         return severity
@@ -289,7 +348,9 @@ public class CardinalityExplosionRule : Rule {
             } else {
                 context.registry.allCopyOnModifyMethods()
             }
-        return copyOnModify + context.registry.allMutationMethods()
+        // Only include mutations that GROW a collection — exclude replacements,
+        // removals, and in-place operations that don't produce Cartesian output
+        return (copyOnModify + context.registry.allMutationMethods()) - nonGrowthMutations
     }
 
     private companion object {
@@ -307,13 +368,6 @@ public class CardinalityExplosionRule : Rule {
                 "parallelStream",
                 "iterator",
                 "asSequence",
-            )
-        private val SMALL_COLLECTION_HINTS =
-            setOf(
-                "type",
-                "status",
-                "enum",
-                "config",
             )
     }
 }

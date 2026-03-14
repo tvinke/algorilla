@@ -7,9 +7,6 @@ import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.builtin.InLoopCollectionBuildingRule
 import io.kotest.matchers.collections.shouldBeEmpty
-import io.kotest.matchers.collections.shouldHaveSize
-import io.kotest.matchers.shouldBe
-import io.kotest.matchers.string.shouldContain
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import java.io.File
@@ -19,14 +16,13 @@ internal class InLoopCollectionBuildingRuleKotlinTest {
     private val rule = InLoopCollectionBuildingRule()
 
     @Nested
-    inner class PositiveCases {
+    inner class InPlaceMutationCases {
         @Test
-        fun `should detect addAll inside for-in loop`() {
+        fun `should not flag addAll - in-place mutation`() {
+            // ArrayList.addAll() is an in-place mutation, not copy-on-modify
             val findings = analyzeFixture("in-loop-collection-building/positive/add-all-in-loop.kt")
 
-            findings shouldHaveSize 1
-            findings.first().ruleId shouldBe "in-loop-collection-building"
-            findings.first().message shouldContain "addAll"
+            findings.shouldBeEmpty()
         }
     }
 

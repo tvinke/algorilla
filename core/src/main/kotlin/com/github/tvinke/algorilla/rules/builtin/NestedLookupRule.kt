@@ -30,6 +30,7 @@ import com.github.tvinke.algorilla.util.isRecursive
  * When a collection is searched linearly on every iteration, the combined complexity
  * becomes O(n*m) or O(n^2) where O(n) would suffice with a pre-built Set or Map.
  */
+@Suppress("LargeClass")
 public class NestedLookupRule : Rule {
     override val id: String = "nested-lookup"
     override val name: String = "Nested Lookup"
@@ -99,10 +100,54 @@ public class NestedLookupRule : Rule {
                 node,
                 context.symbolTable,
                 maxDepth = maxDepth,
-            ) { !it.isO1 && !it.isScalar }
+            ) { it.isCollectionLookup(null) }
         if (hiddenLookup != null) {
-            findings.add(buildCrossMethodFinding(node, hiddenLookup, iterationStack))
+            val confidence = crossMethodConfidence(node, hiddenLookup, iterationStack, enclosingFn)
+            findings.add(buildCrossMethodFinding(node, hiddenLookup, iterationStack, confidence))
         }
+    }
+
+    /**
+     * Determines confidence for a cross-method nested lookup.
+     * When the call target is an external object (not a loop variable and not this/super),
+     * the hidden lookup is on the callee's internal data — demote to LOW.
+     * When parameter flow proves the loop variable reaches the hidden lookup — HIGH.
+     */
+    @Suppress("ReturnCount")
+    private fun crossMethodConfidence(
+        call: FunctionCall,
+        hiddenLookup: LookupCall,
+        iterationStack: List<IRNode>,
+        enclosingFn: FunctionDecl?,
+    ): Confidence {
+        // If the lookup target matches a loop-iterated variable, it's likely a real nested lookup
+        val loopVars = iterationStack.mapNotNull { iteratedVarOf(it) }.toSet()
+        if (hiddenLookup.targetVariable in loopVars) return Confidence.MEDIUM
+
+        // Call on an external object (not this/super, not a loop variable) — the hidden lookup
+        // operates on the callee's own data, not the loop's collection
+        val target = call.qualifiedTarget
+        if (target != null && target !in SELF_REFERENCES && target !in loopVars) {
+            return Confidence.LOW
+        }
+
+        // Parameter-backed: if the lookup target comes from a caller parameter
+        if (enclosingFn != null && hiddenLookup.targetVariable != null) {
+            if (isParamBacked(hiddenLookup.targetVariable!!, enclosingFn)) return Confidence.HIGH
+        }
+
+        return Confidence.MEDIUM
+    }
+
+    private fun iteratedVarOf(node: IRNode): String? =
+        when (node) {
+            is LoopNode -> node.iteratedVariable
+            is LookupCall -> node.targetVariable
+            else -> null
+        }
+
+    private companion object {
+        private val SELF_REFERENCES = setOf("this", "super")
     }
 
     /**
@@ -172,6 +217,7 @@ public class NestedLookupRule : Rule {
         call: FunctionCall,
         hiddenLookup: LookupCall,
         iterationStack: List<IRNode>,
+        confidence: Confidence = Confidence.MEDIUM,
     ): Finding {
         val outerIteration = iterationStack.first()
         val outerVar = iteratedVar(outerIteration)
@@ -186,6 +232,7 @@ public class NestedLookupRule : Rule {
             ruleId = id,
             ruleName = name,
             severity = severity,
+            confidence = confidence,
             location = call.location,
             message = msg,
             suggestion = "Build a ${hiddenLookup.kind.suggestedStructure()} from '$targetVar' before the loop",

@@ -61,6 +61,30 @@ internal class CardinalityExplosionRuleJavaTest {
 
             findings.shouldBeEmpty()
         }
+
+        @Test
+        fun `should not flag map entry unpacking`() {
+            val findings = analyzeFixture("cardinality-explosion/negative/map-entry-unpacking.java")
+
+            val warnings = findings.filter { it.severity == Severity.WARNING }
+            warnings.shouldBeEmpty()
+        }
+
+        @Test
+        fun `should not flag parent-child iteration`() {
+            val findings = analyzeFixture("cardinality-explosion/negative/parent-child-iteration.java")
+
+            val warnings = findings.filter { it.severity == Severity.WARNING }
+            warnings.shouldBeEmpty()
+        }
+
+        @Test
+        fun `should not flag enum values iteration`() {
+            val findings = analyzeFixture("cardinality-explosion/negative/enum-values-iteration.java")
+
+            val warnings = findings.filter { it.severity == Severity.WARNING }
+            warnings.shouldBeEmpty()
+        }
     }
 
     @Nested

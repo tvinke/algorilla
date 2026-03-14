@@ -43,6 +43,16 @@ internal class NPlusOneRepositoryCallRuleJavaTest {
         }
     }
 
+    @Nested
+    inner class CacheExclusion {
+        @Test
+        fun `should not flag cache or memo or pool targets`() {
+            val findings = analyzeFixture("n-plus-one-query/negative/cache-target-excluded.java")
+
+            findings.shouldBeEmpty()
+        }
+    }
+
     private fun analyzeFixture(fixturePath: String): List<Finding> {
         val url =
             javaClass.classLoader.getResource("fixtures/$fixturePath")

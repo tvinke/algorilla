@@ -49,6 +49,13 @@ internal class IOInLoopRuleJavaTest {
 
             findings.shouldBeEmpty()
         }
+
+        @Test
+        fun `should not flag ByteArrayOutputStream or StringBuilder write in loop`() {
+            val findings = analyzeFixture("io-in-loop/negative/in-memory-buffer-write.java")
+
+            findings.shouldBeEmpty()
+        }
     }
 
     private fun analyzeFixture(fixturePath: String): List<Finding> {
@@ -57,7 +64,7 @@ internal class IOInLoopRuleJavaTest {
                 ?: error("Fixture not found: $fixturePath")
         val path = File(url.toURI()).absolutePath
         val fileRoot = parser.parse(path)
-        val registry = LanguageSemanticsRegistry.loadDefaults()
+        val registry = LanguageSemanticsRegistry.DEFAULT
         val irTrees = markScalarLookups(mapOf(path to fileRoot), registry)
         val context =
             AnalysisContext(

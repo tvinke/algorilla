@@ -82,6 +82,13 @@ internal class NestedLookupRuleJavaTest {
     }
 
     @Test
+    fun `should not flag contains on cache or map or index targets`() {
+        val findings = analyzeFixture("nested-lookup/negative/cache-map-target-in-loop.java")
+
+        findings.shouldBeEmpty()
+    }
+
+    @Test
     fun `should detect List field contains in loop`() {
         val findings = analyzeFixture("nested-lookup/positive/list-field-contains-in-loop.java")
 

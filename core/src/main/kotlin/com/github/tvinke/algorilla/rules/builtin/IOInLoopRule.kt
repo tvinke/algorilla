@@ -14,6 +14,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.ParameterFlowQuery
 
 /**
@@ -57,7 +58,7 @@ public class IOInLoopRule : Rule {
         }
 
         if (loopStack.isNotEmpty() && node is FunctionCall) {
-            if (node.name in ioMethods) {
+            if (node.name in ioMethods && !isInMemoryTarget(node)) {
                 // Flow-based: if the loop iterates a confirmed parameter, we're certain
                 val loopParamConfirmed =
                     fn != null &&
@@ -184,4 +185,15 @@ public class IOInLoopRule : Rule {
                 complexity = "IO \u2190 bottleneck",
             ),
         )
+}
+
+/** In-memory buffer/writer types whose write/read methods are NOT real IO. */
+private val NON_IO_TARGETS: Set<String> by lazy {
+    LanguageSemanticsRegistry.DEFAULT.allExtraSection("non-io-targets")
+}
+
+/** Returns true if the call target is a known in-memory buffer (not real IO). */
+private fun isInMemoryTarget(call: FunctionCall): Boolean {
+    val target = call.qualifiedTarget?.lowercase() ?: return false
+    return NON_IO_TARGETS.any { target.contains(it) }
 }
