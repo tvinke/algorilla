@@ -23,6 +23,10 @@ This knowledge is loaded automatically based on the language being scanned. No c
 
 **Project Reactor** — `Mono` and `Flux` transformations (map, flatMap, filter, zip, merge, concat, etc.), factory methods (just, empty, defer, fromCallable, create, generate), Schedulers, context propagation, and signal inspection. I/O-triggering methods (`block`, `subscribe`, `toFuture`) are classified separately. Heavyweight types include deprecated processors (`FluxProcessor`, `EmitterProcessor`).
 
+**JPA / Hibernate** — EntityManager operations (find, persist, merge, remove, refresh, flush, clear), CriteriaBuilder predicates and query composition, Root/Join/Path navigation, TypedQuery configuration (setParameter, setFirstResult, setMaxResults), Hibernate Session (save, saveOrUpdate, update, delete, load, get, evict), ScrollableResults, legacy Criteria API, JPA transaction management, and Spring Data JPA Specification helpers. IO-triggering methods (persist, merge, flush, getResultList, getSingleResult, executeUpdate) are classified separately from cheap query-building methods. Heavyweight types include `EntityManagerFactory`, `SessionFactory`, and `StatelessSession`.
+
+**Apache Commons** — StringUtils (150+ string operations), ObjectUtils, BooleanUtils, NumberUtils, ArrayUtils, ClassUtils, SystemUtils, CharUtils, RegExUtils. CollectionUtils, MapUtils, IterableUtils, IteratorUtils, ListUtils (collection wrappers and utilities). IOUtils (stream copy, read, write), FileUtils (file operations, directory traversal), and FilenameUtils (path string operations). IO-triggering methods (copyFile, moveFile, writeStringToFile, readFileToString, deleteDirectory) are classified separately from in-memory utility methods.
+
 ### Kotlin
 
 **Kotlin Coroutines** — Coroutine builders, `Flow` (builders, operators, combining, terminal operations), `Channel`, `Deferred`, `Dispatchers`, `Job` management, `Mutex`/`Semaphore`, and structured concurrency patterns.

@@ -45,9 +45,20 @@
 * Fix color rendering of language tags in docs ([7a5a97a](https://github.com/tvinke/algorilla/commit/7a5a97a))
 * npm publish is now idempotent on re-tag ([844c91e](https://github.com/tvinke/algorilla/commit/844c91e))
 * Apply `minSeverity` filter correctly and fix file group ordering in console output ([71d5b42](https://github.com/tvinke/algorilla/commit/71d5b42))
+* `io-in-loop` skips in-memory buffer targets (ByteArrayOutputStream, StringBuilder, StringWriter, etc.)
+* `cardinality-explosion` recognizes partitioned iteration: map entry unpacking (`entrySet()` → `getValue()`), parent-child patterns, and enum `values()` — no longer flagged as Cartesian products
+* `n-plus-one-query` excludes cache/memo/pool targets — `userCache.findById()` in a loop is not a DB round-trip
+* `nested-lookup` checks target variable names against known O(1) data structure suffixes (map, set, cache, index)
+* Fix YAML parser stripping quotes incorrectly — entries like `".getValue()"` now parse as `.getValue()` instead of keeping the literal quotes
 
 ### Maintenance
 
+* **Singleton registry cache** — `LanguageSemanticsRegistry.DEFAULT` replaces 36 independent `loadDefaults()` calls across 22 files, avoiding redundant YAML re-parsing
+* **JPA / Hibernate overlay** — EntityManager, Session, CriteriaBuilder, TypedQuery, ScrollableResults (193 lines)
+* **Apache Commons overlay** — StringUtils, ObjectUtils, BooleanUtils, NumberUtils, ArrayUtils, ClassUtils, CollectionUtils, MapUtils, IOUtils, FileUtils, FilenameUtils (348 lines)
+* Migrated 17 hardcoded constant sets from 7 rule files to YAML extras — all rule domain knowledge now lives in language YAML files
+* Propagated 23 extras sections (purity classification, string detection, rule-specific patterns) to Kotlin, Groovy, and JavaScript language files
+* **End-to-end integration test suite** — 12 tests that exercise the full AnalysisEngine pipeline (parse → scalar marking → symbol table → call graph → parameter flow → rules → subsumption → confidence adjustment)
 * Renamed `CollectionSemanticsRegistry` to `LanguageSemanticsRegistry` to reflect broader scope ([2f0069b](https://github.com/tvinke/algorilla/commit/2f0069b))
 * Moved hardcoded framework constants into centralized YAML semantics files ([bdf0b51](https://github.com/tvinke/algorilla/commit/bdf0b51))
 * Added compatibility tests for config, baseline, ignore-list, and JSON output formats
