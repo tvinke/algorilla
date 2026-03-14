@@ -181,13 +181,9 @@ io-methods:
   - createFilter
   - iterate
   - scroll
-  # ScrollableResults
-  - next
-  - previous
-  - first
-  - last
-  - scroll
-  - get
+  # ScrollableResults — removed generic names (next, previous, first, last, get)
+  # that collide with Iterator, List, etc. The scroll() method above still catches
+  # the pattern, and ScrollableResults is a heavyweight-type.
   # Criteria (legacy Hibernate)
   - list
   - uniqueResult
