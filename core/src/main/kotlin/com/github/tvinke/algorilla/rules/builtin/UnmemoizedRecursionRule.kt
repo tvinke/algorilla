@@ -49,6 +49,9 @@ public class UnmemoizedRecursionRule : Rule {
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
+        // Skip standard object methods — recursive by nature in entity hierarchies
+        if (fn.name in OBJECT_METHODS) return
+
         val recursiveCalls = fn.findDescendants<FunctionCall>().filter { it.name == fn.name }
         if (recursiveCalls.isEmpty()) return
 
@@ -199,5 +202,21 @@ public class UnmemoizedRecursionRule : Rule {
             if (containsNode(node.children, target)) return true
         }
         return false
+    }
+
+    private companion object {
+        // Standard object methods that are recursive by nature in entity hierarchies
+        // (e.g. equals() walking child collections). Memoizing these makes no sense.
+        val OBJECT_METHODS =
+            setOf(
+                "equals",
+                "hashCode",
+                "toString",
+                "compareTo",
+                "clone",
+                "deepEquals",
+                "deepHashCode",
+                "deepToString",
+            )
     }
 }
