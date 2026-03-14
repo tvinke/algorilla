@@ -174,19 +174,24 @@ public class CardinalityExplosionRule : Rule {
         val outerIsEntrySet = outerVar.endsWith(".entrySet()") || outerVar.endsWith(".keySet()")
         if (outerIsEntrySet && mapValueAccessors.any { innerVar.contains(it) }) return true
 
-        // Case 2: Inner iterates a property of the outer loop variable.
-        // e.g., outer="nodes", inner="node.getChildren()" → inner starts with singular of outer
-        // More precisely: extract the base variable from inner and check if it matches
-        // the typical loop variable derived from outer (outerVar minus trailing 's' or collection suffix)
+        // Case 2: Inner iterates a property/method of the outer loop element.
+        // The inner variable has a dotted path (method call on an element), suggesting it
+        // iterates a child collection OF the outer element — O(sum of children), not O(product).
+        // e.g., outer="this.relations", inner="relationship.getKeyMaps()"
+        //       outer="departments", inner="department.getEmployees()"
+        //       outer="clazz.getInterfaces()", inner="ifc.getMethods()"
         val innerBase = innerVar.substringBefore(".")
         if (innerBase.isNotEmpty() && innerBase != innerVar) {
-            // Inner has a dotted path — check if the base could be the loop element
-            // from the outer collection. The IR typically gives us the iterated variable name
-            // in the inner loop, so `entry.getValue()` has outerVar="map.entrySet()" already caught.
-            // Here we catch: outer="departments", inner="department.getEmployees()"
+            // Inner has a dotted path — it's calling a method on an element variable.
+            // Check if the base could be the loop element from the outer collection.
             val outerBase = outerVar.substringBefore(".")
             val outerClean = outerBase.trimEnd('s', 'S')
+            // Match: outer="departments" → outerClean="department", inner starts with "department"
             if (outerClean.isNotEmpty() && innerBase.startsWith(outerClean, ignoreCase = true)) return true
+            // Match: outer collection has no plural suffix but inner base is a plausible element name.
+            // If the outer collection is a method call like "getInterfaces()", the element is often
+            // a shortened name like "ifc" — we can't match that. But if the inner is a getter
+            // call on a single-word variable, demote to INFO instead of suppressing entirely.
         }
 
         // Case 3: Enum/constant iteration — outer is Type.values() (uppercase initial)
@@ -206,6 +211,14 @@ public class CardinalityExplosionRule : Rule {
         val innerLower = innerVar.lowercase()
         if (smallCollectionHints.any { it in outerLower || it in innerLower }) {
             return Severity.INFO
+        }
+        // Inner is a method call on an element variable (e.g., "ifc.getMethods()", "node.getChildren()").
+        // This is likely a child-accessor pattern — O(sum), not O(product). Demote to INFO.
+        if (innerVar.contains(".") && innerVar.contains("(")) {
+            val innerBase = innerVar.substringBefore(".")
+            // Only demote if the base is a short variable name (loop element), not a qualified path
+            @Suppress("MagicNumber")
+            if (innerBase.length <= 30 && !innerBase.contains("(")) return Severity.INFO
         }
         return severity
     }
