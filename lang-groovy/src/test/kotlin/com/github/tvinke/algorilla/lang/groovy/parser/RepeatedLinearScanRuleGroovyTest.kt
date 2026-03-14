@@ -50,7 +50,7 @@ internal class RepeatedLinearScanRuleGroovyTest {
         val path = File(url.toURI()).absolutePath
         val fileRoot = parser.parse(path)
         val registry = LanguageSemanticsRegistry.loadDefaults()
-        val irTrees = markScalarLookups(mapOf(path to fileRoot), registry)
+        val irTrees = markScalarLookups(mapOf(path to fileRoot), registry).irTrees
         val context =
             AnalysisContext(
                 irTrees = irTrees,

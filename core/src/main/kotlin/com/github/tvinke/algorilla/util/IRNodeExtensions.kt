@@ -149,6 +149,25 @@ public fun LookupCall.isCollectionLookup(fn: FunctionDecl?): Boolean =
         (fn == null || !fn.hasO1Type(targetVariable))
 
 /**
+ * Enhanced version that uses [TypeEnvironment] for full type resolution.
+ * Falls back to the basic version when no type environment is available.
+ */
+@Suppress("ReturnCount")
+public fun LookupCall.isCollectionLookup(
+    fn: FunctionDecl?,
+    typeEnv: com.github.tvinke.algorilla.semantics.TypeEnvironment?,
+): Boolean {
+    if (isO1 || isScalar) return false
+    if (isStaticUtilityTarget() || hasO1TargetName()) return false
+    // TypeEnvironment has broader coverage (field types, factory inference, chain-end)
+    if (typeEnv != null && targetVariable != null) {
+        if (typeEnv.isO1(targetVariable)) return false
+        if (typeEnv.isString(targetVariable)) return false
+    }
+    return fn == null || !fn.hasO1Type(targetVariable)
+}
+
+/**
  * Static utility classes whose methods operate on strings/primitives, not collections.
  * Loaded from the YAML semantics registry ("static-utility-classes" extra section).
  */

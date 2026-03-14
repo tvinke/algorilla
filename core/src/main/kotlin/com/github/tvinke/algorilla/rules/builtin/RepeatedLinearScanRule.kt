@@ -37,7 +37,7 @@ public class RepeatedLinearScanRule : Rule {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
             val fullScanMethods = context.registry.fullScanMethods(fileRoot.language)
-            scanNode(fileRoot, fullScanMethods, findings)
+            scanNode(fileRoot, fullScanMethods, context, findings)
         }
         return findings
     }
@@ -45,34 +45,38 @@ public class RepeatedLinearScanRule : Rule {
     private fun scanNode(
         node: IRNode,
         fullScanMethods: Set<String>,
+        context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
         if (node is FunctionDecl) {
-            checkFunction(node, fullScanMethods, findings)
+            checkFunction(node, fullScanMethods, context, findings)
         }
         for (child in node.children) {
-            scanNode(child, fullScanMethods, findings)
+            scanNode(child, fullScanMethods, context, findings)
         }
     }
 
     private fun checkFunction(
         fn: FunctionDecl,
         fullScanMethods: Set<String>,
+        context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
-        val reportedTargets = checkLookupCalls(fn, findings)
+        val reportedTargets = checkLookupCalls(fn, context, findings)
         checkFullScanCalls(fn, fullScanMethods, reportedTargets, findings)
     }
 
     private fun checkLookupCalls(
         fn: FunctionDecl,
+        context: AnalysisContext,
         findings: MutableList<Finding>,
     ): Set<String?> {
+        val typeEnv = context.typeEnvironmentFor(fn)
         val lookupsWithContext = fn.findDescendantsWithBranchContext<LookupCall>()
         val filteredLookups =
             lookupsWithContext.filter {
                 it.first.targetVariable != null &&
-                    it.first.isCollectionLookup(fn)
+                    it.first.isCollectionLookup(fn, typeEnv)
             }
         val lookupsByTarget = filteredLookups.groupBy { it.first.targetVariable }
         for ((targetVar, callsWithContext) in lookupsByTarget) {

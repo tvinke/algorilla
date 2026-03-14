@@ -102,7 +102,7 @@ internal class MarkScalarLookupsTest {
             val result = markScalarLookups(mapOf("Test.java" to root), registry)
 
             val lookup =
-                result.values
+                result.irTrees.values
                     .first()
                     .findDescendants<LookupCall>()
                     .single()
@@ -122,7 +122,7 @@ internal class MarkScalarLookupsTest {
             val result = markScalarLookups(mapOf("Test.java" to root), registry)
 
             val lookup =
-                result.values
+                result.irTrees.values
                     .first()
                     .findDescendants<LookupCall>()
                     .single()
@@ -147,7 +147,7 @@ internal class MarkScalarLookupsTest {
             val result = markScalarLookups(mapOf("Test.java" to root), registry)
 
             val lookup =
-                result.values
+                result.irTrees.values
                     .first()
                     .findDescendants<LookupCall>()
                     .single()
@@ -172,7 +172,7 @@ internal class MarkScalarLookupsTest {
             val result = markScalarLookups(mapOf("Test.java" to root), registry)
 
             val lookup =
-                result.values
+                result.irTrees.values
                     .first()
                     .findDescendants<LookupCall>()
                     .single()
@@ -194,7 +194,7 @@ internal class MarkScalarLookupsTest {
             val result = markScalarLookups(mapOf("Test.java" to root), registry)
 
             val lookup =
-                result.values
+                result.irTrees.values
                     .first()
                     .findDescendants<LookupCall>()
                     .single()
@@ -214,7 +214,7 @@ internal class MarkScalarLookupsTest {
             val result = markScalarLookups(mapOf("Test.java" to root), registry)
 
             val lookup =
-                result.values
+                result.irTrees.values
                     .first()
                     .findDescendants<LookupCall>()
                     .single()
@@ -233,7 +233,7 @@ internal class MarkScalarLookupsTest {
             val result = markScalarLookups(mapOf("Test.java" to root), registry)
 
             val lookup =
-                result.values
+                result.irTrees.values
                     .first()
                     .findDescendants<LookupCall>()
                     .single()
@@ -267,7 +267,8 @@ internal class MarkScalarLookupsTest {
                         ),
                 )
             val irTrees = mapOf("Fields.java" to fieldFile, "Consumer.java" to consumerFile)
-            return markScalarLookups(irTrees, registry)["Consumer.java"]!!
+            return markScalarLookups(irTrees, registry)
+                .irTrees["Consumer.java"]!!
                 .findDescendants<LookupCall>()
                 .single()
         }
@@ -311,7 +312,8 @@ internal class MarkScalarLookupsTest {
                         ),
                 )
             val irTrees = mapOf("Parent.java" to parentFile, "Child.java" to childFile)
-            return markScalarLookups(irTrees, registry)["Child.java"]!!
+            return markScalarLookups(irTrees, registry)
+                .irTrees["Child.java"]!!
                 .findDescendants<LookupCall>()
                 .single()
         }
@@ -345,7 +347,7 @@ internal class MarkScalarLookupsTest {
             val root = fileRoot(language = Language.KOTLIN, children = listOf(fn))
             val lookup =
                 markScalarLookups(mapOf("Test.kt" to root), registry)
-                    .values
+                    .irTrees.values
                     .first()
                     .findDescendants<LookupCall>()
                     .single()
@@ -365,7 +367,7 @@ internal class MarkScalarLookupsTest {
             val root = fileRoot(children = listOf(fn))
             val lookup =
                 markScalarLookups(mapOf("Test.java" to root), registry)
-                    .values
+                    .irTrees.values
                     .first()
                     .findDescendants<LookupCall>()
                     .single()
@@ -385,7 +387,7 @@ internal class MarkScalarLookupsTest {
             val root = fileRoot(children = listOf(fn))
             val lookup =
                 markScalarLookups(mapOf("Test.java" to root), registry)
-                    .values
+                    .irTrees.values
                     .first()
                     .findDescendants<LookupCall>()
                     .single()
@@ -405,7 +407,7 @@ internal class MarkScalarLookupsTest {
             val root = fileRoot(children = listOf(fn))
             val lookup =
                 markScalarLookups(mapOf("Test.java" to root), registry)
-                    .values
+                    .irTrees.values
                     .first()
                     .findDescendants<LookupCall>()
                     .single()
@@ -425,7 +427,7 @@ internal class MarkScalarLookupsTest {
             val root = fileRoot(children = listOf(fn))
             val lookup =
                 markScalarLookups(mapOf("Test.java" to root), registry)
-                    .values
+                    .irTrees.values
                     .first()
                     .findDescendants<LookupCall>()
                     .single()
@@ -445,7 +447,7 @@ internal class MarkScalarLookupsTest {
             val root = fileRoot(children = listOf(fn))
             val lookup =
                 markScalarLookups(mapOf("Test.java" to root), registry)
-                    .values
+                    .irTrees.values
                     .first()
                     .findDescendants<LookupCall>()
                     .single()
@@ -465,7 +467,7 @@ internal class MarkScalarLookupsTest {
             val root = fileRoot(children = listOf(fn))
             val lookup =
                 markScalarLookups(mapOf("Test.java" to root), registry)
-                    .values
+                    .irTrees.values
                     .first()
                     .findDescendants<LookupCall>()
                     .single()
@@ -485,7 +487,7 @@ internal class MarkScalarLookupsTest {
             val root = fileRoot(language = Language.KOTLIN, children = listOf(fn))
             val lookup =
                 markScalarLookups(mapOf("Test.kt" to root), registry)
-                    .values
+                    .irTrees.values
                     .first()
                     .findDescendants<LookupCall>()
                     .single()

@@ -64,7 +64,8 @@ public class NestedLookupRule : Rule {
         }
 
         if (node is LookupCall) {
-            if (iterationStack.isNotEmpty() && node.isCollectionLookup(fn)) {
+            val typeEnv = fn?.let { context.typeEnvironmentFor(it) }
+            if (iterationStack.isNotEmpty() && node.isCollectionLookup(fn, typeEnv)) {
                 findings.add(buildFinding(node, iterationStack, fn))
             }
             if (node.children.isNotEmpty() && isIteratingLookup(node.kind)) {
