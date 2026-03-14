@@ -49,6 +49,50 @@ Guidelines:
 
 See [Architecture: Rule Subsumption](architecture.md#rule-subsumption) for how the engine implements this.
 
+## Confidence
+
+Rules declare their baseline confidence via `defaultConfidence` on the Rule interface:
+
+```kotlin
+override val defaultConfidence: Confidence = Confidence.HIGH  // structurally certain
+```
+
+- **HIGH** — the pattern is always an anti-pattern regardless of types (e.g. string concat in loop)
+- **MEDIUM** — reliable but may depend on type context (default for most rules)
+- **LOW** — heuristic-heavy, expect false positives (hidden at default `--confidence medium`)
+
+Rules can also set confidence **per finding** when they have evidence for a specific instance:
+
+```kotlin
+Finding(
+    ...
+    confidence = if (flowConfirmed) Confidence.HIGH else Confidence.MEDIUM,
+)
+```
+
+The engine respects per-finding confidence (doesn't override non-MEDIUM values). It only adjusts findings still at MEDIUM — demoting to LOW in languages without type declarations when `requiresTypeContext = true`.
+
+## Parameter flow
+
+The engine annotates each `FunctionDecl` with `parameterFlows` — a list of where each parameter ends up (loops, method calls, function arguments). Rules can use this to verify findings with structural proof:
+
+```kotlin
+// Check if the lookup target is backed by a function parameter
+val paramBacked = fn.parameterFlows.any { it.paramName == targetVar }
+val confidence = if (paramBacked) Confidence.HIGH else Confidence.MEDIUM
+```
+
+For cross-method detection, use `ParameterFlowQuery`:
+
+```kotlin
+// Does a caller's parameter flow through this call into an IO operation?
+val evidence = ParameterFlowQuery.parameterFlowsThrough(
+    call, callerFn, context.symbolTable,
+) { it is FlowTarget.MethodCallReceiver && it.methodName in ioMethods }
+```
+
+See `NestedLookupRule` and `HiddenNestedLoopRule` for examples of flow-based confidence upgrades.
+
 ## Semantics-driven detection
 
 Rules should not hardcode method names. Instead, method categories are read from the semantics YAML files at startup and stored in `LanguageSemanticsRegistry`. Use `AnalysisContext.semantics` to look up whether a method is expensive, a stream operation, etc.

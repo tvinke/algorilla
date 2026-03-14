@@ -8,7 +8,7 @@
 
 ### Features
 
-* **Rename `parallel-stream-bottleneck` → `parallel-pipeline-bottleneck`** — language-neutral rule ID; old ID kept as alias for backward compatibility
+* **Rename `parallel-stream-bottleneck` → `parallel-pipeline-bottleneck`** — language-neutral rule ID
 * **API stability & versioned formats** — JSON output now includes `schemaVersion` and `algorillaVersion` fields; baseline and ignore-list files include a `version` field. Consumers should ignore unknown fields for forward compatibility. ([#80](https://github.com/tvinke/algorilla/issues/80))
 * **Lenient config parsing** — `.algorilla.yml` silently ignores unknown keys, so configs written for newer versions don't crash older ones ([#80](https://github.com/tvinke/algorilla/issues/80))
 * **Experimental config key warnings** — stderr notice when `type-hints` or `heavyweight-types` are used in config
