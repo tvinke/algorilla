@@ -1,0 +1,158 @@
+# Jakarta EE / Java EE / MicroProfile — framework overlay for Java
+# Jakarta EE 10, EJB, CDI, JPA (EntityManager), JAX-RS, JMS, Bean Validation, Batch
+
+language: java
+
+methods: {}
+
+cheap-methods:
+  # CDI — dependency injection and context
+  - getInstance
+  - select
+  - isUnsatisfied
+  - isAmbiguous
+  - isResolvable
+  - get
+  - destroy
+  - getContextualReference
+  - getBeanClass
+  - getBeanManager
+  - getReference
+  - getInjectableReference
+  - getContext
+  - isScope
+  - isNormalScope
+  - isQualifier
+  - isStereotype
+  - isInterceptorBinding
+  # CDI Events
+  - fire
+  - fireAsync
+  - select
+  # Bean Validation
+  - validate
+  - validateProperty
+  - validateValue
+  - getConstraintsForClass
+  - getValidator
+  - buildValidatorFactory
+  # JAX-RS client builder (not IO until invoke/get)
+  - target
+  - path
+  - request
+  - accept
+  - header
+  - property
+  - register
+  - queryParam
+  - matrixParam
+  - resolveTemplate
+  # JAX-RS Response builders
+  - ok
+  - created
+  - accepted
+  - noContent
+  - status
+  - notModified
+  - seeOther
+  - temporaryRedirect
+  - entity
+  - type
+  - build
+  # JNDI
+  - lookup
+  # Interceptors / Decorators metadata
+  - getMethod
+  - getParameters
+  - getTimer
+  - getTarget
+  - getContextData
+  - proceed
+  # EJB metadata
+  - getCallerPrincipal
+  - isCallerInRole
+  - getTimerService
+  - getUserTransaction
+  - getRollbackOnly
+  - setRollbackOnly
+  # MicroProfile Config
+  - getValue
+  - getOptionalValue
+  - getConfigValue
+  - getPropertyNames
+  - getConfigSources
+  # MicroProfile Health
+  - up
+  - down
+  - named
+  - withData
+  # MicroProfile Metrics
+  - counter
+  - timer
+  - histogram
+  - gauge
+
+trivial-methods:
+  # JSON-B
+  - toJson
+  - fromJson
+  # JSON-P
+  - createObjectBuilder
+  - createArrayBuilder
+  - createReader
+  - createWriter
+  - createParser
+  - createGenerator
+  - createValue
+  - createPatch
+  - createDiff
+  - createPointer
+
+heavyweight-types:
+  - EntityManagerFactory
+  - SessionFactory
+  - InitialContext
+  - Validator
+  - ValidatorFactory
+  - Client
+  - WebTarget
+  - Jsonb
+  - JsonbBuilder
+  - BatchRuntime
+  - JobOperator
+
+io-methods:
+  # JAX-RS Client — HTTP round-trips
+  - invoke
+  - get
+  - post
+  - put
+  - delete
+  - head
+  - options
+  - method
+  - rx
+  - submit
+  # JMS — messaging
+  - send
+  - receive
+  - receiveNoWait
+  - receiveBody
+  - createProducer
+  - createConsumer
+  - createBrowser
+  - browse
+  # EJB Timer
+  - createTimer
+  - createSingleActionTimer
+  - createIntervalTimer
+  - createCalendarTimer
+  # Batch
+  - start
+  - restart
+  - stop
+  - abandon
+  - getJobExecution
+  - getJobExecutions
+  - getStepExecutions
+  - getRunningExecutions
