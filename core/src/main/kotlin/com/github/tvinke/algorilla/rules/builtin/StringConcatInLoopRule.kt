@@ -3,6 +3,7 @@ package com.github.tvinke.algorilla.rules.builtin
 import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.FunctionCall
+import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LoopNode
@@ -17,8 +18,9 @@ import com.github.tvinke.algorilla.rules.RuleCategory
  * Detects String.concat() calls inside loops. Each concat() creates a new String object,
  * copying the entire accumulated content — turning an O(n) loop into O(n²).
  *
- * Note: This rule detects explicit .concat() calls. The more common `+=` operator on strings
- * has the same O(n²) behavior but requires parser-level support to detect.
+ * Uses the SymbolTable to check the receiver's type. If the type is known and NOT a
+ * String-like type, the call is skipped (e.g. ImmutableAttributes.concat() is not
+ * string concatenation). If the type is unknown, the call is still flagged.
  */
 public class StringConcatInLoopRule : Rule {
     override val id: String = "string-concat-in-loop"
@@ -32,32 +34,67 @@ public class StringConcatInLoopRule : Rule {
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
-            // Skip JS/TS — Array.concat() is not string concatenation
             if (fileRoot.language !in languages) continue
-            scanNode(fileRoot, emptyList(), findings)
+            scanNode(fileRoot, null, emptyList(), context, findings)
         }
         return findings
     }
 
     private fun scanNode(
         node: IRNode,
+        enclosingFn: FunctionDecl?,
         loopStack: List<LoopNode>,
+        context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
+        val fn = if (node is FunctionDecl) node else enclosingFn
+
         if (node is LoopNode) {
             for (child in node.children) {
-                scanNode(child, loopStack + node, findings)
+                scanNode(child, fn, loopStack + node, context, findings)
             }
             return
         }
 
-        if (loopStack.isNotEmpty() && node is FunctionCall && isStringConcatCall(node)) {
-            findings.add(buildFinding(node, loopStack))
+        if (loopStack.isNotEmpty() && node is FunctionCall) {
+            if (isConcatCall(node) && !isNonStringReceiver(node.qualifiedTarget!!, fn, context)) {
+                findings.add(buildFinding(node, loopStack))
+            }
         }
 
         for (child in node.children) {
-            scanNode(child, loopStack, findings)
+            scanNode(child, fn, loopStack, context, findings)
         }
+    }
+
+    private fun isConcatCall(call: FunctionCall): Boolean = call.name == "concat" && call.qualifiedTarget != null
+
+    /**
+     * Returns true if the receiver is known to be a non-String type via the SymbolTable.
+     * When the type is unknown, returns false (assume it might be a String → flag it).
+     */
+    private fun isNonStringReceiver(
+        target: String,
+        fn: FunctionDecl?,
+        context: AnalysisContext,
+    ): Boolean {
+        // Check SymbolTable for the receiver's declared type
+        val declaredType = context.symbolTable.resolveType(target)
+        if (declaredType != null) {
+            return !isStringType(declaredType)
+        }
+        // Check function parameters for type info
+        val paramType = fn?.parameters?.find { it.name == target }?.typeName
+        if (paramType != null) {
+            return !isStringType(paramType)
+        }
+        // Type unknown — conservatively assume it could be a String
+        return false
+    }
+
+    private fun isStringType(typeName: String): Boolean {
+        val lower = typeName.lowercase()
+        return lower == "string" || lower == "charsequence" || lower == "stringbuilder" || lower == "stringbuffer"
     }
 
     private fun buildFinding(
@@ -75,7 +112,7 @@ public class StringConcatInLoopRule : Rule {
                     "$target.${call.name}() inside loop",
                     ExecutionContext.INSIDE_LOOP,
                     depth = 1,
-                    complexity = "copy ← bottleneck",
+                    complexity = "copy \u2190 bottleneck",
                 ),
             )
         return Finding(
@@ -85,24 +122,9 @@ public class StringConcatInLoopRule : Rule {
             location = call.location,
             message = "String ${call.name}() inside ${outerLoop.kind.label()} copies the entire string on each iteration",
             suggestion = "Use a StringBuilder to accumulate the result, then call toString() after the loop",
-            currentComplexity = "O(|$loopVar|²)",
+            currentComplexity = "O(|$loopVar|\u00b2)",
             suggestedComplexity = "O(|$loopVar|)",
             evidence = evidence,
         )
     }
-}
-
-private val STRING_CONCAT_METHODS = setOf("concat")
-
-// Receiver names that indicate non-String .concat() — typed objects like factories, builders, collections
-private val NON_STRING_RECEIVER_PATTERNS =
-    setOf("factory", "builder", "attributes", "immutable", "collector", "stream")
-
-private fun isStringConcatCall(call: FunctionCall): Boolean {
-    if (call.name !in STRING_CONCAT_METHODS) return false
-    val target = call.qualifiedTarget ?: return false
-    // Skip when the receiver name suggests a typed object (factory, builder, etc.)
-    val lower = target.lowercase()
-    if (NON_STRING_RECEIVER_PATTERNS.any { lower.contains(it) }) return false
-    return true
 }
