@@ -38,6 +38,18 @@ To avoid false positives, Algorilla checks whether a collection target is an O(1
 3. **Variable declarations** — checks the declared type of local variables
 4. **Type hints** — user-provided hints in `.algorilla.yml`
 
+## Confidence Tiers
+
+Each finding carries a confidence level that tells you how certain Algorilla is that it's a real issue:
+
+- **HIGH** — Structurally proven. The pattern is always an anti-pattern regardless of types (e.g. string concatenation in a loop), or parameter-flow analysis confirms the data path.
+- **MEDIUM** — Likely correct based on available evidence, but depends on context or type information that Algorilla can't fully verify.
+- **LOW** — Plausible but uncertain. Detection relies on naming conventions or heuristics. Worth investigating but expect some false positives.
+
+By default, `--confidence medium` hides LOW findings. Use `--confidence high` for a focused view of the most trustworthy findings, or `--confidence low` to see everything.
+
+Confidence is orthogonal to severity: a finding can be high-severity (impactful pattern) but low-confidence (uncertain detection), or vice versa.
+
 ## Overlap Resolution
 
 Some rules look at the same code from different angles. For example, `list.filter(x -> ids.contains(x.id))` triggers both the `nested-lookup` rule (linear search inside a loop) and the `expensive-callback` rule (expensive operation inside a callback). Reporting both would be noisy.

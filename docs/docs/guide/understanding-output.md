@@ -28,9 +28,11 @@ Each finding then shows:
       # a1b2c3d4e5f6g7h8
 ```
 
+Findings with HIGH confidence show a `✔ high confidence` marker after the severity tag. LOW confidence findings show `• low confidence`. MEDIUM (the default) has no marker.
+
 The format breaks down as:
 
-1. **Severity, rule ID, category, and complexity** on the first line
+1. **Severity, confidence tag, rule ID, category, and complexity** on the first line
 2. **Fully qualified location** (class name and line number)
 3. **Description** of the detected pattern
 4. **Suggestion** prefixed with `→`
