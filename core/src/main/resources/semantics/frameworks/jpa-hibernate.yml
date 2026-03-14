@@ -137,7 +137,9 @@ heavyweight-types:
   - Session
   - SessionFactory
   - StatelessSession
-  - Criteria
+  # Criteria removed — MyBatis generates lightweight Criteria inner classes that collide
+  # with the name. Hibernate Criteria is deprecated and obtained via session.createCriteria(),
+  # not direct construction.
   - CriteriaBuilder
   - CriteriaQuery
   - TypedQuery

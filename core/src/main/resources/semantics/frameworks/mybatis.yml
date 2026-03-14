@@ -1,0 +1,68 @@
+# MyBatis — framework overlay for Java
+# MyBatis 3.x, MyBatis-Plus, MyBatis Generator (MBG)
+
+language: java
+
+methods: {}
+
+cheap-methods:
+  # SqlSession — query methods (DB handles caching)
+  - selectOne
+  - selectList
+  - selectMap
+  - selectCursor
+  - select
+  # Mapper method patterns
+  - countByExample
+  - selectByExample
+  - selectByPrimaryKey
+  # Configuration / metadata
+  - getConfiguration
+  - getMapper
+  - getConnection
+  - getFlushStatements
+
+trivial-methods:
+  # Example/Criteria query builders (no DB, just object construction)
+  - createCriteria
+  - createCriteriaInternal
+  - or
+  - and
+  - andIsNull
+  - andIsNotNull
+  - andEqualTo
+  - andNotEqualTo
+  - andGreaterThan
+  - andGreaterThanOrEqualTo
+  - andLessThan
+  - andLessThanOrEqualTo
+  - andIn
+  - andNotIn
+  - andBetween
+  - andNotBetween
+  - andLike
+  - andNotLike
+  - setOrderByClause
+  - setDistinct
+  - clear
+  - addCriterion
+  - addCriterionForJDBCDate
+  - addCriterionForJDBCTime
+  # Example utility
+  - getOredCriteria
+  - isDistinct
+  - getOrderByClause
+
+heavyweight-types:
+  - SqlSessionFactory
+  - SqlSessionFactoryBuilder
+
+io-methods:
+  # SqlSession — write operations (DB round-trips)
+  - insert
+  - update
+  - delete
+  - commit
+  - rollback
+  - flushStatements
+  - clearCache

@@ -5,6 +5,9 @@ tags:
 
 # JavaScript / TypeScript
 
+!!! note "Beta"
+    TypeScript and JavaScript analysis relies on name-based heuristics since these languages lack static type declarations. Expect higher false-positive rates than JVM languages, especially on large codebases. Use `--confidence high` to see only the most certain findings.
+
 JavaScript arrays have a method called `includes()`. It does what you think — and it's O(n):
 
 ```javascript
