@@ -28,7 +28,7 @@ public class QuadraticRemovalRule : Rule {
     override val severity: Severity = Severity.WARNING
     override val languages: Set<Language> = Language.entries.toSet()
     override val category: RuleCategory = RuleCategory.LOOP_AMPLIFIER
-    override val defaultConfidence: Confidence = Confidence.HIGH
+    override val defaultConfidence: Confidence = Confidence.MEDIUM
     override val requiresTypeContext: Boolean = true
 
     override fun evaluate(context: AnalysisContext): List<Finding> {
