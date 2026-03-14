@@ -27,8 +27,8 @@ Detects `String.concat()` calls inside loops. Each `concat()` creates a new `Str
 
     ```java
     String report = "";
-    for (Animal animal : animals) {
-        report = report.concat(animal.getName()).concat(", ");  // Copies entire string each time
+    for (Order order : orders) {
+        report = report.concat(order.getName()).concat(", ");   // Copies entire string each time
     }
     ```
 
@@ -38,8 +38,8 @@ Detects `String.concat()` calls inside loops. Each `concat()` creates a new `Str
 
     ```java
     StringBuilder report = new StringBuilder();
-    for (Animal animal : animals) {
-        report.append(animal.getName()).append(", ");           // Appends in-place
+    for (Order order : orders) {
+        report.append(order.getName()).append(", ");            // Appends in-place
     }
     return report.toString();
     ```

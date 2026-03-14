@@ -28,9 +28,9 @@ This rule is a companion to [`repeated-regex-in-loop`](repeated-regex-in-loop.md
 === "Java"
 
     ```java
-    for (Animal animal : animals) {
-        if (animal.getName().matches("^[A-Z][a-z]+$")) {     // Pattern compiled every iteration
-            validAnimals.add(animal);
+    for (Order order : orders) {
+        if (order.getCategory().matches("^[A-Z][a-z]+$")) {  // Pattern compiled every iteration
+            validOrders.add(order);
         }
     }
     ```
@@ -38,9 +38,9 @@ This rule is a companion to [`repeated-regex-in-loop`](repeated-regex-in-loop.md
 === "Groovy"
 
     ```groovy
-    animals.each { animal ->
-        def parts = animal.diet.split("\\s*,\\s*")           // Pattern compiled every iteration
-        parts.each { dietItems.add(it.trim()) }
+    orders.each { order ->
+        def parts = order.description.split("\\s*,\\s*")     // Pattern compiled every iteration
+        parts.each { descriptionParts.add(it.trim()) }
     }
     ```
 
@@ -49,10 +49,10 @@ This rule is a companion to [`repeated-regex-in-loop`](repeated-regex-in-loop.md
 === "Java"
 
     ```java
-    Pattern namePattern = Pattern.compile("^[A-Z][a-z]+$");
-    for (Animal animal : animals) {
-        if (namePattern.matcher(animal.getName()).matches()) { // Compiled once
-            validAnimals.add(animal);
+    Pattern categoryPattern = Pattern.compile("^[A-Z][a-z]+$");
+    for (Order order : orders) {
+        if (categoryPattern.matcher(order.getCategory()).matches()) { // Compiled once
+            validOrders.add(order);
         }
     }
     ```
@@ -60,10 +60,10 @@ This rule is a companion to [`repeated-regex-in-loop`](repeated-regex-in-loop.md
 === "Groovy"
 
     ```groovy
-    def dietSplitter = Pattern.compile("\\s*,\\s*")
-    animals.each { animal ->
-        def parts = dietSplitter.split(animal.diet)           // Compiled once
-        parts.each { dietItems.add(it.trim()) }
+    def descriptionSplitter = Pattern.compile("\\s*,\\s*")
+    orders.each { order ->
+        def parts = descriptionSplitter.split(order.description) // Compiled once
+        parts.each { descriptionParts.add(it.trim()) }
     }
     ```
 

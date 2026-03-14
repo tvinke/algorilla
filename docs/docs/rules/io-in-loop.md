@@ -39,9 +39,9 @@ This is one of the most impactful performance patterns in production code. A loo
 === "Java (JDBC)"
 
     ```java
-    for (String id : ids) {
+    for (String id : orderIds) {
         ResultSet rs = conn.prepareStatement(
-            "SELECT * FROM users WHERE id = ?").executeQuery();
+            "SELECT * FROM orders WHERE id = ?").executeQuery();
         result.add(mapRow(rs));
     }
     ```
@@ -49,9 +49,9 @@ This is one of the most impactful performance patterns in production code. A loo
 === "JavaScript"
 
     ```javascript
-    for (const id of userIds) {
-        const response = await fetch(`/api/users/${id}`);
-        profiles.push(await response.json());
+    for (const id of orderIds) {
+        const response = await fetch(`/api/orders/${id}`);
+        orderDetails.push(await response.json());
     }
     ```
 
@@ -70,18 +70,18 @@ This is one of the most impactful performance patterns in production code. A loo
     ```java
     // Single query with IN clause
     ResultSet rs = conn.prepareStatement(
-        "SELECT * FROM users WHERE id IN (?)").executeQuery();
+        "SELECT * FROM orders WHERE id IN (?)").executeQuery();
     ```
 
 === "JavaScript"
 
     ```javascript
     // Single batch fetch
-    const response = await fetch('/api/users/batch', {
+    const response = await fetch('/api/orders/batch', {
         method: 'POST',
-        body: JSON.stringify(userIds),
+        body: JSON.stringify(orderIds),
     });
-    const profiles = await response.json();
+    const orderDetails = await response.json();
     ```
 
 ## Suggestion

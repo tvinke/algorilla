@@ -28,8 +28,8 @@ This rule excludes `Map.remove()` (O(1) for HashMap), `Set.remove()` (O(1) for H
 === "Java"
 
     ```java
-    for (String extinct : extinctSpecies) {
-        animals.remove(extinct);       // Shifts remaining elements each time: O(n) per call
+    for (String cancelledId : cancelledOrderIds) {
+        orders.remove(cancelledId);    // Shifts remaining elements each time: O(n) per call
     }
     ```
 
@@ -38,21 +38,21 @@ This rule excludes `Map.remove()` (O(1) for HashMap), `Set.remove()` (O(1) for H
 === "Java"
 
     ```java
-    Set<String> extinctSet = new HashSet<>(extinctSpecies);
-    animals.removeAll(extinctSet);     // Single pass: O(n)
+    Set<String> cancelledSet = new HashSet<>(cancelledOrderIds);
+    orders.removeAll(cancelledSet);    // Single pass: O(n)
     ```
 
 === "Java (alternative)"
 
     ```java
-    animals.removeIf(a -> extinctSpecies.contains(a));  // Single pass with Iterator
+    orders.removeIf(o -> cancelledOrderIds.contains(o));  // Single pass with Iterator
     ```
 
 === "Java (filter)"
 
     ```java
-    List<String> remaining = animals.stream()
-        .filter(a -> !extinctSpecies.contains(a))
+    List<String> remaining = orders.stream()
+        .filter(o -> !cancelledOrderIds.contains(o))
         .collect(Collectors.toList());
     ```
 

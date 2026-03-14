@@ -27,11 +27,11 @@ This rule only flags the expensive reflection methods that perform class scannin
 === "Java"
 
     ```java
-    for (Class<?> animalType : animalTypes) {
-        Method[] methods = animalType.getDeclaredMethods();  // Array allocated every iteration
+    for (Class<?> orderType : orderTypes) {
+        Method[] methods = orderType.getDeclaredMethods();   // Array allocated every iteration
         for (Method m : methods) {
-            if (m.isAnnotationPresent(Feeding.class)) {
-                feedingMethods.add(m);
+            if (m.isAnnotationPresent(OrderProcessor.class)) {
+                processorMethods.add(m);
             }
         }
     }
@@ -43,12 +43,12 @@ This rule only flags the expensive reflection methods that perform class scannin
 
     ```java
     Map<Class<?>, Method[]> methodCache = new HashMap<>();
-    for (Class<?> animalType : animalTypes) {
+    for (Class<?> orderType : orderTypes) {
         Method[] methods = methodCache.computeIfAbsent(
-            animalType, Class::getDeclaredMethods);          // Cached per class
+            orderType, Class::getDeclaredMethods);           // Cached per class
         for (Method m : methods) {
-            if (m.isAnnotationPresent(Feeding.class)) {
-                feedingMethods.add(m);
+            if (m.isAnnotationPresent(OrderProcessor.class)) {
+                processorMethods.add(m);
             }
         }
     }
