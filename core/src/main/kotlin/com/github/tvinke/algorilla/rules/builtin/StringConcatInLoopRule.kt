@@ -94,4 +94,15 @@ public class StringConcatInLoopRule : Rule {
 
 private val STRING_CONCAT_METHODS = setOf("concat")
 
-private fun isStringConcatCall(call: FunctionCall): Boolean = call.name in STRING_CONCAT_METHODS && call.qualifiedTarget != null
+// Receiver names that indicate non-String .concat() — typed objects like factories, builders, collections
+private val NON_STRING_RECEIVER_PATTERNS =
+    setOf("factory", "builder", "attributes", "immutable", "collector", "stream")
+
+private fun isStringConcatCall(call: FunctionCall): Boolean {
+    if (call.name !in STRING_CONCAT_METHODS) return false
+    val target = call.qualifiedTarget ?: return false
+    // Skip when the receiver name suggests a typed object (factory, builder, etc.)
+    val lower = target.lowercase()
+    if (NON_STRING_RECEIVER_PATTERNS.any { lower.contains(it) }) return false
+    return true
+}
