@@ -58,78 +58,76 @@ markdown_extensions:
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
 
 nav:
-  - Guide:
-    - index.md
-    - Getting Started:
-      - Installation: getting-started/installation.md
-      - Quick Start: getting-started/quickstart.md
-      - Configuration: getting-started/configuration.md
-    - Concepts:
-      - The Hidden O(n²) Problem: hidden-complexity.md
-      - The Hidden Triple Scan: hidden-duplication.md
-      - The Hidden N+1: hidden-io.md
-      - Big-O Primer: concepts/big-o-primer.md
-      - How Detection Works: concepts/how-detection-works.md
-      - Cross-File Analysis: concepts/cross-file-analysis.md
-    - Changelog: changelog.md
+  - Get Started:
+    - Overview: index.md
+    - Installation: getting-started/installation.md
+    - Quick Start: getting-started/quickstart.md
+    - Configuration: getting-started/configuration.md
+  - Use Algorilla:
+    - Workflow: guide/workflow.md
+    - Understanding Output: guide/understanding-output.md
+    - Suppression: guide/suppression.md
+    - Project Detection: guide/project-detection.md
+    - Multi-Language Support: guide/multi-language.md
+    - CI/CD Integration: guide/ci-integration.md
+    - Baseline Workflow: guide/baseline-workflow.md
+    - Incremental Analysis: guide/incremental-analysis.md
+    - Custom Rules: guide/custom-rules.md
+    - Pre-Commit Hooks: guide/pre-commit.md
+  - Concepts:
+    - The Hidden O(n²) Problem: hidden-complexity.md
+    - The Hidden Triple Scan: hidden-duplication.md
+    - The Hidden N+1: hidden-io.md
+    - Big-O Primer: concepts/big-o-primer.md
+    - How Detection Works: concepts/how-detection-works.md
+    - Cross-File Analysis: concepts/cross-file-analysis.md
+  - Reference:
+    - Rules:
+      - Overview: rules/index.md
+      - Loop Amplifiers:
+        - Nested Lookup: rules/nested-lookup.md
+        - Repeated Linear Scan: rules/repeated-linear-scan.md
+        - Repeated Regex in Loop: rules/repeated-regex-in-loop.md
+        - Regex Recompilation in Loop: rules/regex-recompilation-in-loop.md
+        - Expensive Serialization in Loop: rules/expensive-serialization-in-loop.md
+        - Sequential Async Join in Loop: rules/sequential-async-join-in-loop.md
+        - In-Loop Collection Building: rules/in-loop-collection-building.md
+        - String Concat in Loop: rules/string-concat-in-loop.md
+        - Quadratic Removal: rules/quadratic-removal.md
+        - Repeated Reflection in Loop: rules/repeated-reflection-in-loop.md
+        - Hidden Nested Loop: rules/hidden-nested-loop.md
+        - IO In Loop: rules/io-in-loop.md
+        - Expensive Callback: rules/expensive-callback.md
+        - Cardinality Explosion: rules/cardinality-explosion.md
+      - Sort Abuse:
+        - Sort for Last: rules/sort-for-last.md
+        - Expensive Sort Comparator: rules/expensive-sort-comparator.md
+        - Filter After Sort: rules/filter-after-sort.md
+      - Query Patterns:
+        - N+1 Query: rules/n-plus-one-query.md
+        - Bulk Load for Single Lookup: rules/bulk-load-for-single-lookup.md
+        - Lazy Loading In Loop: rules/lazy-loading-in-loop.md
+      - Construction Cost:
+        - Expensive Construction: rules/expensive-construction.md
+      - Redundancy:
+        - Redundant Expensive Call: rules/redundant-expensive-call.md
+        - Uncached Getter: rules/uncached-getter.md
+        - Chained Getters: rules/chained-getters.md
+        - Unmemoized Recursion: rules/unmemoized-recursion.md
+        - Repeated Collection Iteration: rules/repeated-collection-iteration.md
+        - Loop-Invariant Hoisting: rules/loop-invariant-hoisting.md
+      - Concurrency:
+        - Parallel Pipeline Bottleneck: rules/parallel-pipeline-bottleneck.md
+    - Languages:
+      - Overview: languages/index.md
+      - Java: languages/java.md
+      - Kotlin: languages/kotlin.md
+      - Groovy: languages/groovy.md
+      - JavaScript / TypeScript: languages/javascript.md
+      - Framework Support: languages/frameworks.md
+    - CLI Reference: guide/cli-reference.md
     - Stability & Compatibility: stability.md
-    - Using Algorilla:
-      - Workflow: guide/workflow.md
-      - Understanding Output: guide/understanding-output.md
-      - CLI Reference: guide/cli-reference.md
-      - Project Detection: guide/project-detection.md
-      - Suppression: guide/suppression.md
-    - Advanced:
-      - CI/CD Integration: guide/ci-integration.md
-      - Baseline Workflow: guide/baseline-workflow.md
-      - Incremental Analysis: guide/incremental-analysis.md
-      - Custom Rules: guide/custom-rules.md
-      - Multi-Language Support: guide/multi-language.md
-      - Pre-Commit Hooks: guide/pre-commit.md
-  - Rules:
-    - Overview: rules/index.md
-    - Loop Amplifiers:
-      - Nested Lookup: rules/nested-lookup.md
-      - Repeated Linear Scan: rules/repeated-linear-scan.md
-      - Repeated Regex in Loop: rules/repeated-regex-in-loop.md
-      - Regex Recompilation in Loop: rules/regex-recompilation-in-loop.md
-      - Expensive Serialization in Loop: rules/expensive-serialization-in-loop.md
-      - Sequential Async Join in Loop: rules/sequential-async-join-in-loop.md
-      - In-Loop Collection Building: rules/in-loop-collection-building.md
-      - String Concat in Loop: rules/string-concat-in-loop.md
-      - Quadratic Removal: rules/quadratic-removal.md
-      - Repeated Reflection in Loop: rules/repeated-reflection-in-loop.md
-      - Hidden Nested Loop: rules/hidden-nested-loop.md
-      - IO In Loop: rules/io-in-loop.md
-      - Expensive Callback: rules/expensive-callback.md
-      - Cardinality Explosion: rules/cardinality-explosion.md
-    - Sort Abuse:
-      - Sort for Last: rules/sort-for-last.md
-      - Expensive Sort Comparator: rules/expensive-sort-comparator.md
-      - Filter After Sort: rules/filter-after-sort.md
-    - Query Patterns:
-      - N+1 Query: rules/n-plus-one-query.md
-      - Bulk Load for Single Lookup: rules/bulk-load-for-single-lookup.md
-      - Lazy Loading In Loop: rules/lazy-loading-in-loop.md
-    - Construction Cost:
-      - Expensive Construction: rules/expensive-construction.md
-    - Redundancy:
-      - Redundant Expensive Call: rules/redundant-expensive-call.md
-      - Uncached Getter: rules/uncached-getter.md
-      - Chained Getters: rules/chained-getters.md
-      - Unmemoized Recursion: rules/unmemoized-recursion.md
-      - Repeated Collection Iteration: rules/repeated-collection-iteration.md
-      - Loop-Invariant Hoisting: rules/loop-invariant-hoisting.md
-    - Concurrency:
-      - Parallel Pipeline Bottleneck: rules/parallel-pipeline-bottleneck.md
-  - Languages:
-    - Overview: languages/index.md
-    - Java: languages/java.md
-    - Kotlin: languages/kotlin.md
-    - Groovy: languages/groovy.md
-    - JavaScript / TypeScript: languages/javascript.md
-    - Framework Support: languages/frameworks.md
-  - Developer:
+  - Development:
     - Development Guidelines: developer/guidelines.md
     - Coding Conventions: developer/coding-conventions.md
     - Documentation Guidelines: developer/documentation-guidelines.md
@@ -141,3 +139,4 @@ nav:
     - Testing: developer/testing.md
     - Example Domain: developer/example-domain.md
     - Releasing: developer/releasing.md
+  - Changelog: changelog.md
