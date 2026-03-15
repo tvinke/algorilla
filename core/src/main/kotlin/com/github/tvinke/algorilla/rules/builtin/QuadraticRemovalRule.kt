@@ -37,7 +37,7 @@ public class QuadraticRemovalRule : Rule {
         for ((_, fileRoot) in context.irTrees) {
             val language = (fileRoot as? FileRoot)?.language
             val methods = language?.let { context.registry.removalMethods(it) } ?: emptySet()
-            scanNode(fileRoot, null, emptyList(), methods, findings)
+            scanNode(fileRoot, null, emptyList(), methods, context, findings)
         }
         return findings
     }
@@ -47,23 +47,24 @@ public class QuadraticRemovalRule : Rule {
         enclosingFn: FunctionDecl?,
         loopStack: List<LoopNode>,
         removalMethods: Set<String>,
+        context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
         val fn = if (node is FunctionDecl) node else enclosingFn
 
         if (node is LoopNode) {
             for (child in node.children) {
-                scanNode(child, fn, loopStack + node, removalMethods, findings)
+                scanNode(child, fn, loopStack + node, removalMethods, context, findings)
             }
             return
         }
 
-        if (loopStack.isNotEmpty() && node is FunctionCall && isRemovalCall(node, fn, removalMethods)) {
+        if (loopStack.isNotEmpty() && node is FunctionCall && isRemovalCall(node, fn, removalMethods, context)) {
             findings.add(buildFinding(node, loopStack))
         }
 
         for (child in node.children) {
-            scanNode(child, fn, loopStack, removalMethods, findings)
+            scanNode(child, fn, loopStack, removalMethods, context, findings)
         }
     }
 
@@ -130,6 +131,7 @@ private fun isRemovalCall(
     call: FunctionCall,
     enclosingFn: FunctionDecl?,
     removalMethods: Set<String>,
+    context: AnalysisContext,
 ): Boolean {
     if (call.name !in removalMethods) return false
     if (call.name in bulkRemovalMethods) return false
@@ -138,6 +140,10 @@ private fun isRemovalCall(
     if (lower in nonListExactTargets) return false
     if (lower in staticUtilityTargets) return false
     if (nonListTargetContains.any { lower.contains(it) }) return false
-    return nonListTargetSuffixes.none { suffix -> lower.endsWith(suffix) } &&
-        (enclosingFn == null || !enclosingFn.hasO1Type(target))
+    if (nonListTargetSuffixes.any { suffix -> lower.endsWith(suffix) }) return false
+    // Use TypeEnvironment for full type resolution (field types, factory inference, chain-end)
+    val typeEnv = enclosingFn?.let { context.typeEnvironmentFor(it) }
+    if (typeEnv != null) return !typeEnv.isO1(target)
+    // Fallback to basic parameter/local-decl check when no TypeEnvironment available
+    return enclosingFn == null || !enclosingFn.hasO1Type(target)
 }

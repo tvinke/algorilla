@@ -100,19 +100,10 @@ private val GETTER_PREFIXES: List<String> by lazy {
         .allGetterPrefixes()
 }
 
-/** Method names excluded from getter detection. */
-private val EXCLUDED_NAMES =
-    setOf(
-        // Too generic (Map.get, List.get)
-        "get",
-        "getOrDefault",
-        "getOrElse",
-        // Bytecode / ASM instructions (side-effectful emission, not getters)
-        "load_local",
-        "load_arg",
-        "load_this",
-        "getfield",
-    )
+/** Method names excluded from getter detection. YAML-driven via `getter-excluded-names`. */
+private val EXCLUDED_NAMES: Set<String> by lazy {
+    LanguageSemanticsRegistry.DEFAULT.allExtraSection("getter-excluded-names")
+}
 
 private fun isGetterPattern(call: FunctionCall): Boolean {
     if (call.name in EXCLUDED_NAMES) return false

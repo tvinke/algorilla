@@ -13,6 +13,7 @@ import com.github.tvinke.algorilla.model.ObjectCreation
 import com.github.tvinke.algorilla.model.SortCall
 import com.github.tvinke.algorilla.model.VariableDecl
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
+import com.github.tvinke.algorilla.semantics.TypeEnvironment
 
 /**
  * Finds all descendant nodes of the specified type in this IR tree.
@@ -147,6 +148,25 @@ public fun LookupCall.isCollectionLookup(fn: FunctionDecl?): Boolean =
         !isStaticUtilityTarget() &&
         !hasO1TargetName() &&
         (fn == null || !fn.hasO1Type(targetVariable))
+
+/**
+ * Enhanced version that uses [TypeEnvironment] for full type resolution.
+ * Falls back to the basic version when no type environment is available.
+ */
+@Suppress("ReturnCount")
+public fun LookupCall.isCollectionLookup(
+    fn: FunctionDecl?,
+    typeEnv: TypeEnvironment?,
+): Boolean {
+    if (isO1 || isScalar) return false
+    if (isStaticUtilityTarget() || hasO1TargetName()) return false
+    // TypeEnvironment has broader coverage (field types, factory inference, chain-end)
+    // When available, trust it fully — it already includes everything hasO1Type checks.
+    if (typeEnv != null && targetVariable != null) {
+        return !(typeEnv.isO1(targetVariable) || typeEnv.isString(targetVariable))
+    }
+    return fn == null || !fn.hasO1Type(targetVariable)
+}
 
 /**
  * Static utility classes whose methods operate on strings/primitives, not collections.

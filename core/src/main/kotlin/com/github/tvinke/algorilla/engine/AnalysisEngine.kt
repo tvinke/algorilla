@@ -11,7 +11,6 @@ import com.github.tvinke.algorilla.graph.ParameterFlowAnnotator
 import com.github.tvinke.algorilla.graph.SymbolTable
 import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.FileRoot
-import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
@@ -22,7 +21,9 @@ import com.github.tvinke.algorilla.model.VariableDecl
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
+import com.github.tvinke.algorilla.rules.signatureKey
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
+import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import com.github.tvinke.algorilla.util.findDescendants
 import com.github.tvinke.algorilla.util.transform
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -62,12 +63,12 @@ public class AnalysisEngine(
         logger.info { "Cache: ${sourceFiles.size - filesToParse.size} files unchanged, ${filesToParse.size} to analyze" }
 
         val (parsedTrees, _, errors) = parseFiles(filesToParse)
-        val irTrees = markScalarLookups(parsedTrees)
+        val (irTrees, typeEnvironments) = markScalarLookups(parsedTrees)
         val symbolTable = rebuildSymbolTable(irTrees)
         val callGraph = buildCallGraph(irTrees, symbolTable)
         annotateParameterFlows(irTrees, symbolTable)
         annotateComplexity(symbolTable, callGraph)
-        val rawFindings = evaluateRules(irTrees, symbolTable, callGraph)
+        val rawFindings = evaluateRules(irTrees, symbolTable, callGraph, typeEnvironments)
         val deduplicated = applySubsumption(rawFindings, rules)
         val vendoredDemoted = demoteVendoredCode(deduplicated)
         val fileLanguages = irTrees.mapValues { (_, root) -> root.language }
@@ -158,7 +159,7 @@ public class AnalysisEngine(
         cache.save(entries)
     }
 
-    private fun markScalarLookups(irTrees: Map<String, FileRoot>): Map<String, FileRoot> = markScalarLookups(irTrees, registry)
+    private fun markScalarLookups(irTrees: Map<String, FileRoot>): MarkScalarLookupsResult = markScalarLookups(irTrees, registry)
 
     private fun parseFiles(sourceFiles: List<String>): ParseResult {
         val irTrees = mutableMapOf<String, FileRoot>()
@@ -211,8 +212,9 @@ public class AnalysisEngine(
         irTrees: Map<String, FileRoot>,
         symbolTable: SymbolTable,
         callGraph: CallGraph,
+        typeEnvironments: Map<String, TypeEnvironment>,
     ): List<Finding> {
-        val context = AnalysisContext(irTrees, symbolTable, callGraph, config, registry)
+        val context = AnalysisContext(irTrees, symbolTable, callGraph, config, registry, typeEnvironments)
         return rules
             .filter { rule -> isRuleEnabled(rule) }
             .flatMap { rule -> rule.evaluate(context).map { it.copy(category = rule.category) } }
@@ -451,9 +453,20 @@ private val findingOrder: Comparator<Finding> =
         .thenBy { it.location.line }
 
 /**
+ * Result of the scalar-lookup marking pass: refined IR trees and per-function type environments.
+ */
+public data class MarkScalarLookupsResult(
+    val irTrees: Map<String, FileRoot>,
+    val typeEnvironments: Map<String, TypeEnvironment>,
+)
+
+/**
  * Post-parse pass that refines [LookupCall] nodes based on declared variable types:
  * - Marks as `isScalar = true` when the target type is not a known collection (String, Optional, etc.)
  * - Promotes to `isO1 = true` when the target type is a known O(1) type (Set, Map, etc.)
+ *
+ * Also builds a [TypeEnvironment] per function, which is returned alongside the refined trees
+ * for use by rules during evaluation.
  *
  * Uses both same-file field types and a cross-file field type registry (keyed by declaring class)
  * so that `this.field` references resolve even when the cross-method resolver follows calls
@@ -462,12 +475,13 @@ private val findingOrder: Comparator<Finding> =
 public fun markScalarLookups(
     irTrees: Map<String, FileRoot>,
     registry: LanguageSemanticsRegistry,
-): Map<String, FileRoot> {
+): MarkScalarLookupsResult {
     val globalFieldTypes = collectGlobalFieldTypes(irTrees)
     // Merge all field types across all classes as a fallback for inherited fields.
     // Precedence: local file > declaring class > any class in scan scope.
     val allGlobalFields = globalFieldTypes.values.fold(emptyMap<String, String>()) { acc, m -> acc + m }
     val result = mutableMapOf<String, FileRoot>()
+    val typeEnvs = mutableMapOf<String, TypeEnvironment>()
     for ((file, fileRoot) in irTrees) {
         val language = fileRoot.language
         val localFieldTypes = collectFieldTypes(fileRoot)
@@ -476,14 +490,16 @@ public fun markScalarLookups(
                 if (node is FunctionDecl) {
                     val classFields = node.declaringClass?.let { globalFieldTypes[it] } ?: emptyMap()
                     val mergedFields = allGlobalFields + classFields + localFieldTypes
-                    markScalarLookupsInFunction(node, language, registry, mergedFields)
+                    val typeEnv = TypeEnvironment.build(node, mergedFields, language, registry)
+                    typeEnvs[signatureKey(node)] = typeEnv
+                    markScalarLookupsInFunction(node, language, registry, typeEnv)
                 } else {
                     node
                 }
             }
         result[file] = transformed as FileRoot
     }
-    return result
+    return MarkScalarLookupsResult(result, typeEnvs)
 }
 
 /**
@@ -523,152 +539,26 @@ private fun collectFieldTypes(fileRoot: FileRoot): Map<String, String> {
     return fieldTypes
 }
 
-private fun buildTypeMap(
-    fn: FunctionDecl,
-    fieldTypes: Map<String, String>,
-    language: com.github.tvinke.algorilla.model.Language,
-    registry: LanguageSemanticsRegistry,
-): Map<String, String> {
-    val typeMap = mutableMapOf<String, String>()
-    typeMap.putAll(fieldTypes)
-    for (param in fn.parameters) {
-        if (param.typeName != null) typeMap[param.name] = param.typeName
-    }
-    for (varDecl in fn.findDescendants<VariableDecl>()) {
-        val type =
-            varDecl.typeName
-                ?: varDecl.children
-                    .filterIsInstance<ObjectCreation>()
-                    .firstOrNull()
-                    ?.typeName
-                ?: inferO1Type(varDecl, language, registry)
-                ?: inferChainEndType(varDecl, language, registry)
-                ?: inferFromMethodNameSuffix(varDecl)
-        if (type != null) typeMap[varDecl.name] = type
-    }
-    return typeMap
-}
-
-/**
- * Infers an O(1) type name when a variable is initialized via a factory method or
- * instance method that returns a Set or Map. Uses the YAML-driven `o1-factory-methods`
- * section from LanguageSemanticsRegistry, plus a qualifier check against `o1-types`.
- */
-private fun inferO1Type(
-    varDecl: VariableDecl,
-    language: com.github.tvinke.algorilla.model.Language,
-    registry: LanguageSemanticsRegistry,
-): String? {
-    val call = varDecl.children.filterIsInstance<FunctionCall>().firstOrNull() ?: return null
-    // Check if the qualified target is an O(1) type: Set.of(), Map.of(), ConcurrentHashMap.newKeySet()
-    val target = call.qualifiedTarget
-    if (target != null && registry.isO1Type(target)) return target
-    // Check if the method name is a known O(1) factory/return-type method (YAML-driven)
-    if (registry.isO1Factory(language, call.name)) return "Set"
-    return null
-}
-
-/**
- * Chain-end type inference: when a variable is initialized via a stream pipeline,
- * the terminal operation determines the result type.
- * Examples: `.collect(Collectors.toSet())` → Set, `.toList()` → List.
- */
-@Suppress("ReturnCount")
-private fun inferChainEndType(
-    varDecl: VariableDecl,
-    language: com.github.tvinke.algorilla.model.Language,
-    registry: LanguageSemanticsRegistry,
-): String? {
-    // Search ALL FunctionCall descendants for terminal operations
-    val allCalls = varDecl.findDescendants<FunctionCall>()
-    val terminal = allCalls.lastOrNull { it.name in TERMINAL_OPS } ?: return null
-
-    // Direct terminal: .toSet(), .toList(), .toMap(), etc.
-    if (registry.isO1Factory(language, terminal.name)) return "Set"
-    if (terminal.name in LIST_TERMINALS) return "List"
-    if (terminal.name == "toArray") return "Array"
-
-    // Collector terminal: .collect(Collectors.toSet())
-    if (terminal.name == "collect" && terminal.arguments.isNotEmpty()) {
-        val collector = terminal.arguments.filterIsInstance<FunctionCall>().firstOrNull()
-        if (collector != null) return inferCollectorType(collector)
-    }
-    return null
-}
-
-private val TERMINAL_OPS =
-    setOf(
-        "collect",
-        "toList",
-        "toSet",
-        "toMap",
-        "toMutableList",
-        "toMutableSet",
-        "toMutableMap",
-        "toSortedSet",
-        "toSortedMap",
-        "toHashSet",
-        "toArray",
-        "toUnmodifiableList",
-        "toUnmodifiableSet",
-        "toUnmodifiableMap",
-    )
-
-private val LIST_TERMINALS = setOf("toList", "toMutableList", "toUnmodifiableList")
-
-private fun inferCollectorType(collector: FunctionCall): String? =
-    when (collector.name) {
-        "toSet", "toUnmodifiableSet" -> "Set"
-        "toList", "toUnmodifiableList" -> "List"
-        "toMap", "toUnmodifiableMap", "toConcurrentMap" -> "Map"
-        "groupingBy", "partitioningBy" -> "Map"
-        else -> null
-    }
-
-/**
- * Method name suffix heuristic: last resort when no other inference succeeds.
- * Infers collection type from common method name patterns.
- */
-@Suppress("CyclomaticComplexMethod")
-private fun inferFromMethodNameSuffix(varDecl: VariableDecl): String? {
-    val call =
-        varDecl.children.filterIsInstance<FunctionCall>().lastOrNull()
-            ?: varDecl.findDescendants<FunctionCall>().lastOrNull()
-            ?: return null
-    val name = call.name
-    // Suffix must follow a meaningful prefix (not just "Set" alone)
-    val minLen = "getX".length
-    return when {
-        name.endsWith("Stream") || name.endsWith("stream") -> "Stream"
-        name.endsWith("Set") && name.length > minLen && name[0].isLowerCase() -> "Set"
-        name.endsWith("Map") && name.length > minLen && name[0].isLowerCase() -> "Map"
-        name.endsWith("List") && name.length > minLen && name[0].isLowerCase() -> "List"
-        else -> null
-    }
-}
-
 private fun markScalarLookupsInFunction(
     fn: FunctionDecl,
     language: com.github.tvinke.algorilla.model.Language,
     registry: LanguageSemanticsRegistry,
-    fieldTypes: Map<String, String>,
-): FunctionDecl {
-    val typeMap = buildTypeMap(fn, fieldTypes, language, registry)
-    return fn.transform { node ->
+    typeEnv: TypeEnvironment,
+): FunctionDecl =
+    fn.transform { node ->
         if (node is LookupCall && node.targetVariable != null && !node.isO1) {
             val varName = node.targetVariable.removePrefix("this.")
-            val declaredType = typeMap[varName]
+            val type = typeEnv.typeOf(varName)
             when {
-                declaredType == null -> node
-                registry.isO1Type(language, declaredType) -> node.copy(isO1 = true)
-                !registry.isCollectionType(language, declaredType) -> node.copy(isScalar = true)
+                type == null -> node
+                registry.isO1Type(language, type.simpleName) -> node.copy(isO1 = true)
+                !registry.isCollectionType(language, type.simpleName) -> node.copy(isScalar = true)
                 else -> node
             }
         } else {
             node
         }
     } as FunctionDecl
-}
 
 private fun createRegistry(config: AnalysisConfig): LanguageSemanticsRegistry {
     val base = LanguageSemanticsRegistry.DEFAULT

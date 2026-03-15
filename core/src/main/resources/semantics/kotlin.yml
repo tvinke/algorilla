@@ -1236,3 +1236,15 @@ io-target-patterns:
   - storage
   - bucket
   - blob
+
+# Names excluded from uncached-getter detection.
+# These are too generic (Map.get) or represent bytecode instructions (ASM emit),
+# not cacheable getter calls.
+getter-excluded-names:
+  - get
+  - getOrDefault
+  - getOrElse
+  - load_local
+  - load_arg
+  - load_this
+  - getfield
