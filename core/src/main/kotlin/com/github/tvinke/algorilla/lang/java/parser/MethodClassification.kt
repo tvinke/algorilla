@@ -15,7 +15,7 @@ import com.github.tvinke.algorilla.model.SortKind
 import com.github.tvinke.algorilla.model.SourceLocation
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 
-@Suppress("CyclomaticComplexMethod", "ReturnCount")
+@Suppress("CyclomaticComplexMethod", "ReturnCount", "LongMethod")
 public fun classifyChainedCall(
     methodName: String,
     targetText: String,
@@ -35,6 +35,7 @@ public fun classifyChainedCall(
             comparatorBody = argNodes.ifEmpty { null },
             location = loc,
             children = argNodes,
+            qualifiedTarget = targetVar,
         )
     }
 
@@ -44,12 +45,12 @@ public fun classifyChainedCall(
         if (argNodes.isNotEmpty() && kind in setOf(AccessKind.FIRST, AccessKind.LAST)) {
             return LookupCall(kind = LookupKind.FIND, targetVariable = targetVar, isO1 = false, location = loc, children = argNodes)
         }
-        return CollectionAccess(kind = kind, location = loc, children = argNodes)
+        return CollectionAccess(kind = kind, location = loc, children = argNodes, qualifiedTarget = targetVar)
     }
 
     // .get(0) on a collection → CollectionAccess(INDEX_ZERO), used by sort-for-last detection
     if (methodName == "get" && isLiteralZeroArg(argNodes)) {
-        return CollectionAccess(kind = AccessKind.INDEX_ZERO, location = loc, children = argNodes)
+        return CollectionAccess(kind = AccessKind.INDEX_ZERO, location = loc, children = argNodes, qualifiedTarget = targetVar)
     }
 
     return FunctionCall(

@@ -362,9 +362,9 @@ private fun classifyJsCall(
         "filter" -> LookupCall(LookupKind.FILTER, targetVar, false, loc, emptyList())
         "some" -> LookupCall(LookupKind.SOME, targetVar, false, loc, emptyList())
         "every" -> LookupCall(LookupKind.ANY, targetVar, false, loc, emptyList())
-        "sort", "toSorted" -> SortCall(SortKind.SORT, false, null, loc, emptyList())
-        "first" -> CollectionAccess(AccessKind.FIRST, loc, emptyList())
-        "last" -> CollectionAccess(AccessKind.LAST, loc, emptyList())
+        "sort", "toSorted" -> SortCall(SortKind.SORT, false, null, loc, emptyList(), qualifiedTarget = targetVar)
+        "first" -> CollectionAccess(AccessKind.FIRST, loc, emptyList(), qualifiedTarget = targetVar)
+        "last" -> CollectionAccess(AccessKind.LAST, loc, emptyList(), qualifiedTarget = targetVar)
         "concat" -> null // handled by InLoopCollectionBuildingRule via FunctionCall
         else -> null
     }

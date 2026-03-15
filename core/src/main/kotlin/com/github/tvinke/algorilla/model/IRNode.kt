@@ -94,6 +94,7 @@ public data class SortCall(
     val comparatorBody: List<IRNode>?,
     override val location: SourceLocation,
     override val children: List<IRNode>,
+    val qualifiedTarget: String? = null,
 ) : IRNode
 
 /**
@@ -125,6 +126,7 @@ public data class CollectionAccess(
     val kind: AccessKind,
     override val location: SourceLocation,
     override val children: List<IRNode>,
+    val qualifiedTarget: String? = null,
 ) : IRNode
 
 /**

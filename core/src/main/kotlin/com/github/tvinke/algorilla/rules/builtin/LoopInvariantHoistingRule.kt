@@ -5,6 +5,7 @@ import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.FileRoot
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
+import com.github.tvinke.algorilla.model.GenericNode
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LoopNode
@@ -118,7 +119,19 @@ public class LoopInvariantHoistingRule : Rule {
             if (anyDescendantReferences(child, names)) return true
         }
 
+        // Fallback: check if any GenericNode in the call subtree textually contains a dependent variable name.
+        // This catches cast expressions like (ObjectNode) child where 'child' is a loop variable.
+        if (anyGenericNodeContainsName(call, names)) return true
+
         return false
+    }
+
+    private fun anyGenericNodeContainsName(
+        node: IRNode,
+        names: Set<String>,
+    ): Boolean {
+        if (node is GenericNode && names.any { name -> node.nodeType.split(Regex("\\W+")).any { it == name } }) return true
+        return node.children.any { anyGenericNodeContainsName(it, names) }
     }
 
     private fun anyDescendantReferences(

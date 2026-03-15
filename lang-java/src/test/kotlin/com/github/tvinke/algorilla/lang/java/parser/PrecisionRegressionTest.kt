@@ -652,6 +652,14 @@ internal class PrecisionRegressionTest : FullPipelineTestSupport() {
                 "sort-for-last",
                 "sort followed by full iteration is legitimate",
             )
+
+        @Test
+        fun `sort and access on different collections`() =
+            assertNoFindings(
+                "sort-for-last/negative/different-collection-sort-and-access.java",
+                "sort-for-last",
+                "Sorting items but accessing indices.get(0) — different collections",
+            )
     }
 
     @Nested

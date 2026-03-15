@@ -76,6 +76,14 @@ internal class PrecisionRegressionTest : FullPipelineTestSupport() {
                 "loop-invariant-hoisting",
                 "expression depends on loop variable, cannot be hoisted",
             )
+
+        @Test
+        fun `cast argument depends on loop variable`() =
+            assertNoFindings(
+                "loop-invariant-hoisting/negative/cast-arg-depends-on-loop.groovy",
+                "loop-invariant-hoisting",
+                "normalizeMap((Map) child) depends on 'child' from the loop",
+            )
     }
 
     @Nested

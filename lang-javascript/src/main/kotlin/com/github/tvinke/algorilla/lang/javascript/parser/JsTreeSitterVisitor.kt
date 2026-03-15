@@ -538,13 +538,14 @@ private fun classifyChainedJsCall(
                 },
             location = loc,
             children = argNodes,
+            qualifiedTarget = targetVar,
         )
     }
     jsAccessKindFor(methodName)?.let { kind ->
-        return CollectionAccess(kind = kind, location = loc, children = argNodes)
+        return CollectionAccess(kind = kind, location = loc, children = argNodes, qualifiedTarget = targetVar)
     }
     if (methodName == "get" && jsIsLiteralZeroArg(argNodes)) {
-        return CollectionAccess(kind = AccessKind.INDEX_ZERO, location = loc, children = argNodes)
+        return CollectionAccess(kind = AccessKind.INDEX_ZERO, location = loc, children = argNodes, qualifiedTarget = targetVar)
     }
     return FunctionCall(name = methodName, qualifiedTarget = targetVar, arguments = argNodes, location = loc, children = argNodes)
 }

@@ -23,6 +23,7 @@ import com.github.tvinke.algorilla.util.findDescendants
  * Detects sorting an entire collection just to retrieve the first or last element.
  * Using `.max()` or `.min()` is O(n), while sorting first is O(n log n).
  */
+@Suppress("LargeClass")
 public class SortForLastRule : Rule {
     override val id: String = "sort-for-last"
     override val name: String = "Sort For Last"
@@ -85,6 +86,7 @@ public class SortForLastRule : Rule {
         }
     }
 
+    @Suppress("LoopWithTooManyJumpStatements")
     private fun checkSortWithCrossMethodAccess(
         sort: SortCall,
         calls: List<FunctionCall>,
@@ -100,11 +102,19 @@ public class SortForLastRule : Rule {
                     context.symbolTable,
                     maxDepth = maxDepth,
                 ) ?: continue
+            // Skip when sort and access targets are known and different
+            if (sort.qualifiedTarget != null &&
+                access.qualifiedTarget != null &&
+                sort.qualifiedTarget != access.qualifiedTarget
+            ) {
+                continue
+            }
             findings.add(buildIndirectFinding(sort, call, access))
             return
         }
     }
 
+    @Suppress("LoopWithTooManyJumpStatements")
     private fun checkAccessWithCrossMethodSort(
         access: CollectionAccess,
         calls: List<FunctionCall>,
@@ -120,6 +130,13 @@ public class SortForLastRule : Rule {
                     context.symbolTable,
                     maxDepth = maxDepth,
                 ) ?: continue
+            // Skip when sort and access targets are known and different
+            if (sort.qualifiedTarget != null &&
+                access.qualifiedTarget != null &&
+                sort.qualifiedTarget != access.qualifiedTarget
+            ) {
+                continue
+            }
             findings.add(buildIndirectFinding(sort, call, access))
             return
         }
@@ -130,7 +147,15 @@ public class SortForLastRule : Rule {
         access: CollectionAccess,
     ): Boolean {
         val lineDiff = access.location.line - sort.location.line
-        return lineDiff in 0..MAX_LINE_DISTANCE
+        if (lineDiff !in 0..MAX_LINE_DISTANCE) return false
+        // If both have explicit targets and they differ, this is not a sort-for-first pattern
+        if (sort.qualifiedTarget != null &&
+            access.qualifiedTarget != null &&
+            sort.qualifiedTarget != access.qualifiedTarget
+        ) {
+            return false
+        }
+        return true
     }
 
     private fun isNearbyCall(
