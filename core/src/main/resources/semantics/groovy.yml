@@ -16,7 +16,6 @@ methods:
   permutations:   { semantics: iteration }
   transpose:      { semantics: iteration }
   subsequences:   { semantics: iteration }
-
   # Lookup
   find:        { semantics: lookup, kind: FIND }
   findAll:     { semantics: lookup, kind: FILTER, note: "with closure; without = bulk load" }
@@ -1118,6 +1117,7 @@ non-io-targets:
   - tokenizer
   - stringtokenizer
   - scanner
+  - tok
 
 io-method-candidates:
   - save
@@ -1135,6 +1135,8 @@ io-method-candidates:
   - close
   - send
   - receive
+  - find
+  - search
 
 io-target-patterns:
   # Patterns prefixed with * match anywhere (contains). Others match as suffix (endsWith).

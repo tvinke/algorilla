@@ -1386,6 +1386,8 @@ io-method-candidates:
   - remove
   - send
   - close
+  - find
+  - search
 
 io-target-patterns:
   # Patterns prefixed with * match anywhere (contains). Others match as suffix (endsWith).

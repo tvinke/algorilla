@@ -7,6 +7,8 @@ import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
+import com.github.tvinke.algorilla.model.LookupCall
+import com.github.tvinke.algorilla.model.LoopKind
 import com.github.tvinke.algorilla.model.LoopNode
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.rules.AnalysisContext
@@ -29,6 +31,7 @@ import com.github.tvinke.algorilla.util.ParameterFlowQuery
  *
  * Both tiers are loaded from YAML per language and framework overlay.
  */
+@Suppress("LargeClass")
 public class IOInLoopRule : Rule {
     override val id: String = "io-in-loop"
     override val name: String = "IO In Loop"
@@ -48,7 +51,7 @@ public class IOInLoopRule : Rule {
         return findings
     }
 
-    @Suppress("LongParameterList")
+    @Suppress("LongParameterList", "CyclomaticComplexMethod")
     private fun scanNode(
         node: IRNode,
         enclosingFn: FunctionDecl?,
@@ -68,26 +71,62 @@ public class IOInLoopRule : Rule {
             return
         }
 
-        if (loopStack.isNotEmpty() && node is FunctionCall) {
-            val isDefiniteIO = node.name in ioMethods && !isInMemoryTarget(node, language, context.registry)
-            val isCandidateIO = !isDefiniteIO && node.name in ioCandidates && isIOTarget(node, language, context.registry)
-
-            if (isDefiniteIO || isCandidateIO) {
-                val loopParamConfirmed =
-                    fn != null &&
-                        fn.parameterFlows.any { flow ->
-                            flow.flowsInto.any { it is FlowTarget.LoopIteration }
-                        }
-                findings.add(buildFinding(node, loopStack, loopParamConfirmed))
-            } else if (fn != null) {
-                checkCrossMethodIO(node, fn, loopStack, context, findings)
+        // Treat stream pipeline ops (map, flatMap, filter) as implicit iteration contexts.
+        // Their lambda arguments are executed per-element, just like a loop body.
+        if (node is FunctionCall && node.name in IMPLICIT_ITERATION_OPS) {
+            val syntheticLoop = LoopNode(LoopKind.HIGHER_ORDER, node.qualifiedTarget, node.location, node.children)
+            for (child in node.children) {
+                scanNode(child, fn, loopStack + syntheticLoop, ioMethods, ioCandidates, language, context, findings)
             }
+            return
+        }
+
+        if (loopStack.isNotEmpty()) {
+            checkNodeInLoop(node, fn, loopStack, ioMethods, ioCandidates, language, context, findings)
         }
 
         for (child in node.children) {
             scanNode(child, fn, loopStack, ioMethods, ioCandidates, language, context, findings)
         }
     }
+
+    @Suppress("LongParameterList", "LongMethod")
+    private fun checkNodeInLoop(
+        node: IRNode,
+        fn: FunctionDecl?,
+        loopStack: List<LoopNode>,
+        ioMethods: Set<String>,
+        ioCandidates: Set<String>,
+        language: Language,
+        context: AnalysisContext,
+        findings: MutableList<Finding>,
+    ) {
+        if (node is FunctionCall) {
+            val isDefiniteIO = node.name in ioMethods && !isInMemoryTarget(node, language, context.registry)
+            val isCandidateIO = !isDefiniteIO && node.name in ioCandidates && isIOTarget(node, language, context.registry)
+
+            if (isDefiniteIO || isCandidateIO) {
+                findings.add(buildFinding(node, loopStack, hasLoopParamFlow(fn)))
+            } else if (fn != null) {
+                checkCrossMethodIO(node, fn, loopStack, context, findings)
+            }
+        }
+
+        // Safety net: LookupCall nodes (e.g. find()) that target IO-capable receivers
+        // are likely DB/API calls misclassified as collection lookups.
+        if (node is LookupCall) {
+            val methodName = node.kind.label
+            if (methodName in ioCandidates && isIOTargetLookup(node, language, context.registry)) {
+                findings.add(buildLookupFinding(node, loopStack, hasLoopParamFlow(fn)))
+            }
+        }
+    }
+
+    private fun hasLoopParamFlow(fn: FunctionDecl?): Boolean =
+        fn != null &&
+            fn.parameterFlows.any { flow ->
+                flow.flowsInto.any { it is FlowTarget.LoopIteration }
+            }
 
     private fun checkCrossMethodIO(
         call: FunctionCall,
@@ -205,7 +244,56 @@ public class IOInLoopRule : Rule {
                 complexity = "IO \u2190 bottleneck",
             ),
         )
+
+    @Suppress("LongMethod")
+    private fun buildLookupFinding(
+        call: LookupCall,
+        loopStack: List<LoopNode>,
+        flowConfirmed: Boolean = false,
+    ): Finding {
+        val outerLoop = loopStack.first()
+        val loopVar = outerLoop.iteratedVariable ?: "items"
+        val methodName = call.kind.label
+        return Finding(
+            ruleId = id,
+            ruleName = name,
+            severity = severity,
+            confidence = if (flowConfirmed) Confidence.HIGH else Confidence.MEDIUM,
+            location = call.location,
+            message =
+                "IO call $methodName() inside ${outerLoop.kind.label()} — " +
+                    "each iteration incurs network/disk latency",
+            suggestions =
+                listOf(
+                    Suggestion.Freeform(
+                        "Batch the IO operation outside the loop, " +
+                            "or use a bulk API (e.g. findAll, findAllById)",
+                    ),
+                ),
+            currentComplexity = "O(|$loopVar| \u00d7 IO)",
+            suggestedComplexity = "O(1) IO + O(|$loopVar|)",
+            evidence =
+                listOf(
+                    Evidence(
+                        outerLoop.location,
+                        outerLoop.kind.label(),
+                        ExecutionContext.INSIDE_LOOP,
+                        complexity = "O(|$loopVar|)",
+                    ),
+                    Evidence(
+                        call.location,
+                        "$methodName() inside loop",
+                        ExecutionContext.INSIDE_LOOP,
+                        depth = 1,
+                        complexity = "IO \u2190 bottleneck",
+                    ),
+                ),
+        )
+    }
 }
+
+/** Stream pipeline methods that implicitly iterate — their lambda args run per-element. */
+private val IMPLICIT_ITERATION_OPS = setOf("map", "flatMap", "filter", "peek", "mapToInt", "mapToLong", "mapToDouble")
 
 /** Returns true if the call target is a known in-memory buffer (not real IO). */
 private fun isInMemoryTarget(
@@ -226,13 +314,26 @@ private fun isIOTarget(
     call: FunctionCall,
     language: Language,
     registry: LanguageSemanticsRegistry,
+): Boolean = matchesIOPattern(call.qualifiedTarget, language, registry)
+
+/** Overload for LookupCall nodes (same pattern matching, different target field). */
+private fun isIOTargetLookup(
+    call: LookupCall,
+    language: Language,
+    registry: LanguageSemanticsRegistry,
+): Boolean = matchesIOPattern(call.targetVariable, language, registry)
+
+private fun matchesIOPattern(
+    target: String?,
+    language: Language,
+    registry: LanguageSemanticsRegistry,
 ): Boolean {
-    val target = call.qualifiedTarget?.lowercase() ?: return false
+    val t = target?.lowercase() ?: return false
     return registry.ioTargetPatterns(language).any { pattern ->
         if (pattern.startsWith("*")) {
-            target.contains(pattern.removePrefix("*"))
+            t.contains(pattern.removePrefix("*"))
         } else {
-            target.endsWith(pattern) || target == pattern
+            t.endsWith(pattern) || t == pattern
         }
     }
 }

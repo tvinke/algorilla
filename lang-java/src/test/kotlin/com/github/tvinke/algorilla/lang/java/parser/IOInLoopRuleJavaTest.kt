@@ -39,6 +39,22 @@ internal class IOInLoopRuleJavaTest {
             findings.first().ruleId shouldBe "io-in-loop"
             findings.first().message shouldContain "getForObject"
         }
+
+        @Test
+        fun `should detect IO call inside stream map`() {
+            val findings = analyzeFixture("io-in-loop/positive/map-with-io-call.java")
+
+            findings.shouldNotBeEmpty()
+            findings.first().ruleId shouldBe "io-in-loop"
+        }
+
+        @Test
+        fun `should detect apiClient search in for loop`() {
+            val findings = analyzeFixture("io-in-loop/positive/api-search-in-loop.java")
+
+            findings.shouldNotBeEmpty()
+            findings.first().ruleId shouldBe "io-in-loop"
+        }
     }
 
     @Nested
@@ -60,6 +76,13 @@ internal class IOInLoopRuleJavaTest {
         @Test
         fun `should not flag StringTokenizer nextToken in loop`() {
             val findings = analyzeFixture("io-in-loop/negative/string-tokenizer-in-loop.java")
+
+            findings.shouldBeEmpty()
+        }
+
+        @Test
+        fun `should not flag abbreviated stTok variable as IO target`() {
+            val findings = analyzeFixture("io-in-loop/negative/sttok-next-token-in-loop.java")
 
             findings.shouldBeEmpty()
         }

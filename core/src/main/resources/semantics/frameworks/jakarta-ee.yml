@@ -123,7 +123,6 @@ heavyweight-types:
 
 io-methods:
   # JAX-RS Client — HTTP round-trips (framework-specific names)
-  - invoke
   - submit
   # JMS — messaging (framework-specific names)
   - createProducer
@@ -144,6 +143,8 @@ io-methods:
   - getRunningExecutions
 
 io-method-candidates:
+  # JAX-RS Client — invoke is also java.lang.reflect.Method.invoke(), so target-gate it
+  - invoke
   # JMS — ambiguous names that could be HashMap/POJO methods
   - send
   - receive
