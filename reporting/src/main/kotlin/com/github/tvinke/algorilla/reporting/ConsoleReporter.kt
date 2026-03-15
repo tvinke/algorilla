@@ -305,7 +305,28 @@ public class ConsoleReporter(
             output.appendLine("  Hotspot: $fileName (${hotspot.value} ${pluralize("finding", hotspot.value)})")
         }
 
+        // Dominant rule note: when a single INFO rule accounts for >30% of findings
+        val ruleCounts = result.findings.groupingBy { it.ruleId to it.severity }.eachCount()
+        val totalFindings = result.findings.size
+        val dominantInfo =
+            ruleCounts.entries
+                .filter { it.key.second == Severity.INFO }
+                .maxByOrNull { it.value }
+        if (dominantInfo != null && dominantInfo.value > totalFindings * DOMINANT_RULE_THRESHOLD) {
+            output.appendLine(
+                Ansi.dim(
+                    "  Note: ${dominantInfo.key.first} accounts for ${dominantInfo.value} findings — " +
+                        "use --severity warning to focus on higher-impact issues",
+                    color,
+                ),
+            )
+        }
+
         output.appendLine(Ansi.dim(line + "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500", color))
+        output.appendLine()
+        output.appendLine(
+            Ansi.dim("Tip: Focus on high-confidence findings with --confidence high", color),
+        )
         output.appendLine()
     }
 
@@ -319,6 +340,7 @@ public class ConsoleReporter(
         const val OVERVIEW_THRESHOLD = 10
         private const val OVERVIEW_LINE_WIDTH = 32
         private const val TOP_RULES_COUNT = 3
+        private const val DOMINANT_RULE_THRESHOLD = 0.3
         private const val MAX_SEGMENT_LENGTH = 25
         private const val TRUNCATED_LENGTH = 22
         val JVM_EXTENSIONS = setOf("java", "kt", "kts", "groovy")

@@ -183,11 +183,17 @@ public class SortForLastRule : Rule {
         listOf(
             Evidence(
                 sort.location,
-                "${sort.kind.label} call",
+                "sorts entire collection",
                 ExecutionContext.SINGLE,
                 complexity = ComplexityModel.sortEvidence(isBottleneck = true),
             ),
-            Evidence(access.location, ".${access.kind.label} after sort", ExecutionContext.SINGLE, depth = 1, complexity = "O(1)"),
+            Evidence(
+                access.location,
+                "then picks ${accessLabel(access.kind)} element — sort is wasted",
+                ExecutionContext.SINGLE,
+                depth = 1,
+                complexity = "O(1)",
+            ),
         )
 
     private fun buildFinding(
@@ -201,13 +207,7 @@ public class SortForLastRule : Rule {
             severity = severity,
             location = sort.location,
             message = "Sorting entire collection just to access ${accessLabel(access.kind)} element",
-            suggestions =
-                listOf(
-                    Suggestion.UseAlternativeAPI(
-                        alternative = ".max(Comparator.comparing(...)) or .min(...)",
-                        reason = "O(n) single pass instead of O(n log n) sort",
-                    ),
-                ),
+            suggestions = listOf(dynamicSuggestion(access.kind)),
             currentComplexity = cx.current,
             suggestedComplexity = cx.suggested,
             evidence = buildEvidence(sort, access),
@@ -226,13 +226,7 @@ public class SortForLastRule : Rule {
             severity = severity,
             location = sort.location,
             message = "Sorting entire collection just to access ${accessLabel(access.kind)} element via ${call.name}()",
-            suggestions =
-                listOf(
-                    Suggestion.UseAlternativeAPI(
-                        alternative = ".max(Comparator.comparing(...)) or .min(...)",
-                        reason = "O(n) single pass instead of O(n log n) sort",
-                    ),
-                ),
+            suggestions = listOf(dynamicSuggestion(access.kind)),
             currentComplexity = cx.current,
             suggestedComplexity = cx.suggested,
             evidence = buildIndirectEvidence(sort, call, access),
@@ -247,14 +241,14 @@ public class SortForLastRule : Rule {
         listOf(
             Evidence(
                 sort.location,
-                "${sort.kind.label} call",
+                "sorts entire collection",
                 ExecutionContext.SINGLE,
                 complexity = ComplexityModel.sortEvidence(isBottleneck = true),
             ),
             Evidence(call.location, "${call.name}() called after sort", ExecutionContext.SINGLE, depth = 1),
             Evidence(
                 access.location,
-                ".${access.kind.label} inside ${call.name}()",
+                "then picks ${accessLabel(access.kind)} element inside ${call.name}() — sort is wasted",
                 ExecutionContext.SINGLE,
                 depth = 2,
                 complexity = "O(1)",
@@ -267,6 +261,25 @@ public class SortForLastRule : Rule {
 
         /** Slightly tighter for cross-method matches to reduce FPs on unrelated collections. */
         const val MAX_CROSS_METHOD_LINE_DISTANCE = 2
+
+        fun dynamicSuggestion(accessKind: AccessKind): Suggestion.UseAlternativeAPI =
+            when (accessKind) {
+                AccessKind.FIND_FIRST, AccessKind.FIND_ANY ->
+                    Suggestion.UseAlternativeAPI(
+                        alternative = ".min(comparator) or .max(comparator)",
+                        reason = "O(n) single pass instead of O(n log n) sort — picks one element directly",
+                    )
+                AccessKind.FIRST, AccessKind.INDEX_ZERO ->
+                    Suggestion.UseAlternativeAPI(
+                        alternative = ".min(comparator)",
+                        reason = "O(n) single pass instead of O(n log n) sort",
+                    )
+                AccessKind.LAST, AccessKind.GET_SIZE_MINUS_1, AccessKind.POP ->
+                    Suggestion.UseAlternativeAPI(
+                        alternative = ".max(comparator)",
+                        reason = "O(n) single pass instead of O(n log n) sort",
+                    )
+            }
     }
 }
 

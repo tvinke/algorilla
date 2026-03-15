@@ -75,6 +75,26 @@ When a call is repeated, the evidence shows the count:
       ⎿  getStringOrNull() (duplicate) OrderView.java:33
 ```
 
+### Overview section
+
+When a scan produces more than 10 findings, an overview section appears before the individual findings. It shows severity counts, the top rules by frequency, and the hotspot file:
+
+```
+── Overview ────────────────────────────────
+  82 info · 126 warning across 86 files
+  Top rules: n-plus-one-query (41) · expensive-construction (27) · redundant-expensive-call (25)
+  Hotspot: CategoryFacadeImpl.java (11 findings)
+────────────────────────────────────────────
+
+Tip: Focus on high-confidence findings with --confidence high
+```
+
+When a single info-level rule dominates the output (>30% of findings), a note suggests filtering:
+
+```
+  Note: redundant-expensive-call accounts for 428 findings — use --severity warning to focus on higher-impact issues
+```
+
 ### Summary line
 
 Every scan ends with a summary:
@@ -93,15 +113,15 @@ Files with multiple findings show them sequentially under the same file header:
      warning  · sort-for-last · Sort abuse · O(n log n) → O(n)
     com.example.shop.service.OrderService:67
 
-      Sorting entire collection just to access a single element
-      → Use .max(Comparator.comparing(...)) or .min(...) instead of sorting
+      Sorting entire collection just to access the first element
+      → Use .min(comparator) or .max(comparator) — O(n) single pass instead of O(n log n) sort — picks one element directly
 
           65 │ return orders.stream()
           66 │         .sorted(Comparator.comparing(Order::getTotal).reversed())
           67 │         .findFirst();
 
-      ⎿  sorted call OrderService.java:66 O(n log n) ← bottleneck
-        ⎿  .findFirst after sort OrderService.java:67 O(1)
+      ⎿  sorts entire collection OrderService.java:66 O(n log n) ← bottleneck
+        ⎿  then picks the first element — sort is wasted OrderService.java:67 O(1)
 
      info  · filter-after-sort · Sort abuse · O(n log n + k) → O(k log k + n)
     com.example.shop.service.OrderService:89

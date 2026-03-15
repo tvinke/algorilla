@@ -348,5 +348,36 @@ internal class ConsoleReporterTest {
 
             output.toString() shouldNotContain "Overview"
         }
+
+        @Test
+        fun `overview includes triage tip`() {
+            val findings =
+                (1..12).map { i ->
+                    finding(line = i * 10, message = "Finding $i")
+                }
+            val output = StringBuilder()
+            reporter.report(result(*findings.toTypedArray()), output)
+
+            output.toString() shouldContain "Focus on high-confidence findings with --confidence high"
+        }
+
+        @Test
+        fun `overview shows dominant rule note when single INFO rule exceeds 30 percent`() {
+            val findings =
+                (1..12).map { i ->
+                    finding(
+                        ruleId = if (i <= 10) "redundant-expensive-call" else "nested-lookup",
+                        line = i * 10,
+                        message = "Finding $i",
+                        severity = if (i <= 10) Severity.INFO else Severity.WARNING,
+                    )
+                }
+            val output = StringBuilder()
+            reporter.report(result(*findings.toTypedArray()), output)
+
+            val text = output.toString()
+            text shouldContain "redundant-expensive-call accounts for 10 findings"
+            text shouldContain "--severity warning"
+        }
     }
 }

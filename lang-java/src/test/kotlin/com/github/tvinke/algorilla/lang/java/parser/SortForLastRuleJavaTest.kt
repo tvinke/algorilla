@@ -62,7 +62,7 @@ internal class SortForLastRuleJavaTest {
             val evidence = findings.first().evidence
             evidence shouldHaveSize 2
             evidence[0].label shouldContain "sort"
-            evidence[1].label shouldContain "after sort"
+            evidence[1].label shouldContain "sort is wasted"
             evidence[0].complexity shouldContain "O(n log n)"
         }
     }
