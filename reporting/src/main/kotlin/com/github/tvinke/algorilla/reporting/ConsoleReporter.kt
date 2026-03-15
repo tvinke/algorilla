@@ -19,6 +19,9 @@ public class ConsoleReporter(
     private val baseDir: String? = null,
     private val sourceRoots: List<String> = emptyList(),
 ) : Reporter {
+    private var firstFindingShown = false
+
+    @Suppress("LongMethod")
     override fun report(
         result: AnalysisResult,
         output: Appendable,
@@ -26,6 +29,12 @@ public class ConsoleReporter(
         if (result.findings.isEmpty()) {
             formatSummary(result, output)
             return
+        }
+
+        firstFindingShown = false
+
+        if (result.findings.size > OVERVIEW_THRESHOLD) {
+            formatOverview(result, output)
         }
 
         val snippetRenderer = SnippetRenderer(color)
@@ -74,7 +83,14 @@ public class ConsoleReporter(
         snippetRenderer.render(finding.location.file, finding.location.line, finding.severity, output)
         formatEvidence(finding, snippetRenderer, output)
         val hash = Baseline.fingerprintOf(finding).contentHash
-        output.appendLine("      ${Ansi.dim("# $hash", color)}")
+        if (!firstFindingShown) {
+            output.appendLine(
+                "      ${Ansi.dim("# $hash  \u2190 accept with --accept $hash", color)}",
+            )
+            firstFindingShown = true
+        } else {
+            output.appendLine("      ${Ansi.dim("# $hash", color)}")
+        }
     }
 
     private fun formatSeverityTag(severity: Severity): String =
@@ -92,9 +108,12 @@ public class ConsoleReporter(
         }
 
     private fun formatComplexity(finding: Finding): String {
-        if (finding.currentComplexity == null || finding.suggestedComplexity == null) return ""
+        val currentRaw = finding.currentComplexity ?: return ""
+        val suggestedRaw = finding.suggestedComplexity ?: return ""
         val sep = Ansi.dim(" \u00b7 ", color)
-        return "$sep${Ansi.yellow("${finding.currentComplexity} \u2192 ${finding.suggestedComplexity}", color)}"
+        val current = simplifyForDisplay(currentRaw)
+        val suggested = simplifyForDisplay(suggestedRaw)
+        return "$sep${Ansi.yellow("$current \u2192 $suggested", color)}"
     }
 
     private fun formatEvidence(
@@ -191,6 +210,14 @@ public class ConsoleReporter(
             }
 
         output.appendLine("$scanned ${summaryColor("$foundText$acrossText")}$hiddenSuffix")
+        if (result.findings.isNotEmpty()) {
+            output.appendLine(
+                Ansi.dim(
+                    "Tip: Accept reviewed findings with --accept <hash>, or suppress in code with // algorilla:ignore",
+                    color,
+                ),
+            )
+        }
     }
 
     private fun formatSeverityBreakdown(findings: List<Finding>): String {
@@ -233,13 +260,110 @@ public class ConsoleReporter(
         }
     }
 
+    @Suppress("LongMethod")
+    private fun formatOverview(
+        result: AnalysisResult,
+        output: Appendable,
+    ) {
+        val line = "\u2500".repeat(OVERVIEW_LINE_WIDTH)
+        output.appendLine(Ansi.dim("\u2500\u2500 Overview $line", color))
+
+        // Severity counts
+        val severityCounts =
+            Severity.entries.mapNotNull { sev ->
+                val count = result.findings.count { it.severity == sev }
+                if (count > 0) "$count ${sev.name.lowercase()}" else null
+            }
+        val fileCount =
+            result.findings
+                .map { it.location.file }
+                .toSet()
+                .size
+        output.appendLine(
+            "  ${severityCounts.joinToString(" \u00b7 ")} across $fileCount ${pluralize("file", fileCount)}",
+        )
+
+        // Top 3 rules
+        val topRules =
+            result.findings
+                .groupingBy { it.ruleId }
+                .eachCount()
+                .entries
+                .sortedByDescending { it.value }
+                .take(TOP_RULES_COUNT)
+                .joinToString(" \u00b7 ") { "${it.key} (${it.value})" }
+        output.appendLine("  Top rules: $topRules")
+
+        // Hotspot file
+        val hotspot =
+            result.findings
+                .groupingBy { it.location.file }
+                .eachCount()
+                .maxByOrNull { it.value }
+        if (hotspot != null) {
+            val fileName = hotspot.key.substringAfterLast('/')
+            output.appendLine("  Hotspot: $fileName (${hotspot.value} ${pluralize("finding", hotspot.value)})")
+        }
+
+        output.appendLine(Ansi.dim(line + "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500", color))
+        output.appendLine()
+    }
+
     private fun pluralize(
         word: String,
         count: Int,
     ): String = if (count == 1) word else "${word}s"
 
-    private companion object {
+    internal companion object {
         const val MS_PER_SECOND = 1000.0
+        const val OVERVIEW_THRESHOLD = 10
+        private const val OVERVIEW_LINE_WIDTH = 32
+        private const val TOP_RULES_COUNT = 3
+        private const val MAX_SEGMENT_LENGTH = 25
+        private const val TRUNCATED_LENGTH = 22
         val JVM_EXTENSIONS = setOf("java", "kt", "kts", "groovy")
+
+        private val OPERATOR_PATTERN = Regex("""(\s*[×+^]\s*|\s+log\s+)""")
+        private val PARENS_PATTERN = Regex("""\([^)]*\)""")
+
+        @JvmStatic
+        internal fun simplifyForDisplay(expr: String): String {
+            // Handle O(...) wrapper
+            val inner =
+                if (expr.startsWith("O(") && expr.endsWith(")")) {
+                    expr.substring(2, expr.length - 1)
+                } else {
+                    return expr
+                }
+
+            // Split on operators, preserving them
+            val parts = OPERATOR_PATTERN.split(inner)
+            val operators = OPERATOR_PATTERN.findAll(inner).map { it.value }.toList()
+
+            val simplified =
+                parts.mapIndexed { index, segment ->
+                    val s = simplifySegment(segment.trim())
+                    if (index < operators.size) s + operators[index] else s
+                }
+
+            return "O(${simplified.joinToString("")})"
+        }
+
+        private fun simplifySegment(segment: String): String {
+            if (segment.length <= MAX_SEGMENT_LENGTH) return segment
+
+            // Strip parenthesized argument lists
+            var result = PARENS_PATTERN.replace(segment, "")
+            if (result.length <= MAX_SEGMENT_LENGTH) return result
+
+            // Take last segment after final dot
+            if ('.' in result) {
+                result = result.substringAfterLast('.')
+            }
+            if (result.length <= MAX_SEGMENT_LENGTH) return result
+
+            // Truncate
+            return result.take(TRUNCATED_LENGTH) + "\u2026"
+        }
     }
 }

@@ -7,6 +7,7 @@ import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.model.SourceLocation
 import com.github.tvinke.algorilla.rules.Finding
+import com.github.tvinke.algorilla.rules.Suggestion
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
 import org.junit.jupiter.api.Nested
@@ -27,7 +28,7 @@ internal class ConsoleReporterTest {
         severity = severity,
         location = SourceLocation(file, line, 1),
         message = message,
-        suggestion = "Use a HashSet",
+        suggestions = listOf(Suggestion.Freeform("Use a HashSet")),
     )
 
     private fun result(
@@ -216,6 +217,136 @@ internal class ConsoleReporterTest {
 
             output.toString() shouldNotContain "# "
             output.toString() shouldContain "Found 0 issues"
+        }
+    }
+
+    @Nested
+    inner class SimplifyForDisplay {
+        @Test
+        fun `short names pass through unchanged`() {
+            val result = ConsoleReporter.simplifyForDisplay("O(n × m)")
+            assert(result == "O(n × m)") { "Expected O(n × m) but got $result" }
+        }
+
+        @Test
+        fun `simple expressions unchanged`() {
+            assert(ConsoleReporter.simplifyForDisplay("O(n log n)") == "O(n log n)")
+            assert(ConsoleReporter.simplifyForDisplay("O(1)") == "O(1)")
+            assert(ConsoleReporter.simplifyForDisplay("O(n)") == "O(n)")
+        }
+
+        @Test
+        fun `parenthesized args are stripped`() {
+            val result =
+                ConsoleReporter.simplifyForDisplay(
+                    "O(getOrDefault(type,taskMappers) × items)",
+                )
+            result shouldContain "getOrDefault"
+            result shouldNotContain "type,taskMappers"
+        }
+
+        @Test
+        fun `long dotted chains use last segment`() {
+            val result =
+                ConsoleReporter.simplifyForDisplay(
+                    "O(com.example.service.InvoiceProcessor × n)",
+                )
+            result shouldContain "InvoiceProcessor"
+            result shouldNotContain "com.example.service"
+        }
+
+        @Test
+        fun `extreme length is truncated with ellipsis`() {
+            val longName = "a".repeat(40)
+            val result = ConsoleReporter.simplifyForDisplay("O($longName × n)")
+            result shouldContain "\u2026"
+        }
+
+        @Test
+        fun `non-O expression passes through as-is`() {
+            val result = ConsoleReporter.simplifyForDisplay("2x lookup")
+            assert(result == "2x lookup") { "Expected '2x lookup' but got $result" }
+        }
+    }
+
+    @Nested
+    inner class AcceptHint {
+        @Test
+        fun `first finding has accept hint`() {
+            val f1 = finding(ruleId = "nested-lookup", message = "First")
+            val f2 = finding(ruleId = "sort-for-last", message = "Second")
+            val output = StringBuilder()
+            reporter.report(result(f1, f2), output)
+
+            val text = output.toString()
+            val hash1 = Baseline.fingerprintOf(f1).contentHash
+            text shouldContain "accept with --accept $hash1"
+        }
+
+        @Test
+        fun `second finding does not have accept hint`() {
+            val f1 = finding(ruleId = "nested-lookup", message = "First")
+            val f2 = finding(ruleId = "sort-for-last", message = "Second")
+            val output = StringBuilder()
+            reporter.report(result(f1, f2), output)
+
+            val text = output.toString()
+            val hash2 = Baseline.fingerprintOf(f2).contentHash
+            // hash2 should appear but without the accept hint
+            text shouldContain "# $hash2"
+            // Count occurrences of "accept with --accept" — should be exactly 1
+            val acceptCount = "accept with --accept".toRegex().findAll(text).count()
+            assert(acceptCount == 1) { "Expected exactly 1 accept hint but found $acceptCount" }
+        }
+
+        @Test
+        fun `summary includes tip when findings exist`() {
+            val output = StringBuilder()
+            reporter.report(result(finding()), output)
+            output.toString() shouldContain "Tip: Accept reviewed findings with --accept <hash>"
+            output.toString() shouldContain "// algorilla:ignore"
+        }
+
+        @Test
+        fun `summary does not include tip when no findings`() {
+            val output = StringBuilder()
+            reporter.report(result(), output)
+            output.toString() shouldNotContain "Tip:"
+        }
+    }
+
+    @Nested
+    inner class ScanOverview {
+        @Test
+        fun `overview appears for more than 10 findings`() {
+            val findings =
+                (1..11).map { i ->
+                    finding(
+                        ruleId = if (i <= 6) "nested-lookup" else "sort-for-last",
+                        file = "/src/File${i % 3}.java",
+                        line = i * 10,
+                        message = "Finding $i",
+                    )
+                }
+            val output = StringBuilder()
+            reporter.report(result(*findings.toTypedArray()), output)
+
+            val text = output.toString()
+            text shouldContain "Overview"
+            text shouldContain "Top rules:"
+            text shouldContain "Hotspot:"
+        }
+
+        @Test
+        fun `overview does not appear for 10 or fewer findings`() {
+            val findings =
+                (1..10).map { i ->
+                    finding(line = i * 10, message = "Finding $i")
+                }
+            val output = StringBuilder()
+            reporter.report(result(*findings.toTypedArray()), output)
+
+            output.toString() shouldNotContain "Overview"
         }
     }
 }

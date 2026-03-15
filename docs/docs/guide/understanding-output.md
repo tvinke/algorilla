@@ -158,3 +158,17 @@ The JSON output includes metadata for versioning and tooling:
 - **`algorillaVersion`** — the version of algorilla that produced the output (e.g. `"0.2.0"`).
 
 If you consume JSON output programmatically, **ignore unknown fields** — new fields may be added in any release without bumping `schemaVersion`. See [Stability & Compatibility](../stability.md) for the full contract.
+
+## Triaging a large scan
+
+A first scan on a big codebase can easily return dozens of findings. Rather than tackling them all at once, work in layers:
+
+1. **Start with high confidence**: `algorilla scan src/ --confidence high` limits output to findings where algorilla is most certain. These are your quick wins — clear patterns that almost always indicate a real problem.
+
+2. **Fix or accept each finding**: Either fix the code, or if the pattern is intentional, accept it: `algorilla accept a1b2c3d4e5f6g7h8`. That hash after each finding (e.g. `# a1b2c3d4e5f6g7h8`) is a stable fingerprint — it won't change unless the finding itself changes.
+
+3. **Lock in your progress**: Once you've worked through the batch, run `algorilla scan src/ --save-baseline` to snapshot the current state. From here on, scans only surface *new* findings.
+
+4. **Widen to medium confidence**: Drop to `--confidence medium` (the default) and repeat. These findings need a bit more judgment but often point to real issues too.
+
+This way you're never staring at a wall of output — just a manageable batch at a time.
