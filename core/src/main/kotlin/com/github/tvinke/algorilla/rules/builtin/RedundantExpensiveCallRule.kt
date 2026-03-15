@@ -137,6 +137,7 @@ private fun containsNonDeterministic(
     nonDeterministic: Set<String>,
 ): Boolean {
     if (call.name in nonDeterministic) return true
+    if (call.name in SEQUENTIAL_READ_METHODS || isSequentialReadPrefix(call.name)) return true
     return call.children.any { it is FunctionCall && containsNonDeterministic(it, nonDeterministic) }
 }
 

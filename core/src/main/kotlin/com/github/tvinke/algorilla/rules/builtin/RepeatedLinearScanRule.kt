@@ -16,6 +16,7 @@ import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
+import com.github.tvinke.algorilla.util.BranchContext
 import com.github.tvinke.algorilla.util.findDescendantsWithBranchContext
 import com.github.tvinke.algorilla.util.isCollectionLookup
 import com.github.tvinke.algorilla.util.maxCoExecutableSubset
@@ -33,6 +34,7 @@ public class RepeatedLinearScanRule : Rule {
     override val severity: Severity = Severity.WARNING
     override val languages: Set<Language> = Language.entries.toSet()
     override val category: RuleCategory = RuleCategory.REDUNDANCY
+    override val subsumes: Set<String> = setOf("repeated-collection-iteration")
 
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
@@ -110,7 +112,10 @@ public class RepeatedLinearScanRule : Rule {
         val fullScansByTarget = filteredFullScans.groupBy { it.first.qualifiedTarget }
         for ((targetVar, callsWithContext) in fullScansByTarget) {
             if (targetVar in reportedTargets) continue
-            val coExecutable = maxCoExecutableSubset(callsWithContext)
+            // Collapse chained pipeline operations (e.g. .distinct().collect()) into a single scan.
+            // Adjacent full-scan calls on the same target within a few lines are one pipeline pass.
+            val deduplicated = collapseChainedPipeline(callsWithContext)
+            val coExecutable = maxCoExecutableSubset(deduplicated)
             if (coExecutable.size >= MIN_SCANS_TO_REPORT) {
                 findings.add(buildFullScanFinding(fn, targetVar!!, coExecutable))
             }
@@ -126,10 +131,12 @@ public class RepeatedLinearScanRule : Rule {
         val opsDesc = lookups.joinToString(" and ") { ".${it.kind.label}()" }
         val structure = dominantStructure(lookups)
         val paramBacked = fn.parameterFlows.any { it.paramName == targetVar }
+        // Demote tiny-collection scenarios: few scans on a variable that hints at small/enum-sized data
+        val effectiveSeverity = if (lookups.size <= MAX_LOW_IMPACT_SCANS) Severity.INFO else severity
         return Finding(
             ruleId = id,
             ruleName = name,
-            severity = severity,
+            severity = effectiveSeverity,
             confidence = if (paramBacked) Confidence.HIGH else Confidence.MEDIUM,
             location = lookups.first().location,
             message =
@@ -201,7 +208,29 @@ public class RepeatedLinearScanRule : Rule {
 
     internal companion object {
         const val MIN_SCANS_TO_REPORT = 2
+
+        /** Scan count at or below which the finding is demoted to INFO severity. */
+        const val MAX_LOW_IMPACT_SCANS = 4
     }
+}
+
+/**
+ * Collapses chained stream pipeline calls (e.g. `.distinct().collect()`) into a single representative.
+ * Two calls are considered chained if they share the same target and appear on the same line.
+ * Same-line is a reliable signal for chained method calls like `items.stream().distinct().collect(...)`.
+ */
+private fun collapseChainedPipeline(callsWithContext: List<Pair<FunctionCall, BranchContext>>): List<Pair<FunctionCall, BranchContext>> {
+    if (callsWithContext.size <= 1) return callsWithContext
+    val sorted = callsWithContext.sortedBy { it.first.location.line }
+    val result = mutableListOf(sorted.first())
+    for (i in 1 until sorted.size) {
+        val prev = result.last().first
+        val curr = sorted[i].first
+        if (curr.location.line != prev.location.line) {
+            result.add(sorted[i])
+        }
+    }
+    return result
 }
 
 /**

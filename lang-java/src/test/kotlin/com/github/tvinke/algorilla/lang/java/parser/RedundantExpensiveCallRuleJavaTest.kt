@@ -61,6 +61,13 @@ internal class RedundantExpensiveCallRuleJavaTest {
 
             findings.shouldBeEmpty()
         }
+
+        @Test
+        fun `should not flag decode with sequential nextToken arguments`() {
+            val findings = analyzeFixture("redundant-expensive-call/negative/decode-next-token.java")
+
+            findings.shouldBeEmpty()
+        }
     }
 
     @Nested

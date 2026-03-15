@@ -83,6 +83,13 @@ internal class RepeatedLinearScanRuleJavaTest {
 
             findings.shouldBeEmpty()
         }
+
+        @Test
+        fun `should not flag chained stream pipeline as multiple scans`() {
+            val findings = analyzeFixture("repeated-linear-scan/negative/chained-stream-pipeline.java")
+
+            findings.shouldBeEmpty()
+        }
     }
 
     @Nested
