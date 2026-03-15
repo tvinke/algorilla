@@ -58,11 +58,14 @@ heavyweight-types:
   - SqlSessionFactoryBuilder
 
 io-methods:
-  # SqlSession — write operations (DB round-trips)
-  - insert
-  - update
-  - delete
+  # SqlSession — write operations (framework-specific names)
   - commit
   - rollback
   - flushStatements
   - clearCache
+
+io-method-candidates:
+  # SqlSession — ambiguous names that could be HashMap/POJO methods
+  - insert
+  - update
+  - delete

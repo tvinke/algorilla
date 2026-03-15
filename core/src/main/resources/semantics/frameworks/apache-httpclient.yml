@@ -85,10 +85,13 @@ heavyweight-types:
   - PoolingHttpClientConnectionManager
 
 io-methods:
-  # CloseableHttpClient — HTTP round-trips
+  # CloseableHttpClient — HTTP round-trips (framework-specific names)
   - execute
+  # HttpEntity — reading response body (framework-specific names)
+  - isStreaming
+
+io-method-candidates:
+  # Ambiguous names that could be HashMap/POJO methods
   - close
-  # HttpEntity — reading response body (IO from connection)
   - getContent
   - writeTo
-  - isStreaming

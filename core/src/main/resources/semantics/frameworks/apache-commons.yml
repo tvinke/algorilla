@@ -309,14 +309,7 @@ trivial-methods:
   - removeExtension
 
 io-methods:
-  # IOUtils — actual I/O
-  - copy
-  - copyLarge
-  - write
-  - writeLines
-  - close
-  - closeQuietly
-  # FileUtils — file system I/O
+  # FileUtils — file system I/O (framework-specific names)
   - readFileToString
   - readFileToByteArray
   - readLines
@@ -345,3 +338,12 @@ io-methods:
   - sizeOfDirectory
   - isFileNewer
   - isFileOlder
+
+io-method-candidates:
+  # IOUtils — ambiguous names that could be HashMap/POJO methods
+  - copy
+  - copyLarge
+  - write
+  - writeLines
+  - close
+  - closeQuietly

@@ -21,7 +21,12 @@ import com.github.tvinke.algorilla.util.ParameterFlowQuery
  * Detects IO operations (HTTP calls, database queries, file operations) inside loops.
  * Each iteration incurs network/disk latency, making the loop O(n * IO) in wall-clock time.
  *
- * Method names are loaded from the `io-methods` YAML section per language and framework overlay.
+ * Uses a two-tier classification:
+ * - `io-methods`: unambiguous IO method names (executeQuery, getForObject) — always flagged
+ * - `io-method-candidates`: ambiguous names (save, delete, put, write) — only flagged
+ *   when the target variable matches an IO-capable pattern (repository, service, entityManager)
+ *
+ * Both tiers are loaded from YAML per language and framework overlay.
  */
 public class IOInLoopRule : Rule {
     override val id: String = "io-in-loop"
@@ -34,17 +39,20 @@ public class IOInLoopRule : Rule {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
             val ioMethods = context.registry.ioMethods(fileRoot.language)
-            if (ioMethods.isEmpty()) continue
-            scanNode(fileRoot, null, emptyList(), ioMethods, context, findings)
+            val ioCandidates = IO_METHOD_CANDIDATES
+            if (ioMethods.isEmpty() && ioCandidates.isEmpty()) continue
+            scanNode(fileRoot, null, emptyList(), ioMethods, ioCandidates, context, findings)
         }
         return findings
     }
 
+    @Suppress("LongParameterList")
     private fun scanNode(
         node: IRNode,
         enclosingFn: FunctionDecl?,
         loopStack: List<LoopNode>,
         ioMethods: Set<String>,
+        ioCandidates: Set<String>,
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
@@ -52,14 +60,16 @@ public class IOInLoopRule : Rule {
 
         if (node is LoopNode) {
             for (child in node.children) {
-                scanNode(child, fn, loopStack + node, ioMethods, context, findings)
+                scanNode(child, fn, loopStack + node, ioMethods, ioCandidates, context, findings)
             }
             return
         }
 
         if (loopStack.isNotEmpty() && node is FunctionCall) {
-            if (node.name in ioMethods && !isInMemoryTarget(node)) {
-                // Flow-based: if the loop iterates a confirmed parameter, we're certain
+            val isDefiniteIO = node.name in ioMethods && !isInMemoryTarget(node)
+            val isCandidateIO = !isDefiniteIO && node.name in ioCandidates && isIOTarget(node)
+
+            if (isDefiniteIO || isCandidateIO) {
                 val loopParamConfirmed =
                     fn != null &&
                         fn.parameterFlows.any { flow ->
@@ -67,13 +77,12 @@ public class IOInLoopRule : Rule {
                         }
                 findings.add(buildFinding(node, loopStack, loopParamConfirmed))
             } else if (fn != null) {
-                // Cross-method: check if param flows through this call into an IO operation
                 checkCrossMethodIO(node, fn, loopStack, context, findings)
             }
         }
 
         for (child in node.children) {
-            scanNode(child, fn, loopStack, ioMethods, context, findings)
+            scanNode(child, fn, loopStack, ioMethods, ioCandidates, context, findings)
         }
     }
 
@@ -192,8 +201,24 @@ private val NON_IO_TARGETS: Set<String> by lazy {
     LanguageSemanticsRegistry.DEFAULT.allExtraSection("non-io-targets")
 }
 
+/** Ambiguous method names that are IO only when target matches an IO-capable pattern. */
+private val IO_METHOD_CANDIDATES: Set<String> by lazy {
+    LanguageSemanticsRegistry.DEFAULT.allExtraSection("io-method-candidates")
+}
+
+/** Target variable name patterns that indicate IO-capable receivers (repository, service, etc.). */
+private val IO_TARGET_PATTERNS: Set<String> by lazy {
+    LanguageSemanticsRegistry.DEFAULT.allExtraSection("io-target-patterns")
+}
+
 /** Returns true if the call target is a known in-memory buffer (not real IO). */
 private fun isInMemoryTarget(call: FunctionCall): Boolean {
     val target = call.qualifiedTarget?.lowercase() ?: return false
     return NON_IO_TARGETS.any { target.contains(it) }
+}
+
+/** Returns true if the call target matches an IO-capable receiver pattern. */
+private fun isIOTarget(call: FunctionCall): Boolean {
+    val target = call.qualifiedTarget?.lowercase() ?: return false
+    return IO_TARGET_PATTERNS.any { target.contains(it) }
 }

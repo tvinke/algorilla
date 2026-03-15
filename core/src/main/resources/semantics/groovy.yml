@@ -1108,3 +1108,49 @@ non-io-targets:
   - sb
   - buf
   - buffer
+
+io-method-candidates:
+  - save
+  - delete
+  - persist
+  - merge
+  - flush
+  - write
+  - put
+  - get
+  - remove
+  - load
+  - update
+  - insert
+  - close
+  - send
+  - receive
+
+io-target-patterns:
+  - repository
+  - service
+  - dao
+  - client
+  - template
+  - entitymanager
+  - session
+  - connection
+  - channel
+  - socket
+  - outputstream
+  - inputstream
+  - writer
+  - reader
+  - producer
+  - consumer
+  - queue
+  - topic
+  - datasource
+  - jdbc
+  - http
+  - transport
+  - sender
+  - mailer
+  - storage
+  - bucket
+  - blob

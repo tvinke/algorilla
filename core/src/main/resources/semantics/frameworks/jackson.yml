@@ -162,10 +162,8 @@ heavyweight-types:
   - JsonGenerator
 
 io-methods:
-  # ObjectMapper — IO operations (read from stream/file/URL)
-  - readValue
+  # ObjectMapper — IO operations (framework-specific names)
   - readTree
-  - writeValue
   - writeValueAsString
   - writeValueAsBytes
   # JsonParser — IO (advancing the parser reads from underlying stream)
@@ -173,3 +171,8 @@ io-methods:
   - nextValue
   - nextFieldName
   - skipChildren
+
+io-method-candidates:
+  # ObjectMapper — ambiguous names
+  - readValue
+  - writeValue

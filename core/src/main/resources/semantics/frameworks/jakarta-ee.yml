@@ -122,31 +122,33 @@ heavyweight-types:
   - JobOperator
 
 io-methods:
-  # JAX-RS Client — HTTP round-trips
-  # Note: generic names (get, put, delete, post) removed to avoid collisions
-  # with HashMap.put(), List.get(), etc. Use 'invoke' as the primary IO indicator.
+  # JAX-RS Client — HTTP round-trips (framework-specific names)
   - invoke
   - submit
-  # JMS — messaging
-  - send
-  - receive
-  - receiveNoWait
-  - receiveBody
+  # JMS — messaging (framework-specific names)
   - createProducer
   - createConsumer
   - createBrowser
   - browse
-  # EJB Timer
+  # EJB Timer (framework-specific names)
   - createTimer
   - createSingleActionTimer
   - createIntervalTimer
   - createCalendarTimer
-  # Batch
-  - start
+  # Batch (framework-specific names)
   - restart
-  - stop
   - abandon
   - getJobExecution
   - getJobExecutions
   - getStepExecutions
   - getRunningExecutions
+
+io-method-candidates:
+  # JMS — ambiguous names that could be HashMap/POJO methods
+  - send
+  - receive
+  - receiveNoWait
+  - receiveBody
+  # Batch — ambiguous names
+  - start
+  - stop

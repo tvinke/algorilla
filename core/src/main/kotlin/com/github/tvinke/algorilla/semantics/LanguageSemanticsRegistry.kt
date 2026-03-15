@@ -534,6 +534,10 @@ public class LanguageSemanticsRegistry private constructor(
 
     public fun nonIoTargets(language: Language): Set<String> = extraSection(language, "non-io-targets")
 
+    public fun ioMethodCandidates(language: Language): Set<String> = extraSection(language, "io-method-candidates")
+
+    public fun ioTargetPatterns(language: Language): Set<String> = extraSection(language, "io-target-patterns")
+
     /**
      * Looks up a method's [LookupKind] for a specific language.
      * Returns null if the method has no lookup classification in that language.

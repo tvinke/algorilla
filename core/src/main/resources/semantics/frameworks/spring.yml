@@ -194,7 +194,9 @@ io-methods:
   - toEntity
   - toEntityList
   - toBodilessEntity
-  # Spring Data — repository persistence (already partially covered by n-plus-one)
+
+io-method-candidates:
+  # Spring Data — repository persistence (ambiguous names that could be HashMap/POJO methods)
   - save
   - saveAll
   - saveAndFlush

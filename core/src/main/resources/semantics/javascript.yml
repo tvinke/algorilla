@@ -1366,3 +1366,33 @@ non-io-targets:
   - arraybuffer
   - stringbuilder
   - blob
+
+io-method-candidates:
+  - save
+  - delete
+  - write
+  - put
+  - get
+  - remove
+  - send
+  - close
+
+io-target-patterns:
+  - client
+  - connection
+  - socket
+  - stream
+  - transport
+  - http
+  - request
+  - response
+  - database
+  - db
+  - collection
+  - redis
+  - queue
+  - producer
+  - consumer
+  - mailer
+  - storage
+  - bucket

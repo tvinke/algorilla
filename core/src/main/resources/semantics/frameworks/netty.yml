@@ -118,22 +118,19 @@ heavyweight-types:
   - KQueueEventLoopGroup
 
 io-methods:
-  # Channel — network IO
-  - write
+  # Channel — network IO (framework-specific names)
   - writeAndFlush
-  - flush
-  - read
-  - close
-  - disconnect
   - deregister
   - bind
   - connect
-  # ChannelHandlerContext — IO delegation
+  # ChannelHandlerContext — IO delegation (framework-specific names)
+  - fireChannelRead
+  - fireChannelReadComplete
+
+io-method-candidates:
+  # Channel / ChannelHandlerContext — ambiguous names
   - write
-  - writeAndFlush
   - flush
   - read
   - close
   - disconnect
-  - fireChannelRead
-  - fireChannelReadComplete

@@ -149,15 +149,7 @@ heavyweight-types:
   - ScrollableResults
 
 io-methods:
-  # EntityManager — DB round-trips
-  - find
-  - persist
-  - merge
-  - remove
-  - refresh
-  - detach
-  - flush
-  - clear
+  # EntityManager — DB round-trips (framework-specific names)
   - createQuery
   - createNamedQuery
   - createNativeQuery
@@ -166,7 +158,28 @@ io-methods:
   - getResultStream
   - getSingleResult
   - executeUpdate
-  # Session — DB round-trips
+  # Session — DB round-trips (framework-specific names)
+  - doWork
+  - doReturningWork
+  - createSQLQuery
+  - createFilter
+  - iterate
+  - scroll
+  # Criteria (legacy Hibernate)
+  - list
+  - uniqueResult
+
+io-method-candidates:
+  # EntityManager — ambiguous names that could be HashMap/POJO methods
+  - find
+  - persist
+  - merge
+  - remove
+  - refresh
+  - detach
+  - flush
+  - clear
+  # Session — ambiguous names
   - save
   - saveOrUpdate
   - update
@@ -175,16 +188,3 @@ io-methods:
   - get
   - evict
   - replicate
-  - doWork
-  - doReturningWork
-  - createSQLQuery
-  - createFilter
-  - iterate
-  - scroll
-  # ScrollableResults — removed generic names (next, previous, first, last, get)
-  # that collide with Iterator, List, etc. The scroll() method above still catches
-  # the pattern, and ScrollableResults is a heavyweight-type.
-  # Criteria (legacy Hibernate)
-  - list
-  - uniqueResult
-  - scroll
