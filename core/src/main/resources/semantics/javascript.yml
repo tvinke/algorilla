@@ -570,6 +570,17 @@ cheap-methods:
   # Buffer quick accessors
   - byteLength
   - byteOffset
+  # Geometry / math utilities (constant-time point/vector creation)
+  - pointFrom
+  - pointFromVector
+  - pointRotateRads
+  - vectorFromPoint
+  - vectorCross
+  - vectorScale
+  - vectorNormalize
+  - lineSegment
+  - headingIsHorizontal
+  - headingIsVertical
 
 # Sequential read / stateful iteration methods whose return value changes
 # on each invocation — not redundant even when called with identical arguments

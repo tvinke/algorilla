@@ -164,8 +164,19 @@ private fun isSideEffectCall(call: FunctionCall): Boolean =
         call.name in CHEAP_METHODS ||
         call.name in SEQUENTIAL_READ_METHODS ||
         isSequentialReadPrefix(call.name) ||
+        isTypeCheckPredicate(call.name) ||
         isBytecodeInstruction(call.name) ||
         MethodPurity.isSideEffect(call.name, call.qualifiedTarget)
+
+/** Type-check predicates (is*, has*) are O(1) boolean checks — too cheap to flag as redundant. */
+private val TYPE_CHECK_PREFIXES = listOf("is", "has")
+
+private fun isTypeCheckPredicate(name: String): Boolean =
+    TYPE_CHECK_PREFIXES.any { prefix ->
+        name.length > prefix.length &&
+            name.startsWith(prefix) &&
+            name[prefix.length].isUpperCase()
+    }
 
 /** Catches read* and next* methods not explicitly listed in SEQUENTIAL_READ_METHODS. */
 private val SEQUENTIAL_PREFIXES = listOf("read", "next")
