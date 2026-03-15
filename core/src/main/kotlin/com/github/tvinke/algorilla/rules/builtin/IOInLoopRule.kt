@@ -217,8 +217,18 @@ private fun isInMemoryTarget(call: FunctionCall): Boolean {
     return NON_IO_TARGETS.any { target.contains(it) }
 }
 
-/** Returns true if the call target matches an IO-capable receiver pattern. */
+/**
+ * Returns true if the call target matches an IO-capable receiver pattern.
+ * Patterns prefixed with `*` match anywhere (contains), others match as suffix (endsWith).
+ * This prevents "session" from matching "sessionState" while still matching "hibernateSession".
+ */
 private fun isIOTarget(call: FunctionCall): Boolean {
     val target = call.qualifiedTarget?.lowercase() ?: return false
-    return IO_TARGET_PATTERNS.any { target.contains(it) }
+    return IO_TARGET_PATTERNS.any { pattern ->
+        if (pattern.startsWith("*")) {
+            target.contains(pattern.removePrefix("*"))
+        } else {
+            target.endsWith(pattern) || target == pattern
+        }
+    }
 }

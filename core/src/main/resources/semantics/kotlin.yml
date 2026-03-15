@@ -1209,11 +1209,13 @@ io-method-candidates:
   - receive
 
 io-target-patterns:
-  - repository
-  - service
-  - dao
-  - client
-  - template
+  # Patterns prefixed with * match anywhere (contains). Others match as suffix (endsWith).
+  - "*repository"
+  - "*service"
+  - "*dao"
+  - "*jdbc"
+  - "*datasource"
+  - "*template"
   - entitymanager
   - session
   - connection
@@ -1227,9 +1229,7 @@ io-target-patterns:
   - consumer
   - queue
   - topic
-  - datasource
-  - jdbc
-  - http
+  - client
   - transport
   - sender
   - mailer

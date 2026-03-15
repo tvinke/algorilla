@@ -1418,11 +1418,16 @@ io-method-candidates:
   - receive
 
 io-target-patterns:
-  - repository
-  - service
-  - dao
-  - client
-  - template
+  # Patterns prefixed with * match anywhere (contains). Others match as suffix (endsWith).
+  # This prevents "session" matching "sessionState" while still matching "hibernateSession".
+  # Use * for patterns that are almost always meaningful as substrings.
+  - "*repository"
+  - "*service"
+  - "*dao"
+  - "*jdbc"
+  - "*datasource"
+  - "*template"
+  # Suffix-only: these words appear in non-IO contexts as prefixes (sessionState, channelId)
   - entitymanager
   - session
   - connection
@@ -1436,9 +1441,7 @@ io-target-patterns:
   - consumer
   - queue
   - topic
-  - datasource
-  - jdbc
-  - http
+  - client
   - transport
   - sender
   - mailer

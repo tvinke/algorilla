@@ -89,8 +89,13 @@ public class RepeatedReflectionInLoopRule : Rule {
 
 // Only the expensive reflection methods that allocate new arrays or do class scanning.
 // Cheap accessors (getModifiers, getReturnType, getName) are excluded.
+// Note: uses allReflectionMethods() — if cross-language pollution becomes an issue,
+// this should be switched to language-specific reflectionMethods(language).
 private val REFLECTION_METHODS: Set<String> by lazy {
     LanguageSemanticsRegistry.DEFAULT.allReflectionMethods()
 }
 
-private fun isReflectionCall(call: FunctionCall): Boolean = call.name in REFLECTION_METHODS
+/** Methods that are reflection in some languages but common factories in others. */
+private val REFLECTION_EXCLUSIONS = setOf("create", "keys", "values", "entries")
+
+private fun isReflectionCall(call: FunctionCall): Boolean = call.name in REFLECTION_METHODS && call.name !in REFLECTION_EXCLUSIONS
