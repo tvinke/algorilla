@@ -139,6 +139,7 @@ public data class FunctionDecl(
     var estimatedComplexity: Complexity? = null,
     var executionContext: ExecutionContext = ExecutionContext.SINGLE,
     var parameterFlows: List<ParameterFlow> = emptyList(),
+    var isRecursive: Boolean = false,
     override val location: SourceLocation,
     override val children: List<IRNode>,
 ) : IRNode

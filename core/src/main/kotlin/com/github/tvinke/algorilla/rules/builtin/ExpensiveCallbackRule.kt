@@ -3,6 +3,7 @@ package com.github.tvinke.algorilla.rules.builtin
 import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.FunctionCall
+import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LookupCall
@@ -46,22 +47,27 @@ public class ExpensiveCallbackRule : Rule {
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
-            scanNode(fileRoot, context, findings)
+            scanNode(fileRoot, null, context, findings)
         }
         return findings
     }
 
     private fun scanNode(
         node: IRNode,
+        enclosingFn: FunctionDecl?,
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
-        val container = asCallbackContainer(node)
-        if (container != null) {
-            checkCallbackBody(container, context, findings)
+        val fn = if (node is FunctionDecl) node else enclosingFn
+        // Skip callbacks inside recursive functions — tree walkers are O(tree_size), not O(n²)
+        if (fn == null || !fn.isRecursive) {
+            val container = asCallbackContainer(node)
+            if (container != null) {
+                checkCallbackBody(container, context, findings)
+            }
         }
         for (child in node.children) {
-            scanNode(child, context, findings)
+            scanNode(child, fn, context, findings)
         }
     }
 

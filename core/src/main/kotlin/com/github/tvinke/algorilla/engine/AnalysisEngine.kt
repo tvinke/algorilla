@@ -66,6 +66,7 @@ public class AnalysisEngine(
         val (irTrees, typeEnvironments) = markScalarLookups(parsedTrees)
         val symbolTable = rebuildSymbolTable(irTrees)
         val callGraph = buildCallGraph(irTrees, symbolTable)
+        annotateRecursion(irTrees)
         annotateParameterFlows(irTrees, symbolTable)
         annotateComplexity(symbolTable, callGraph)
         val rawFindings = evaluateRules(irTrees, symbolTable, callGraph, typeEnvironments)
@@ -199,6 +200,14 @@ public class AnalysisEngine(
         symbolTable: SymbolTable,
     ) {
         ParameterFlowAnnotator(symbolTable).annotate(irTrees)
+    }
+
+    private fun annotateRecursion(irTrees: Map<String, FileRoot>) {
+        for ((_, root) in irTrees) {
+            root.findDescendants<FunctionDecl>().forEach { fn ->
+                fn.isRecursive = fn.findDescendants<com.github.tvinke.algorilla.model.FunctionCall>().any { it.name == fn.name }
+            }
+        }
     }
 
     private fun annotateComplexity(
