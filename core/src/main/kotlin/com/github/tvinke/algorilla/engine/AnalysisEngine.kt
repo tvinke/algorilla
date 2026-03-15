@@ -21,6 +21,7 @@ import com.github.tvinke.algorilla.model.VariableDecl
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
+import com.github.tvinke.algorilla.rules.signatureKey
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import com.github.tvinke.algorilla.util.findDescendants
@@ -490,7 +491,7 @@ public fun markScalarLookups(
                     val classFields = node.declaringClass?.let { globalFieldTypes[it] } ?: emptyMap()
                     val mergedFields = allGlobalFields + classFields + localFieldTypes
                     val typeEnv = TypeEnvironment.build(node, mergedFields, language, registry)
-                    typeEnvs[node.qualifiedName] = typeEnv
+                    typeEnvs[signatureKey(node)] = typeEnv
                     markScalarLookupsInFunction(node, language, registry, typeEnv)
                 } else {
                     node

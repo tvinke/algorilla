@@ -23,7 +23,14 @@ public data class AnalysisContext(
 ) {
     /**
      * Returns the [TypeEnvironment] for the given function, or null if not available.
-     * Keyed by [FunctionDecl.qualifiedName] so lookup works regardless of tree transforms.
+     * Keyed by a signature string (qualifiedName + parameter types) so lookup works
+     * regardless of tree transforms and distinguishes overloaded methods.
      */
-    public fun typeEnvironmentFor(fn: FunctionDecl): TypeEnvironment? = typeEnvironments[fn.qualifiedName]
+    public fun typeEnvironmentFor(fn: FunctionDecl): TypeEnvironment? = typeEnvironments[signatureKey(fn)]
 }
+
+/**
+ * Builds a unique key for a function that distinguishes overloads.
+ * Used by both the engine (when storing) and AnalysisContext (when looking up).
+ */
+public fun signatureKey(fn: FunctionDecl): String = "${fn.qualifiedName}(${fn.parameters.joinToString(",") { it.typeName ?: "_" }})"
