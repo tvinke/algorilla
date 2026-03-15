@@ -35,6 +35,16 @@ internal class CardinalityExplosionRuleJavaTest {
         }
 
         @Test
+        fun `should produce one finding per loop pair with multiple mutations`() {
+            val findings = analyzeFixture("cardinality-explosion/positive/multi-mutation-cartesian.java")
+
+            findings shouldHaveSize 1
+            findings.first().message shouldContain "Cartesian product"
+            findings.first().message shouldContain "items"
+            findings.first().message shouldContain "categories"
+        }
+
+        @Test
         fun `should detect flatMap cross join`() {
             val findings = analyzeFixture("cardinality-explosion/positive/flatmap-explosion.java")
 

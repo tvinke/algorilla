@@ -16,6 +16,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.util.CrossMethodResolver
 import com.github.tvinke.algorilla.util.findDescendants
 
@@ -71,6 +72,7 @@ public class SortForLastRule : Rule {
                     findings.add(buildFinding(sort, access))
                     matchedSorts.add(sort)
                     matchedAccesses.add(access)
+                    break // One finding per sort call
                 }
             }
         }
@@ -199,7 +201,13 @@ public class SortForLastRule : Rule {
             severity = severity,
             location = sort.location,
             message = "Sorting entire collection just to access ${accessLabel(access.kind)} element",
-            suggestion = "Use .max(Comparator.comparing(...)) or .min(...) instead of sorting",
+            suggestions =
+                listOf(
+                    Suggestion.UseAlternativeAPI(
+                        alternative = ".max(Comparator.comparing(...)) or .min(...)",
+                        reason = "O(n) single pass instead of O(n log n) sort",
+                    ),
+                ),
             currentComplexity = cx.current,
             suggestedComplexity = cx.suggested,
             evidence = buildEvidence(sort, access),
@@ -218,7 +226,13 @@ public class SortForLastRule : Rule {
             severity = severity,
             location = sort.location,
             message = "Sorting entire collection just to access ${accessLabel(access.kind)} element via ${call.name}()",
-            suggestion = "Use .max(Comparator.comparing(...)) or .min(...) instead of sorting",
+            suggestions =
+                listOf(
+                    Suggestion.UseAlternativeAPI(
+                        alternative = ".max(Comparator.comparing(...)) or .min(...)",
+                        reason = "O(n) single pass instead of O(n log n) sort",
+                    ),
+                ),
             currentComplexity = cx.current,
             suggestedComplexity = cx.suggested,
             evidence = buildIndirectEvidence(sort, call, access),

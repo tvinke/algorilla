@@ -14,6 +14,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 
 /**
@@ -45,7 +46,11 @@ public class CardinalityExplosionRule : Rule {
             val language = (fileRoot as? FileRoot)?.language
             val mutationMethods = resolveMutationMethods(context, language)
             val langOrJava = language ?: Language.JAVA
-            scanNode(fileRoot, emptyList(), mutationMethods, langOrJava, context.registry, findings)
+            val mutationGroups = mutableMapOf<LoopPairKey, MutationGroup>()
+            scanNode(fileRoot, emptyList(), mutationMethods, langOrJava, context.registry, mutationGroups)
+            for ((_, group) in mutationGroups) {
+                findings.add(buildGroupedCartesianFinding(group, langOrJava, context.registry))
+            }
             scanFlatMap(fileRoot, findings)
         }
         return findings
@@ -53,37 +58,49 @@ public class CardinalityExplosionRule : Rule {
 
     // ── Pattern A: nested-loop Cartesian product ────────────────
 
+    private data class LoopPairKey(
+        val outerLine: Int,
+        val innerLine: Int,
+    )
+
+    private data class MutationGroup(
+        val outerLoop: LoopNode,
+        val innerLoop: LoopNode,
+        val loopStack: List<LoopNode>,
+        val calls: MutableList<FunctionCall> = mutableListOf(),
+    )
+
     private fun scanNode(
         node: IRNode,
         loopStack: List<LoopNode>,
         mutationMethods: Set<String>,
         language: Language,
         registry: LanguageSemanticsRegistry,
-        findings: MutableList<Finding>,
+        mutationGroups: MutableMap<LoopPairKey, MutationGroup>,
     ) {
         if (node is LoopNode) {
             for (child in node.children) {
-                scanNode(child, loopStack + node, mutationMethods, language, registry, findings)
+                scanNode(child, loopStack + node, mutationMethods, language, registry, mutationGroups)
             }
             return
         }
 
         if (loopStack.size >= 2 && node is FunctionCall && node.name in mutationMethods) {
-            checkCartesianProduct(node, loopStack, language, registry, findings)
+            collectCartesianProduct(node, loopStack, language, registry, mutationGroups)
         }
 
         for (child in node.children) {
-            scanNode(child, loopStack, mutationMethods, language, registry, findings)
+            scanNode(child, loopStack, mutationMethods, language, registry, mutationGroups)
         }
     }
 
     @Suppress("LongMethod")
-    private fun checkCartesianProduct(
+    private fun collectCartesianProduct(
         call: FunctionCall,
         loopStack: List<LoopNode>,
         language: Language,
         registry: LanguageSemanticsRegistry,
-        findings: MutableList<Finding>,
+        mutationGroups: MutableMap<LoopPairKey, MutationGroup>,
     ) {
         val outerLoop = loopStack[loopStack.size - 2]
         val innerLoop = loopStack.last()
@@ -91,37 +108,15 @@ public class CardinalityExplosionRule : Rule {
         val innerVar = innerLoop.iteratedVariable ?: return
 
         if (outerVar != innerVar) {
-            // Partitioned iteration: inner iterates a property of the outer element.
-            // Total work is O(sum of parts), not O(outer × max_parts).
             if (isPartitionedIteration(outerVar, innerVar, language, registry)) return
-
-            val confidence = determineConfidence(outerLoop, innerLoop, loopStack)
-            val effectiveSeverity = determineEffectiveSeverity(outerVar, innerVar, language, registry)
-            findings.add(
-                buildCartesianFinding(
-                    call,
-                    outerLoop,
-                    innerLoop,
-                    outerVar,
-                    innerVar,
-                    confidence,
-                    effectiveSeverity,
-                ),
-            )
-        } else {
-            // Same collection — self-join, low confidence
-            findings.add(
-                buildCartesianFinding(
-                    call,
-                    outerLoop,
-                    innerLoop,
-                    outerVar,
-                    innerVar,
-                    Confidence.LOW,
-                    Severity.INFO,
-                ),
-            )
         }
+
+        val key = LoopPairKey(outerLoop.location.line, innerLoop.location.line)
+        mutationGroups
+            .getOrPut(key) {
+                MutationGroup(outerLoop, innerLoop, loopStack.toList())
+            }.calls
+            .add(call)
     }
 
     private fun determineConfidence(
@@ -220,17 +215,26 @@ public class CardinalityExplosionRule : Rule {
         return severity
     }
 
-    @Suppress("LongParameterList", "LongMethod")
-    private fun buildCartesianFinding(
-        call: FunctionCall,
-        outerLoop: LoopNode,
-        innerLoop: LoopNode,
-        outerVar: String,
-        innerVar: String,
-        confidence: Confidence,
-        effectiveSeverity: Severity,
+    @Suppress("LongMethod")
+    private fun buildGroupedCartesianFinding(
+        group: MutationGroup,
+        language: Language,
+        registry: LanguageSemanticsRegistry,
     ): Finding {
+        val outerLoop = group.outerLoop
+        val innerLoop = group.innerLoop
+        val outerVar = outerLoop.iteratedVariable ?: ""
+        val innerVar = innerLoop.iteratedVariable ?: ""
+        val firstCall = group.calls.minBy { it.location.line }
+        val isSameCollection = outerVar == innerVar
+
+        val confidence =
+            if (isSameCollection) Confidence.LOW else determineConfidence(outerLoop, innerLoop, group.loopStack)
+        val effectiveSeverity =
+            if (isSameCollection) Severity.INFO else determineEffectiveSeverity(outerVar, innerVar, language, registry)
+
         val estimate = ComplexityModel.cartesianProduct(outerVar, innerVar)
+        val mutationLabel = buildMutationLabel(group.calls)
         val evidence =
             listOf(
                 Evidence(
@@ -247,8 +251,8 @@ public class CardinalityExplosionRule : Rule {
                     complexity = "O(|$innerVar|)",
                 ),
                 Evidence(
-                    call.location,
-                    "${call.name}() in nested loop",
+                    firstCall.location,
+                    "$mutationLabel in nested loop",
                     ExecutionContext.INSIDE_LOOP,
                     depth = 2,
                     complexity =
@@ -257,23 +261,46 @@ public class CardinalityExplosionRule : Rule {
                         ),
                 ),
             )
+        val message =
+            if (group.calls.size == 1) {
+                "Cartesian product: ${firstCall.name}() in nested loops " +
+                    "over $outerVar \u00d7 $innerVar produces O(n \u00d7 m) results"
+            } else {
+                val distinctNames =
+                    group.calls
+                        .map { it.name }
+                        .distinct()
+                        .sorted()
+                "Cartesian product: ${group.calls.size} mutations (${distinctNames.joinToString(", ")}) " +
+                    "in nested loops over $outerVar \u00d7 $innerVar produces O(n \u00d7 m) results"
+            }
         return Finding(
             ruleId = id,
             ruleName = name,
             severity = effectiveSeverity,
             confidence = confidence,
-            location = call.location,
-            message =
-                "Cartesian product: ${call.name}() in nested loops " +
-                    "over $outerVar \u00d7 $innerVar produces O(n \u00d7 m) results",
-            suggestion =
-                "Use an index or join strategy to avoid the full " +
-                    "cross product \u2014 filter early or use a Map keyed on join attributes",
+            location = firstCall.location,
+            message = message,
+            suggestions =
+                listOf(
+                    Suggestion.Freeform(
+                        "Use an index or join strategy to avoid the full " +
+                            "cross product \u2014 filter early or use a Map keyed on join attributes",
+                    ),
+                ),
             currentComplexity = estimate.current,
             suggestedComplexity = estimate.suggested,
             evidence = evidence,
         )
     }
+
+    private fun buildMutationLabel(calls: List<FunctionCall>): String =
+        if (calls.size == 1) {
+            "${calls.first().name}()"
+        } else {
+            val distinctNames = calls.map { it.name }.distinct().sorted()
+            "${calls.size} mutations (${distinctNames.joinToString(", ")})"
+        }
 
     // ── Pattern B: flatMap explosion ────────────────────────────
 
@@ -339,9 +366,13 @@ public class CardinalityExplosionRule : Rule {
             message =
                 "flatMap cross join: flatMap over $sourceVar " +
                     "iterates $innerVar, producing O(n \u00d7 m) results",
-            suggestion =
-                "Use an index or join strategy instead of " +
-                    "streaming the full Cartesian product",
+            suggestions =
+                listOf(
+                    Suggestion.Freeform(
+                        "Use an index or join strategy instead of " +
+                            "streaming the full Cartesian product",
+                    ),
+                ),
             currentComplexity = estimate.current,
             suggestedComplexity = estimate.suggested,
             evidence = evidence,

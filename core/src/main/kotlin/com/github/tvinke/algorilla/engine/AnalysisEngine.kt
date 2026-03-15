@@ -1,5 +1,6 @@
 package com.github.tvinke.algorilla.engine
 
+import com.github.tvinke.algorilla.baseline.Baseline
 import com.github.tvinke.algorilla.cache.AnalysisCache
 import com.github.tvinke.algorilla.cache.CachedFileEntry
 import com.github.tvinke.algorilla.cache.CachedFinding
@@ -77,7 +78,10 @@ public class AnalysisEngine(
         val confidenceAdjusted = adjustConfidence(vendoredDemoted, fileLanguages, ruleIndex)
         val freshFindings = SuppressionFilter().filter(confidenceAdjusted, irTrees, aliasIndex)
 
-        val allFindings = freshFindings + cachedFindings
+        val allFindings =
+            (freshFindings + cachedFindings).distinctBy { finding ->
+                Baseline.fingerprintOf(finding).contentHash
+            }
         saveCache(sourceFiles, filesToParse, freshFindings, cachedEntries)
 
         val elapsed = System.currentTimeMillis() - startTime
