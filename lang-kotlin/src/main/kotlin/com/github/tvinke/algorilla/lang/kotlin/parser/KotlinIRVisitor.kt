@@ -27,7 +27,7 @@ import org.antlr.v4.runtime.ParserRuleContext
  * Visits the ANTLR parse tree (parsed with Java grammar) and produces IR nodes
  * with Kotlin-specific method classification (e.g. .forEach{}, .map{}, .filter{}).
  */
-@Suppress("TooManyFunctions")
+@Suppress("TooManyFunctions", "LargeClass")
 internal class KotlinIRVisitor(
     private val filePath: String,
 ) : JavaParserBaseVisitor<List<IRNode>>() {
@@ -163,7 +163,15 @@ internal class KotlinIRVisitor(
         val enhancedFor = ctx.forControl()?.enhancedForControl()
         val body = ctx.statement(0)?.let { visitChildren(it) } ?: emptyList()
         return if (enhancedFor != null) {
-            listOf(LoopNode(LoopKind.FOR_EACH, extractVariableName(enhancedFor.expression()?.text), locationOf(ctx), body))
+            val loopVarType = enhancedFor.typeType()?.text
+            val loopVarName = enhancedFor.variableDeclaratorId()?.text
+            val loopVarDecl =
+                if (loopVarType != null && loopVarName != null) {
+                    listOf(VariableDecl(loopVarName, loopVarType, null, locationOf(ctx), emptyList()))
+                } else {
+                    emptyList()
+                }
+            listOf(LoopNode(LoopKind.FOR_EACH, extractVariableName(enhancedFor.expression()?.text), locationOf(ctx), loopVarDecl + body))
         } else {
             listOf(LoopNode(LoopKind.FOR, null, locationOf(ctx), body))
         }

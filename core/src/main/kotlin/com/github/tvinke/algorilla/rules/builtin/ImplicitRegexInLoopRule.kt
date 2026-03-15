@@ -9,12 +9,14 @@ import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LoopNode
 import com.github.tvinke.algorilla.model.Severity
+import com.github.tvinke.algorilla.model.VariableDecl
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
+import com.github.tvinke.algorilla.util.findDescendants
 import com.github.tvinke.algorilla.util.hasO1Type
 
 /**
@@ -106,6 +108,7 @@ private val JVM_FAMILY = setOf(Language.JAVA, Language.KOTLIN, Language.GROOVY)
 /** Regex metacharacters — single-char arguments using these still compile a regex in the JDK. */
 private const val REGEX_METACHARACTERS = ".\$|()[{^?*+\\"
 
+@Suppress("ReturnCount")
 private fun isImplicitRegexCall(
     call: FunctionCall,
     enclosingFn: FunctionDecl?,
@@ -119,6 +122,8 @@ private fun isImplicitRegexCall(
     if (language in JVM_FAMILY && call.name == "split" && hasSingleCharNonRegexArg(call)) return false
     // On JVM, Map.replaceAll(BiFunction) is not a regex method — skip when target is a Map/Set type
     if (language in JVM_FAMILY && call.name == "replaceAll" && isMapTarget(call, enclosingFn)) return false
+    // Predicate.matches(), Pattern.matches(), Matcher.matches() — not String regex operations
+    if (language in JVM_FAMILY && call.name == "matches" && isNonRegexMatchesTarget(call, enclosingFn)) return false
     return true
 }
 
@@ -138,6 +143,30 @@ private fun isMapTarget(
 private val MAP_TARGET_NAMES: Set<String> by lazy {
     LanguageSemanticsRegistry.DEFAULT.allExtraSection("non-list-targets-suffixes")
 }
+
+/** Returns true if the call target is a Predicate/Pattern/Matcher type whose matches() is not regex. */
+private fun isNonRegexMatchesTarget(
+    call: FunctionCall,
+    enclosingFn: FunctionDecl?,
+): Boolean {
+    val target = call.qualifiedTarget ?: return false
+    // Type-aware: check parameter/variable type declarations
+    if (enclosingFn != null) {
+        val paramType = enclosingFn.parameters.find { it.name == target }?.typeName
+        if (paramType != null && NON_REGEX_MATCHES_TYPES.any { paramType.contains(it) }) return true
+        val varType = enclosingFn.findDescendants<VariableDecl>().find { it.name == target }?.typeName
+        if (varType != null && NON_REGEX_MATCHES_TYPES.any { varType.contains(it) }) return true
+    }
+    // Name heuristic: variable names like "predicate", "matcher", "pattern"
+    val lower = target.lowercase()
+    return NON_REGEX_MATCHES_NAME_HINTS.any { lower.contains(it) }
+}
+
+private val NON_REGEX_MATCHES_TYPES: Set<String> by lazy {
+    LanguageSemanticsRegistry.DEFAULT.allExtraSection("non-regex-matches-targets")
+}
+
+private val NON_REGEX_MATCHES_NAME_HINTS = setOf("predicate", "matcher")
 
 /**
  * Returns true if the first argument is a string literal (quoted with ' or ").

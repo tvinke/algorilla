@@ -641,6 +641,17 @@ implicit-regex-methods:
   - replaceAll
   - replaceFirst
 
+# Types whose matches() method is NOT a regex operation.
+# Predicate.test/matches, Pattern.matches (already compiled), Matcher.matches, etc.
+non-regex-matches-targets:
+  - Predicate
+  - BiPredicate
+  - IntPredicate
+  - LongPredicate
+  - DoublePredicate
+  - Pattern
+  - Matcher
+
 mutation-methods:
   - add
   - addAll

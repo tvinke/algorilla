@@ -174,7 +174,15 @@ internal class GroovyIRVisitor(
         val enhancedFor = ctx.forControl()?.enhancedForControl()
         val body = ctx.statement(0)?.let { visitChildren(it) } ?: emptyList()
         return if (enhancedFor != null) {
-            listOf(LoopNode(LoopKind.FOR_EACH, extractVariableName(enhancedFor.expression()?.text), locationOf(ctx), body))
+            val loopVarType = enhancedFor.typeType()?.text
+            val loopVarName = enhancedFor.variableDeclaratorId()?.text
+            val loopVarDecl =
+                if (loopVarType != null && loopVarName != null) {
+                    listOf(VariableDecl(loopVarName, loopVarType, null, locationOf(ctx), emptyList()))
+                } else {
+                    emptyList()
+                }
+            listOf(LoopNode(LoopKind.FOR_EACH, extractVariableName(enhancedFor.expression()?.text), locationOf(ctx), loopVarDecl + body))
         } else {
             listOf(LoopNode(LoopKind.FOR, null, locationOf(ctx), body))
         }

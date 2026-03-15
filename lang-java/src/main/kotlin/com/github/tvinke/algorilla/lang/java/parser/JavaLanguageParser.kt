@@ -282,12 +282,13 @@ internal class JavaIRVisitor(
         if (enhancedFor != null) {
             val iterVar = enhancedFor.expression()?.text
             val body = ctx.statement(0)?.let { visitChildren(it) } ?: emptyList()
+            val loopVarDecl = extractLoopVarDecl(enhancedFor, locationOf(ctx))
             return listOf(
                 LoopNode(
                     kind = LoopKind.FOR_EACH,
                     iteratedVariable = extractVariableName(iterVar),
                     location = locationOf(ctx),
-                    children = body,
+                    children = loopVarDecl + body,
                 ),
             )
         }
@@ -301,6 +302,16 @@ internal class JavaIRVisitor(
                 children = body,
             ),
         )
+    }
+
+    /** Emits a [VariableDecl] for the enhanced-for loop variable so TypeEnvironment sees its type. */
+    private fun extractLoopVarDecl(
+        enhancedFor: JavaParser.EnhancedForControlContext,
+        loc: SourceLocation,
+    ): List<IRNode> {
+        val typeName = enhancedFor.typeType()?.text ?: return emptyList()
+        val varName = enhancedFor.variableDeclaratorId()?.text ?: return emptyList()
+        return listOf(VariableDecl(varName, typeName, null, loc, emptyList()))
     }
 
     private fun handleWhileOrDoStatement(ctx: JavaParser.StatementContext): List<IRNode> {
