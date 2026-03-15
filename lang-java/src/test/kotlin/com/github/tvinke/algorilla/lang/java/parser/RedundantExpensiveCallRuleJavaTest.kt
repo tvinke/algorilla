@@ -54,6 +54,13 @@ internal class RedundantExpensiveCallRuleJavaTest {
 
             findings.shouldBeEmpty()
         }
+
+        @Test
+        fun `should not flag calls with different variable arguments`() {
+            val findings = analyzeFixture("redundant-expensive-call/negative/different-variable-args.java")
+
+            findings.shouldBeEmpty()
+        }
     }
 
     @Nested

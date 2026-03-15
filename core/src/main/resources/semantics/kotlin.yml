@@ -1211,6 +1211,9 @@ non-io-targets:
   - sb
   - buf
   - buffer
+  - tokenizer
+  - stringtokenizer
+  - scanner
 
 io-method-candidates:
   - save

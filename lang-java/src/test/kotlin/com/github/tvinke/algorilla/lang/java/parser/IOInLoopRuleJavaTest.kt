@@ -56,6 +56,13 @@ internal class IOInLoopRuleJavaTest {
 
             findings.shouldBeEmpty()
         }
+
+        @Test
+        fun `should not flag StringTokenizer nextToken in loop`() {
+            val findings = analyzeFixture("io-in-loop/negative/string-tokenizer-in-loop.java")
+
+            findings.shouldBeEmpty()
+        }
     }
 
     private fun analyzeFixture(fixturePath: String): List<Finding> {
