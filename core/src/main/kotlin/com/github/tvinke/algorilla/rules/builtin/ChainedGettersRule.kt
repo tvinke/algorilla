@@ -17,6 +17,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.CrossMethodResolver
 import com.github.tvinke.algorilla.util.findDescendants
@@ -118,7 +119,7 @@ public class ChainedGettersRule : Rule {
             severity = severity,
             location = chain.first().location,
             message = "Chained getter cascade in ${fn.name}(): $chainDesc",
-            suggestion = "Pre-build lookup maps or use a join query to avoid cascading lookups",
+            suggestions = listOf(Suggestion.Freeform("Pre-build lookup maps or use a join query to avoid cascading lookups")),
             currentComplexity = cx.current,
             suggestedComplexity = cx.suggested,
             evidence = evidence,

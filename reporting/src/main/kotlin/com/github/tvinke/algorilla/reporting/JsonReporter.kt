@@ -33,6 +33,13 @@ public class JsonReporter : Reporter {
                     location = finding.location.toJsonLocation(),
                     message = finding.message,
                     suggestion = finding.suggestion,
+                    suggestions =
+                        finding.suggestions.map { s ->
+                            JsonSuggestion(
+                                type = s::class.simpleName ?: "Freeform",
+                                text = s.render(),
+                            )
+                        },
                     currentComplexity = finding.currentComplexity,
                     suggestedComplexity = finding.suggestedComplexity,
                     evidence = finding.evidence.map { it.toJsonEvidence() },
@@ -133,6 +140,7 @@ internal data class JsonFinding(
     val location: JsonLocation,
     val message: String,
     val suggestion: String,
+    val suggestions: List<JsonSuggestion> = emptyList(),
     val currentComplexity: String? = null,
     val suggestedComplexity: String? = null,
     val evidence: List<JsonEvidence> = emptyList(),
@@ -161,4 +169,16 @@ internal data class JsonEvidence(
     val executionContext: String,
     val depth: Int = 0,
     val complexity: String? = null,
+)
+
+/**
+ * JSON representation of a typed suggestion.
+ *
+ * @property type The suggestion variant name, e.g. `"Freeform"`, `"PreBuildStructure"`, `"CacheResult"`.
+ * @property text The rendered human-readable suggestion text.
+ */
+@Serializable
+internal data class JsonSuggestion(
+    val type: String,
+    val text: String,
 )

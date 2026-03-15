@@ -15,6 +15,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.CrossMethodResolver
 import com.github.tvinke.algorilla.util.ParameterFlowQuery
@@ -124,9 +125,13 @@ public class HiddenNestedLoopRule : Rule {
             message =
                 "${call.name}() contains a ${hiddenLoop.kind.label()} \u2014 " +
                     "hidden O($outerVar \u00d7 $innerVar) complexity",
-            suggestion =
-                "Consider inlining the loop, batching the work, " +
-                    "or pre-building a lookup structure in ${resolved.name}()",
+            suggestions =
+                listOf(
+                    Suggestion.Freeform(
+                        "Consider inlining the loop, batching the work, " +
+                            "or pre-building a lookup structure in ${resolved.name}()",
+                    ),
+                ),
             currentComplexity = cx.current,
             suggestedComplexity = cx.suggested,
             evidence = buildEvidence(call, resolved, hiddenLoop, loopStack, innerVar),

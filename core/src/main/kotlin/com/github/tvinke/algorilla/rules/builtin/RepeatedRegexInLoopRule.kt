@@ -14,6 +14,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 
 /**
@@ -86,7 +87,7 @@ public class RepeatedRegexInLoopRule : Rule {
             severity = severity,
             location = node.location,
             message = "Regex compilation ($desc) inside ${outerLoop.kind.label()}",
-            suggestion = "Compile the pattern once outside the loop and reuse the compiled Pattern",
+            suggestions = listOf(Suggestion.Freeform("Compile the pattern once outside the loop and reuse the compiled Pattern")),
             currentComplexity = "O(|$loopVar| * compile)",
             suggestedComplexity = "O(|$loopVar|)",
             evidence = evidence,

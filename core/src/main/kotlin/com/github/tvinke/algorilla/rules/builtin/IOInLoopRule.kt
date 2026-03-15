@@ -14,6 +14,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.ParameterFlowQuery
 
@@ -127,9 +128,13 @@ public class IOInLoopRule : Rule {
             message =
                 "IO call ${call.name}() inside ${outerLoop.kind.label()} — " +
                     "each iteration incurs network/disk latency",
-            suggestion =
-                "Batch the IO operation outside the loop, " +
-                    "or use a bulk API (e.g. saveAll, findAllById)",
+            suggestions =
+                listOf(
+                    Suggestion.Freeform(
+                        "Batch the IO operation outside the loop, " +
+                            "or use a bulk API (e.g. saveAll, findAllById)",
+                    ),
+                ),
             currentComplexity = "O(|$loopVar| \u00d7 IO)",
             suggestedComplexity = "O(1) IO + O(|$loopVar|)",
             evidence = buildEvidence(call, outerLoop, loopVar),
@@ -152,9 +157,13 @@ public class IOInLoopRule : Rule {
             message =
                 "Parameter '$paramName' flows through ${call.name}() into IO " +
                     "inside ${outerLoop.kind.label()}",
-            suggestion =
-                "Batch the IO operation outside the loop, " +
-                    "or restructure ${call.name}() to accept a collection",
+            suggestions =
+                listOf(
+                    Suggestion.Freeform(
+                        "Batch the IO operation outside the loop, " +
+                            "or restructure ${call.name}() to accept a collection",
+                    ),
+                ),
             currentComplexity = "O(|$loopVar| \u00d7 IO)",
             suggestedComplexity = "O(1) IO + O(|$loopVar|)",
             evidence =

@@ -2,6 +2,7 @@ package com.github.tvinke.algorilla.engine
 
 import com.github.tvinke.algorilla.model.SourceLocation
 import com.github.tvinke.algorilla.rules.Finding
+import com.github.tvinke.algorilla.rules.Suggestion
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import org.junit.jupiter.api.Test
@@ -60,6 +61,6 @@ internal class SuppressionFilterTest {
         severity = com.github.tvinke.algorilla.model.Severity.WARNING,
         location = SourceLocation(file, line, 1),
         message = "test finding",
-        suggestion = "fix it",
+        suggestions = listOf(Suggestion.Freeform("fix it")),
     )
 }

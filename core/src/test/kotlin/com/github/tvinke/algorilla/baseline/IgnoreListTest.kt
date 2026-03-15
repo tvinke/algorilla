@@ -3,6 +3,7 @@ package com.github.tvinke.algorilla.baseline
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.model.SourceLocation
 import com.github.tvinke.algorilla.rules.Finding
+import com.github.tvinke.algorilla.rules.Suggestion
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -23,7 +24,7 @@ internal class IgnoreListTest {
         severity = Severity.WARNING,
         location = SourceLocation(file, line, 1),
         message = message,
-        suggestion = "Use a HashSet",
+        suggestions = listOf(Suggestion.Freeform("Use a HashSet")),
     )
 
     @Nested

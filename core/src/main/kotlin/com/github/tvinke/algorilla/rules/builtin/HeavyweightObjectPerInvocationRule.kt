@@ -12,6 +12,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.util.findDescendants
 
 /**
@@ -83,7 +84,7 @@ public class HeavyweightObjectPerInvocationRule : Rule {
             severity = severity,
             location = creation.location,
             message = "${creation.typeName} created inside ${fn.name}() on every invocation",
-            suggestion = "Reuse as a static final field or inject via dependency injection",
+            suggestions = listOf(Suggestion.Freeform("Reuse as a static final field or inject via dependency injection")),
             currentComplexity = cx.current,
             suggestedComplexity = cx.suggested,
             evidence = evidence,

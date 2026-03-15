@@ -14,6 +14,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.rules.Suggestion
 
 /**
  * Detects stream/collection pipelines where filter() comes after sort().
@@ -111,7 +112,14 @@ public class FilterAfterSortRule : Rule {
             severity = severity,
             location = filter.location,
             message = "filter() after ${sort.kind.label}() — sorting all elements before filtering",
-            suggestion = "Move filter() before ${sort.kind.label}() to sort fewer elements",
+            suggestions =
+                listOf(
+                    Suggestion.ReorderOperations(
+                        first = "filter()",
+                        second = "${sort.kind.label}()",
+                        reason = "sort fewer elements",
+                    ),
+                ),
             currentComplexity = cx.current,
             suggestedComplexity = cx.suggested,
             evidence = buildEvidence(sort, filter),

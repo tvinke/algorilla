@@ -12,6 +12,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.semantics.SemanticCategory
 
@@ -62,6 +63,7 @@ public class SequentialAsyncJoinInLoopRule : Rule {
         }
     }
 
+    @Suppress("LongMethod")
     private fun buildFinding(
         call: FunctionCall,
         loopStack: List<LoopNode>,
@@ -85,7 +87,12 @@ public class SequentialAsyncJoinInLoopRule : Rule {
             severity = severity,
             location = call.location,
             message = "Blocking .${call.name}() on future inside ${outerLoop.kind.label()}",
-            suggestion = "Collect all futures first, then call .join()/.get() outside the loop (e.g. CompletableFuture.allOf)",
+            suggestions =
+                listOf(
+                    Suggestion.Freeform(
+                        "Collect all futures first, then call .join()/.get() outside the loop (e.g. CompletableFuture.allOf)",
+                    ),
+                ),
             currentComplexity = "O(|$loopVar| * wait)",
             suggestedComplexity = "O(max-wait)",
             evidence = evidence,

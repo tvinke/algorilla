@@ -15,6 +15,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.findDescendants
 import com.github.tvinke.algorilla.util.hasO1Type
@@ -93,7 +94,7 @@ public class RegexRecompilationInLoopRule : Rule {
             severity = severity,
             location = call.location,
             message = "${call.name}() compiles a regex on every call inside ${outerLoop.kind.label()}",
-            suggestion = "Pre-compile with Pattern.compile() outside the loop and use Matcher directly",
+            suggestions = listOf(Suggestion.HoistBeforeLoop(call = "Pattern.compile()")),
             currentComplexity = "O(|$loopVar| × compile)",
             suggestedComplexity = "O(|$loopVar|)",
             evidence = evidence,

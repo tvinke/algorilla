@@ -4,6 +4,7 @@ import com.github.tvinke.algorilla.engine.AnalysisResult
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.model.SourceLocation
 import com.github.tvinke.algorilla.rules.Finding
+import com.github.tvinke.algorilla.rules.Suggestion
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import kotlinx.serialization.json.Json
@@ -27,7 +28,7 @@ internal class JsonReporterTest {
         severity = severity,
         location = SourceLocation("/src/Main.java", 10, 1),
         message = message,
-        suggestion = "Use a HashSet",
+        suggestions = listOf(Suggestion.Freeform("Use a HashSet")),
     )
 
     private fun report(findings: List<Finding> = listOf(finding())): String {
