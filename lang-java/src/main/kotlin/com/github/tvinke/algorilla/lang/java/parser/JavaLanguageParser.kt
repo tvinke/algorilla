@@ -194,6 +194,17 @@ internal class JavaIRVisitor(
         return visitChildren(ctx)
     }
 
+    override fun visitTernaryExpression(ctx: JavaParser.TernaryExpressionContext): List<IRNode> {
+        val expressions = ctx.expression()
+        if (expressions.size == TERNARY_CHILD_COUNT) {
+            val conditionNodes = visit(expressions[0])
+            val thenBranch = visit(expressions[1])
+            val elseBranch = visit(expressions[2])
+            return conditionNodes + listOf(BranchNode(listOf(thenBranch, elseBranch), locationOf(ctx)))
+        }
+        return visitChildren(ctx)
+    }
+
     override fun visitObjectCreationExpression(ctx: JavaParser.ObjectCreationExpressionContext): List<IRNode> {
         val creator = ctx.creator() ?: return visitChildren(ctx)
         val typeName = creator.createdName()?.text ?: return visitChildren(ctx)
@@ -410,6 +421,9 @@ internal class JavaIRVisitor(
             column = ctx.start.charPositionInLine + 1,
         )
 }
+
+/** Ternary expressions have exactly 3 sub-expressions: condition, then, else. */
+private const val TERNARY_CHILD_COUNT = 3
 
 private val JAVA_CONSTANT_SIZE_FACTORIES =
     setOf(

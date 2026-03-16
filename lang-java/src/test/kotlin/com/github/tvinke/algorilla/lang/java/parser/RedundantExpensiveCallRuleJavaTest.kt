@@ -68,6 +68,13 @@ internal class RedundantExpensiveCallRuleJavaTest {
 
             findings.shouldBeEmpty()
         }
+
+        @Test
+        fun `should not flag calls in ternary branches as redundant`() {
+            val findings = analyzeFixture("redundant-expensive-call/regression/ternary-branches-not-redundant.java")
+
+            findings.shouldBeEmpty()
+        }
     }
 
     @Nested
