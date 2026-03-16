@@ -131,6 +131,64 @@ Admonitions (`!!! warning`, `!!! tip`, etc.) work best as brief interruptions �
 - Don't stack multiple admonitions back-to-back. Two in a row is fine occasionally; three signals that the content should be restructured.
 - Don't use them for code examples that are central to the page — code blocks in the main flow are easier to scan.
 
+## Material for MkDocs features
+
+We use several Material theme features beyond the basics. Know what's available so you reach for the right tool.
+
+### Linked content tabs (`content.tabs.link`)
+
+Tabs with the same label sync across the page. When a reader picks "Kotlin" in one code block, all other tabbed blocks on the page switch too. This is why consistent tab labels matter — always use `=== "Java"`, `=== "Kotlin"`, `=== "Groovy"`, `=== "JavaScript"` (exact same strings, capitalized the same way).
+
+### Definition lists (`def_list`)
+
+Use for terms with explanations — severity levels, confidence levels, language maturity tiers. Cleaner than bullet lists with bold labels, and renders well on mobile.
+
+```markdown
+HIGH
+:   Structurally proven. Very few false positives.
+
+MEDIUM
+:   Likely correct, depends on context.
+```
+
+Don't overuse — a regular bullet list is fine when definitions aren't needed. Definition lists are best for glossary-style content where the term is the entry point.
+
+### Highlighted text (`pymdownx.mark`)
+
+`==highlighted==` renders as ==highlighted==. Use for key complexity expressions in narrative pages where the reader needs to spot the critical part quickly: `==O(n²)==`, `==O(1)==`, `==n × m==`.
+
+Rules of thumb:
+
+- Highlight the complexity notation that's the point of the paragraph, not every occurrence
+- Don't highlight inside code blocks (it doesn't render there)
+- Don't highlight in rule pages — those have enough visual structure already. Reserve for the deep-dive narratives and the Big-O primer
+
+### Footnotes
+
+For caveats and asides that would break reading flow if inline. A footnote keeps the narrative clean for a beginner while providing depth for the curious.
+
+```markdown
+The total comparisons are ==n × m==.[^1]
+
+[^1]: The "O" stands for *order* of growth. See the [Big-O primer](../concepts/big-o-primer.md).
+```
+
+Good uses: Big-O notation explanations, mathematical background, "technically this is..." clarifications. Bad uses: anything the reader needs to understand the main point — that belongs in the text, not in a footnote.
+
+### Social cards (`social` plugin)
+
+Auto-generates Open Graph preview images for link sharing (Slack, GitHub, Twitter). Enabled in CI only (`CI=true` env var) because it needs native Cairo libraries. No content changes needed — it uses each page's title and description from front matter.
+
+Pages with good `description` front matter get better social cards. Rule pages and language pages already have this.
+
+### Navigation tracking
+
+URL hash updates as the reader scrolls through sections. No content changes needed — it just works. This means readers can share deep-links to specific sections (e.g., `understanding-output/#confidence-levels`).
+
+### Tooltips and glossary (`content.tooltips` + `abbr` + `snippets`)
+
+Terms defined in `includes/glossary.md` get automatic tooltips on hover across all pages. Add new terms there when introducing jargon that appears on multiple pages.
+
 ## Cross-linking
 
 Pages should link to related content, but consistently:

@@ -8,9 +8,14 @@ For a practical walkthrough of how O(n²) hides in real code, see [the hidden O(
 
 Big-O answers the question: **"If I double the input, how much more work does the code do?"**
 
-- **O(1)** — the same amount of work, regardless of input size
-- **O(n)** — double the input, double the work
-- **O(n²)** — double the input, quadruple the work
+==O(1)==
+:   The same amount of work, regardless of input size.
+
+==O(n)==
+:   Double the input, double the work.
+
+==O(n²)==
+:   Double the input, ==quadruple== the work.
 
 The "O" stands for *order* — as in "order of growth." The notation ignores constant factors and lower-order terms, focusing only on what dominates at scale. `O(2n)` and `O(3n)` are both just `O(n)` because they all grow linearly.
 

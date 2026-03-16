@@ -4,8 +4,6 @@ tags:
   - Kotlin
   - Groovy
   - JavaScript
-  - performance
-  - cross-file
 description: "Detects O(n²) complexity hidden behind method calls — when a loop calls a method that internally contains another loop, the quadratic cost is invisible at the call site."
 ---
 

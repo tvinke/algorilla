@@ -4,10 +4,6 @@ tags:
   - Kotlin
   - Groovy
   - JavaScript
-  - Spring
-  - performance
-  - network
-  - IO
 description: "Detects HTTP, database, and file system calls inside loops. Each iteration pays full round-trip latency, turning O(n) logic into O(n·IO) wall-clock time."
 ---
 

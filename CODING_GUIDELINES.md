@@ -200,6 +200,23 @@ private fun analyzeFixture(fixturePath: String): List<Finding> {
 
 **Kotest matchers.** Use `shouldHaveSize`, `shouldBe`, `shouldContain` from kotest for assertions. Keep assertions focused — check the finding count and key fields, not every field on every object.
 
+**Contract tests (`@Tag("contract")`).** Some tests guard the public API surface that external consumers depend on — CLI flags, JSON schema fields, SARIF structure, exit codes, Gradle plugin properties, and GitHub Action inputs. These are tagged with `@Tag("contract")` (or `@ContractTest` from `core/src/test` if the module has it on the classpath).
+
+When a contract test fails, it means something user-visible changed. Before fixing the test:
+
+1. Check which distributions are affected (CLI, Gradle plugin, GitHub Action, npm, Docker)
+2. Update all affected configs — `action.yml`, `AlgorillaExtension.kt`, docs, npm wrapper
+3. Update any output examples in the documentation that reference the changed behavior
+
+Run contract tests in isolation with `./gradlew test -Dinclude.tags=contract`. This is useful as a quick sanity check before releases. In normal development, contract tests run as part of the regular suite — no special workflow needed.
+
+Where to put new contract tests:
+
+- CLI flag existence and exit code behavior → `CliEndToEndTest` or `DistributionContractTest`
+- JSON/SARIF output structure → `CliEndToEndTest` (format tests)
+- Gradle plugin extension properties → `AlgorillaPluginFunctionalTest`
+- Cross-distribution consistency → `DistributionContractTest`
+
 **Always test all supported languages.** When adding or modifying a rule, add test fixtures for every language the rule claims to support in its `languages` set. A rule that says `Language.entries.toSet()` must have fixtures for Java, Groovy, Kotlin, and JavaScript.
 
 ## 7. Design Heuristics

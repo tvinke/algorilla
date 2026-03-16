@@ -1,8 +1,6 @@
 ---
 tags:
   - Java
-  - Spring
-  - JPA
   - Hibernate
   - Guava
   - performance

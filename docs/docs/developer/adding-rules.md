@@ -128,4 +128,4 @@ Run `./gradlew build` before opening a PR. The build runs ktlint, detekt, and al
 
 ## Custom Rule via DSL
 
-See [Custom Rules](../guide/custom-rules.md) for the Kotlin Script approach, which lets users define rules outside the core module.
+A Kotlin Script approach for user-defined rules is planned but not yet publicly documented. The DSL code exists in `core/src/main/kotlin/.../rules/custom/RuleDsl.kt` but needs tests and proper documentation before it's ready for users.

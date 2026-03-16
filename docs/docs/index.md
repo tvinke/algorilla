@@ -26,7 +26,7 @@ Algorilla is a static analysis tool that finds hidden O(n²) and O(n·m) perform
 
 -   :material-console:{ .lg .middle } **Guide**
 
-    CLI reference, CI/CD integration, baseline workflows, custom rules, and more.
+    CLI reference, CI/CD integration, baseline workflows, and more.
 
     [:octicons-arrow-right-24: User guide](guide/cli-reference.md)
 

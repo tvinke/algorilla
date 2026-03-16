@@ -19,10 +19,9 @@ for (Order order : orders) {                           // outer loop: runs once 
 }
 ```
 
-The outer loop runs `n` times (once per order). For each of those iterations, the inner loop runs up to `m` times (once per discounted product ID). The total number of comparisons is `n × m`. In computer science, this scaling behavior is described using **Big-O notation** as **O(n×m)** — or **O(n²)** when both collections are roughly the same size. The "O" stands for the *order* of growth: it tells you how the work scales as the input gets larger, ignoring constant factors.
+The outer loop runs `n` times (once per order). For each of those iterations, the inner loop runs up to `m` times (once per discounted product ID). The total number of comparisons is ==n × m==. In computer science, this scaling behavior is described using **Big-O notation** as ==O(n×m)== — or ==O(n²)== when both collections are roughly the same size.[^1]
 
-!!! abstract "What is Big-O?"
-    Big-O notation is a shorthand for "how does the cost of this code grow as the data grows?" O(n) means the cost grows linearly with the input size. O(n²) means it grows with the *square* of the input size. For a full introduction, see the [Big-O primer](concepts/big-o-primer.md).
+[^1]: The "O" stands for the *order* of growth: it tells you how the work scales as the input gets larger, ignoring constant factors. See the [Big-O primer](concepts/big-o-primer.md) for a full introduction.
 
 With small inputs, the difference doesn't matter. With production-sized data, it's the difference between milliseconds and minutes:
 
@@ -46,7 +45,7 @@ for (Order order : orders) {
 }
 ```
 
-The inner loop is gone visually, but it's still there. `contains()` on a `List` is O(n) — one comparison per element. A code reviewer sees a single loop with a simple condition. It passes review. It works in the test suite where `discountedProductIds` has 5 entries. Then it ships, and a customer has 15,000 discounted product IDs.
+The inner loop is gone visually, but it's still there. `contains()` on a `List` is ==O(n)== — one comparison per element. A code reviewer sees a single loop with a simple condition. It passes review. It works in the test suite where `discountedProductIds` has 5 entries. Then it ships, and a customer has 15,000 discounted product IDs.
 
 !!! warning "These methods all hide a linear scan"
 
@@ -122,7 +121,7 @@ public boolean applies(Order order) {
 }
 ```
 
-Three files. Three developers may have written them at different times. The combined complexity: O(orders × rules × categories). With 1,000 orders, 50 discount rules, and 20 categories, that's 1,000,000 comparisons — for what looks like a simple filter.
+Three files. Three developers may have written them at different times. The combined complexity: ==O(orders × rules × categories)==. With 1,000 orders, 50 discount rules, and 20 categories, that's 1,000,000 comparisons — for what looks like a simple filter.
 
 !!! info "Why tests don't catch this"
 
@@ -160,7 +159,7 @@ Running algorilla on the `OrderService` example from Step 2 would produce:
 
 ## The fix
 
-Regardless of how many layers of indirection exist, the fix is the same: convert `discountedProductIds` to a `HashSet` for O(1) lookups.
+Regardless of how many layers of indirection exist, the fix is the same: convert `discountedProductIds` to a `HashSet` for ==O(1)== lookups.
 
 ```java
 // Before — contains() on a List is O(n) per iteration → O(n²) total

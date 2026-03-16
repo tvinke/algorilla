@@ -55,8 +55,11 @@ The format breaks down as:
 
 Severity tells you how likely the finding is to be a real performance problem at production scale:
 
-- **warning** — likely performance issue. These patterns typically cause measurable slowdowns once data volumes grow past test-sized inputs. Investigate these first.
-- **info** — worth knowing about but may not matter in practice. The pattern exists, but the cost may be acceptable for your data sizes or the fix isn't straightforward.
+warning
+:   Likely performance issue. These patterns typically cause measurable slowdowns once data volumes grow past test-sized inputs. Investigate these first.
+
+info
+:   Worth knowing about but may not matter in practice. The pattern exists, but the cost may be acceptable for your data sizes or the fix isn't straightforward.
 
 !!! tip "Start with warnings"
     If algorilla reports many findings, focus on **warnings** first — they flag the patterns most likely to cause real performance issues. Use `--severity warning` to filter out info-level findings.
@@ -65,9 +68,14 @@ Severity tells you how likely the finding is to be a real performance problem at
 
 Confidence tells you how certain Algorilla is that the finding is correct — not how severe the problem is, but how much the tool trusts its own analysis:
 
-- **HIGH** — structurally proven. The pattern is always an anti-pattern regardless of types (e.g. string concatenation in a loop), or type analysis confirms the data path. Very few false positives.
-- **MEDIUM** — likely correct based on available evidence, but depends on context or type information that can't be fully verified statically. This is the default level.
-- **LOW** — plausible but uncertain. Detection relies on naming conventions or heuristics. Worth investigating, but expect some false positives.
+HIGH
+:   Structurally proven. The pattern is always an anti-pattern regardless of types (e.g. string concatenation in a loop), or type analysis confirms the data path. Very few false positives.
+
+MEDIUM
+:   Likely correct based on available evidence, but depends on context or type information that can't be fully verified statically. This is the default level.
+
+LOW
+:   Plausible but uncertain. Detection relies on naming conventions or heuristics. Worth investigating, but expect some false positives.
 
 Use `--confidence high` for a focused view of the most trustworthy findings, or `--confidence low` to see everything.
 

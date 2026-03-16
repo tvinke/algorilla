@@ -3,8 +3,6 @@ tags:
   - Java
   - Kotlin
   - Groovy
-  - performance
-  - strings
 description: "Detects String.concat() calls inside loops — each call copies the entire accumulated string, turning O(n) iteration into O(n²) character copies."
 ---
 

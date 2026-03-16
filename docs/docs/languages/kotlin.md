@@ -1,8 +1,6 @@
 ---
 tags:
   - Kotlin
-  - Coroutines
-  - Ktor
   - performance
 description: "Kotlin complexity analysis with Algorilla — detects hidden O(n²) in scope functions, sequential coroutine awaits, collection chain traps, and more. 28 rules apply."
 ---

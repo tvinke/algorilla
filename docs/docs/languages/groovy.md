@@ -1,8 +1,6 @@
 ---
 tags:
   - Groovy
-  - Grails
-  - GORM
   - Spock
   - performance
 description: "Groovy complexity analysis with Algorilla — detects GORM dynamic finder N+1 queries, GDK collection traps, hidden iteration in closures, and more. 28 rules apply."

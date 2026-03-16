@@ -1,8 +1,6 @@
 ---
 tags:
   - JavaScript
-  - TypeScript
-  - Vue
   - React
   - Angular
   - Node.js

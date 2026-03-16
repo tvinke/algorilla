@@ -97,6 +97,17 @@ jobs:
 !!! note
     The `if: always()` on the upload step is important — Algorilla exits with `1` when it finds issues, which would skip the upload otherwise.
 
+## Gradle Plugin
+
+If your project uses Gradle, you can run algorilla as a build task instead of a separate CI step:
+
+```yaml
+      - name: Run Algorilla
+        run: ./gradlew algorilla
+```
+
+Configure severity thresholds, output format, and baselines in your `build.gradle.kts`. See [Gradle plugin configuration](../getting-started/installation.md#gradle-plugin-configuration) for the full options reference.
+
 ## GitLab CI
 
 ```yaml

@@ -4,8 +4,6 @@ tags:
   - Kotlin
   - Groovy
   - JavaScript
-  - performance
-  - collections
 description: "Detects linear lookup operations (contains, indexOf, includes) inside loops that turn O(n) into O(n²). Shows how to fix with HashSet or Map."
 ---
 

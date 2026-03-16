@@ -38,16 +38,23 @@ See [severity levels](guide/understanding-output.md#severity-levels) and [confid
 
 ## What does O(n²) mean?
 
-It's [Big-O notation](concepts/big-o-primer.md) — a shorthand for "how does cost grow with input size." O(n) means cost grows linearly (double the input, double the work). O(n²) means it grows with the square (double the input, quadruple the work).
+It's [Big-O notation](concepts/big-o-primer.md) — a shorthand for "how does cost grow with input size." ==O(n)== means cost grows linearly (double the input, double the work). ==O(n²)== means it grows with the square (double the input, quadruple the work).
 
 The [Big-O primer](concepts/big-o-primer.md) explains it fully in about 5 minutes. The [hidden O(n²) problem](hidden-complexity.md) shows how it hides in real code.
 
 ## Which languages are supported?
 
-- **[Java](languages/java.md)** (GA) — most mature, full type resolution, lowest false-positive rate
-- **[Kotlin](languages/kotlin.md)** (Alpha) — early support, higher false-positive rate
-- **[Groovy](languages/groovy.md)** (Beta) — usable with caveats, dynamic typing limits accuracy
-- **[JavaScript/TypeScript](languages/javascript.md)** (Beta) — name-based heuristics, `.vue` SFC support
+[Java](languages/java.md) (GA)
+:   Most mature, full type resolution, lowest false-positive rate.
+
+[Kotlin](languages/kotlin.md) (Alpha)
+:   Early support, higher false-positive rate.
+
+[Groovy](languages/groovy.md) (Beta)
+:   Usable with caveats, dynamic typing limits accuracy.
+
+[JavaScript/TypeScript](languages/javascript.md) (Beta)
+:   Name-based heuristics, `.vue` SFC support.
 
 Most rules apply to all languages — a few target JVM-specific APIs and don't apply to JavaScript/TypeScript. See the [language support overview](languages/index.md) for the full coverage matrix.
 

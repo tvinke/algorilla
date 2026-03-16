@@ -35,6 +35,7 @@ theme:
     - navigation.path
     - navigation.prune
     - toc.follow
+    - navigation.tracking
     # Search
     - search.suggest
     - search.highlight
@@ -44,12 +45,15 @@ theme:
     - content.code.select
     - content.code.annotate
     - content.tooltips
+    - content.tabs.link
   icon:
     repo: fontawesome/brands/github
 
 plugins:
   - search
   - tags
+  - social:
+      enabled: !ENV [CI, false]
 
 extra_css:
   - stylesheets/extra.css
@@ -72,6 +76,9 @@ markdown_extensions:
   - pymdownx.details
   - tables
   - abbr
+  - def_list
+  - footnotes
+  - pymdownx.mark
   - toc:
       permalink: true
   - attr_list
@@ -103,7 +110,6 @@ nav:
     - CI/CD Integration: guide/ci-integration.md
     - Baseline Workflow: guide/baseline-workflow.md
     - Incremental Analysis: guide/incremental-analysis.md
-    - Custom Rules: guide/custom-rules.md
     - Pre-Commit Hooks: guide/pre-commit.md
   - Reference:
     - Rules:

@@ -38,7 +38,9 @@ dependencies {
 }
 
 tasks.test {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        System.getProperty("include.tags")?.let { includeTags(it) }
+    }
     testLogging {
         events("passed", "skipped", "failed")
     }

@@ -4,10 +4,6 @@ tags:
   - Kotlin
   - Groovy
   - JavaScript
-  - Spring Data
-  - JPA
-  - performance
-  - database
 description: "Detects single-record database or service fetch calls inside loops — the classic N+1 query problem. Shows bulk-fetch alternatives for Spring Data, JPA, GORM, and fetch()."
 ---
 

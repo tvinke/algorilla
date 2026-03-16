@@ -33,16 +33,20 @@ Then run:
 ./gradlew algorilla
 ```
 
-The plugin auto-detects source directories from your project's source sets. Configure it in the `algorilla` block:
+The plugin auto-detects source directories from your project's Java/Kotlin/Groovy source sets. Configure it in the `algorilla` block:
 
 ```kotlin
 algorilla {
-    minSeverity.set("warning")
-    failOn.set("error")
-    format.set("sarif")
+    minSeverity.set("warning")   // minimum severity to report
+    failOn.set("error")          // fail the build at this severity or above
+    format.set("sarif")          // output format: json (default), sarif, console
     outputFile.set(layout.buildDirectory.file("reports/algorilla.sarif"))
 }
 ```
+
+All properties are optional — the defaults work out of the box. The report is written to `build/reports/algorilla.json` by default.
+
+For the full list of options (rule filters, exclude patterns, baseline, test inclusion), see the [Gradle plugin configuration](#gradle-plugin-configuration) reference below.
 
 ## GitHub Action
 
@@ -94,3 +98,20 @@ algorilla --version
 ```
 algorilla 0.2.0
 ```
+
+## Gradle Plugin Configuration
+
+Full reference for the `algorilla { }` extension block.
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `minSeverity` | `String` | `"warning"` | Minimum severity to include in the report: `info`, `warning`, `error` |
+| `failOn` | `String` | `"info"` | Minimum severity that triggers a build failure. Any finding at or above this level fails the task |
+| `format` | `String` | `"json"` | Output format: `json`, `sarif`, `console` |
+| `outputFile` | `File` | `build/reports/algorilla.json` | Where to write the report. Extension changes automatically with format |
+| `rules` | `List<String>` | all | Only run these rule IDs. Empty list = all rules |
+| `excludePatterns` | `List<String>` | none | Glob patterns for files to skip (e.g., `**/generated/**`) |
+| `includeTests` | `Boolean` | `false` | Whether to scan test source sets |
+| `baseline` | `File` | none | Path to a baseline file. Findings present in the baseline are filtered out |
+
+These are the same concepts as the CLI flags (`--severity`, `--fail-on`, `--format`, etc.) and the [GitHub Action inputs](../guide/ci-integration.md#action-inputs). The naming differs slightly to match Gradle conventions.
