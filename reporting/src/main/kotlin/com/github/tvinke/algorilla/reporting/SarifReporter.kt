@@ -1,5 +1,6 @@
 package com.github.tvinke.algorilla.reporting
 
+import com.github.tvinke.algorilla.baseline.Baseline
 import com.github.tvinke.algorilla.engine.AnalysisResult
 import com.github.tvinke.algorilla.engine.Reporter
 import com.github.tvinke.algorilla.model.Confidence
@@ -36,6 +37,7 @@ public class SarifReporter : Reporter {
     private fun buildSarif(result: AnalysisResult): SarifSchema210 {
         val rules = buildRuleDescriptors(result)
         val ruleIndex = rules.mapIndexed { index, rule -> rule.id to index }.toMap()
+        val projectRoot = result.projectRoot
         return SarifSchema210(
             schema = SARIF_SCHEMA_URI,
             version = Version.The210,
@@ -43,7 +45,7 @@ public class SarifReporter : Reporter {
                 listOf(
                     Run(
                         tool = buildTool(rules),
-                        results = result.findings.map { toSarifResult(it, ruleIndex) },
+                        results = result.findings.map { toSarifResult(it, ruleIndex, projectRoot) },
                     ),
                 ),
         )
@@ -76,6 +78,7 @@ public class SarifReporter : Reporter {
     private fun toSarifResult(
         finding: Finding,
         ruleIndex: Map<String, Int>,
+        projectRoot: java.io.File? = null,
     ): Result =
         Result(
             ruleID = finding.ruleId,
@@ -84,6 +87,7 @@ public class SarifReporter : Reporter {
             rank = finding.confidence.toSarifRank(),
             message = buildMessage(finding),
             locations = listOf(finding.location.toSarifLocation()),
+            fingerprints = mapOf("algorilla/v1" to Baseline.fingerprintOf(finding, projectRoot).contentHash),
         )
 
     private fun buildMessage(finding: Finding): Message {

@@ -62,6 +62,7 @@ Point algorilla at your project:
 
 ```bash
 algorilla /path/to/your/project
+# or: algorilla --input /path/to/your/project
 ```
 
 Algorilla scans your source files and reports what it finds. Here it detected a `List.contains()` call inside a for-each loop — meaning every iteration does a linear scan of `discountedProductIds`, making the whole method O(n²). Not sure why that's a problem? Read [the hidden O(n²) problem](hidden-complexity.md) first.

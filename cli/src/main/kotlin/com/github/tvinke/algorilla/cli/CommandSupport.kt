@@ -79,12 +79,13 @@ internal fun applyBaseline(
     baselineFile: File?,
     saveBaselineFile: File?,
 ): AnalysisResult {
+    val projectRoot = result.projectRoot
     if (saveBaselineFile != null) {
-        Baseline.save(result.findings, saveBaselineFile)
+        Baseline.save(result.findings, saveBaselineFile, projectRoot)
     }
     val baseline = baselineFile?.let { Baseline.load(it) }
     return if (baseline != null) {
-        result.copy(findings = baseline.filterNew(result.findings))
+        result.copy(findings = baseline.filterNew(result.findings, projectRoot))
     } else {
         result
     }
@@ -97,7 +98,7 @@ internal fun applyIgnoreList(
     val ignoreFile = IgnoreList.defaultFile(projectRoot)
     val ignoreList = IgnoreList.load(ignoreFile)
     if (ignoreList.size == 0) return result
-    return result.copy(findings = ignoreList.filter(result.findings))
+    return result.copy(findings = ignoreList.filter(result.findings, projectRoot))
 }
 
 internal fun resolveSeverity(severity: String): Severity =

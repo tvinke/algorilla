@@ -1,5 +1,6 @@
 package com.github.tvinke.algorilla.reporting
 
+import com.github.tvinke.algorilla.baseline.Baseline
 import com.github.tvinke.algorilla.engine.AnalysisResult
 import com.github.tvinke.algorilla.engine.Reporter
 import com.github.tvinke.algorilla.model.Severity
@@ -21,35 +22,34 @@ public class JsonReporter : Reporter {
         output.appendLine()
     }
 
-    private fun buildReport(result: AnalysisResult): JsonReport {
-        val findings =
-            result.findings.map { finding ->
-                JsonFinding(
-                    ruleId = finding.ruleId,
-                    ruleName = finding.ruleName,
-                    category = finding.category?.name,
-                    severity = finding.severity.name,
-                    confidence = finding.confidence.name,
-                    location = finding.location.toJsonLocation(),
-                    message = finding.message,
-                    suggestion = finding.suggestion,
-                    suggestions =
-                        finding.suggestions.map { s ->
-                            JsonSuggestion(
-                                type = s::class.simpleName ?: "Freeform",
-                                text = s.render(),
-                            )
-                        },
-                    currentComplexity = finding.currentComplexity,
-                    suggestedComplexity = finding.suggestedComplexity,
-                    evidence = finding.evidence.map { it.toJsonEvidence() },
-                )
-            }
-        return JsonReport(
+    private fun buildReport(result: AnalysisResult): JsonReport =
+        JsonReport(
             summary = buildSummary(result),
-            findings = findings,
+            findings = result.findings.map { toJsonFinding(it, result.projectRoot) },
         )
-    }
+
+    private fun toJsonFinding(
+        finding: com.github.tvinke.algorilla.rules.Finding,
+        projectRoot: java.io.File?,
+    ): JsonFinding =
+        JsonFinding(
+            ruleId = finding.ruleId,
+            ruleName = finding.ruleName,
+            category = finding.category?.name,
+            severity = finding.severity.name,
+            confidence = finding.confidence.name,
+            location = finding.location.toJsonLocation(),
+            message = finding.message,
+            suggestion = finding.suggestion,
+            suggestions =
+                finding.suggestions.map { s ->
+                    JsonSuggestion(type = s::class.simpleName ?: "Freeform", text = s.render())
+                },
+            currentComplexity = finding.currentComplexity,
+            suggestedComplexity = finding.suggestedComplexity,
+            evidence = finding.evidence.map { it.toJsonEvidence() },
+            fingerprint = Baseline.fingerprintOf(finding, projectRoot).contentHash,
+        )
 
     private fun buildSummary(result: AnalysisResult): JsonSummary {
         val findings = result.findings
@@ -95,7 +95,7 @@ internal data class JsonReport(
     val findings: List<JsonFinding>,
 )
 
-private const val SCHEMA_VERSION = 1
+private const val SCHEMA_VERSION = 2
 
 private fun toolVersion(): String {
     val props = java.util.Properties()
@@ -144,6 +144,7 @@ internal data class JsonFinding(
     val currentComplexity: String? = null,
     val suggestedComplexity: String? = null,
     val evidence: List<JsonEvidence> = emptyList(),
+    val fingerprint: String? = null,
 )
 
 @Serializable

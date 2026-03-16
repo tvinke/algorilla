@@ -19,8 +19,25 @@ public class Baseline(
 ) {
     /**
      * Returns only findings that are not present in this baseline.
+     * Uses dual-check: tries v2 (relative path + normalized message) first, falls back to v1.
      */
-    public fun filterNew(findings: List<Finding>): List<Finding> = findings.filter { !entries.contains(fingerprintOf(it)) }
+    public fun filterNew(
+        findings: List<Finding>,
+        projectRoot: File? = null,
+    ): List<Finding> =
+        findings.filter { finding ->
+            val v2 = fingerprintOf(finding, projectRoot)
+            val inBaseline = entries.any { it.contentHash == v2.contentHash }
+            if (inBaseline) return@filter false
+            // Fall back to v1 (absolute path + raw message) for migration
+            if (projectRoot != null) {
+                val v1 = fingerprintV1(finding)
+                val inBaselineV1 = entries.any { it.contentHash == v1.contentHash }
+                !inBaselineV1
+            } else {
+                true
+            }
+        }
 
     public companion object {
         private val json =
@@ -56,19 +73,57 @@ public class Baseline(
         public fun save(
             findings: List<Finding>,
             file: File,
+            projectRoot: File? = null,
         ) {
             file.parentFile?.mkdirs()
-            val fingerprints = findings.map { fingerprintOf(it) }
+            val fingerprints = findings.map { fingerprintOf(it, projectRoot) }
             val data = BaselineData(fingerprints = fingerprints)
             file.writeText(json.encodeToString(BaselineData.serializer(), data))
             logger.info { "Baseline saved: ${fingerprints.size} findings to ${file.path}" }
         }
 
+        private val QUOTED_LITERAL = Regex("""'[^']*'""")
+        private val DOUBLE_QUOTED_LITERAL = Regex(""""[^"]*"""")
+
         /**
-         * Creates a fingerprint for a finding that is resilient to line number shifts.
-         * Uses file path, rule ID, and a hash of the finding message.
+         * Creates a portable fingerprint for a finding that is resilient to line number shifts,
+         * variable renames (quoted literals normalized), and machine differences (relative paths).
          */
-        public fun fingerprintOf(finding: Finding): BaselineFingerprint {
+        public fun fingerprintOf(
+            finding: Finding,
+            projectRoot: File? = null,
+        ): BaselineFingerprint {
+            val filePath =
+                if (projectRoot != null) {
+                    try {
+                        File(finding.location.file).relativeTo(projectRoot).path
+                    } catch (_: IllegalArgumentException) {
+                        finding.location.file
+                    }
+                } else {
+                    finding.location.file
+                }
+            val normalizedMessage =
+                finding.message
+                    .replace(QUOTED_LITERAL, "'_'")
+                    .replace(DOUBLE_QUOTED_LITERAL, "\"_\"")
+
+            val digest = MessageDigest.getInstance("SHA-256")
+            digest.update(filePath.toByteArray())
+            digest.update(finding.ruleId.toByteArray())
+            digest.update(normalizedMessage.toByteArray())
+            val hash = digest.digest().joinToString("") { "%02x".format(it) }.take(FINGERPRINT_LENGTH)
+            return BaselineFingerprint(
+                file = filePath,
+                ruleId = finding.ruleId,
+                contentHash = hash,
+            )
+        }
+
+        /**
+         * Legacy v1 fingerprint using absolute path and raw message — for migration compatibility.
+         */
+        internal fun fingerprintV1(finding: Finding): BaselineFingerprint {
             val digest = MessageDigest.getInstance("SHA-256")
             digest.update(finding.location.file.toByteArray())
             digest.update(finding.ruleId.toByteArray())
@@ -85,7 +140,7 @@ public class Baseline(
     }
 }
 
-private const val BASELINE_FORMAT_VERSION = 1
+private const val BASELINE_FORMAT_VERSION = 2
 
 @Serializable
 internal data class BaselineData(

@@ -10,10 +10,14 @@ import java.io.File
  * Supported patterns:
  * - `// algorilla:ignore` (suppresses all rules on that line)
  * - `// algorilla:ignore rule-name` (suppresses a specific rule)
+ * - `// algorilla:ignore-file` (suppresses all rules for the entire file)
+ * - `// algorilla:ignore-file rule-name` (suppresses a specific rule for the entire file)
  * - Block comments: `/* algorilla:ignore rule-name */`
  *
  * A suppression comment on the finding's line or the line immediately before it applies.
  * Rule aliases are also accepted so that old suppress comments keep working after renames.
+ *
+ * File-level suppression (`algorilla:ignore-file`) is checked in the first 5 lines of each file.
  */
 public class SuppressionFilter {
     /**
@@ -26,22 +30,50 @@ public class SuppressionFilter {
         aliasIndex: Map<String, String> = emptyMap(),
     ): List<Finding> {
         val sourceLineCache = mutableMapOf<String, List<String>>()
+        val fileSuppressCache = mutableMapOf<String, FileSuppression>()
         return findings.filter { finding ->
-            val lines = sourceLineCache.getOrPut(finding.location.file) { readSourceLines(finding.location.file) }
-            !isSuppressed(finding, lines, aliasIndex)
+            !isSuppressed(finding, sourceLineCache, fileSuppressCache, aliasIndex)
         }
     }
 
     private fun isSuppressed(
         finding: Finding,
-        lines: List<String>,
+        sourceLineCache: MutableMap<String, List<String>>,
+        fileSuppressCache: MutableMap<String, FileSuppression>,
         aliasIndex: Map<String, String>,
     ): Boolean {
-        if (lines.isEmpty()) return false
-        val lineIndices = mutableSetOf(finding.location.line - 1)
-        finding.evidence.forEach { lineIndices.add(it.location.line - 1) }
-        val linesToCheck = lineIndices.flatMap { idx -> listOfNotNull(lines.getOrNull(idx), lines.getOrNull(idx - 1)) }
-        return linesToCheck.any { line -> matchesSuppression(line, finding.ruleId, finding.ruleName, aliasIndex) }
+        // Check file-level suppression first
+        val mainLines = sourceLineCache.getOrPut(finding.location.file) { readSourceLines(finding.location.file) }
+        val fileSuppression = fileSuppressCache.getOrPut(finding.location.file) { detectFileSuppression(mainLines) }
+        if (isFileSuppressed(fileSuppression, finding.ruleId, finding.ruleName, aliasIndex)) return true
+
+        // Group line indices by file (main finding + evidence from potentially different files)
+        val linesByFile = mutableMapOf<String, MutableSet<Int>>()
+        linesByFile.getOrPut(finding.location.file) { mutableSetOf() }.add(finding.location.line - 1)
+        for (ev in finding.evidence) {
+            linesByFile.getOrPut(ev.location.file) { mutableSetOf() }.add(ev.location.line - 1)
+        }
+
+        // Check each file's lines for suppression comments
+        for ((file, indices) in linesByFile) {
+            val lines = sourceLineCache.getOrPut(file) { readSourceLines(file) }
+            if (lines.isEmpty()) continue
+
+            // Also check file-level suppression for evidence files
+            if (file != finding.location.file) {
+                val evFileSuppression = fileSuppressCache.getOrPut(file) { detectFileSuppression(lines) }
+                if (isFileSuppressed(evFileSuppression, finding.ruleId, finding.ruleName, aliasIndex)) return true
+            }
+
+            val linesToCheck =
+                indices.flatMap { idx ->
+                    listOfNotNull(lines.getOrNull(idx), lines.getOrNull(idx - 1))
+                }
+            if (linesToCheck.any { line -> matchesSuppression(line, finding.ruleId, finding.ruleName, aliasIndex) }) {
+                return true
+            }
+        }
+        return false
     }
 
     private fun readSourceLines(filePath: String): List<String> {
@@ -50,7 +82,43 @@ public class SuppressionFilter {
     }
 }
 
-private val SUPPRESSION_PATTERN = Regex("""algorilla:ignore\s*(\S+)?""")
+private data class FileSuppression(
+    val suppressAll: Boolean,
+    val suppressedSpecifiers: List<String>,
+)
+
+private const val FILE_HEADER_LINES = 5
+
+private val FILE_SUPPRESSION_PATTERN = Regex("""algorilla:ignore-file\s*([\w-]+)?""")
+
+private fun detectFileSuppression(lines: List<String>): FileSuppression {
+    val specifiers = mutableListOf<String>()
+    var suppressAll = false
+    for (i in 0 until minOf(FILE_HEADER_LINES, lines.size)) {
+        val match = FILE_SUPPRESSION_PATTERN.find(lines[i]) ?: continue
+        val specifier = match.groupValues[1]
+        if (specifier.isEmpty()) {
+            suppressAll = true
+        } else {
+            specifiers.add(specifier)
+        }
+    }
+    return FileSuppression(suppressAll, specifiers)
+}
+
+private fun isFileSuppressed(
+    suppression: FileSuppression,
+    ruleId: String,
+    ruleName: String,
+    aliasIndex: Map<String, String>,
+): Boolean {
+    if (suppression.suppressAll) return true
+    return suppression.suppressedSpecifiers.any { specifier ->
+        specifier == ruleId || specifier == ruleName || aliasIndex[specifier] == ruleId
+    }
+}
+
+private val SUPPRESSION_PATTERN = Regex("""algorilla:ignore(?!-file)\s*([\w-]+)?""")
 
 private fun matchesSuppression(
     line: String,
