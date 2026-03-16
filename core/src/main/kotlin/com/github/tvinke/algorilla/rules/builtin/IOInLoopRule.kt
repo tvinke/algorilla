@@ -19,6 +19,7 @@ import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.ParameterFlowQuery
+import com.github.tvinke.algorilla.util.findDescendants
 
 /**
  * Detects IO operations (HTTP calls, database queries, file operations) inside loops.
@@ -65,6 +66,9 @@ public class IOInLoopRule : Rule {
         val fn = if (node is FunctionDecl) node else enclosingFn
 
         if (node is LoopNode) {
+            // Stream copy idiom: read(buffer) + write(buffer) in a loop is the correct
+            // pattern for copying data between streams — not an anti-pattern.
+            if (isStreamCopyLoop(node)) return
             for (child in node.children) {
                 scanNode(child, fn, loopStack + node, ioMethods, ioCandidates, language, context, findings)
             }
@@ -298,6 +302,18 @@ public class IOInLoopRule : Rule {
                 ),
         )
     }
+}
+
+/**
+ * Detects the standard stream copy idiom: a loop containing both `read(buffer)` and `write(buffer)`
+ * on stream-like targets. This is the correct pattern for copying data between streams and
+ * should not be flagged as IO-in-loop.
+ */
+private fun isStreamCopyLoop(loop: LoopNode): Boolean {
+    val calls = loop.findDescendants<FunctionCall>()
+    val hasRead = calls.any { it.name == "read" && it.arguments.isNotEmpty() }
+    val hasWrite = calls.any { it.name == "write" && it.arguments.isNotEmpty() }
+    return hasRead && hasWrite
 }
 
 /** Returns true if this call's target is a monadic single-item type (not a collection). */

@@ -86,6 +86,20 @@ internal class IOInLoopRuleJavaTest {
 
             findings.shouldBeEmpty()
         }
+
+        @Test
+        fun `should not flag stream copy idiom with read and write`() {
+            val findings = analyzeFixture("io-in-loop/regression/stream-copy-idiom-not-flagged.java")
+
+            findings.shouldBeEmpty()
+        }
+
+        @Test
+        fun `should not flag Command execute or Future cancel in loop`() {
+            val findings = analyzeFixture("io-in-loop/regression/command-execute-not-io.java")
+
+            findings.shouldBeEmpty()
+        }
     }
 
     private fun analyzeFixture(fixturePath: String): List<Finding> {
