@@ -83,10 +83,10 @@ internal class AlgorillaCommand :
 
     @Option(
         names = ["--confidence"],
-        description = ["Minimum confidence: low, medium, high (default: medium)"],
-        defaultValue = "medium",
+        description = ["Minimum confidence: low, medium, high (default: high)"],
+        defaultValue = "high",
     )
-    private var confidence: String = "medium"
+    private var confidence: String = "high"
 
     @Option(
         names = ["--exclude"],
@@ -196,6 +196,7 @@ internal class AlgorillaCommand :
         }
 
         writeReport(accepted, format, outputFile, useColor, projectRoot, scanRoots)
+        if (outputFile == null) printFrameworkCoverageNotice(scanRoots, useColor)
         return exitCodeFor(accepted, resolveFailOn(failOn))
     }
 
@@ -420,6 +421,48 @@ private fun resolveColor(
         "never" -> false
         else -> outputFile == null && System.console() != null
     }
+
+private val LIMITED_SUPPORT_FRAMEWORKS =
+    mapOf(
+        "io.quarkus" to "Quarkus",
+        "io.smallrye.mutiny" to "SmallRye Mutiny",
+        "reactor.core" to "Project Reactor",
+        "io.reactivex" to "RxJava",
+        "io.micronaut" to "Micronaut",
+        "io.grpc" to "gRPC",
+        "io.r2dbc" to "R2DBC",
+    )
+
+private const val FRAMEWORK_SAMPLE_FILES = 200
+private const val FRAMEWORK_IMPORT_LINES = 30
+
+@Suppress("NestedBlockDepth")
+private fun printFrameworkCoverageNotice(
+    scanRoots: List<File>,
+    color: Boolean,
+) {
+    val detected = mutableSetOf<String>()
+    val sampleFiles =
+        scanRoots
+            .flatMap { root -> root.walkTopDown().filter { it.extension in setOf("java", "kt", "groovy") }.toList() }
+            .take(FRAMEWORK_SAMPLE_FILES)
+    for (file in sampleFiles) {
+        if (detected.size == LIMITED_SUPPORT_FRAMEWORKS.size) break
+        file.useLines { lines ->
+            lines.take(FRAMEWORK_IMPORT_LINES).forEach { line ->
+                if (line.trimStart().startsWith("import ")) {
+                    for ((pkg, _) in LIMITED_SUPPORT_FRAMEWORKS) {
+                        if (pkg !in detected && line.contains(pkg)) detected.add(pkg)
+                    }
+                }
+            }
+        }
+    }
+    if (detected.isNotEmpty()) {
+        val names = detected.mapNotNull { LIMITED_SUPPORT_FRAMEWORKS[it] }.sorted().joinToString(", ")
+        System.err.println(Ansi.dim("Note: limited coverage for $names patterns. Some findings may not apply.", color))
+    }
+}
 
 private fun printScanTarget(
     paths: List<File>,
