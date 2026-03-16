@@ -75,6 +75,17 @@ internal class RedundantExpensiveCallRuleJavaTest {
 
             findings.shouldBeEmpty()
         }
+
+        @Test
+        fun `should not flag getter called twice but still flag at three`() {
+            val findings = analyzeFixture("redundant-expensive-call/regression/getter-twice-not-flagged.java")
+
+            // getFirstAttribute called twice in checkBothWithSameArgs → not flagged (getter threshold = 3)
+            // getFirstAttribute called thrice in flagThreeGetter → flagged
+            findings shouldHaveSize 1
+            findings.first().message shouldContain "getFirstAttribute"
+            findings.first().message shouldContain "3 times"
+        }
     }
 
     @Nested
