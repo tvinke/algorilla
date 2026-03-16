@@ -103,7 +103,7 @@ public class RegexRecompilationInLoopRule : Rule {
 }
 
 /** Languages where string methods only compile regex when the argument is a regex literal. */
-private val JS_FAMILY = setOf(Language.JAVASCRIPT, Language.TYPESCRIPT, Language.VUE)
+private val JS_FAMILY = setOf(Language.JAVASCRIPT, Language.TYPESCRIPT)
 
 /** JVM languages where String.split() has a single-char fast path that skips regex compilation. */
 private val JVM_FAMILY = setOf(Language.JAVA, Language.KOTLIN, Language.GROOVY)

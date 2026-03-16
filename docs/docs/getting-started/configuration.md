@@ -64,11 +64,42 @@ Per-rule configuration overrides:
 
 ### `type-hints`
 
-Manual type hints for variables whose types cannot be resolved statically. Map variable names to collection types (e.g., `HashSet`, `HashMap`) to prevent false positives on O(1) collection operations.
+!!! warning "Experimental"
+    This feature is reserved for a future release. The configuration key is accepted but has no effect yet.
+
+Algorilla infers variable types from declarations, constructors, factory methods, and stream chains to decide whether a `.contains()` or `.get()` call is O(1) (on a `HashSet`/`HashMap`) or O(n) (on a `List`). In most cases this works automatically.
+
+When it lands, `type-hints` will let you manually tell algorilla the type of a variable it can't resolve — for example, a field injected by a framework or returned from an untyped factory:
+
+```yaml
+type-hints:
+  userCache: "HashMap"    # injected by Spring, algorilla can't see the wiring
+  itemIndex: "HashSet"    # returned from a factory method with Object return type
+```
+
+The key is the variable name, the value is the collection type. This prevents false positives where algorilla reports an O(n) lookup on what is actually an O(1) data structure.
 
 ### `heavyweight-types`
 
-Set of class names considered "heavyweight" for the `expensive-construction` rule. Defaults include `ObjectMapper`, `Gson`, `XmlMapper`, `DocumentBuilderFactory`, and `TransformerFactory`.
+!!! warning "Experimental"
+    This key is accepted but the format may change in future releases.
+
+Controls which types the [`expensive-construction`](../rules/expensive-construction.md) rule flags when instantiated inside a method body (rather than once as a field or constant). Creating these objects is expensive — they typically involve reflection, class scanning, or configuration parsing — so repeated instantiation per call is a performance anti-pattern.
+
+Algorilla ships with per-language defaults loaded from its internal semantics files. For Java, that includes types like `ObjectMapper`, `Pattern`, `SimpleDateFormat`, `Cipher`, `HttpClient`, and others. When you specify `heavyweight-types` in your config, your list **replaces** the defaults entirely:
+
+```yaml
+# REPLACES the built-in heavyweight types — include everything you care about
+heavyweight-types:
+  - ObjectMapper
+  - Gson
+  - XmlMapper
+  - DocumentBuilderFactory
+  - TransformerFactory
+  - JAXBContext            # not in the defaults — add your own
+```
+
+If you only want to add types on top of the defaults, you need to list the defaults too. A common pattern is to copy the defaults and append your additions.
 
 ### `max-call-depth`
 
@@ -89,9 +120,13 @@ algorilla --language java,groovy src/
 algorilla -l java -l kotlin src/
 ```
 
-Available languages: `java`, `groovy`, `kotlin`, `javascript`, `typescript`, `vue` (case-insensitive).
+Available values: `java`, `groovy`, `kotlin`, `javascript`, `typescript` (case-insensitive).
 
-When `--language` is omitted, all supported languages are included (default behavior).
+`--language javascript` includes `.js`, `.mjs`, `.cjs`, `.jsx`, and `.vue` files. For Vue Single File Components, algorilla extracts the `<script>` block and analyzes it as JavaScript (or TypeScript when `<script lang="ts">` is used).
+
+`--language typescript` includes `.ts` and `.tsx` files, plus Vue SFCs that use `<script lang="ts">`.
+
+When `--language` is omitted, all supported languages and file formats are included (default behavior).
 
 ## CLI Override Precedence
 

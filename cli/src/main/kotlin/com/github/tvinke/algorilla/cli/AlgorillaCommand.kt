@@ -120,7 +120,7 @@ internal class AlgorillaCommand :
         names = ["-l", "--language"],
         description = [
             "Only analyze specified language(s). Comma-separated or repeated: --language java,groovy or -l java -l groovy. " +
-                "Available: java, groovy, kotlin, javascript, typescript, vue",
+                "Available: java, groovy, kotlin, javascript, typescript",
         ],
         split = ",",
     )

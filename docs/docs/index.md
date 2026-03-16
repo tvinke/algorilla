@@ -117,7 +117,7 @@ Most static analyzers focus on correctness — null checks, type errors, securit
 Algorilla catches these patterns **before** they ship:
 
 - **23 built-in rules** across 6 categories, each with evidence chains that show *why* it's a problem
-- **Multi-language**: Java, Groovy, Kotlin, JavaScript, TypeScript, Vue SFC
+- **Multi-language**: Java, Groovy, Kotlin, JavaScript/TypeScript (including Vue SFC and JSX)
 - **Cross-file analysis**: follows call chains across files and languages to catch indirect patterns
 - **Fast**: analyzes thousands of files in seconds with incremental caching
 - **Zero config**: works out of the box with automatic project detection

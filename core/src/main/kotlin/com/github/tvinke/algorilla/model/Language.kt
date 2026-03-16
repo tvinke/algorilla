@@ -12,9 +12,8 @@ public enum class Language(
     JAVA("Java", setOf("java")),
     GROOVY("Groovy", setOf("groovy"), hasTypeDeclarations = false),
     KOTLIN("Kotlin", setOf("kt", "kts")),
-    JAVASCRIPT("JavaScript", setOf("js", "mjs", "cjs"), hasTypeDeclarations = false),
+    JAVASCRIPT("JavaScript", setOf("js", "mjs", "cjs", "jsx", "vue"), hasTypeDeclarations = false),
     TYPESCRIPT("TypeScript", setOf("ts", "tsx")),
-    VUE("Vue", setOf("vue"), hasTypeDeclarations = false),
     ;
 
     public companion object {
