@@ -1,11 +1,11 @@
-package com.github.tvinke.algorilla.lang.javascript.parser
+package com.github.tvinke.algorilla.lang.kotlin.parser
 
 import com.github.tvinke.algorilla.config.AnalysisConfig
 import com.github.tvinke.algorilla.graph.CallGraph
 import com.github.tvinke.algorilla.graph.SymbolTable
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Finding
-import com.github.tvinke.algorilla.rules.builtin.MultiPassStreamFusionRule
+import com.github.tvinke.algorilla.rules.builtin.RepeatedCollectionIterationRule
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -14,18 +14,18 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import java.io.File
 
-internal class MultiPassStreamFusionRuleJsTest {
-    private val parser = JavaScriptLanguageParser()
-    private val rule = MultiPassStreamFusionRule()
+internal class RepeatedCollectionIterationRuleKotlinTest {
+    private val parser = KotlinLanguageParser()
+    private val rule = RepeatedCollectionIterationRule()
 
     @Nested
     inner class PositiveCases {
         @Test
-        fun `should detect two for-of loops over the same array`() {
-            val findings = analyzeFixture("multi-pass-stream-fusion/positive/two-foreach-loops.js")
+        fun `should detect two for-each loops over the same collection`() {
+            val findings = analyzeFixture("repeated-collection-iteration/positive/two-sequences.kt")
 
             findings shouldHaveSize 1
-            findings.first().ruleId shouldBe "multi-pass-stream-fusion"
+            findings.first().ruleId shouldBe "repeated-collection-iteration"
             findings.first().message shouldContain "orders"
         }
     }
@@ -33,8 +33,8 @@ internal class MultiPassStreamFusionRuleJsTest {
     @Nested
     inner class NegativeCases {
         @Test
-        fun `should not flag loops over different arrays`() {
-            val findings = analyzeFixture("multi-pass-stream-fusion/negative/different-sources.js")
+        fun `should not flag loops over different collections`() {
+            val findings = analyzeFixture("repeated-collection-iteration/negative/different-sources.kt")
 
             findings.shouldBeEmpty()
         }

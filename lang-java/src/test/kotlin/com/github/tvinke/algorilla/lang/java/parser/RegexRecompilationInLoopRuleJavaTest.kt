@@ -5,7 +5,7 @@ import com.github.tvinke.algorilla.graph.CallGraph
 import com.github.tvinke.algorilla.graph.SymbolTable
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Finding
-import com.github.tvinke.algorilla.rules.builtin.ImplicitRegexInLoopRule
+import com.github.tvinke.algorilla.rules.builtin.RegexRecompilationInLoopRule
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -14,18 +14,18 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import java.io.File
 
-internal class ImplicitRegexInLoopRuleJavaTest {
+internal class RegexRecompilationInLoopRuleJavaTest {
     private val parser = JavaLanguageParser()
-    private val rule = ImplicitRegexInLoopRule()
+    private val rule = RegexRecompilationInLoopRule()
 
     @Nested
     inner class PositiveCases {
         @Test
         fun `should detect matches and split inside loop`() {
-            val findings = analyzeFixture("implicit-regex-in-loop/positive/matches-in-loop.java")
+            val findings = analyzeFixture("regex-recompilation-in-loop/positive/matches-in-loop.java")
 
             findings shouldHaveSize 2
-            findings.all { it.ruleId == "implicit-regex-in-loop" } shouldBe true
+            findings.all { it.ruleId == "regex-recompilation-in-loop" } shouldBe true
             findings.any { it.message.contains("matches") } shouldBe true
             findings.any { it.message.contains("split") } shouldBe true
         }
@@ -35,21 +35,21 @@ internal class ImplicitRegexInLoopRuleJavaTest {
     inner class NegativeCases {
         @Test
         fun `should not flag non-regex string methods`() {
-            val findings = analyzeFixture("implicit-regex-in-loop/negative/no-regex-methods.java")
+            val findings = analyzeFixture("regex-recompilation-in-loop/negative/no-regex-methods.java")
 
             findings.shouldBeEmpty()
         }
 
         @Test
         fun `should not flag split with single-char non-metachar argument`() {
-            val findings = analyzeFixture("implicit-regex-in-loop/negative/single-char-split.java")
+            val findings = analyzeFixture("regex-recompilation-in-loop/negative/single-char-split.java")
 
             findings.shouldBeEmpty()
         }
 
         @Test
         fun `should still flag split with regex metachar argument`() {
-            val findings = analyzeFixture("implicit-regex-in-loop/positive/regex-metachar-split.java")
+            val findings = analyzeFixture("regex-recompilation-in-loop/positive/regex-metachar-split.java")
 
             findings shouldHaveSize 1
             findings.first().message shouldContain "split"
@@ -57,7 +57,7 @@ internal class ImplicitRegexInLoopRuleJavaTest {
 
         @Test
         fun `should not flag Map replaceAll in loop`() {
-            val findings = analyzeFixture("implicit-regex-in-loop/negative/map-replace-all.java")
+            val findings = analyzeFixture("regex-recompilation-in-loop/negative/map-replace-all.java")
 
             findings.shouldBeEmpty()
         }
@@ -67,7 +67,7 @@ internal class ImplicitRegexInLoopRuleJavaTest {
     inner class EvidenceAndComplexity {
         @Test
         fun `should provide evidence chain for regex in loop`() {
-            val findings = analyzeFixture("implicit-regex-in-loop/positive/matches-in-loop.java")
+            val findings = analyzeFixture("regex-recompilation-in-loop/positive/matches-in-loop.java")
 
             findings shouldHaveSize 2
             val evidence = findings.first().evidence

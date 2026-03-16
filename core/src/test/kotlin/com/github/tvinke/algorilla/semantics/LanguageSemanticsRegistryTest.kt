@@ -281,8 +281,8 @@ internal class LanguageSemanticsRegistryTest {
     }
 
     @Test
-    fun `should provide implicit regex methods`() {
-        val methods = registry.allImplicitRegexMethods()
+    fun `should provide regex recompilation methods`() {
+        val methods = registry.allRegexRecompilationMethods()
         methods shouldContain "matches"
         methods shouldContain "split"
         methods shouldContain "replaceAll"
@@ -309,5 +309,13 @@ internal class LanguageSemanticsRegistryTest {
         prefixes shouldContain "findAll"
         prefixes shouldContain "getAll"
         prefixes shouldContain "loadAll"
+    }
+
+    @Test
+    fun `should detect monadic targets`() {
+        val loadedRegistry = LanguageSemanticsRegistry.loadDefaults()
+        loadedRegistry.isMonadicTarget("Optional.of(x)") shouldBe true
+        loadedRegistry.isMonadicTarget("result.map") shouldBe true
+        loadedRegistry.isMonadicTarget("orders.stream()") shouldBe false
     }
 }

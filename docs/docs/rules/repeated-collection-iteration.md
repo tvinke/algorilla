@@ -1,9 +1,9 @@
-# Multi-Pass Stream Fusion
+# Repeated Collection Iteration
 
 !!! info "Rule details"
     | | |
     |---|---|
-    | **Rule ID** | `multi-pass-stream-fusion` |
+    | **Rule ID** | `repeated-collection-iteration` |
     | **Severity** | INFO |
     | **Confidence** | MEDIUM |
     | **Category** | Redundancy |

@@ -49,7 +49,7 @@ for (const line of lines) {
 ```
 
 ```
-warning  · implicit-regex-in-loop · O(|lines| × compile) → O(|lines|)
+warning  · regex-recompilation-in-loop · O(|lines| × compile) → O(|lines|)
 
   replace() compiles a regex on every call inside for-each loop
 

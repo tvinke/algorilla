@@ -67,8 +67,9 @@ private fun classifyAsIteration(
     targetVar: String?,
     argNodes: List<IRNode>,
     loc: SourceLocation,
-): IRNode? =
-    when (methodName) {
+): IRNode? {
+    if (registryInstance.isMonadicTarget(targetText)) return null
+    return when (methodName) {
         "forEach" -> {
             val kind =
                 when {
@@ -81,6 +82,7 @@ private fun classifyAsIteration(
         "removeIf" -> LoopNode(kind = LoopKind.HIGHER_ORDER, iteratedVariable = targetVar, location = loc, children = argNodes)
         else -> null
     }
+}
 
 private fun classifyAsLookup(
     methodName: String,

@@ -453,7 +453,7 @@ regex-types:
   - Pattern
   - Regex
 
-implicit-regex-methods:
+regex-recompilation-methods:
   - matches
   - split
   - replaceAll

@@ -635,7 +635,7 @@ regex-types:
   - Pattern
   - Regex
 
-implicit-regex-methods:
+regex-recompilation-methods:
   - matches
   - split
   - replaceAll
@@ -1471,3 +1471,18 @@ getter-excluded-names:
   - load_arg
   - load_this
   - getfield
+
+monadic-types:
+  - Optional
+  - CompletableFuture
+  - CompletionStage
+  - Stream  # Single-value stream from Optional.stream()
+
+monadic-variable-names:
+  - result
+  - optional
+  - maybe
+  - future
+  - promise
+  - completion
+  - either

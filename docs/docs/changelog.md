@@ -16,16 +16,18 @@ This release prepares algorilla for public use by locking down the tool's public
 - New [Stability & Compatibility](stability.md) page documents what's stable, what's experimental, and the deprecation policy
 - `--list-rules` shows a stability tier per rule
 
-### Rule rename
+### Rule renames
 
-- **`parallel-stream-bottleneck` → `parallel-pipeline-bottleneck`** — language-neutral ID; the old ID is kept as an alias so existing suppress comments and `.algorilla.yml` configs continue to work
+- **`parallel-stream-bottleneck` → `parallel-pipeline-bottleneck`** — language-neutral ID; the old ID is kept as an alias
+- **`implicit-regex-in-loop` → `regex-recompilation-in-loop`** — language-neutral ID; "implicit" was Java-specific. No alias — update suppress comments and `.algorilla.yml` configs
+- **`multi-pass-stream-fusion` → `repeated-collection-iteration`** — language-neutral ID; "stream fusion" is FP/JVM jargon. No alias — update suppress comments and `.algorilla.yml` configs
 
 ### Smarter detection
 
 - **Framework semantics overlays** — method classification is now loaded from per-framework YAML packs (Spring, Guava, etc.), replacing hardcoded constants
 - **Exhaustive stdlib coverage** — collection semantics expanded across Java, Kotlin, Groovy, and JS/TS
 - **JS/TS type inference** — nested-lookup now infers variable types from initializers, cutting false positives on Set/Map usage
-- **Fewer JS/TS false positives** — `implicit-regex` no longer fires for plain string arguments; small inline array lookups treated as O(1)
+- **Fewer JS/TS false positives** — `regex-recompilation` no longer fires for plain string arguments; small inline array lookups treated as O(1)
 - **minSeverity filter** now applied correctly; file groups in console output ordered properly
 
 ### Other
@@ -49,7 +51,7 @@ This release prepares algorilla for public use by locking down the tool's public
 | `repeated-reflection-in-loop` | Reflection calls (getMethod, getField) inside loop |
 | `hidden-nested-loop` | Method call inside loop that itself iterates |
 | `expensive-callback` | Heavy operations (regex, lookups, nested iteration) inside callbacks |
-| `implicit-regex-in-loop` | String.matches()/replaceAll() inside loop (hidden regex compilation) |
+| `regex-recompilation-in-loop` | String.matches()/replaceAll() inside loop (hidden regex compilation) |
 | `parallel-stream-bottleneck` | Shared mutable state inside parallelStream().forEach() |
 | `expensive-sort-comparator` | Linear search, date parsing, or heavy work in sort comparator |
 

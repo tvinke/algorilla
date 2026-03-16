@@ -1,6 +1,7 @@
 package com.github.tvinke.algorilla.reporting
 
 import com.github.tvinke.algorilla.baseline.Baseline
+import com.github.tvinke.algorilla.engine.AnalysisError
 import com.github.tvinke.algorilla.engine.AnalysisResult
 import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.Severity
@@ -175,6 +176,34 @@ internal class ConsoleReporterTest {
             reporter.report(r, output)
 
             output.toString() shouldNotContain "confidence hidden"
+        }
+    }
+
+    @Nested
+    inner class ParseFailures {
+        @Test
+        fun `shows parse failure count in summary`() {
+            val r =
+                AnalysisResult(
+                    findings = emptyList(),
+                    filesAnalyzed = 10,
+                    errors =
+                        listOf(
+                            AnalysisError.Parse("Bad.kt", "syntax error"),
+                            AnalysisError.Parse("Broken.kt", "unexpected token"),
+                        ),
+                    elapsedMs = 50,
+                )
+            val output = StringBuilder()
+            reporter.report(r, output)
+            output.toString() shouldContain "2 parse failures"
+        }
+
+        @Test
+        fun `hides parse failure count when zero`() {
+            val output = StringBuilder()
+            reporter.report(result(), output)
+            output.toString() shouldNotContain "parse failure"
         }
     }
 

@@ -20,13 +20,14 @@ import com.github.tvinke.algorilla.util.findDescendants
 import com.github.tvinke.algorilla.util.hasO1Type
 
 /**
- * Detects String methods that internally compile a regex on every call when used inside loops.
+ * Detects String methods that recompile a regex on every call when used inside loops.
  * Methods like String.matches(), split(), replaceAll(), and replaceFirst() call Pattern.compile()
- * internally, making each invocation O(pattern-length) for compilation alone.
+ * internally, making each invocation O(pattern-length) for compilation alone. In JS/TS, regex
+ * literals passed to replace/match/split are recompiled each iteration.
  */
-public class ImplicitRegexInLoopRule : Rule {
-    override val id: String = "implicit-regex-in-loop"
-    override val name: String = "Implicit Regex In Loop"
+public class RegexRecompilationInLoopRule : Rule {
+    override val id: String = "regex-recompilation-in-loop"
+    override val name: String = "Regex Recompilation In Loop"
     override val severity: Severity = Severity.WARNING
     override val languages: Set<Language> = Language.entries.toSet()
     override val category: RuleCategory = RuleCategory.LOOP_AMPLIFIER
@@ -35,7 +36,7 @@ public class ImplicitRegexInLoopRule : Rule {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
             val language = (fileRoot as? FileRoot)?.language
-            val methods = language?.let { context.registry.implicitRegexMethods(it) } ?: emptySet()
+            val methods = language?.let { context.registry.regexRecompilationMethods(it) } ?: emptySet()
             scanNode(fileRoot, null, emptyList(), language, methods, findings)
         }
         return findings
@@ -58,7 +59,7 @@ public class ImplicitRegexInLoopRule : Rule {
             return
         }
 
-        if (loopStack.isNotEmpty() && node is FunctionCall && isImplicitRegexCall(node, fn, language, regexMethods)) {
+        if (loopStack.isNotEmpty() && node is FunctionCall && isRegexRecompilationCall(node, fn, language, regexMethods)) {
             findings.add(buildFinding(node, loopStack))
         }
 
@@ -108,8 +109,15 @@ private val JVM_FAMILY = setOf(Language.JAVA, Language.KOTLIN, Language.GROOVY)
 /** Regex metacharacters — single-char arguments using these still compile a regex in the JDK. */
 private const val REGEX_METACHARACTERS = ".\$|()[{^?*+\\"
 
-@Suppress("ReturnCount")
-private fun isImplicitRegexCall(
+/**
+ * Kotlin's String.split(String) does NOT compile a regex — it calls
+ * String.split(Regex.fromLiteral(delimiter)) which uses Pattern.LITERAL.
+ * Same for replace(). Only matches() and replaceFirst() still compile.
+ */
+private val KOTLIN_SAFE_METHODS = setOf("split", "replace")
+
+@Suppress("ReturnCount", "CyclomaticComplexMethod") // Each branch is a distinct language-specific filter
+private fun isRegexRecompilationCall(
     call: FunctionCall,
     enclosingFn: FunctionDecl?,
     language: Language?,
@@ -118,6 +126,8 @@ private fun isImplicitRegexCall(
     if (call.name !in regexMethods || call.qualifiedTarget == null) return false
     // In JS/TS, split/replace/match with a plain string argument do NOT compile regex.
     if (language in JS_FAMILY && hasStringLiteralFirstArg(call)) return false
+    // Kotlin's split() and replace() with String args use literal matching, not regex.
+    if (language == Language.KOTLIN && call.name in KOTLIN_SAFE_METHODS) return false
     // JDK fast path: String.split() with a single non-metachar argument skips regex compilation.
     if (language in JVM_FAMILY && call.name == "split" && hasSingleCharNonRegexArg(call)) return false
     // On JVM, Map.replaceAll(BiFunction) is not a regex method — skip when target is a Map/Set type

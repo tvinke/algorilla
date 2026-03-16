@@ -9,32 +9,27 @@ import com.github.tvinke.algorilla.rules.builtin.BuiltinRules
 import java.io.File
 
 /**
- * Shared test support for running fixtures through the full analysis pipeline.
- * Exercises the complete chain: parse → markScalarLookups → symbolTable → callGraph →
- * parameterFlow → complexity → rules → subsumption → vendored demotion → confidence adjustment.
+ * Base class for full-pipeline precision regression tests.
+ *
+ * Sets up an [AnalysisEngine] with [JavaLanguageParser] and all builtin rules,
+ * configured with minimum severity/confidence so every finding is visible.
  */
-internal open class FullPipelineTestSupport {
+internal abstract class FullPipelineTestSupport {
     private val parser = JavaLanguageParser()
 
-    private fun engine(
-        minSeverity: Severity = Severity.INFO,
-        minConfidence: Confidence = Confidence.LOW,
-    ) = AnalysisEngine(
-        parsers = listOf(parser),
-        rules = BuiltinRules.all(),
-        config = AnalysisConfig(minSeverity = minSeverity, minConfidence = minConfidence),
-    )
+    private val engine =
+        AnalysisEngine(
+            parsers = listOf(parser),
+            rules = BuiltinRules.all(),
+            config = AnalysisConfig(minSeverity = Severity.INFO, minConfidence = Confidence.LOW),
+        )
 
-    protected fun analyzeFixture(
-        fixturePath: String,
-        minSeverity: Severity = Severity.INFO,
-        minConfidence: Confidence = Confidence.LOW,
-    ): List<Finding> {
+    private fun analyzeFixture(fixturePath: String): List<Finding> {
         val url =
             javaClass.classLoader.getResource("fixtures/$fixturePath")
-                ?: error("Fixture not found: $fixturePath")
+                ?: error("Fixture not found: fixtures/$fixturePath")
         val path = File(url.toURI()).absolutePath
-        return engine(minSeverity, minConfidence).analyze(listOf(path)).findings
+        return engine.analyze(listOf(path)).findings
     }
 
     protected fun assertNoFindings(
@@ -42,14 +37,10 @@ internal open class FullPipelineTestSupport {
         ruleId: String,
         reason: String,
     ) {
-        val findings = analyzeFixture(fixturePath)
-        val violations = findings.filter { it.ruleId == ruleId }
-        if (violations.isNotEmpty()) {
-            val lines = violations.joinToString { "line ${it.location.line}" }
-            error(
-                "Precision regression: $fixturePath produced unexpected $ruleId " +
-                    "finding on $lines — $reason",
-            )
+        val findings = analyzeFixture(fixturePath).filter { it.ruleId == ruleId }
+        assert(findings.isEmpty()) {
+            "Expected no findings for rule '$ruleId' ($reason), but got ${findings.size}:\n" +
+                findings.joinToString("\n") { "  - ${it.message} (${it.severity}, ${it.confidence})" }
         }
     }
 
@@ -58,13 +49,9 @@ internal open class FullPipelineTestSupport {
         ruleId: String,
         reason: String,
     ) {
-        val findings = analyzeFixture(fixturePath)
-        val matches = findings.filter { it.ruleId == ruleId }
-        if (matches.isEmpty()) {
-            error(
-                "Recall regression: $fixturePath produced no $ruleId findings " +
-                    "through full pipeline — $reason",
-            )
+        val findings = analyzeFixture(fixturePath).filter { it.ruleId == ruleId }
+        assert(findings.isNotEmpty()) {
+            "Expected at least one finding for rule '$ruleId' ($reason), but got none"
         }
     }
 }

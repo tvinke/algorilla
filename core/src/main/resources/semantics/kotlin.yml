@@ -431,6 +431,21 @@ cheap-methods:
   - toByteArray
   - encodeToByteArray
   - decodeToString
+  # Collection factory functions (these are O(1) allocation, not iteration)
+  - listOf
+  - mutableListOf
+  - setOf
+  - mutableSetOf
+  - mapOf
+  - mutableMapOf
+  - hashSetOf
+  - hashMapOf
+  - linkedSetOf
+  - linkedMapOf
+  - arrayOf
+  - emptyList
+  - emptySet
+  - emptyMap
 
 # Sequential read / stateful iteration methods whose return value changes
 # on each invocation — not redundant even when called with identical arguments
@@ -522,7 +537,7 @@ regex-types:
   - Pattern
   - Regex
 
-implicit-regex-methods:
+regex-recompilation-methods:
   - matches
   - split
   - replaceAll
@@ -1258,3 +1273,31 @@ getter-excluded-names:
   - load_arg
   - load_this
   - getfield
+
+monadic-types:
+  - Result
+  - Deferred
+  - Flow  # Can be single-value
+  - Sequence  # Lazy, not a collection
+  - Optional
+  - Either
+  - Option
+  - Try
+  - Validated
+  - IO
+  - Arb
+  - Gen
+  - Exhaustive
+
+monadic-variable-names:
+  - result
+  - deferred
+  - flow
+  - sequence
+  - optional
+  - maybe
+  - future
+  - promise
+  - either
+  - gen
+  - arb

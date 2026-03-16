@@ -674,7 +674,7 @@ regex-types:
 
 # String methods that may compile a regex internally.
 # Only methods that ACTUALLY accept regex — not when called with plain strings.
-implicit-regex-methods:
+regex-recompilation-methods:
   - match
   - matchAll
   - search

@@ -11,7 +11,7 @@ Expensive operations hidden inside loop bodies that multiply the cost per iterat
 | `nested-lookup` | [Nested Lookup](nested-lookup.md) | WARNING | O(n²) where O(n) suffices |
 | `repeated-linear-scan` | [Repeated Linear Scan](repeated-linear-scan.md) | WARNING | O(n·k) where O(n) suffices |
 | `repeated-regex-in-loop` | [Repeated Regex in Loop](repeated-regex-in-loop.md) | WARNING | O(n·compile) where O(n) suffices |
-| `implicit-regex-in-loop` | [Implicit Regex in Loop](implicit-regex-in-loop.md) | WARNING | O(n·compile) where O(n) suffices |
+| `regex-recompilation-in-loop` | [Regex Recompilation in Loop](regex-recompilation-in-loop.md) | WARNING | O(n·compile) where O(n) suffices |
 | `expensive-serialization-in-loop` | [Expensive Serialization in Loop](expensive-serialization-in-loop.md) | WARNING | O(n·serialize) where O(n) suffices |
 | `sequential-async-join-in-loop` | [Sequential Async Join in Loop](sequential-async-join-in-loop.md) | WARNING | O(n·wait) where O(max-wait) suffices |
 | `in-loop-collection-building` | [In-Loop Collection Building](in-loop-collection-building.md) | WARNING | O(n·m) where O(n+m) suffices |
@@ -61,7 +61,7 @@ Repeated computations that could be cached.
 | `uncached-getter` | [Uncached Getter](uncached-getter.md) | INFO | k·O(lookup) where O(lookup) suffices |
 | `chained-getters` | [Chained Getters](chained-getters.md) | INFO | O(n^k) where O(n) suffices |
 | `unmemoized-recursion` | [Unmemoized Recursion](unmemoized-recursion.md) | WARNING | O(2^n) where O(n) with memo suffices |
-| `multi-pass-stream-fusion` | [Multi-Pass Stream Fusion](multi-pass-stream-fusion.md) | INFO | O(k·n) where O(n) suffices |
+| `repeated-collection-iteration` | [Repeated Collection Iteration](repeated-collection-iteration.md) | INFO | O(k·n) where O(n) suffices |
 | `loop-invariant-hoisting` | [Loop-Invariant Hoisting](loop-invariant-hoisting.md) | INFO | O(n·call) where O(call) suffices |
 
 ## Concurrency
