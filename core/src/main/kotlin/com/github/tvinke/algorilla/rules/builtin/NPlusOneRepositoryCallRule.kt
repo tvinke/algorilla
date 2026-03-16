@@ -14,6 +14,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.CrossMethodResolver
 
@@ -113,7 +114,7 @@ public class NPlusOneRepositoryCallRule : Rule {
             severity = severity,
             location = call.location,
             message = "Single-record fetch $target.${hiddenFetch.name}() inside ${call.name}() called from ${outerLoop.kind.label()} (N+1)",
-            suggestion = "Bulk fetch all needed records before the loop, or build an in-memory Map",
+            suggestions = listOf(Suggestion.Freeform("Bulk fetch all needed records before the loop, or build an in-memory Map")),
             currentComplexity = "O(|$loopVar| * IO)",
             suggestedComplexity = "O(1 * IO + |$loopVar|)",
             evidence = evidence,
@@ -146,7 +147,7 @@ public class NPlusOneRepositoryCallRule : Rule {
             confidence = if (flowConfirmed) Confidence.HIGH else Confidence.MEDIUM,
             location = call.location,
             message = "Single-record fetch $target.${call.name}() inside ${outerLoop.kind.label()} (N+1)",
-            suggestion = "Bulk fetch all needed records before the loop, or build an in-memory Map",
+            suggestions = listOf(Suggestion.Freeform("Bulk fetch all needed records before the loop, or build an in-memory Map")),
             currentComplexity = "O(|$loopVar| * IO)",
             suggestedComplexity = "O(1 * IO + |$loopVar|)",
             evidence = evidence,

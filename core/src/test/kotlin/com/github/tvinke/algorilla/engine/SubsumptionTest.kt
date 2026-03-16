@@ -7,6 +7,7 @@ import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.rules.Suggestion
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.collections.shouldHaveSize
@@ -148,7 +149,7 @@ internal class SubsumptionTest {
         severity = Severity.WARNING,
         location = SourceLocation(file, line, 1),
         message = "test",
-        suggestion = "fix",
+        suggestions = listOf(Suggestion.Freeform("fix")),
     )
 
     private fun stubRule(

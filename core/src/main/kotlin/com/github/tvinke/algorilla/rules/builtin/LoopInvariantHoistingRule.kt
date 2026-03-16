@@ -18,6 +18,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.util.findDescendants
 import com.github.tvinke.algorilla.util.referencesName
 
@@ -174,7 +175,7 @@ public class LoopInvariantHoistingRule : Rule {
             severity = severity,
             location = call.location,
             message = "${target}${call.name}() inside ${outerLoop.kind.label()} does not depend on '$loopVar'",
-            suggestion = "Hoist ${target}${call.name}() before the loop — the result is the same on every iteration",
+            suggestions = listOf(Suggestion.HoistBeforeLoop(call = "${target}${call.name}()")),
             currentComplexity = ComplexityModel.redundantCalls(0).current.replace("0x", "|$loopVar|x"),
             suggestedComplexity = "O(1)",
             evidence =

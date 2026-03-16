@@ -13,6 +13,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.rules.Suggestion
 
 /**
  * Detects String.concat() calls inside loops. Each concat() creates a new String object,
@@ -97,6 +98,7 @@ public class StringConcatInLoopRule : Rule {
         return lower == "string" || lower == "charsequence" || lower == "stringbuilder" || lower == "stringbuffer"
     }
 
+    @Suppress("LongMethod")
     private fun buildFinding(
         call: FunctionCall,
         loopStack: List<LoopNode>,
@@ -121,7 +123,13 @@ public class StringConcatInLoopRule : Rule {
             severity = severity,
             location = call.location,
             message = "String ${call.name}() inside ${outerLoop.kind.label()} copies the entire string on each iteration",
-            suggestion = "Use a StringBuilder to accumulate the result, then call toString() after the loop",
+            suggestions =
+                listOf(
+                    Suggestion.UseAlternativeAPI(
+                        alternative = "StringBuilder",
+                        reason = "accumulate the result, then call toString() after the loop",
+                    ),
+                ),
             currentComplexity = "O(|$loopVar|\u00b2)",
             suggestedComplexity = "O(|$loopVar|)",
             evidence = evidence,

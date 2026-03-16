@@ -12,6 +12,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.findDescendants
 
@@ -93,9 +94,13 @@ public class ParallelPipelineBottleneckRule : Rule {
             message =
                 "$target.${mutationCall.name}() inside " +
                     "parallelStream().forEach() mutates shared state",
-            suggestion =
-                "Use .collect(Collectors.toList()) or a thread-safe " +
-                    "accumulator instead of mutating shared state from parallel threads",
+            suggestions =
+                listOf(
+                    Suggestion.Freeform(
+                        "Use .collect(Collectors.toList()) or a thread-safe " +
+                            "accumulator instead of mutating shared state from parallel threads",
+                    ),
+                ),
             currentComplexity = "thread-unsafe",
             suggestedComplexity = "thread-safe",
             evidence =

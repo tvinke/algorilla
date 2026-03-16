@@ -15,6 +15,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.util.findDescendantsWithBranchContext
 import com.github.tvinke.algorilla.util.maxCoExecutableSubset
 
@@ -129,9 +130,13 @@ public class RepeatedCollectionIterationRule : Rule {
             message =
                 "'$target' is streamed ${calls.size} times in ${fn.name}() — " +
                     "consider fusing into a single pipeline",
-            suggestion =
-                "Combine the stream operations on '$target' into a single pass " +
-                    "using reduce, Collectors.teeing, or a custom collector",
+            suggestions =
+                listOf(
+                    Suggestion.Freeform(
+                        "Combine the stream operations on '$target' into a single pass " +
+                            "using reduce, Collectors.teeing, or a custom collector",
+                    ),
+                ),
             confidence = Confidence.MEDIUM,
             currentComplexity = cx.current,
             suggestedComplexity = cx.suggested,
@@ -167,9 +172,13 @@ public class RepeatedCollectionIterationRule : Rule {
             message =
                 "'$target' is iterated ${loops.size} times in ${fn.name}() — " +
                     "the loops could be merged into a single pass",
-            suggestion =
-                "Merge the for-each loops over '$target' into one loop that " +
-                    "performs all operations per element",
+            suggestions =
+                listOf(
+                    Suggestion.Freeform(
+                        "Merge the for-each loops over '$target' into one loop that " +
+                            "performs all operations per element",
+                    ),
+                ),
             confidence = Confidence.LOW,
             currentComplexity = cx.current,
             suggestedComplexity = cx.suggested,

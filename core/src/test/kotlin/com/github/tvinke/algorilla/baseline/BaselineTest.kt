@@ -4,6 +4,7 @@ import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.model.SourceLocation
 import com.github.tvinke.algorilla.rules.Finding
+import com.github.tvinke.algorilla.rules.Suggestion
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -24,7 +25,7 @@ internal class BaselineTest {
         severity = Severity.WARNING,
         location = SourceLocation(file, line, 1),
         message = message,
-        suggestion = "Use a HashSet",
+        suggestions = listOf(Suggestion.Freeform("Use a HashSet")),
     )
 
     @Nested
@@ -124,7 +125,7 @@ internal class BaselineTest {
                     confidence = Confidence.LOW,
                     location = SourceLocation("/src/Main.java", 10, 1),
                     message = "Linear lookup inside loop",
-                    suggestion = "Use a HashSet",
+                    suggestions = listOf(Suggestion.Freeform("Use a HashSet")),
                 )
             val high = low.copy(confidence = Confidence.HIGH)
 

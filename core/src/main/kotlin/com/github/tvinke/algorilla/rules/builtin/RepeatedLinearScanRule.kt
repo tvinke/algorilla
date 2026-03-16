@@ -15,6 +15,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.util.findDescendantsWithBranchContext
 import com.github.tvinke.algorilla.util.isCollectionLookup
 import com.github.tvinke.algorilla.util.maxCoExecutableSubset
@@ -134,8 +135,12 @@ public class RepeatedLinearScanRule : Rule {
             message =
                 "'$targetVar' is scanned ${lookups.size} times in ${fn.name}(): " +
                     "each $opsDesc iterates the full collection",
-            suggestion =
-                "Combine into a single pass, or build a $structure from '$targetVar' for O(1) lookups",
+            suggestions =
+                listOf(
+                    Suggestion.Freeform(
+                        "Combine into a single pass, or build a $structure from '$targetVar' for O(1) lookups",
+                    ),
+                ),
             currentComplexity = cx.current,
             suggestedComplexity = cx.suggested,
             evidence = buildLookupEvidence(lookups, targetVar),
@@ -173,7 +178,7 @@ public class RepeatedLinearScanRule : Rule {
             message =
                 "'$targetVar' is scanned ${calls.size} times in ${fn.name}(): " +
                     "each $opsDesc iterates the full collection",
-            suggestion = "Combine into a single pass over '$targetVar'",
+            suggestions = listOf(Suggestion.Freeform("Combine into a single pass over '$targetVar'")),
             currentComplexity = cx.current,
             suggestedComplexity = cx.suggested,
             evidence = buildFullScanEvidence(calls, targetVar),

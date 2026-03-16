@@ -6,6 +6,7 @@ import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.model.SourceLocation
 import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
+import com.github.tvinke.algorilla.rules.Suggestion
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -169,7 +170,7 @@ public data class CachedFinding(
             confidence = runCatching { Confidence.valueOf(confidence) }.getOrDefault(Confidence.MEDIUM),
             location = SourceLocation(file, line, column),
             message = message,
-            suggestion = suggestion,
+            suggestions = listOf(Suggestion.Freeform(suggestion)),
             currentComplexity = currentComplexity,
             suggestedComplexity = suggestedComplexity,
             evidence = evidence.map { it.toEvidence() },
@@ -186,7 +187,7 @@ public data class CachedFinding(
                 line = finding.location.line,
                 column = finding.location.column,
                 message = finding.message,
-                suggestion = finding.suggestion,
+                suggestion = finding.suggestion, // computed property
                 currentComplexity = finding.currentComplexity,
                 suggestedComplexity = finding.suggestedComplexity,
                 evidence = finding.evidence.map { CachedEvidence.fromEvidence(it) },

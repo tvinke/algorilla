@@ -13,6 +13,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.semantics.MethodPurity
 import com.github.tvinke.algorilla.util.findDescendantsWithBranchContext
@@ -88,7 +89,7 @@ public class RedundantExpensiveCallRule : Rule {
             severity = severity,
             location = first.location,
             message = "$callDesc called ${calls.size} times with same arguments in ${fn.name}()",
-            suggestion = "Cache the result in a local variable",
+            suggestions = listOf(Suggestion.CacheResult(callDescription = callDesc)),
             currentComplexity = cx.current,
             suggestedComplexity = cx.suggested,
             evidence = evidence,
@@ -122,7 +123,12 @@ private fun argFingerprint(
             val base = "${node.qualifiedTarget}.${node.name}(${node.arguments.joinToString(",") { argFingerprint(it, nonDeterministic) }})"
             if (containsNonDeterministic(node, nonDeterministic)) "$base@${node.location.line}" else base
         }
-        is GenericNode -> node.nodeType
+        is GenericNode ->
+            if (node.children.isEmpty()) {
+                node.nodeType
+            } else {
+                "${node.nodeType}[${node.children.joinToString(",") { argFingerprint(it, nonDeterministic) }}]"
+            }
         else -> "${node::class.simpleName}@${node.location.line}:${node.location.column}"
     }
 

@@ -13,6 +13,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.rules.Suggestion
 
 /**
  * Detects patterns that repeatedly copy or rebuild collections inside loops:
@@ -90,7 +91,7 @@ public class InLoopCollectionBuildingRule : Rule {
             severity = severity,
             location = call.location,
             message = "${call.name}() inside ${outerLoop.kind.label()} repeatedly copies collection",
-            suggestion = "Accumulate into a single collection, then call ${call.name}() once after the loop",
+            suggestions = listOf(Suggestion.Freeform("Accumulate into a single collection, then call ${call.name}() once after the loop")),
             currentComplexity = "O(|$loopVar| * copy)",
             suggestedComplexity = "O(|$loopVar| + copy)",
             evidence = evidence,

@@ -11,6 +11,7 @@ import com.github.tvinke.algorilla.rules.ComplexityModel
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.util.MemoizationDetector
 import com.github.tvinke.algorilla.util.findDescendants
 
@@ -82,9 +83,13 @@ public class UnmemoizedRecursionRule : Rule {
                     message =
                         "${fn.name}() has ${topLevelCalls.size} recursive calls without memoization " +
                             "\u2014 overlapping subproblems cause exponential re-computation",
-                    suggestion =
-                        "Add a cache (Map/HashMap) keyed on the function arguments to avoid " +
-                            "recomputing the same subproblem",
+                    suggestions =
+                        listOf(
+                            Suggestion.Freeform(
+                                "Add a cache (Map/HashMap) keyed on the function arguments to avoid " +
+                                    "recomputing the same subproblem",
+                            ),
+                        ),
                     currentComplexity = cx.current,
                     suggestedComplexity = cx.suggested,
                 ),
@@ -107,9 +112,13 @@ public class UnmemoizedRecursionRule : Rule {
                     confidence = Confidence.MEDIUM,
                     location = call.location,
                     message = "${fn.name}() called recursively inside a loop without memoization",
-                    suggestion =
-                        "Consider adding a visited set or memoization cache to avoid " +
-                            "re-processing the same input",
+                    suggestions =
+                        listOf(
+                            Suggestion.Freeform(
+                                "Consider adding a visited set or memoization cache to avoid " +
+                                    "re-processing the same input",
+                            ),
+                        ),
                     currentComplexity = "O($paramName \u00d7 recursion)",
                     suggestedComplexity = "O($paramName) with memo",
                 ),
@@ -133,9 +142,13 @@ public class UnmemoizedRecursionRule : Rule {
                     confidence = Confidence.LOW,
                     location = call.location,
                     message = "${fn.name}() is recursive without memoization",
-                    suggestion =
-                        "If this function can be called with the same arguments multiple times, " +
-                            "consider adding memoization",
+                    suggestions =
+                        listOf(
+                            Suggestion.Freeform(
+                                "If this function can be called with the same arguments multiple times, " +
+                                    "consider adding memoization",
+                            ),
+                        ),
                     currentComplexity = null,
                     suggestedComplexity = null,
                 ),

@@ -11,6 +11,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 
 /**
@@ -55,6 +56,7 @@ public class RepeatedReflectionInLoopRule : Rule {
         }
     }
 
+    @Suppress("LongMethod")
     private fun buildFinding(
         call: FunctionCall,
         loopStack: List<LoopNode>,
@@ -79,7 +81,10 @@ public class RepeatedReflectionInLoopRule : Rule {
             severity = severity,
             location = call.location,
             message = "Reflection call ${call.name}() inside ${outerLoop.kind.label()} — reflection is 10-100× slower than direct access",
-            suggestion = "Cache the reflection result in a local variable or Map<Class, ...> outside the loop",
+            suggestions =
+                listOf(
+                    Suggestion.Freeform("Cache the reflection result in a local variable or Map<Class, ...> outside the loop"),
+                ),
             currentComplexity = "O(|$loopVar| × reflection)",
             suggestedComplexity = "O(|$loopVar|)",
             evidence = evidence,

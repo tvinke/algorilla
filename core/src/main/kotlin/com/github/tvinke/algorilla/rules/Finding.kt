@@ -17,8 +17,7 @@ import com.github.tvinke.algorilla.model.SourceLocation
  * @property location Source file, line, and column where the anti-pattern was detected.
  * @property message Explanation of what was detected, e.g.
  *   `"Linear lookup list.contains() inside for-loop over items"`.
- * @property suggestion Recommended fix, e.g.
- *   `"Convert items to a HashSet before the loop for O(1) lookups"`.
+ * @property suggestions Typed suggestion objects describing recommended fixes.
  * @property currentComplexity Big-O or multiplier string for current code, e.g.
  *   `"O(n × m)"`, `"O(n log n)"`, `"2x lookup"`, `"O(n × init)"`. Null when not applicable.
  * @property suggestedComplexity Big-O or multiplier string after applying the suggestion, e.g.
@@ -33,10 +32,13 @@ public data class Finding(
     val severity: Severity,
     val location: SourceLocation,
     val message: String,
-    val suggestion: String,
+    val suggestions: List<Suggestion>,
     val confidence: Confidence = Confidence.MEDIUM,
     val currentComplexity: String? = null,
     val suggestedComplexity: String? = null,
     val evidence: List<Evidence> = emptyList(),
     val category: RuleCategory? = null,
-)
+) {
+    /** Primary suggestion text for reporters that render a single string. */
+    val suggestion: String get() = suggestions.firstOrNull()?.render() ?: ""
+}

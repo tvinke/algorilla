@@ -10,6 +10,7 @@ import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.rules.Suggestion
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Nested
@@ -224,6 +225,8 @@ internal class AnalysisEngineTest {
         }
     }
 
+    private var findingCounter = 0
+
     private fun finding(
         file: String,
         severity: Severity,
@@ -233,8 +236,8 @@ internal class AnalysisEngineTest {
         ruleName = "Test Rule",
         severity = severity,
         confidence = confidence,
-        location = SourceLocation(file, 10, 1),
-        message = "Test finding",
-        suggestion = "Fix it",
+        location = SourceLocation(file, 10 + findingCounter, 1),
+        message = "Test finding ${++findingCounter}",
+        suggestions = listOf(Suggestion.Freeform("Fix it")),
     )
 }

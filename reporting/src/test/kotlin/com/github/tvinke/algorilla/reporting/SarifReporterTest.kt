@@ -5,6 +5,7 @@ import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.model.SourceLocation
 import com.github.tvinke.algorilla.rules.Finding
+import com.github.tvinke.algorilla.rules.Suggestion
 import io.kotest.matchers.string.shouldContain
 import org.junit.jupiter.api.Test
 
@@ -19,7 +20,7 @@ internal class SarifReporterTest {
             confidence = confidence,
             location = SourceLocation("/src/Main.java", 10, 1),
             message = "Linear lookup inside loop",
-            suggestion = "Use a HashSet",
+            suggestions = listOf(Suggestion.Freeform("Use a HashSet")),
         )
 
     private fun report(vararg findings: Finding): String {

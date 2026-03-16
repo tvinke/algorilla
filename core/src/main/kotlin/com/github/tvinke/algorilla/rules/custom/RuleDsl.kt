@@ -8,6 +8,7 @@ import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.rules.Suggestion
 
 /**
  * DSL builder for defining custom analysis rules in `.kts` script files.
@@ -85,7 +86,7 @@ public class FindingReporter(
                 severity = severity,
                 location = location,
                 message = message,
-                suggestion = suggestion,
+                suggestions = listOf(Suggestion.Freeform(suggestion)),
             ),
         )
     }

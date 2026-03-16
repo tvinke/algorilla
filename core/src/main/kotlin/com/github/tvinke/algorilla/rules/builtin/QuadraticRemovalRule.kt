@@ -14,6 +14,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.util.hasO1Type
 
 /**
@@ -92,7 +93,7 @@ public class QuadraticRemovalRule : Rule {
             severity = severity,
             location = call.location,
             message = "${call.name}() on '$target' inside ${outerLoop.kind.label()} shifts elements on each removal",
-            suggestion = "Use removeAll() with a Set, Iterator.remove(), or filter into a new collection",
+            suggestions = listOf(Suggestion.Freeform("Use removeAll() with a Set, Iterator.remove(), or filter into a new collection")),
             currentComplexity = "O(|$loopVar|²)",
             suggestedComplexity = "O(|$loopVar|)",
             evidence = evidence,

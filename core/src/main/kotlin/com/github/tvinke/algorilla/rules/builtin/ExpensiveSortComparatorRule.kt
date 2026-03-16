@@ -15,6 +15,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.CrossMethodResolver
 import com.github.tvinke.algorilla.util.findDescendants
@@ -247,7 +248,7 @@ public class ExpensiveSortComparatorRule : Rule {
         severity = severity,
         location = location,
         message = message,
-        suggestion = suggestion,
+        suggestions = listOf(Suggestion.Freeform(suggestion)),
         currentComplexity = cx.current,
         suggestedComplexity = cx.suggested,
         evidence = listOf(sortEvidence(sort), innerEvidence),
@@ -265,7 +266,7 @@ public class ExpensiveSortComparatorRule : Rule {
         severity = severity,
         location = location,
         message = message,
-        suggestion = suggestion,
+        suggestions = listOf(Suggestion.Freeform(suggestion)),
         currentComplexity = cx.current,
         suggestedComplexity = cx.suggested,
         evidence = evidence,

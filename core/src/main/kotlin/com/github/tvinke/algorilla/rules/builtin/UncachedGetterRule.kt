@@ -13,6 +13,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.findDescendantsWithBranchContext
 import com.github.tvinke.algorilla.util.maxCoExecutableSubset
@@ -86,7 +87,7 @@ public class UncachedGetterRule : Rule {
             severity = severity,
             location = first.location,
             message = "$callDesc called ${calls.size} times with same argument in ${fn.name}()",
-            suggestion = "Cache the result in a local variable: val x = $callDesc",
+            suggestions = listOf(Suggestion.CacheResult(callDescription = callDesc)),
             currentComplexity = cx.current,
             suggestedComplexity = cx.suggested,
             evidence = evidence,

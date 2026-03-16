@@ -18,6 +18,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.util.CrossMethodResolver
 import com.github.tvinke.algorilla.util.findDescendants
 import com.github.tvinke.algorilla.util.isCollectionLookup
@@ -209,7 +210,13 @@ public class NestedLookupRule : Rule {
             confidence = if (paramBacked) Confidence.HIGH else Confidence.MEDIUM,
             location = lookup.location,
             message = "Linear ${lookup.kind.label} on '$targetVar' inside ${iterationLabel(outerIteration)}",
-            suggestion = "Build a ${lookup.kind.suggestedStructure()} from '$targetVar' before the loop",
+            suggestions =
+                listOf(
+                    Suggestion.PreBuildStructure(
+                        structure = lookup.kind.suggestedStructure(),
+                        variable = targetVar,
+                    ),
+                ),
             currentComplexity = cx.current,
             suggestedComplexity = cx.suggested,
             evidence = evidence,
@@ -238,7 +245,13 @@ public class NestedLookupRule : Rule {
             confidence = confidence,
             location = call.location,
             message = msg,
-            suggestion = "Build a ${hiddenLookup.kind.suggestedStructure()} from '$targetVar' before the loop",
+            suggestions =
+                listOf(
+                    Suggestion.PreBuildStructure(
+                        structure = hiddenLookup.kind.suggestedStructure(),
+                        variable = targetVar,
+                    ),
+                ),
             currentComplexity = cx.current,
             suggestedComplexity = cx.suggested,
             evidence = evidence,

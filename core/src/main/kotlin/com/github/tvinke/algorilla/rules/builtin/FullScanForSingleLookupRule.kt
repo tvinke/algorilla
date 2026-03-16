@@ -15,6 +15,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.util.findDescendants
 
 /**
@@ -97,7 +98,7 @@ public class FullScanForSingleLookupRule : Rule {
             severity = severity,
             location = call.location,
             message = "${call.name}() followed by in-memory filtering in ${fn.name}()",
-            suggestion = "Use a targeted query instead of loading all records and filtering in memory",
+            suggestions = listOf(Suggestion.Freeform("Use a targeted query instead of loading all records and filtering in memory")),
             currentComplexity = cx.current,
             suggestedComplexity = cx.suggested,
             evidence = evidence,

@@ -10,6 +10,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.rules.Suggestion
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -65,7 +66,7 @@ internal class ConfidenceAdjustmentTest {
         severity = Severity.WARNING,
         location = SourceLocation(file, 10, 1),
         message = "Test finding",
-        suggestion = "Fix it",
+        suggestions = listOf(Suggestion.Freeform("Fix it")),
         evidence = evidence,
     )
 

@@ -32,6 +32,17 @@ internal class SortForLastRuleJavaTest {
     }
 
     @Nested
+    inner class DeduplicationCases {
+        @Test
+        fun `should produce one finding per sort even with multiple accesses`() {
+            val findings = analyzeFixture("sort-for-last/positive/sort-then-multiple-access.java")
+
+            findings shouldHaveSize 1
+            findings.first().ruleId shouldBe "sort-for-last"
+        }
+    }
+
+    @Nested
     inner class NegativeCases {
         @Test
         fun `should not flag sort without first or last access`() {

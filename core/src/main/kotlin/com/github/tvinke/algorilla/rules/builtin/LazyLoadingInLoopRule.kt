@@ -14,6 +14,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.util.findDescendants
 
 /**
@@ -164,9 +165,13 @@ public class LazyLoadingInLoopRule : Rule {
             message =
                 "$target.${call.name}() inside ${loop.kind.label()} may trigger lazy loading " +
                     "\u2014 N+1 query on each iteration",
-            suggestion =
-                "Use a fetch join or @EntityGraph to eagerly load the association, " +
-                    "or batch with IN clause",
+            suggestions =
+                listOf(
+                    Suggestion.Freeform(
+                        "Use a fetch join or @EntityGraph to eagerly load the association, " +
+                            "or batch with IN clause",
+                    ),
+                ),
             currentComplexity = ComplexityModel.nPlusOne(loopVar).current,
             suggestedComplexity = ComplexityModel.nPlusOne(loopVar).suggested,
             evidence =

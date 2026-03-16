@@ -11,6 +11,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.SemanticCategory
 
 /**
@@ -83,7 +84,7 @@ public class ExpensiveSerializationInLoopRule : Rule {
             severity = severity,
             location = call.location,
             message = "Serialization call ${call.name}() inside ${outerLoop.kind.label()}",
-            suggestion = "Move serialization outside the loop, or use batch serialization",
+            suggestions = listOf(Suggestion.Freeform("Move serialization outside the loop, or use batch serialization")),
             currentComplexity = "O(|$loopVar| * serialize)",
             suggestedComplexity = "O(|$loopVar|)",
             evidence = evidence,

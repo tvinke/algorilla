@@ -19,6 +19,7 @@ import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
+import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.CrossMethodResolver
 import com.github.tvinke.algorilla.util.findDescendants
@@ -265,7 +266,7 @@ public class ExpensiveCallbackRule : Rule {
             severity = severity,
             location = lookup.location,
             message = "Linear ${lookup.kind.label} on '$targetVar' inside callback",
-            suggestion = "Build a HashSet/Map from '$targetVar' before the loop",
+            suggestions = listOf(Suggestion.Freeform("Build a HashSet/Map from '$targetVar' before the loop")),
             currentComplexity = cx.current,
             suggestedComplexity = cx.suggested,
             evidence = listOf(container.evidence(), inner),
@@ -292,7 +293,10 @@ public class ExpensiveCallbackRule : Rule {
             severity = severity,
             location = nested.location,
             message = "Nested iteration over '$nestedVar' inside callback",
-            suggestion = "Pre-build a Set/Map from '$nestedVar' before the outer loop, or restructure to avoid O(n\u00b2)",
+            suggestions =
+                listOf(
+                    Suggestion.Freeform("Pre-build a Set/Map from '$nestedVar' before the outer loop, or restructure to avoid O(n\u00b2)"),
+                ),
             currentComplexity = cx.current,
             suggestedComplexity = cx.suggested,
             evidence = listOf(container.evidence(), inner),
@@ -340,7 +344,7 @@ public class ExpensiveCallbackRule : Rule {
             severity = severity,
             location = innerNode.location,
             message = "Expensive operation inside ${call.name}() called from callback",
-            suggestion = "Hoist expensive operation before the loop, or pre-compute values into a Map",
+            suggestions = listOf(Suggestion.Freeform("Hoist expensive operation before the loop, or pre-compute values into a Map")),
             currentComplexity = cx.current,
             suggestedComplexity = cx.suggested,
             evidence = evidence,
@@ -359,7 +363,7 @@ public class ExpensiveCallbackRule : Rule {
         severity = severity,
         location = location,
         message = message,
-        suggestion = "Hoist expensive operation before the loop, or pre-compute values into a Map",
+        suggestions = listOf(Suggestion.Freeform("Hoist expensive operation before the loop, or pre-compute values into a Map")),
         currentComplexity = cx.current,
         suggestedComplexity = cx.suggested,
         evidence = listOf(container.evidence(), innerEvidence),
