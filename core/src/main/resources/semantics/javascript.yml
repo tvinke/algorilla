@@ -1155,6 +1155,29 @@ hidden-loop-skip-keywords:
   - json
   - xml
 
+# Method name keywords suggesting iteration over a small, constant-bound collection.
+constant-bound-keywords:
+  - mappers
+  - validators
+  - interceptors
+  - processors
+  - converters
+  - transformers
+  - decorators
+  - plugins
+  - strategies
+  - resolvers
+  - adapters
+  - hooks
+  - middleware
+  - extensions
+  - providers
+  - phases
+  - steps
+  - stages
+  - pipes
+  - chains
+
 # ── Static utility classes ──
 
 static-utility-classes:

@@ -1163,6 +1163,31 @@ hidden-loop-skip-keywords:
   - bytecode
   - classinfo
 
+# Method name keywords suggesting iteration over a small, constant-bound collection.
+# When a hidden-nested-loop's inner loop iterates the result of a method whose name
+# contains one of these keywords, the loop is likely O(n*k) with small constant k.
+constant-bound-keywords:
+  - mappers
+  - validators
+  - interceptors
+  - processors
+  - converters
+  - transformers
+  - decorators
+  - plugins
+  - strategies
+  - resolvers
+  - adapters
+  - hooks
+  - middleware
+  - extensions
+  - providers
+  - phases
+  - steps
+  - stages
+  - pipes
+  - chains
+
 # ── Static utility classes (not collections) ──
 
 static-utility-classes:
