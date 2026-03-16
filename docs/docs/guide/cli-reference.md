@@ -49,7 +49,7 @@ If no build system is detected, the given path is used as-is and a notice is pri
 | `-o`, `--output` | Write report to file instead of stdout | stdout |
 | `-v`, `--verbose` | Show detailed analysis progress (DEBUG logging) | off |
 | `--severity` | Minimum severity to report: `info`, `warning`, `error` | `warning` |
-| `--confidence` | Minimum confidence to report: `low`, `medium`, `high`. HIGH shows only findings Algorilla is most sure about. | `medium` |
+| `--confidence` | Minimum confidence to report: `low`, `medium`, `high`. HIGH shows only findings Algorilla is most sure about. | `high` |
 | `--fail-on` | Minimum severity that triggers exit code 1: `info`, `warning`, `error` | `warning` |
 | `--rule` | Only run specific rule(s), comma-separated or repeated | all rules |
 | `--list-rules` | List all available rules and exit | |

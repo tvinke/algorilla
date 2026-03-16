@@ -46,7 +46,7 @@ Algorilla uses three mechanisms to understand what code does, each with differen
 
 Some patterns are always problematic regardless of types. `String.concat()` inside a loop always copies the entire string — no type information needed. A `sort()` followed by `.first()` is always wasteful compared to `min()`. These rules match on code structure alone and produce HIGH confidence findings.
 
-### Type resolution (→ MEDIUM confidence)
+### Type resolution (→ HIGH when confirmed, MEDIUM otherwise)
 
 For rules like [nested-lookup](../rules/nested-lookup.md), the key question is: "is this collection a `List` (O(n) lookup) or a `Set` (O(1) lookup)?" Algorilla resolves types by tracing variable declarations, parameter types, and constructor calls _within the source code it can see_. This works well for Java (static types are explicit) and reasonably for TypeScript (annotations help), but has limits:
 
@@ -54,7 +54,7 @@ For rules like [nested-lookup](../rules/nested-lookup.md), the key question is: 
 - **No build required.** The tradeoff is speed and simplicity: you don't need to compile your project first. Algorilla works on raw source files.
 - **Type hints fill the gap.** When Algorilla can't resolve a type, you can declare it in `.algorilla.yml` — see [configuration](../getting-started/configuration.md).
 
-When type resolution succeeds, findings are MEDIUM or HIGH confidence. When it can't resolve a type, the rule either skips the finding or drops to LOW confidence.
+When type resolution confirms the target type (e.g., the variable is definitely a `List`), findings are promoted to HIGH confidence. When the type can't be resolved, the finding stays at MEDIUM — still reported, but not at the default `--confidence high` threshold. This means the same rule can produce both HIGH and MEDIUM findings depending on available type evidence.
 
 ### Name-based heuristics (→ LOW confidence)
 

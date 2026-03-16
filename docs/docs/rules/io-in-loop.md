@@ -14,7 +14,7 @@ description: "Detects HTTP, database, and file system calls inside loops. Each i
     |---|---|
     | **Rule ID** | `io-in-loop` |
     | **[Severity](/algorilla/guide/understanding-output/#severity-levels)** | WARNING — likely performance problem |
-    | **[Confidence](/algorilla/guide/understanding-output/#confidence-levels)** | MEDIUM — likely correct, some context-dependent |
+    | **[Confidence](/algorilla/guide/understanding-output/#confidence-levels)** | HIGH (unambiguous IO) · MEDIUM (candidate match) |
     | **Category** | Loop amplifiers |
     | **[Complexity](/algorilla/concepts/big-o-primer/)** | O(n·IO) → O(1·IO + n) |
 

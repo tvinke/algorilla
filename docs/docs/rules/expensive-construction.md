@@ -13,7 +13,7 @@ tags:
     |---|---|
     | **Rule ID** | `expensive-construction` |
     | **[Severity](/algorilla/guide/understanding-output/#severity-levels)** | INFO — worth knowing, may not matter at your scale |
-    | **[Confidence](/algorilla/guide/understanding-output/#confidence-levels)** | MEDIUM — likely correct, some context-dependent |
+    | **[Confidence](/algorilla/guide/understanding-output/#confidence-levels)** | LOW — heuristic-heavy, may produce false positives |
     | **Category** | Construction cost |
     | **[Complexity](/algorilla/concepts/big-o-primer/)** | O(init) per call → O(1) amortized |
 

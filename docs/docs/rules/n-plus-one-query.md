@@ -14,7 +14,7 @@ description: "Detects single-record database or service fetch calls inside loops
     |---|---|
     | **Rule ID** | `n-plus-one-query` |
     | **[Severity](/algorilla/guide/understanding-output/#severity-levels)** | WARNING — likely performance problem |
-    | **[Confidence](/algorilla/guide/understanding-output/#confidence-levels)** | MEDIUM — likely correct, some context-dependent |
+    | **[Confidence](/algorilla/guide/understanding-output/#confidence-levels)** | HIGH (repository/dao target) · MEDIUM (other targets) |
     | **Category** | Query patterns |
     | **[Complexity](/algorilla/concepts/big-o-primer/)** | O(n·IO) → O(1·IO + n) |
 

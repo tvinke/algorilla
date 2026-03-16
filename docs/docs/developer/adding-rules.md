@@ -59,7 +59,21 @@ override val defaultConfidence: Confidence = Confidence.HIGH  // structurally ce
 
 - **HIGH** — the pattern is always an anti-pattern regardless of types (e.g. string concat in loop)
 - **MEDIUM** — reliable but may depend on type context (default for most rules)
-- **LOW** — heuristic-heavy, expect false positives (hidden at default `--confidence medium`)
+- **LOW** — heuristic-heavy or known FP-prone (hidden at default `--confidence high`)
+
+Use this decision tree:
+
+```
+Structural pattern (always O(n²) regardless of types)?
+  → defaultConfidence = HIGH
+
+Depends on type info to distinguish TP from FP?
+  → defaultConfidence = MEDIUM
+  → Set HIGH per-finding when TypeEnvironment confirms the type
+
+Heuristic-heavy or <50% precision on benchmark data?
+  → defaultConfidence = LOW
+```
 
 Rules can also set confidence **per finding** when they have evidence for a specific instance:
 
@@ -71,6 +85,8 @@ Finding(
 ```
 
 The engine respects per-finding confidence (doesn't override non-MEDIUM values). It only adjusts findings still at MEDIUM — demoting to LOW in languages without type declarations when `requiresTypeContext = true`.
+
+Confidence levels are calibrated against real-world benchmark data. If you add a new rule, start at MEDIUM and measure precision on the benchmark suite before promoting to HIGH. Rules with <50% measured precision should be demoted to LOW — this doesn't disable the rule, it just hides it at default settings while keeping it available for `--confidence low` exploration.
 
 ## Parameter flow
 

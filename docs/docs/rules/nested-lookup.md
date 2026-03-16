@@ -14,7 +14,7 @@ description: "Detects linear lookup operations (contains, indexOf, includes) ins
     |---|---|
     | **Rule ID** | `nested-lookup` |
     | **[Severity](/algorilla/guide/understanding-output/#severity-levels)** | WARNING — likely performance problem |
-    | **[Confidence](/algorilla/guide/understanding-output/#confidence-levels)** | MEDIUM — likely correct, some context-dependent |
+    | **[Confidence](/algorilla/guide/understanding-output/#confidence-levels)** | HIGH (type-confirmed) · MEDIUM (no type info) |
     | **Category** | Loop amplifiers |
     | **[Complexity](/algorilla/concepts/big-o-primer/)** | O(n²) → O(n) |
 

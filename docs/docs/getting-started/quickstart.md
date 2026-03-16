@@ -116,6 +116,28 @@ algorilla --include-tests .
 algorilla -v .
 ```
 
+## Confidence Levels
+
+By default, algorilla shows only **high-confidence** findings — patterns where it has strong evidence (type-confirmed targets, unambiguous IO methods, structural patterns). This keeps your first scan focused and trustworthy.
+
+As you fix those, widen the net:
+
+```bash
+# See more findings that are likely real but may need judgment
+algorilla --confidence medium .
+
+# See everything, including speculative findings
+algorilla --confidence low .
+```
+
+| Level | What you see | When to use |
+|-------|-------------|-------------|
+| `high` (default) | Type-confirmed and structural patterns | First scan, CI quality gates |
+| `medium` | Findings that are likely real but lack full type evidence | After fixing high-confidence batch |
+| `low` | Everything, including heuristic-based findings | Exploration, full audit |
+
+The summary line tells you what's hidden: "5 high-confidence findings. 42 more at `--confidence medium`."
+
 ## Exit codes
 
 | Code | Meaning |

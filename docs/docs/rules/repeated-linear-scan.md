@@ -13,7 +13,7 @@ tags:
     |---|---|
     | **Rule ID** | `repeated-linear-scan` |
     | **[Severity](/algorilla/guide/understanding-output/#severity-levels)** | WARNING — likely performance problem |
-    | **[Confidence](/algorilla/guide/understanding-output/#confidence-levels)** | MEDIUM — likely correct, some context-dependent |
+    | **[Confidence](/algorilla/guide/understanding-output/#confidence-levels)** | LOW — heuristic-heavy, may produce false positives |
     | **Category** | Redundancy |
     | **[Complexity](/algorilla/concepts/big-o-primer/)** | O(n·k) → O(n) |
 

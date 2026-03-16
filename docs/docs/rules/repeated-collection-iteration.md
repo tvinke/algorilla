@@ -5,7 +5,7 @@
     |---|---|
     | **Rule ID** | `repeated-collection-iteration` |
     | **[Severity](/algorilla/guide/understanding-output/#severity-levels)** | INFO — worth knowing, may not matter at your scale |
-    | **[Confidence](/algorilla/guide/understanding-output/#confidence-levels)** | MEDIUM — likely correct, some context-dependent |
+    | **[Confidence](/algorilla/guide/understanding-output/#confidence-levels)** | LOW — heuristic-heavy, may produce false positives |
     | **Category** | Redundancy |
     | **[Complexity](/algorilla/concepts/big-o-primer/)** | O(k·n) → O(n) |
 

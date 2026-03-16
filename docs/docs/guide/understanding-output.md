@@ -221,12 +221,14 @@ If you consume JSON output programmatically, **ignore unknown fields** — new f
 
 A first scan on a big codebase can easily return dozens of findings. Rather than tackling them all at once, work in layers:
 
-1. **Start with high confidence**: `algorilla scan src/ --confidence high` limits output to findings where algorilla is most certain. These are your quick wins — clear patterns that almost always indicate a real problem.
+1. **Start at the default (high confidence)**: Algorilla defaults to `--confidence high`, showing only findings where it has strong evidence — type-confirmed collection lookups, unambiguous IO calls, structural patterns. These are your quick wins.
 
-2. **Fix or accept each finding**: Either fix the code, or if the pattern is intentional, accept it: `algorilla accept a1b2c3d4e5f6g7h8`. That hash after each finding (e.g. `# a1b2c3d4e5f6g7h8`) is a stable fingerprint — it won't change unless the finding itself changes.
+2. **Fix or accept each finding**: Either fix the code, or if the pattern is intentional, accept it with `--accept <hash>`. The hash after each finding (e.g. `# a1b2c3d4`) is a stable fingerprint.
 
-3. **Lock in your progress**: Once you've worked through the batch, run `algorilla scan src/ --save-baseline` to snapshot the current state. From here on, scans only surface *new* findings.
+3. **Lock in your progress**: Run `algorilla --save-baseline baseline.json .` to snapshot the current state. From here on, scans only surface *new* findings.
 
-4. **Widen to medium confidence**: Drop to `--confidence medium` (the default) and repeat. These findings need a bit more judgment but often point to real issues too.
+4. **Widen to medium confidence**: `algorilla --confidence medium .` shows findings that are likely real but lack full type confirmation. These need a bit more judgment but often point to real issues.
 
-This way you're never staring at a wall of output — just a manageable batch at a time.
+5. **Explore with low confidence**: `algorilla --confidence low .` shows everything, including heuristic-based findings. Useful for thorough audits.
+
+This way you start with the most trustworthy findings and progressively expand — never staring at a wall of uncertain output.
