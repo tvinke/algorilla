@@ -96,7 +96,7 @@ public class NestedLookupRule : Rule {
         if (iterationStack.isEmpty() || node !is FunctionCall) return
 
         // Skip tree-walk patterns: recursive functions called from higher-order iteration
-        if (isTreeWalkCall(node, enclosingFn, iterationStack, context.symbolTable)) return
+        if (isTreeWalkCall(node, enclosingFn, iterationStack, language, context.symbolTable)) return
 
         val maxDepth = context.config.maxCallDepth.coerceAtMost(2)
         val hiddenLookup =
@@ -104,6 +104,7 @@ public class NestedLookupRule : Rule {
                 node,
                 context.symbolTable,
                 maxDepth = maxDepth,
+                language = language,
             ) { it.isCollectionLookup(null, null, language, context.registry) }
         if (hiddenLookup != null) {
             val confidence = crossMethodConfidence(node, hiddenLookup, iterationStack, enclosingFn)
@@ -166,6 +167,7 @@ public class NestedLookupRule : Rule {
         call: FunctionCall,
         enclosingFn: FunctionDecl?,
         iterationStack: List<IRNode>,
+        language: Language,
         symbolTable: com.github.tvinke.algorilla.graph.SymbolTable,
     ): Boolean {
         // Only applies inside higher-order iteration (.map{}, .forEach{})
@@ -176,7 +178,7 @@ public class NestedLookupRule : Rule {
         if (enclosingFn != null && call.name == enclosingFn.name) return true
 
         // Case 2: resolved function is itself recursive (processPackage calls processPackage)
-        val resolved = CrossMethodResolver.resolve(call, symbolTable) ?: return false
+        val resolved = CrossMethodResolver.resolve(call, symbolTable, language) ?: return false
         if (resolved.isRecursive()) return true
 
         // Case 3: mutual recursion — resolved function calls back to enclosing function

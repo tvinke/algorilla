@@ -13,7 +13,6 @@ import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
-import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.findDescendants
 
 /**
@@ -40,32 +39,35 @@ public class ParallelPipelineBottleneckRule : Rule {
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
-            scanNode(fileRoot, findings)
+            val mutationMethods = context.registry.mutationMethods(fileRoot.language)
+            scanNode(fileRoot, mutationMethods, findings)
         }
         return findings
     }
 
     private fun scanNode(
         node: IRNode,
+        mutationMethods: Set<String>,
         findings: MutableList<Finding>,
     ) {
         if (node is LoopNode && node.kind == LoopKind.PARALLEL_STREAM_FOR_EACH) {
-            checkForSharedMutation(node, findings)
+            checkForSharedMutation(node, mutationMethods, findings)
             return
         }
         for (child in node.children) {
-            scanNode(child, findings)
+            scanNode(child, mutationMethods, findings)
         }
     }
 
     private fun checkForSharedMutation(
         parallelLoop: LoopNode,
+        mutationMethods: Set<String>,
         findings: MutableList<Finding>,
     ) {
         val mutationCalls =
             parallelLoop
                 .findDescendants<FunctionCall>()
-                .filter { it.name in MUTATION_METHODS && it.qualifiedTarget != null }
+                .filter { it.name in mutationMethods && it.qualifiedTarget != null }
 
         // The lambda parameter is typically the iterated variable — mutations on
         // something else are shared state mutations
@@ -121,8 +123,4 @@ public class ParallelPipelineBottleneckRule : Rule {
                 ),
         )
     }
-}
-
-private val MUTATION_METHODS: Set<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT.allMutationMethods()
 }

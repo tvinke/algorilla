@@ -139,18 +139,6 @@ public fun FunctionDecl.hasO1Type(variableName: String?): Boolean {
 }
 
 /**
- * Returns true if this [LookupCall] targets a collection (worth flagging).
- * A lookup is a collection lookup when it's not O(1), not on a scalar type,
- * and the enclosing function doesn't declare the target as an O(1) type.
- */
-public fun LookupCall.isCollectionLookup(fn: FunctionDecl?): Boolean =
-    !isO1 &&
-        !isScalar &&
-        !isStaticUtilityTarget(LanguageSemanticsRegistry.DEFAULT) &&
-        !hasO1TargetName(LanguageSemanticsRegistry.DEFAULT) &&
-        (fn == null || !fn.hasO1Type(targetVariable))
-
-/**
  * Enhanced version that uses [TypeEnvironment] for full type resolution.
  * Falls back to the basic version when no type environment is available.
  */
@@ -185,12 +173,7 @@ private fun LookupCall.isStaticUtilityTarget(
     language: Language? = null,
 ): Boolean {
     val target = targetVariable ?: return false
-    val classes =
-        if (language != null) {
-            registry.staticUtilityClasses(language)
-        } else {
-            registry.allExtraSection("static-utility-classes")
-        }
+    val classes = registry.staticUtilityClasses(language ?: Language.JAVA)
     return target in classes
 }
 
@@ -200,12 +183,7 @@ private fun LookupCall.hasO1TargetName(
     language: Language? = null,
 ): Boolean {
     val target = targetVariable?.lowercase() ?: return false
-    val suffixes =
-        if (language != null) {
-            registry.nonListTargetsSuffixes(language)
-        } else {
-            registry.allExtraSection("non-list-targets-suffixes")
-        }
+    val suffixes = registry.nonListTargetsSuffixes(language ?: Language.JAVA)
     return suffixes.any { target.endsWith(it) || target == it }
 }
 

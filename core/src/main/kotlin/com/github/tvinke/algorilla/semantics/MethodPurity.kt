@@ -1,5 +1,7 @@
 package com.github.tvinke.algorilla.semantics
 
+import com.github.tvinke.algorilla.model.Language
+
 /**
  * Classifies a method call as pure, side-effectful, or unknown based on naming conventions.
  * All heuristics are loaded from the YAML semantics registry — no hardcoded lists.
@@ -11,16 +13,17 @@ public object MethodPurity {
         LanguageSemanticsRegistry.DEFAULT
     }
 
-    private val purePrefixes: List<String> by lazy { registry.allPurePrefixes() }
-    private val sideEffectPrefixes: List<String> by lazy { registry.allSideEffectPrefixes() }
-    private val sideEffectTargets: List<String> by lazy { registry.allSideEffectTargets() }
-
     /**
      * Classifies a method name by its likely purity.
      * Side-effect prefixes are checked first so that e.g. "setFormat" is SIDE_EFFECT.
      */
-    public fun classify(methodName: String): Purity {
+    public fun classify(
+        methodName: String,
+        language: Language = Language.JAVA,
+    ): Purity {
         val lower = methodName.lowercase()
+        val sideEffectPrefixes = registry.sideEffectPrefixes(language)
+        val purePrefixes = registry.purePrefixes(language)
         if (sideEffectPrefixes.any { lower.startsWith(it) }) return Purity.SIDE_EFFECT
         if (purePrefixes.any { lower.startsWith(it) }) return Purity.PURE
         return Purity.UNKNOWN
@@ -33,12 +36,14 @@ public object MethodPurity {
     public fun classify(
         methodName: String,
         qualifiedTarget: String?,
+        language: Language = Language.JAVA,
     ): Purity {
         if (qualifiedTarget != null) {
             val lowerTarget = qualifiedTarget.lowercase()
+            val sideEffectTargets = registry.sideEffectTargets(language)
             if (sideEffectTargets.any { lowerTarget.contains(it) }) return Purity.SIDE_EFFECT
         }
-        return classify(methodName)
+        return classify(methodName, language)
     }
 
     /**
@@ -47,5 +52,6 @@ public object MethodPurity {
     public fun isSideEffect(
         methodName: String,
         qualifiedTarget: String? = null,
-    ): Boolean = classify(methodName, qualifiedTarget) == Purity.SIDE_EFFECT
+        language: Language = Language.JAVA,
+    ): Boolean = classify(methodName, qualifiedTarget, language) == Purity.SIDE_EFFECT
 }

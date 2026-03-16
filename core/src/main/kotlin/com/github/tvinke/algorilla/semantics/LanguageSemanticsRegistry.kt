@@ -83,11 +83,6 @@ public class LanguageSemanticsRegistry private constructor(
     }
 
     /**
-     * Returns the merged set of all heavyweight types across all languages.
-     */
-    public fun allHeavyweightTypes(): Set<String> = heavyweightByLanguage.values.flatten().toSet()
-
-    /**
      * Returns true if the given type name is a known collection type for the language.
      * Checks both `collection-types` and `o1-types` (the union of all collection-like types).
      */
@@ -134,22 +129,21 @@ public class LanguageSemanticsRegistry private constructor(
     }
 
     /**
-     * Returns the union of all stream ops and classified methods across all languages.
-     * Useful when the language is not known (e.g. in extractVariableName).
+     * Returns stream ops and classified methods for the given language.
      */
-    public fun allStreamOps(): Set<String> {
+    public fun streamOps(language: Language): Set<String> {
+        val resolved = resolveLanguage(language)
         val result = mutableSetOf<String>()
-        for (ops in streamOpsByLanguage.values) result.addAll(ops)
-        for (ops in scopeOpsByLanguage.values) result.addAll(ops)
-        for (methods in methodsByLanguage.values) result.addAll(methods.keys)
+        streamOpsByLanguage[resolved]?.let { result.addAll(it) }
+        scopeOpsByLanguage[resolved]?.let { result.addAll(it) }
+        methodsByLanguage[resolved]?.keys?.let { result.addAll(it) }
         return result
     }
 
     /**
-     * Returns the union of all method names that should not be cross-method resolved.
-     * This includes stream ops, scope functions, and all classified methods.
+     * Returns method names that should not be cross-method resolved for the given language.
      */
-    public fun allUnresolvableNames(): Set<String> = allStreamOps()
+    public fun unresolvableNames(language: Language): Set<String> = streamOps(language)
 
     /**
      * Returns true if the method is too cheap to flag as a redundant expensive call.
@@ -163,9 +157,12 @@ public class LanguageSemanticsRegistry private constructor(
     }
 
     /**
-     * Returns the union of all trivial methods across all languages.
+     * Returns trivial methods for the given language.
      */
-    public fun allTrivialMethods(): Set<String> = trivialByLanguage.values.flatten().toSet()
+    public fun trivialMethods(language: Language): Set<String> {
+        val resolved = resolveLanguage(language)
+        return trivialByLanguage[resolved] ?: emptySet()
+    }
 
     /**
      * Returns true if the method is a builder-pattern method.
@@ -179,9 +176,12 @@ public class LanguageSemanticsRegistry private constructor(
     }
 
     /**
-     * Returns the union of all builder methods across all languages.
+     * Returns builder methods for the given language.
      */
-    public fun allBuilderMethods(): Set<String> = builderByLanguage.values.flatten().toSet()
+    public fun builderMethods(language: Language): Set<String> {
+        val resolved = resolveLanguage(language)
+        return builderByLanguage[resolved] ?: emptySet()
+    }
 
     /**
      * Returns true if the method only exists on O(1) types (e.g. containsKey, containsValue).
@@ -195,13 +195,14 @@ public class LanguageSemanticsRegistry private constructor(
     }
 
     /**
-     * Returns the union of all implicitly-O(1) method names across all languages.
+     * Returns implicitly-O(1) method names for the given language.
      */
-    public fun allImplicitlyO1Methods(): Set<String> =
-        methodsByLanguage.values
-            .flatMap { methods ->
-                methods.filter { it.value.isImplicitlyO1 }.map { it.key }
-            }.toSet()
+    public fun implicitlyO1Methods(language: Language): Set<String> {
+        val resolved = resolveLanguage(language)
+        return methodsByLanguage[resolved]
+            ?.filter { it.value.isImplicitlyO1 }
+            ?.keys ?: emptySet()
+    }
 
     /**
      * Returns getter prefixes for the given language.
@@ -210,14 +211,6 @@ public class LanguageSemanticsRegistry private constructor(
         val resolved = resolveLanguage(language)
         return getterPrefixesByLanguage[resolved] ?: emptyList()
     }
-
-    /**
-     * Returns the union of all getter prefixes across all languages.
-     */
-    public fun allGetterPrefixes(): List<String> =
-        getterPrefixesByLanguage.values
-            .flatten()
-            .distinct()
 
     /**
      * Returns true if the method is a known cheap/constant-time operation for the language.
@@ -231,9 +224,12 @@ public class LanguageSemanticsRegistry private constructor(
     }
 
     /**
-     * Returns the union of all cheap methods across all languages.
+     * Returns cheap methods for the given language.
      */
-    public fun allCheapMethods(): Set<String> = cheapByLanguage.values.flatten().toSet()
+    public fun cheapMethods(language: Language): Set<String> {
+        val resolved = resolveLanguage(language)
+        return cheapByLanguage[resolved] ?: emptySet()
+    }
 
     /**
      * Returns true if the method is a sequential read / stateful iteration method.
@@ -247,19 +243,20 @@ public class LanguageSemanticsRegistry private constructor(
     }
 
     /**
-     * Returns the union of all sequential read methods across all languages.
+     * Returns sequential read methods for the given language.
      */
-    public fun allSequentialReadMethods(): Set<String> = sequentialReadByLanguage.values.flatten().toSet()
+    public fun sequentialReadMethods(language: Language): Set<String> {
+        val resolved = resolveLanguage(language)
+        return sequentialReadByLanguage[resolved] ?: emptySet()
+    }
 
     /**
-     * Returns the union of all reflection methods across all languages.
+     * Returns reflection methods for the given language.
      */
-    public fun allReflectionMethods(): Set<String> = reflectionByLanguage.values.flatten().toSet()
-
-    /**
-     * Returns the union of all IO methods across all languages.
-     */
-    public fun allIoMethods(): Set<String> = ioByLanguage.values.flatten().toSet()
+    public fun reflectionMethods(language: Language): Set<String> {
+        val resolved = resolveLanguage(language)
+        return reflectionByLanguage[resolved] ?: emptySet()
+    }
 
     /**
      * Returns the copy-on-modify methods for a specific language.
@@ -270,19 +267,12 @@ public class LanguageSemanticsRegistry private constructor(
     }
 
     /**
-     * Returns the union of all copy-on-modify methods across all languages.
+     * Returns regex types for the given language.
      */
-    public fun allCopyOnModifyMethods(): Set<String> = copyOnModifyByLanguage.values.flatten().toSet()
-
-    /**
-     * Returns the union of all regex types across all languages.
-     */
-    public fun allRegexTypes(): Set<String> = regexTypesByLanguage.values.flatten().toSet()
-
-    /**
-     * Returns the union of all regex recompilation methods across all languages.
-     */
-    public fun allRegexRecompilationMethods(): Set<String> = regexRecompilationByLanguage.values.flatten().toSet()
+    public fun regexTypes(language: Language): Set<String> {
+        val resolved = resolveLanguage(language)
+        return regexTypesByLanguage[resolved] ?: emptySet()
+    }
 
     /**
      * Returns regex recompilation methods for a specific language.
@@ -293,14 +283,12 @@ public class LanguageSemanticsRegistry private constructor(
     }
 
     /**
-     * Returns the union of all mutation methods across all languages.
+     * Returns mutation methods for the given language.
      */
-    public fun allMutationMethods(): Set<String> = mutationByLanguage.values.flatten().toSet()
-
-    /**
-     * Returns the union of all removal methods across all languages.
-     */
-    public fun allRemovalMethods(): Set<String> = removalByLanguage.values.flatten().toSet()
+    public fun mutationMethods(language: Language): Set<String> {
+        val resolved = resolveLanguage(language)
+        return mutationByLanguage[resolved] ?: emptySet()
+    }
 
     /**
      * Returns removal methods for a specific language.
@@ -309,14 +297,6 @@ public class LanguageSemanticsRegistry private constructor(
         val resolved = resolveLanguage(language)
         return removalByLanguage[resolved] ?: emptySet()
     }
-
-    /**
-     * Returns the union of all bulk-load prefixes across all languages.
-     */
-    public fun allBulkLoadPrefixes(): List<String> =
-        bulkLoadPrefixesByLanguage.values
-            .flatten()
-            .distinct()
 
     public fun bulkLoadPrefixes(language: Language): List<String> {
         val resolved = resolveLanguage(language)
@@ -397,14 +377,6 @@ public class LanguageSemanticsRegistry private constructor(
     }
 
     /**
-     * Returns the union of all pure prefixes across all languages.
-     */
-    public fun allPurePrefixes(): List<String> =
-        purePrefixesByLanguage.values
-            .flatten()
-            .distinct()
-
-    /**
      * Returns side-effect prefixes for the given language.
      */
     public fun sideEffectPrefixes(language: Language): List<String> {
@@ -413,28 +385,12 @@ public class LanguageSemanticsRegistry private constructor(
     }
 
     /**
-     * Returns the union of all side-effect prefixes across all languages.
-     */
-    public fun allSideEffectPrefixes(): List<String> =
-        sideEffectPrefixesByLanguage.values
-            .flatten()
-            .distinct()
-
-    /**
      * Returns side-effect targets for the given language.
      */
     public fun sideEffectTargets(language: Language): List<String> {
         val resolved = resolveLanguage(language)
         return sideEffectTargetsByLanguage[resolved] ?: emptyList()
     }
-
-    /**
-     * Returns the union of all side-effect targets across all languages.
-     */
-    public fun allSideEffectTargets(): List<String> =
-        sideEffectTargetsByLanguage.values
-            .flatten()
-            .distinct()
 
     // --- String detection ---
 
@@ -447,11 +403,6 @@ public class LanguageSemanticsRegistry private constructor(
     }
 
     /**
-     * Returns the union of all string indicators across all languages.
-     */
-    public fun allStringIndicators(): Set<String> = stringIndicatorsByLanguage.values.flatten().toSet()
-
-    /**
      * Returns string name suffixes for the given language.
      */
     public fun stringNameSuffixes(language: Language): Set<String> {
@@ -460,22 +411,12 @@ public class LanguageSemanticsRegistry private constructor(
     }
 
     /**
-     * Returns the union of all string name suffixes across all languages.
-     */
-    public fun allStringNameSuffixes(): Set<String> = stringNameSuffixesByLanguage.values.flatten().toSet()
-
-    /**
      * Returns string exact names for the given language.
      */
     public fun stringExactNames(language: Language): Set<String> {
         val resolved = resolveLanguage(language)
         return stringExactNamesByLanguage[resolved] ?: emptySet()
     }
-
-    /**
-     * Returns the union of all string exact names across all languages.
-     */
-    public fun allStringExactNames(): Set<String> = stringExactNamesByLanguage.values.flatten().toSet()
 
     // --- Monadic type detection ---
 
@@ -515,9 +456,6 @@ public class LanguageSemanticsRegistry private constructor(
         val resolved = resolveLanguage(language)
         return extrasByLanguage[resolved]?.get(key) ?: emptySet()
     }
-
-    /** Merges an extra section across all languages. */
-    public fun allExtraSection(key: String): Set<String> = extrasByLanguage.values.flatMap { it[key] ?: emptySet() }.toSet()
 
     // ── Rule-specific convenience methods (all delegate to extraSection) ──
 

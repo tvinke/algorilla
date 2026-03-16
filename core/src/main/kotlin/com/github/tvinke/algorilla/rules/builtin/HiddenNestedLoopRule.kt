@@ -82,7 +82,7 @@ public class HiddenNestedLoopRule : Rule {
     ) {
         if (isStringOrCopyMethod(call.name, language, context.registry)) return
 
-        val resolved = CrossMethodResolver.resolve(call, context.symbolTable) ?: return
+        val resolved = CrossMethodResolver.resolve(call, context.symbolTable, language) ?: return
 
         // Skip recursive methods — their internal loop iterates child nodes
         // of the same data structure, not an independent collection

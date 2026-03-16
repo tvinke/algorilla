@@ -12,7 +12,6 @@ import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
-import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 
 /**
  * Detects Java/Kotlin reflection calls inside loops. Reflection methods like
@@ -30,7 +29,8 @@ public class RepeatedReflectionInLoopRule : Rule {
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
-            scanNode(fileRoot, emptyList(), findings)
+            val reflectionMethods = context.registry.reflectionMethods(fileRoot.language)
+            scanNode(fileRoot, emptyList(), reflectionMethods, findings)
         }
         return findings
     }
@@ -38,21 +38,22 @@ public class RepeatedReflectionInLoopRule : Rule {
     private fun scanNode(
         node: IRNode,
         loopStack: List<LoopNode>,
+        reflectionMethods: Set<String>,
         findings: MutableList<Finding>,
     ) {
         if (node is LoopNode) {
             for (child in node.children) {
-                scanNode(child, loopStack + node, findings)
+                scanNode(child, loopStack + node, reflectionMethods, findings)
             }
             return
         }
 
-        if (loopStack.isNotEmpty() && node is FunctionCall && isReflectionCall(node)) {
+        if (loopStack.isNotEmpty() && node is FunctionCall && isReflectionCall(node, reflectionMethods)) {
             findings.add(buildFinding(node, loopStack))
         }
 
         for (child in node.children) {
-            scanNode(child, loopStack, findings)
+            scanNode(child, loopStack, reflectionMethods, findings)
         }
     }
 
@@ -92,15 +93,10 @@ public class RepeatedReflectionInLoopRule : Rule {
     }
 }
 
-// Only the expensive reflection methods that allocate new arrays or do class scanning.
-// Cheap accessors (getModifiers, getReturnType, getName) are excluded.
-// Note: uses allReflectionMethods() — if cross-language pollution becomes an issue,
-// this should be switched to language-specific reflectionMethods(language).
-private val REFLECTION_METHODS: Set<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT.allReflectionMethods()
-}
-
 /** Methods that are reflection in some languages but common factories in others. */
 private val REFLECTION_EXCLUSIONS = setOf("create", "keys", "values", "entries")
 
-private fun isReflectionCall(call: FunctionCall): Boolean = call.name in REFLECTION_METHODS && call.name !in REFLECTION_EXCLUSIONS
+private fun isReflectionCall(
+    call: FunctionCall,
+    reflectionMethods: Set<String>,
+): Boolean = call.name in reflectionMethods && call.name !in REFLECTION_EXCLUSIONS

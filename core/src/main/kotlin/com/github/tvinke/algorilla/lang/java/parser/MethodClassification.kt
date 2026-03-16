@@ -94,14 +94,14 @@ private fun classifyAsLookup(
     language: Language = Language.JAVA,
 ): IRNode? {
     val kind = lookupKindFor(methodName, language) ?: return null
-    if (kind.isStringApplicable() && isStringTarget(targetText)) {
+    if (kind.isStringApplicable() && isStringTarget(targetText, language)) {
         return FunctionCall(name = methodName, qualifiedTarget = targetVar, arguments = argNodes, location = loc, children = argNodes)
     }
     // find() with 0 args is Matcher.find(), not a collection find; with 2+ args is Map.find()
     if (kind == LookupKind.FIND && argNodes.size != 1) {
         return FunctionCall(name = methodName, qualifiedTarget = targetVar, arguments = argNodes, location = loc, children = argNodes)
     }
-    val o1 = isO1Type(targetText) || isImplicitlyO1(methodName)
+    val o1 = isO1Type(targetText) || isImplicitlyO1(methodName, language)
     return LookupCall(kind = kind, targetVariable = targetVar, isO1 = o1, location = loc, children = argNodes)
 }
 
@@ -179,17 +179,11 @@ public fun extractVariableName(expr: String?): String? {
 }
 
 /**
- * Set of method names that should be stripped from variable name expressions.
- * Derived from the semantics registry (YAML) — all classified methods and stream pipeline ops.
- * This is the single source of truth; to add a new method, update the YAML files.
- */
-private val STREAM_CHAIN_OPS: Set<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT.allStreamOps()
-}
-
-/**
  * Strips chained stream operations with balanced parentheses from the expression.
  * Handles arbitrary nesting like `.map(x -> foo(bar(x)))`.
+ *
+ * Uses the union of all languages since extractVariableName is called from parsers
+ * that may not have language context yet.
  */
 private fun stripStreamChainOps(input: String): String {
     var result = input
@@ -205,6 +199,20 @@ private fun stripStreamChainOps(input: String): String {
         }
     }
     return result
+}
+
+/**
+ * Set of method names that should be stripped from variable name expressions.
+ * Since extractVariableName is called from parsers without guaranteed language context,
+ * this collects stream ops from all base languages. This is the only cross-language union
+ * remaining — all rule-level code uses language-specific versions.
+ */
+private val STREAM_CHAIN_OPS: Set<String> by lazy {
+    val result = mutableSetOf<String>()
+    for (lang in listOf(Language.JAVA, Language.KOTLIN, Language.GROOVY, Language.JAVASCRIPT)) {
+        result.addAll(LanguageSemanticsRegistry.DEFAULT.streamOps(lang))
+    }
+    result
 }
 
 private fun stripSingleOp(
@@ -267,24 +275,12 @@ public fun isO1Type(targetText: String): Boolean {
  * Methods that are only defined on O(1) types (e.g. containsKey/containsValue are Map-only).
  * Delegates to the semantics registry.
  */
-public fun isImplicitlyO1(methodName: String): Boolean {
+public fun isImplicitlyO1(
+    methodName: String,
+    language: Language = Language.JAVA,
+): Boolean {
     val registry = registryInstance
-    return methodName in registry.allImplicitlyO1Methods()
-}
-
-/** YAML-driven string method indicators. */
-private val STRING_METHOD_INDICATORS: Set<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT.allStringIndicators()
-}
-
-/** YAML-driven string name suffixes. */
-private val STRING_NAME_SUFFIXES: Set<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT.allStringNameSuffixes()
-}
-
-/** YAML-driven exact string variable names. */
-private val STRING_EXACT_NAMES: Set<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT.allStringExactNames()
+    return methodName in registry.implicitlyO1Methods(language)
 }
 
 /**
@@ -293,10 +289,15 @@ private val STRING_EXACT_NAMES: Set<String> by lazy {
  * All name sets are YAML-driven — see string-indicators, string-name-suffixes,
  * and string-exact-names sections in the language YAML files.
  */
-public fun isStringTarget(targetText: String): Boolean =
-    STRING_METHOD_INDICATORS.any { targetText.contains(it) } ||
-        STRING_NAME_SUFFIXES.any { targetText.endsWith(it) } ||
-        extractVariableName(targetText) in STRING_EXACT_NAMES
+public fun isStringTarget(
+    targetText: String,
+    language: Language = Language.JAVA,
+): Boolean {
+    val registry = registryInstance
+    return registry.stringIndicators(language).any { targetText.contains(it) } ||
+        registry.stringNameSuffixes(language).any { targetText.endsWith(it) } ||
+        extractVariableName(targetText) in registry.stringExactNames(language)
+}
 
 /** Returns true when the argument list is a single literal `0` (for `.get(0)` detection). */
 private fun isLiteralZeroArg(argNodes: List<IRNode>): Boolean {

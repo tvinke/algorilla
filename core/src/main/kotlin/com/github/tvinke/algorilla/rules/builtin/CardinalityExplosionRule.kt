@@ -383,21 +383,12 @@ public class CardinalityExplosionRule : Rule {
         context: AnalysisContext,
         language: Language?,
     ): Set<String> {
-        val copyOnModify =
-            if (language != null) {
-                context.registry.copyOnModifyMethodsFor(language)
-            } else {
-                context.registry.allCopyOnModifyMethods()
-            }
+        val langOrJava = language ?: Language.JAVA
+        val copyOnModify = context.registry.copyOnModifyMethodsFor(langOrJava)
         // Only include mutations that GROW a collection — exclude replacements,
         // removals, and in-place operations that don't produce Cartesian output
-        val nonGrowth =
-            if (language != null) {
-                context.registry.nonGrowthMutations(language)
-            } else {
-                context.registry.allExtraSection("non-growth-mutations")
-            }
-        return (copyOnModify + context.registry.allMutationMethods()) - nonGrowth
+        val nonGrowth = context.registry.nonGrowthMutations(langOrJava)
+        return (copyOnModify + context.registry.mutationMethods(langOrJava)) - nonGrowth
     }
 
     private companion object {

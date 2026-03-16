@@ -214,6 +214,9 @@ trivial-methods:
   - component1
   - component2
   - component3
+  # Validation
+  - check
+  - validate
 
 builder-methods:
   - path

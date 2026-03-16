@@ -14,7 +14,6 @@ import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
-import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.findDescendantsWithBranchContext
 import com.github.tvinke.algorilla.util.maxCoExecutableSubset
 
@@ -34,7 +33,8 @@ public class UncachedGetterRule : Rule {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
             val excludedNames = context.registry.getterExcludedNames(fileRoot.language)
-            scanNode(fileRoot, excludedNames, findings)
+            val prefixes = context.registry.getterPrefixes(fileRoot.language)
+            scanNode(fileRoot, excludedNames, prefixes, findings)
         }
         return findings
     }
@@ -42,23 +42,29 @@ public class UncachedGetterRule : Rule {
     private fun scanNode(
         node: IRNode,
         excludedNames: Set<String>,
+        getterPrefixes: List<String>,
         findings: MutableList<Finding>,
     ) {
         if (node is FunctionDecl) {
-            checkFunction(node, excludedNames, findings)
+            checkFunction(node, excludedNames, getterPrefixes, findings)
         }
         for (child in node.children) {
-            scanNode(child, excludedNames, findings)
+            scanNode(child, excludedNames, getterPrefixes, findings)
         }
     }
 
     private fun checkFunction(
         fn: FunctionDecl,
         excludedNames: Set<String>,
+        getterPrefixes: List<String>,
         findings: MutableList<Finding>,
     ) {
         val callsWithContext = fn.findDescendantsWithBranchContext<FunctionCall>()
-        val getterCalls = callsWithContext.filter { isGetterPattern(it.first, excludedNames) && it.first.arguments.isNotEmpty() }
+        val getterCalls =
+            callsWithContext.filter {
+                isGetterPattern(it.first, excludedNames, getterPrefixes) &&
+                    it.first.arguments.isNotEmpty()
+            }
         val grouped = getterCalls.groupBy { "${it.first.qualifiedTarget}.${it.first.name}(${argKey(it.first)})" }
 
         for ((_, duplicatesWithContext) in grouped) {
@@ -99,17 +105,13 @@ public class UncachedGetterRule : Rule {
     }
 }
 
-private val GETTER_PREFIXES: List<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT
-        .allGetterPrefixes()
-}
-
 private fun isGetterPattern(
     call: FunctionCall,
     excludedNames: Set<String>,
+    getterPrefixes: List<String>,
 ): Boolean {
     if (call.name in excludedNames) return false
-    return GETTER_PREFIXES.any { call.name.startsWith(it, ignoreCase = true) }
+    return getterPrefixes.any { call.name.startsWith(it, ignoreCase = true) }
 }
 
 private fun argKey(call: FunctionCall): String =

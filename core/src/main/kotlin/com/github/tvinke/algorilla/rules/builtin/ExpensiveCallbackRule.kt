@@ -20,7 +20,6 @@ import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
-import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.CrossMethodResolver
 import com.github.tvinke.algorilla.util.findDescendants
 
@@ -91,7 +90,8 @@ public class ExpensiveCallbackRule : Rule {
         for (call in calls.filter { isDateParseCall(it, language, context.registry) }) {
             findings.add(buildDateParseFinding(container, call))
         }
-        for (creation in creations.filter { isRegexType(it.typeName) }) {
+        val regexTypes = context.registry.regexTypes(language)
+        for (creation in creations.filter { it.typeName in regexTypes }) {
             findings.add(buildRegexCreationFinding(container, creation))
         }
         for (call in calls.filter { isCompileCall(it) }) {
@@ -114,10 +114,9 @@ public class ExpensiveCallbackRule : Rule {
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
-        for (creation in creations.filter { !isDateType(it.typeName, language, context.registry) && !isRegexType(it.typeName) }) {
-            val isHeavy =
-                context.registry.isHeavyweight(Language.JAVA, creation.typeName) ||
-                    context.registry.allHeavyweightTypes().any { creation.typeName.contains(it) }
+        val regexTypesForHeavy = context.registry.regexTypes(language)
+        for (creation in creations.filter { !isDateType(it.typeName, language, context.registry) && it.typeName !in regexTypesForHeavy }) {
+            val isHeavy = context.registry.isHeavyweight(language, creation.typeName)
             if (isHeavy) {
                 findings.add(buildHeavyweightFinding(container, creation))
             }
@@ -150,6 +149,7 @@ public class ExpensiveCallbackRule : Rule {
                 call,
                 context.symbolTable,
                 maxDepth = maxDepth,
+                language = language,
             ) { isDateType(it.typeName, language, context.registry) }
         if (dateOp != null) {
             findings.add(buildIndirectFinding(container, call, dateOp))
@@ -160,6 +160,7 @@ public class ExpensiveCallbackRule : Rule {
                 call,
                 context.symbolTable,
                 maxDepth = maxDepth,
+                language = language,
             ) { isDateParseCall(it, language, context.registry) }
         if (parseOp != null) {
             findings.add(buildIndirectFinding(container, call, parseOp))
@@ -417,12 +418,6 @@ private fun asCallbackContainer(node: IRNode): CallbackContainer? =
         }
         else -> null
     }
-
-private val REGEX_TYPES: Set<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT.allRegexTypes()
-}
-
-private fun isRegexType(typeName: String): Boolean = typeName in REGEX_TYPES
 
 private fun isCompileCall(call: FunctionCall): Boolean =
     call.name == "compile" &&

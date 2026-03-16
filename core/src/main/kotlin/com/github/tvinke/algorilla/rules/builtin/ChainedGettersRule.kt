@@ -18,7 +18,6 @@ import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
-import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.CrossMethodResolver
 import com.github.tvinke.algorilla.util.findDescendants
 
@@ -39,8 +38,9 @@ public class ChainedGettersRule : Rule {
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
+            val prefixes = context.registry.getterPrefixes(fileRoot.language)
             for (fn in fileRoot.findDescendants<FunctionDecl>()) {
-                checkFunction(fn, context, findings)
+                checkFunction(fn, prefixes, fileRoot.language, context, findings)
             }
         }
         return findings
@@ -48,6 +48,8 @@ public class ChainedGettersRule : Rule {
 
     private fun checkFunction(
         fn: FunctionDecl,
+        getterPrefixes: List<String>,
+        language: Language,
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
@@ -58,20 +60,20 @@ public class ChainedGettersRule : Rule {
         val producedBy = mutableMapOf<String, FunctionCall>()
         for (decl in varDecls) {
             val initCall = decl.children.filterIsInstance<FunctionCall>().firstOrNull()
-            if (initCall != null && isGetterPattern(initCall)) {
+            if (initCall != null && isGetterPattern(initCall, getterPrefixes)) {
                 producedBy[decl.name] = initCall
             }
         }
 
         // Find chains: a getter call whose argument references a variable produced by another getter
         for (call in calls) {
-            if (!isGetterPattern(call)) continue
+            if (!isGetterPattern(call, getterPrefixes)) continue
             val chain = buildChain(call, producedBy)
             if (chain.size >= MIN_CHAIN_LENGTH) {
                 // Check if any getter in the chain resolves to a function with linear lookups
                 val hasLinear =
                     chain.any { c ->
-                        val resolved = CrossMethodResolver.resolve(c, context.symbolTable)
+                        val resolved = CrossMethodResolver.resolve(c, context.symbolTable, language)
                         resolved != null &&
                             (
                                 resolved.findDescendants<LookupCall>().isNotEmpty() ||
@@ -131,12 +133,10 @@ public class ChainedGettersRule : Rule {
     }
 }
 
-private val GETTER_PREFIXES: List<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT
-        .allGetterPrefixes()
-}
-
-private fun isGetterPattern(call: FunctionCall): Boolean = GETTER_PREFIXES.any { call.name.startsWith(it, ignoreCase = true) }
+private fun isGetterPattern(
+    call: FunctionCall,
+    getterPrefixes: List<String>,
+): Boolean = getterPrefixes.any { call.name.startsWith(it, ignoreCase = true) }
 
 private const val MAX_VAR_NAME_LENGTH = 60
 

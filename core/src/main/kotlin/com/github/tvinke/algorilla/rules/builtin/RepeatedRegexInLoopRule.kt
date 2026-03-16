@@ -15,7 +15,6 @@ import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
-import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 
 /**
  * Detects regex pattern compilation inside loops. Compiling a regex is expensive;
@@ -32,7 +31,8 @@ public class RepeatedRegexInLoopRule : Rule {
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
-            scanNode(fileRoot, emptyList(), findings)
+            val regexTypes = context.registry.regexTypes(fileRoot.language)
+            scanNode(fileRoot, emptyList(), regexTypes, findings)
         }
         return findings
     }
@@ -40,17 +40,18 @@ public class RepeatedRegexInLoopRule : Rule {
     private fun scanNode(
         node: IRNode,
         loopStack: List<LoopNode>,
+        regexTypes: Set<String>,
         findings: MutableList<Finding>,
     ) {
         if (node is LoopNode) {
             for (child in node.children) {
-                scanNode(child, loopStack + node, findings)
+                scanNode(child, loopStack + node, regexTypes, findings)
             }
             return
         }
 
         if (loopStack.isNotEmpty()) {
-            if (node is ObjectCreation && isRegexType(node.typeName)) {
+            if (node is ObjectCreation && node.typeName in regexTypes) {
                 findings.add(buildFinding(node, loopStack, "new ${node.typeName}()"))
             }
             if (node is FunctionCall && isCompileCall(node) && hasConstantArgument(node)) {
@@ -59,7 +60,7 @@ public class RepeatedRegexInLoopRule : Rule {
         }
 
         for (child in node.children) {
-            scanNode(child, loopStack, findings)
+            scanNode(child, loopStack, regexTypes, findings)
         }
     }
 
@@ -94,12 +95,6 @@ public class RepeatedRegexInLoopRule : Rule {
         )
     }
 }
-
-private val REGEX_TYPES: Set<String> by lazy {
-    LanguageSemanticsRegistry.DEFAULT.allRegexTypes()
-}
-
-private fun isRegexType(typeName: String): Boolean = typeName in REGEX_TYPES
 
 private fun isCompileCall(call: FunctionCall): Boolean =
     call.name == "compile" &&

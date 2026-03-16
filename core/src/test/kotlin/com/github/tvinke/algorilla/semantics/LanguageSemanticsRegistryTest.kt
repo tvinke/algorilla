@@ -165,12 +165,15 @@ internal class LanguageSemanticsRegistryTest {
     }
 
     @Test
-    fun `allStreamOps should include all languages`() {
-        val all = registry.allStreamOps()
-        all.contains("map").shouldBeTrue()
-        all.contains("each").shouldBeTrue() // Groovy
-        all.contains("includes").shouldBeTrue() // JS
-        all.contains("sortedBy").shouldBeTrue() // Kotlin
+    fun `streamOps should return per-language stream ops`() {
+        val javaOps = registry.streamOps(Language.JAVA)
+        javaOps.contains("map").shouldBeTrue()
+        val groovyOps = registry.streamOps(Language.GROOVY)
+        groovyOps.contains("each").shouldBeTrue()
+        val jsOps = registry.streamOps(Language.JAVASCRIPT)
+        jsOps.contains("includes").shouldBeTrue()
+        val kotlinOps = registry.streamOps(Language.KOTLIN)
+        kotlinOps.contains("sortedBy").shouldBeTrue()
     }
 
     @Test
@@ -204,12 +207,13 @@ internal class LanguageSemanticsRegistryTest {
     }
 
     @Test
-    fun `allUnresolvableNames should cover stream ops and methods`() {
-        val names = registry.allUnresolvableNames()
+    fun `unresolvableNames should cover stream ops and methods per language`() {
+        val names = registry.unresolvableNames(Language.JAVA)
         names.contains("map").shouldBeTrue()
         names.contains("filter").shouldBeTrue()
         names.contains("sorted").shouldBeTrue()
-        names.contains("let").shouldBeTrue() // Kotlin scope function
+        val kotlinNames = registry.unresolvableNames(Language.KOTLIN)
+        kotlinNames.contains("let").shouldBeTrue() // Kotlin scope function
     }
 
     @Test
@@ -246,69 +250,83 @@ internal class LanguageSemanticsRegistryTest {
     }
 
     @Test
-    fun `should include cheap methods in cross-language union`() {
-        val all = registry.allCheapMethods()
-        all shouldContain "plusDays"
-        all shouldContain "startsWith"
+    fun `should include cheap methods for Java`() {
+        val javaCheap = registry.cheapMethods(Language.JAVA)
+        javaCheap shouldContain "plusDays"
+        javaCheap shouldContain "startsWith"
     }
 
     @Test
-    fun `should include sequential read methods in cross-language union`() {
-        val all = registry.allSequentialReadMethods()
-        all shouldContain "readByte"
-        all shouldContain "nextToken"
-        all shouldContain "poll"
+    fun `should include sequential read methods for Java`() {
+        val javaSeqRead = registry.sequentialReadMethods(Language.JAVA)
+        javaSeqRead shouldContain "readByte"
+        javaSeqRead shouldContain "nextToken"
+        javaSeqRead shouldContain "poll"
     }
 
     @Test
     fun `should provide reflection methods for Java`() {
-        val methods = registry.allReflectionMethods()
+        val methods = registry.reflectionMethods(Language.JAVA)
         methods shouldContain "getDeclaredMethods"
         methods shouldContain "getFields"
     }
 
     @Test
     fun `should provide copy-on-modify methods`() {
-        val methods = registry.allCopyOnModifyMethods()
+        val methods = registry.copyOnModifyMethodsFor(Language.JAVASCRIPT)
         // concat creates new String/Array (true copy-on-modify)
-        // addAll/putAll are in-place mutations, NOT copy-on-modify
         methods shouldContain "concat"
     }
 
     @Test
-    fun `should provide regex types`() {
-        val types = registry.allRegexTypes()
+    fun `should provide regex types for Java`() {
+        val types = registry.regexTypes(Language.JAVA)
         types shouldContain "Pattern"
         types shouldContain "Regex"
+    }
+
+    @Test
+    fun `should provide regex types for JavaScript`() {
+        val types = registry.regexTypes(Language.JAVASCRIPT)
         types shouldContain "RegExp"
     }
 
     @Test
     fun `should provide regex recompilation methods`() {
-        val methods = registry.allRegexRecompilationMethods()
+        val methods = registry.regexRecompilationMethods(Language.JAVA)
         methods shouldContain "matches"
         methods shouldContain "split"
         methods shouldContain "replaceAll"
     }
 
     @Test
-    fun `should provide mutation methods`() {
-        val methods = registry.allMutationMethods()
+    fun `should provide mutation methods for Java`() {
+        val methods = registry.mutationMethods(Language.JAVA)
         methods shouldContain "add"
         methods shouldContain "put"
+    }
+
+    @Test
+    fun `should provide mutation methods for JavaScript`() {
+        val methods = registry.mutationMethods(Language.JAVASCRIPT)
         methods shouldContain "push"
     }
 
     @Test
     fun `should provide removal methods`() {
-        val methods = registry.allRemovalMethods()
+        val methods = registry.removalMethods(Language.JAVA)
         methods shouldContain "remove"
+    }
+
+    @Test
+    fun `should provide removal methods for JavaScript`() {
+        val methods = registry.removalMethods(Language.JAVASCRIPT)
         methods shouldContain "splice"
     }
 
     @Test
     fun `should provide bulk load prefixes`() {
-        val prefixes = registry.allBulkLoadPrefixes()
+        val prefixes = registry.bulkLoadPrefixes(Language.JAVA)
         prefixes shouldContain "findAll"
         prefixes shouldContain "getAll"
         prefixes shouldContain "loadAll"
@@ -353,12 +371,15 @@ internal class LanguageSemanticsRegistryTest {
         }
 
         @Test
-        fun `per-language extras should be subset of allExtraSection`() {
-            // Any per-language result should be a subset of the cross-language union
+        fun `per-language extras should be subset of combined extras`() {
+            // Any per-language result should be a subset of the combined union
             val javaSkip = registry.hiddenLoopSkipMethods(Language.JAVA)
-            val allSkip = registry.allExtraSection("hidden-loop-skip-methods")
+            val combined = mutableSetOf<String>()
+            for (lang in listOf(Language.JAVA, Language.KOTLIN, Language.GROOVY, Language.JAVASCRIPT)) {
+                combined.addAll(registry.hiddenLoopSkipMethods(lang))
+            }
             for (method in javaSkip) {
-                allSkip shouldContain method
+                combined shouldContain method
             }
         }
     }

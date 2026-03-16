@@ -31,9 +31,9 @@ public class HeavyweightObjectPerInvocationRule : Rule {
     override val category: RuleCategory = RuleCategory.CONSTRUCTION_COST
 
     override fun evaluate(context: AnalysisContext): List<Finding> {
-        val heavyTypes = context.registry.allHeavyweightTypes()
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
+            val heavyTypes = context.registry.heavyweightTypes(fileRoot.language)
             scanNode(fileRoot, heavyTypes, findings)
         }
         return findings

@@ -328,6 +328,9 @@ trivial-methods:
   - getAll
   - sort
   - forEach
+  # Validation
+  - check
+  - validate
 
 # Builder-pattern methods called for chaining, not return value
 builder-methods:

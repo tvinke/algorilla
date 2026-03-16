@@ -35,12 +35,7 @@ public class InLoopCollectionBuildingRule : Rule {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
             val language = (fileRoot as? FileRoot)?.language
-            val methods =
-                if (language != null) {
-                    context.registry.copyOnModifyMethodsFor(language)
-                } else {
-                    context.registry.allCopyOnModifyMethods()
-                }
+            val methods = context.registry.copyOnModifyMethodsFor(language ?: Language.JAVA)
             scanNode(fileRoot, emptyList(), methods, findings)
         }
         return findings

@@ -154,10 +154,10 @@ public class LoopInvariantHoistingRule : Rule {
     ): Set<String> {
         val skip = mutableSetOf<String>()
         skip.addAll(context.registry.ioMethods(language))
-        skip.addAll(context.registry.allMutationMethods())
-        skip.addAll(context.registry.allCheapMethods())
-        skip.addAll(context.registry.allTrivialMethods())
-        skip.addAll(context.registry.allBuilderMethods())
+        skip.addAll(context.registry.mutationMethods(language))
+        skip.addAll(context.registry.cheapMethods(language))
+        skip.addAll(context.registry.trivialMethods(language))
+        skip.addAll(context.registry.builderMethods(language))
         return skip
     }
 

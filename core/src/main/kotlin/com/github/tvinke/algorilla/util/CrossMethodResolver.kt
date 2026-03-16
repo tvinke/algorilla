@@ -4,6 +4,7 @@ import com.github.tvinke.algorilla.graph.SymbolTable
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.IRNode
+import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 
 /**
@@ -25,19 +26,21 @@ public object CrossMethodResolver {
         call: FunctionCall,
         symbolTable: SymbolTable,
         maxDepth: Int = 1,
+        language: Language = Language.JAVA,
         noinline predicate: (T) -> Boolean = { true },
-    ): T? = resolveAndFindInternal(call, symbolTable, maxDepth, T::class.java, predicate)
+    ): T? = resolveAndFindInternal(call, symbolTable, maxDepth, language, T::class.java, predicate)
 
     @PublishedApi
     internal fun <T : IRNode> resolveAndFindInternal(
         call: FunctionCall,
         symbolTable: SymbolTable,
         maxDepth: Int,
+        language: Language,
         targetClass: Class<T>,
         predicate: (T) -> Boolean,
     ): T? {
         if (maxDepth <= 0) return null
-        val resolved = resolve(call, symbolTable) ?: return null
+        val resolved = resolve(call, symbolTable, language) ?: return null
 
         // Search direct descendants
         val allDescendants = collectDescendants(resolved)
@@ -49,7 +52,7 @@ public object CrossMethodResolver {
         // Follow one more level
         if (maxDepth > 1) {
             for (innerCall in allDescendants.filterIsInstance<FunctionCall>()) {
-                val result = resolveAndFindInternal(innerCall, symbolTable, maxDepth - 1, targetClass, predicate)
+                val result = resolveAndFindInternal(innerCall, symbolTable, maxDepth - 1, language, targetClass, predicate)
                 if (result != null) return result
             }
         }
@@ -74,8 +77,10 @@ public object CrossMethodResolver {
     public fun resolve(
         call: FunctionCall,
         symbolTable: SymbolTable,
+        language: Language = Language.JAVA,
     ): FunctionDecl? {
-        if (call.name in unresolvableNames) return null
+        val skip = LanguageSemanticsRegistry.DEFAULT.unresolvableNames(language)
+        if (call.name in skip) return null
         if (call.qualifiedTarget != null) {
             val byTarget = resolveByTarget(call, symbolTable)
             if (byTarget != null) return byTarget
@@ -132,14 +137,5 @@ public object CrossMethodResolver {
             }
         }
         return results
-    }
-
-    /**
-     * Derived from the semantics registry: all method names that should not be resolved
-     * to user-defined functions. Includes stream ops, scope functions, and all classified
-     * collection methods (lookup, sort, access, iteration, etc.).
-     */
-    private val unresolvableNames: Set<String> by lazy {
-        LanguageSemanticsRegistry.DEFAULT.allUnresolvableNames()
     }
 }
