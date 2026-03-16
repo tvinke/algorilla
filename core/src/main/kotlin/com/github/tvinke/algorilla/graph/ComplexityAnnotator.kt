@@ -21,7 +21,8 @@ private val logger = KotlinLogging.logger {}
 public class ComplexityAnnotator(
     private val symbolTable: SymbolTable,
     private val callGraph: CallGraph,
-    @Suppress("UnusedPrivateProperty") private val maxCallDepth: Int,
+    @Suppress("UnusedPrivateProperty") // Reserved for depth-bounded cross-function complexity propagation
+    private val maxCallDepth: Int,
 ) {
     /**
      * Annotates all function declarations with estimated complexity and execution context.

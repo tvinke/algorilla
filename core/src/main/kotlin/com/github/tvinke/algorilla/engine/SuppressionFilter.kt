@@ -19,7 +19,7 @@ public class SuppressionFilter {
     /**
      * Returns findings that are not suppressed by inline comments.
      */
-    @Suppress("UnusedParameter")
+    @Suppress("UnusedParameter") // irTrees kept in signature for future block-level suppression support
     public fun filter(
         findings: List<Finding>,
         irTrees: Map<String, FileRoot>,

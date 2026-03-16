@@ -81,7 +81,7 @@ public class ParallelPipelineBottleneckRule : Rule {
         }
     }
 
-    @Suppress("LongMethod")
+    @Suppress("LongMethod") // Assembles concurrency-specific finding with thread-safety evidence
     private fun buildFinding(
         parallelLoop: LoopNode,
         mutationCall: FunctionCall,

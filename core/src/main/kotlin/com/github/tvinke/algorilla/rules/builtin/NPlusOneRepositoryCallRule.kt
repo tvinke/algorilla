@@ -162,7 +162,7 @@ private val SINGLE_FETCH_METHOD_REGEX =
         RegexOption.IGNORE_CASE,
     )
 
-@Suppress("ReturnCount")
+@Suppress("ReturnCount") // Guard clauses with early returns — clearer than nested if/else
 private fun isSingleRecordFetch(
     call: FunctionCall,
     language: Language,

@@ -101,7 +101,7 @@ public class QuadraticRemovalRule : Rule {
     }
 }
 
-@Suppress("ReturnCount")
+@Suppress("ReturnCount") // Guard clauses with early returns — clearer than nested if/else
 private fun isRemovalCall(
     call: FunctionCall,
     enclosingFn: FunctionDecl?,

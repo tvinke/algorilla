@@ -63,7 +63,7 @@ public class SequentialAsyncJoinInLoopRule : Rule {
         }
     }
 
-    @Suppress("LongMethod")
+    @Suppress("LongMethod") // Assembles async-blocking finding with wait-bottleneck evidence
     private fun buildFinding(
         call: FunctionCall,
         loopStack: List<LoopNode>,

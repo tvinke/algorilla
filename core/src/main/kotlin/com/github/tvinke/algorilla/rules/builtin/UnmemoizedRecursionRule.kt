@@ -1,6 +1,7 @@
 package com.github.tvinke.algorilla.rules.builtin
 
 import com.github.tvinke.algorilla.model.Confidence
+import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.Language
@@ -8,6 +9,7 @@ import com.github.tvinke.algorilla.model.LoopNode
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.ComplexityModel
+import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
@@ -43,7 +45,8 @@ public class UnmemoizedRecursionRule : Rule {
         return findings
     }
 
-    @Suppress("LongMethod", "ReturnCount") // Each branch handles a distinct recursion pattern
+    // Three distinct recursion patterns (overlapping subproblem, loop-recursive, single) each with unique findings
+    @Suppress("LongMethod", "ReturnCount")
     private fun checkFunction(
         fn: FunctionDecl,
         language: Language,
@@ -51,7 +54,7 @@ public class UnmemoizedRecursionRule : Rule {
         findings: MutableList<Finding>,
     ) {
         // Skip standard object methods — recursive by nature in entity hierarchies
-        if (fn.name in OBJECT_METHODS) return
+        if (fn.name in context.registry.objectMethods(language)) return
 
         val recursiveCalls = fn.findDescendants<FunctionCall>().filter { it.name == fn.name }
         if (recursiveCalls.isEmpty()) return
@@ -92,6 +95,13 @@ public class UnmemoizedRecursionRule : Rule {
                         ),
                     currentComplexity = cx.current,
                     suggestedComplexity = cx.suggested,
+                    evidence =
+                        buildList {
+                            add(Evidence(fn.location, "${fn.name}() — recursive function", ExecutionContext.SINGLE))
+                            topLevelCalls.forEachIndexed { idx, call ->
+                                add(Evidence(call.location, "recursive call #${idx + 1}", ExecutionContext.SINGLE, depth = 1))
+                            }
+                        },
                 ),
             )
             return
@@ -121,6 +131,11 @@ public class UnmemoizedRecursionRule : Rule {
                         ),
                     currentComplexity = "O($paramName \u00d7 recursion)",
                     suggestedComplexity = "O($paramName) with memo",
+                    evidence =
+                        listOf(
+                            Evidence(fn.location, "${fn.name}() — recursive function", ExecutionContext.SINGLE),
+                            Evidence(call.location, "recursive call inside loop body", ExecutionContext.INSIDE_LOOP, depth = 1),
+                        ),
                 ),
             )
             return
@@ -151,6 +166,11 @@ public class UnmemoizedRecursionRule : Rule {
                         ),
                     currentComplexity = null,
                     suggestedComplexity = null,
+                    evidence =
+                        listOf(
+                            Evidence(fn.location, "${fn.name}() — recursive function", ExecutionContext.SINGLE),
+                            Evidence(call.location, "single recursive call without memo", ExecutionContext.SINGLE, depth = 1),
+                        ),
                 ),
             )
         }
@@ -215,21 +235,5 @@ public class UnmemoizedRecursionRule : Rule {
             if (containsNode(node.children, target)) return true
         }
         return false
-    }
-
-    private companion object {
-        // Standard object methods that are recursive by nature in entity hierarchies
-        // (e.g. equals() walking child collections). Memoizing these makes no sense.
-        val OBJECT_METHODS =
-            setOf(
-                "equals",
-                "hashCode",
-                "toString",
-                "compareTo",
-                "clone",
-                "deepEquals",
-                "deepHashCode",
-                "deepToString",
-            )
     }
 }

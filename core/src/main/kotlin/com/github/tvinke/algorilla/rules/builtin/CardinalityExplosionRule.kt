@@ -30,7 +30,7 @@ import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
  * location, because this rule provides a more specific diagnosis
  * (cross-product vs. generic in-loop mutation).
  */
-@Suppress("LargeClass")
+@Suppress("LargeClass") // Cohesive rule: scan + classify + build findings for one anti-pattern
 public class CardinalityExplosionRule : Rule {
     override val id: String = "cardinality-explosion"
     override val name: String = "Cardinality Explosion"
@@ -51,7 +51,7 @@ public class CardinalityExplosionRule : Rule {
             for ((_, group) in mutationGroups) {
                 findings.add(buildGroupedCartesianFinding(group, langOrJava, context.registry))
             }
-            scanFlatMap(fileRoot, findings)
+            scanFlatMap(fileRoot, context.registry.streamEntryMethods(langOrJava), findings)
         }
         return findings
     }
@@ -94,7 +94,7 @@ public class CardinalityExplosionRule : Rule {
         }
     }
 
-    @Suppress("LongMethod")
+    @Suppress("LongMethod") // Multi-step loop-pair classification with partitioned-iteration filtering
     private fun collectCartesianProduct(
         call: FunctionCall,
         loopStack: List<LoopNode>,
@@ -123,21 +123,23 @@ public class CardinalityExplosionRule : Rule {
         outerLoop: LoopNode,
         innerLoop: LoopNode,
         loopStack: List<LoopNode>,
+        filterMethods: Set<String>,
     ): Confidence {
         val outerIdx = loopStack.indexOf(outerLoop)
         val innerIdx = loopStack.indexOf(innerLoop)
         if (innerIdx > outerIdx + 1) return Confidence.MEDIUM
-        if (hasFilterBetween(outerLoop, innerLoop)) return Confidence.MEDIUM
+        if (hasFilterBetween(outerLoop, innerLoop, filterMethods)) return Confidence.MEDIUM
         return Confidence.HIGH
     }
 
     private fun hasFilterBetween(
         outerLoop: LoopNode,
         innerLoop: LoopNode,
+        filterMethods: Set<String>,
     ): Boolean {
         for (child in outerLoop.children) {
             if (child === innerLoop) return false
-            if (child is FunctionCall && child.name in FILTER_METHODS) {
+            if (child is FunctionCall && child.name in filterMethods) {
                 return true
             }
         }
@@ -153,7 +155,7 @@ public class CardinalityExplosionRule : Rule {
      * - Parent-child: `nodes` → `node.getChildren()`
      * - Enum values: `MyEnum.values()` → `type.getSubtypes()`
      */
-    @Suppress("ReturnCount")
+    @Suppress("ReturnCount") // Guard clauses with early returns — clearer than nested if/else
     private fun isPartitionedIteration(
         outerVar: String,
         innerVar: String,
@@ -209,13 +211,13 @@ public class CardinalityExplosionRule : Rule {
         if (innerVar.contains(".") && innerVar.contains("(")) {
             val innerBase = innerVar.substringBefore(".")
             // Only demote if the base is a short variable name (loop element), not a qualified path
-            @Suppress("MagicNumber")
+            @Suppress("MagicNumber") // 30-char threshold distinguishes loop-element names from qualified paths
             if (innerBase.length <= 30 && !innerBase.contains("(")) return Severity.INFO
         }
         return severity
     }
 
-    @Suppress("LongMethod")
+    @Suppress("LongMethod") // Assembles evidence chain, message, and complexity estimate in one place
     private fun buildGroupedCartesianFinding(
         group: MutationGroup,
         language: Language,
@@ -229,7 +231,11 @@ public class CardinalityExplosionRule : Rule {
         val isSameCollection = outerVar == innerVar
 
         val confidence =
-            if (isSameCollection) Confidence.LOW else determineConfidence(outerLoop, innerLoop, group.loopStack)
+            if (isSameCollection) {
+                Confidence.LOW
+            } else {
+                determineConfidence(outerLoop, innerLoop, group.loopStack, registry.filterMethods(language))
+            }
         val effectiveSeverity =
             if (isSameCollection) Severity.INFO else determineEffectiveSeverity(outerVar, innerVar, language, registry)
 
@@ -306,32 +312,36 @@ public class CardinalityExplosionRule : Rule {
 
     private fun scanFlatMap(
         node: IRNode,
+        streamEntryMethods: Set<String>,
         findings: MutableList<Finding>,
     ) {
         if (node is FunctionCall && node.name == "flatMap") {
             val sourceVar = node.qualifiedTarget
-            val innerIteration = findInnerIteration(node.children)
+            val innerIteration = findInnerIteration(node.children, streamEntryMethods)
             if (sourceVar != null && innerIteration != null && sourceVar != innerIteration) {
                 findings.add(buildFlatMapFinding(node, sourceVar, innerIteration))
             }
         }
         for (child in node.children) {
-            scanFlatMap(child, findings)
+            scanFlatMap(child, streamEntryMethods, findings)
         }
     }
 
-    private fun findInnerIteration(children: List<IRNode>): String? {
+    private fun findInnerIteration(
+        children: List<IRNode>,
+        streamEntryMethods: Set<String>,
+    ): String? {
         for (child in children) {
-            if (child is FunctionCall && child.name in STREAM_METHODS) {
+            if (child is FunctionCall && child.name in streamEntryMethods) {
                 return child.qualifiedTarget
             }
-            val found = findInnerIteration(child.children)
+            val found = findInnerIteration(child.children, streamEntryMethods)
             if (found != null) return found
         }
         return null
     }
 
-    @Suppress("LongMethod")
+    @Suppress("LongMethod") // Assembles evidence chain, message, and complexity estimate for flatMap pattern
     private fun buildFlatMapFinding(
         call: FunctionCall,
         sourceVar: String,
@@ -389,23 +399,5 @@ public class CardinalityExplosionRule : Rule {
         // removals, and in-place operations that don't produce Cartesian output
         val nonGrowth = context.registry.nonGrowthMutations(langOrJava)
         return (copyOnModify + context.registry.mutationMethods(langOrJava)) - nonGrowth
-    }
-
-    private companion object {
-        private val FILTER_METHODS =
-            setOf(
-                "filter",
-                "where",
-                "takeIf",
-                "filterNot",
-                "removeIf",
-            )
-        private val STREAM_METHODS =
-            setOf(
-                "stream",
-                "parallelStream",
-                "iterator",
-                "asSequence",
-            )
     }
 }

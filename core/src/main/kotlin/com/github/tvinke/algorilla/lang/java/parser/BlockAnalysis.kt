@@ -49,7 +49,7 @@ public fun processBlockStatements(
  * Handles: direct return/throw, block-last-statement, try-catch (all paths),
  * and if-else (both branches).
  */
-@Suppress("ReturnCount")
+@Suppress("ReturnCount") // Guard clauses with early returns — clearer than nested if/else
 public fun endsWithReturnOrThrow(stmt: JavaParser.StatementContext?): Boolean {
     if (stmt == null) return false
     if (stmt.RETURN() != null || stmt.THROW() != null) return true
@@ -104,9 +104,11 @@ public fun extractLambdaParamNames(ctx: JavaParser.LambdaParametersContext?): Li
     for (id in ctx.identifier()) {
         names.add(id.text)
     }
-    ctx.formalParameterList()?.let { paramList ->
+    val paramList = ctx.formalParameterList()
+    if (paramList != null) {
         for (param in paramList.formalParameter()) {
-            param.variableDeclaratorId()?.text?.let { names.add(it) }
+            val paramName = param.variableDeclaratorId()?.text
+            if (paramName != null) names.add(paramName)
         }
     }
     return names

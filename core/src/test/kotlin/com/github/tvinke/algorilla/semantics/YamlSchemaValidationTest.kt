@@ -80,6 +80,14 @@ internal class YamlSchemaValidationTest {
             "io-target-patterns",
             "getter-excluded-names",
             "non-regex-matches-targets",
+            "implicit-iteration-ops",
+            "hof-methods",
+            "filter-methods",
+            "stream-entry-methods",
+            "object-methods",
+            "reflection-exclusions",
+            "type-check-prefixes",
+            "sequential-read-prefixes",
         )
 
     @ParameterizedTest(name = "language file {0} has no unknown sections")
@@ -201,8 +209,9 @@ internal class YamlSchemaValidationTest {
 
     private fun loadResource(path: String): String {
         val stream =
-            LanguageSemanticsRegistry::class.java.classLoader.getResourceAsStream(path)
-                ?: throw IllegalArgumentException("Resource not found: $path")
+            checkNotNull(LanguageSemanticsRegistry::class.java.classLoader.getResourceAsStream(path)) {
+                "Resource not found: $path"
+            }
         return stream.bufferedReader().readText()
     }
 

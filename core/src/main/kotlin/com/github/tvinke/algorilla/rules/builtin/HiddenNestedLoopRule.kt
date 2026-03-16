@@ -71,7 +71,7 @@ public class HiddenNestedLoopRule : Rule {
         }
     }
 
-    @Suppress("ReturnCount")
+    @Suppress("ReturnCount") // Guard clauses with early returns — clearer than nested if/else
     private fun checkForHiddenLoop(
         call: FunctionCall,
         callerFn: FunctionDecl?,

@@ -98,7 +98,7 @@ public class StringConcatInLoopRule : Rule {
         return lower == "string" || lower == "charsequence" || lower == "stringbuilder" || lower == "stringbuffer"
     }
 
-    @Suppress("LongMethod")
+    @Suppress("LongMethod") // Assembles string-concat finding with copy-cost evidence chain
     private fun buildFinding(
         call: FunctionCall,
         loopStack: List<LoopNode>,

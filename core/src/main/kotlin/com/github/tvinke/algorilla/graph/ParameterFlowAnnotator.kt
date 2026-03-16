@@ -27,7 +27,8 @@ private val logger = KotlinLogging.logger {}
  * variable count as references to the parameter.
  */
 public class ParameterFlowAnnotator(
-    @Suppress("UnusedPrivateProperty") private val symbolTable: SymbolTable,
+    @Suppress("UnusedPrivateProperty") // Reserved for cross-function flow resolution
+    private val symbolTable: SymbolTable,
 ) {
     /**
      * Annotates all [FunctionDecl] nodes in the given IR trees with parameter flows.

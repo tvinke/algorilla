@@ -129,3 +129,5 @@ Add methods to the YAML files in `core/src/main/resources/semantics/`. See exist
 ## Code style
 
 The project uses ktlint and detekt. Run `./gradlew ktlintFormat` to auto-fix formatting issues.
+
+For architectural conventions, design principles, and project-specific patterns, see [CODING_GUIDELINES.md](CODING_GUIDELINES.md).

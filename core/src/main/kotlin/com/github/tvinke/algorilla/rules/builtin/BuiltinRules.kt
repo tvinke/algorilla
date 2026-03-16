@@ -7,7 +7,7 @@ import com.github.tvinke.algorilla.rules.Rule
  * any other entry point that needs the default rule set.
  */
 public object BuiltinRules {
-    @Suppress("LongMethod")
+    @Suppress("LongMethod") // Flat list of all rule instances — grows with each new rule, no logic to split
     public fun all(): List<Rule> =
         listOf(
             NestedLookupRule(),

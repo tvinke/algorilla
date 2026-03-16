@@ -185,7 +185,7 @@ public class TypeEnvironment private constructor(
             return null
         }
 
-        @Suppress("ReturnCount")
+        @Suppress("ReturnCount") // Each return handles a distinct terminal op type (toList, toSet, toArray, collect)
         private fun inferChainEnd(
             varDecl: VariableDecl,
             language: Language,
@@ -222,7 +222,7 @@ public class TypeEnvironment private constructor(
                 else -> null
             }
 
-        @Suppress("CyclomaticComplexMethod")
+        @Suppress("CyclomaticComplexMethod") // When/else dispatch over suffix patterns — each branch maps to a distinct type
         private fun inferFromMethodNameSuffix(varDecl: VariableDecl): InferredType? {
             val call =
                 varDecl.children.filterIsInstance<FunctionCall>().lastOrNull()

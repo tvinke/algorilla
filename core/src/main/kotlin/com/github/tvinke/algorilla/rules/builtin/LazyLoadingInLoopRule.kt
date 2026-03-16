@@ -53,6 +53,7 @@ public class LazyLoadingInLoopRule : Rule {
         return findings
     }
 
+    // Multi-step heuristic: find entity vars → scan loops → check getters; params pre-resolved for perf
     @Suppress("ReturnCount", "UnusedParameter", "LoopWithTooManyJumpStatements", "LongParameterList")
     private fun checkFunction(
         fn: FunctionDecl,
@@ -149,7 +150,7 @@ public class LazyLoadingInLoopRule : Rule {
         return target != loop.iteratedVariable
     }
 
-    @Suppress("LongMethod")
+    @Suppress("LongMethod") // Assembles JPA-specific finding with lazy-load evidence chain
     private fun buildFinding(
         call: FunctionCall,
         loop: LoopNode,

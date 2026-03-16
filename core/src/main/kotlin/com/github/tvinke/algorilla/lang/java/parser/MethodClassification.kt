@@ -15,6 +15,7 @@ import com.github.tvinke.algorilla.model.SortKind
 import com.github.tvinke.algorilla.model.SourceLocation
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 
+// Exhaustive method-name dispatch — each branch is a distinct IR classification
 @Suppress("CyclomaticComplexMethod", "ReturnCount", "LongMethod")
 public fun classifyChainedCall(
     methodName: String,
@@ -122,6 +123,9 @@ public fun classifyStandaloneCall(
     )
 }
 
+// Intentional §2 exception: these universal mappings (contains→CONTAINS etc.) are identical
+// across all languages and won't change. Keeping them as a when gives compiler-optimized
+// dispatch on the hot parse path. Language-specific methods fall through to the registry.
 public fun lookupKindFor(
     methodName: String,
     language: Language = Language.JAVA,

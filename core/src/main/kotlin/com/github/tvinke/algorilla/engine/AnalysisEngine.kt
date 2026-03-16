@@ -14,19 +14,15 @@ import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.FileRoot
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.IRNode
-import com.github.tvinke.algorilla.model.Language
-import com.github.tvinke.algorilla.model.LookupCall
 import com.github.tvinke.algorilla.model.ObjectCreation
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.model.VariableDecl
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
-import com.github.tvinke.algorilla.rules.signatureKey
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import com.github.tvinke.algorilla.util.findDescendants
-import com.github.tvinke.algorilla.util.transform
 import io.github.oshai.kotlinlogging.KotlinLogging
 
 private val logger = KotlinLogging.logger {}
@@ -36,12 +32,13 @@ private val logger = KotlinLogging.logger {}
  * complexity annotation, and rule evaluation. Supports incremental analysis
  * via file content hashing and an on-disk cache.
  */
-@Suppress("LargeClass", "TooManyFunctions") // Pipeline orchestrator — each pass is a method
+@Suppress("LargeClass", "TooManyFunctions") // Pipeline orchestrator — each analysis pass is a method
 public class AnalysisEngine(
     private val parsers: List<LanguageParser>,
     private val rules: List<Rule>,
     private val config: AnalysisConfig,
     private val cache: AnalysisCache? = null,
+    // Reserved for future per-pass logging control
     @Suppress("UNUSED_PARAMETER") verbose: Boolean = false,
     private val registry: LanguageSemanticsRegistry = createRegistry(config),
 ) {
@@ -64,7 +61,7 @@ public class AnalysisEngine(
         logger.info { "Cache: ${sourceFiles.size - filesToParse.size} files unchanged, ${filesToParse.size} to analyze" }
 
         val (parsedTrees, _, errors) = parseFiles(filesToParse)
-        val (irTrees, typeEnvironments) = markScalarLookups(parsedTrees)
+        val (irTrees, typeEnvironments) = markScalarLookups(parsedTrees, registry)
         val symbolTable = rebuildSymbolTable(irTrees)
         val callGraph = buildCallGraph(irTrees, symbolTable)
         annotateRecursion(irTrees)
@@ -163,8 +160,6 @@ public class AnalysisEngine(
             }
         cache.save(entries)
     }
-
-    private fun markScalarLookups(irTrees: Map<String, FileRoot>): MarkScalarLookupsResult = markScalarLookups(irTrees, registry)
 
     private fun parseFiles(sourceFiles: List<String>): ParseResult {
         val irTrees = mutableMapOf<String, FileRoot>()
@@ -282,135 +277,6 @@ public class AnalysisEngine(
     }
 }
 
-/**
- * Demotes findings in vendored/generated code to LOW confidence.
- * Vendored libraries (e.g. Spring's embedded ASM, cglib) produce noise from rules
- * designed for application code. The patterns are technically correct but not actionable.
- */
-internal fun demoteVendoredCode(findings: List<Finding>): List<Finding> =
-    findings.map { finding ->
-        if (isVendoredCode(finding.location.file)) {
-            finding.copy(confidence = Confidence.LOW)
-        } else {
-            finding
-        }
-    }
-
-/** Known vendored/generated package path fragments. */
-private val VENDORED_PATH_PATTERNS =
-    listOf(
-        // Spring Framework vendors ASM and cglib
-        "/asm/",
-        "/cglib/",
-        // Vendored code markers
-        "/internal/shaded/",
-        "/shaded/",
-        "/vendor/",
-        "/thirdparty/",
-        "/repackaged/",
-        // Generated code
-        "/generated/",
-        "/generated-sources/",
-    )
-
-private fun isVendoredCode(filePath: String): Boolean = VENDORED_PATH_PATTERNS.any { filePath.contains(it) }
-
-/**
- * Adjusts confidence per finding based on the rule's declared [Rule.defaultConfidence],
- * type evidence, and language context.
- *
- * The rule's [defaultConfidence] is the baseline. The engine may further adjust:
- * - Demote to LOW when the rule requires type context but the language lacks type declarations.
- * - Cap at MEDIUM for cross-method findings (evidence spanning multiple files).
- * - Demote to LOW for non-HIGH rules in languages without type declarations.
- */
-internal fun adjustConfidence(
-    findings: List<Finding>,
-    fileLanguages: Map<String, Language>,
-    ruleIndex: Map<String, Rule>,
-): List<Finding> =
-    findings.map { finding ->
-        val language = fileLanguages[finding.location.file]
-        val rule = ruleIndex[finding.ruleId]
-        val ceiling = rule?.defaultConfidence ?: Confidence.MEDIUM
-
-        // Step 1: Set baseline from rule's defaultConfidence for MEDIUM findings (promotion/demotion).
-        //         Cap non-MEDIUM findings at the ceiling (prevents LOW rules from emitting HIGH).
-        val baselined =
-            when {
-                finding.confidence == Confidence.MEDIUM -> ceiling
-                finding.confidence.ordinal > ceiling.ordinal -> ceiling
-                else -> finding.confidence
-            }
-
-        // Step 2: Apply language/evidence-based demotions (never promotes).
-        val adjusted = applyDemotions(baselined, finding, language, rule)
-        if (adjusted != finding.confidence) finding.copy(confidence = adjusted) else finding
-    }
-
-/**
- * Applies language and evidence-based demotions. Never promotes — only lowers confidence
- * when the evidence is weaker than the baseline suggests.
- */
-private fun applyDemotions(
-    confidence: Confidence,
-    finding: Finding,
-    language: Language?,
-    rule: Rule?,
-): Confidence {
-    // Demote when rule requires type context but language lacks type declarations
-    val lacksTypes = language != null && !language.hasTypeDeclarations
-    if (lacksTypes && rule?.requiresTypeContext == true) return Confidence.LOW
-
-    // Cross-method findings: cap at MEDIUM (inference across files is less certain)
-    val isCrossMethod = finding.evidence.any { it.location.file != finding.location.file }
-    if (isCrossMethod && confidence.ordinal > Confidence.MEDIUM.ordinal) return Confidence.MEDIUM
-
-    // Languages without type declarations and non-HIGH confidence: demote to LOW
-    if (lacksTypes && confidence != Confidence.HIGH) return Confidence.LOW
-
-    return confidence
-}
-
-/**
- * When two rules flag the same source location for overlapping reasons, keep the
- * more specific one. Rules declare which other rules they subsume via [Rule.subsumes].
- *
- * For each (file, line) group, if rule A fired there and rule B also fired there,
- * and A declares that it subsumes B, then B's finding is dropped.
- */
-internal fun applySubsumption(
-    findings: List<Finding>,
-    rules: List<Rule>,
-): List<Finding> {
-    val subsumptionIndex: Map<String, Set<String>> =
-        rules.filter { it.subsumes.isNotEmpty() }.associate { it.id to it.subsumes }
-    if (subsumptionIndex.isEmpty()) return findings
-
-    data class LocationKey(
-        val file: String,
-        val line: Int,
-    )
-
-    val byLocation = findings.groupBy { LocationKey(it.location.file, it.location.line) }
-    val subsumed = mutableSetOf<Finding>()
-
-    for ((_, group) in byLocation) {
-        if (group.size < 2) continue
-        val ruleIdsPresent = group.map { it.ruleId }.toSet()
-        for (finding in group) {
-            if (finding in subsumed) continue
-            val dominated =
-                subsumptionIndex.entries
-                    .filter { (dominantId, _) -> dominantId in ruleIdsPresent && dominantId != finding.ruleId }
-                    .any { (_, subs) -> finding.ruleId in subs }
-            if (dominated) subsumed.add(finding)
-        }
-    }
-
-    return findings.filter { it !in subsumed }
-}
-
 private data class ParseResult(
     val irTrees: Map<String, FileRoot>,
     val symbolTable: SymbolTable,
@@ -464,114 +330,6 @@ private val findingOrder: Comparator<Finding> =
         .thenBy { it.category?.ordinal ?: Int.MAX_VALUE }
         .thenBy { it.location.file }
         .thenBy { it.location.line }
-
-/**
- * Result of the scalar-lookup marking pass: refined IR trees and per-function type environments.
- */
-public data class MarkScalarLookupsResult(
-    val irTrees: Map<String, FileRoot>,
-    val typeEnvironments: Map<String, TypeEnvironment>,
-)
-
-/**
- * Post-parse pass that refines [LookupCall] nodes based on declared variable types:
- * - Marks as `isScalar = true` when the target type is not a known collection (String, Optional, etc.)
- * - Promotes to `isO1 = true` when the target type is a known O(1) type (Set, Map, etc.)
- *
- * Also builds a [TypeEnvironment] per function, which is returned alongside the refined trees
- * for use by rules during evaluation.
- *
- * Uses both same-file field types and a cross-file field type registry (keyed by declaring class)
- * so that `this.field` references resolve even when the cross-method resolver follows calls
- * into other files.
- */
-public fun markScalarLookups(
-    irTrees: Map<String, FileRoot>,
-    registry: LanguageSemanticsRegistry,
-): MarkScalarLookupsResult {
-    val globalFieldTypes = collectGlobalFieldTypes(irTrees)
-    // Merge all field types across all classes as a fallback for inherited fields.
-    // Precedence: local file > declaring class > any class in scan scope.
-    val allGlobalFields = globalFieldTypes.values.fold(emptyMap<String, String>()) { acc, m -> acc + m }
-    val result = mutableMapOf<String, FileRoot>()
-    val typeEnvs = mutableMapOf<String, TypeEnvironment>()
-    for ((file, fileRoot) in irTrees) {
-        val language = fileRoot.language
-        val localFieldTypes = collectFieldTypes(fileRoot)
-        val transformed =
-            fileRoot.transform { node ->
-                if (node is FunctionDecl) {
-                    val classFields = node.declaringClass?.let { globalFieldTypes[it] } ?: emptyMap()
-                    val mergedFields = allGlobalFields + classFields + localFieldTypes
-                    val typeEnv = TypeEnvironment.build(node, mergedFields, language, registry)
-                    typeEnvs[signatureKey(node)] = typeEnv
-                    markScalarLookupsInFunction(node, language, registry, typeEnv)
-                } else {
-                    node
-                }
-            }
-        result[file] = transformed as FileRoot
-    }
-    return MarkScalarLookupsResult(result, typeEnvs)
-}
-
-/**
- * Builds a cross-file field type registry: className → (fieldName → typeName).
- * For each file, determines the declaring class from FunctionDecl nodes and associates
- * all class-level VariableDecl types with that class.
- */
-private fun collectGlobalFieldTypes(irTrees: Map<String, FileRoot>): Map<String, Map<String, String>> {
-    val global = mutableMapOf<String, MutableMap<String, String>>()
-    for ((_, fileRoot) in irTrees) {
-        val classNames = fileRoot.findDescendants<FunctionDecl>().mapNotNull { it.declaringClass }.toSet()
-        val fieldTypes = collectFieldTypes(fileRoot)
-        for (className in classNames) {
-            global.getOrPut(className) { mutableMapOf() }.putAll(fieldTypes)
-        }
-    }
-    return global
-}
-
-/**
- * Collects type info from class-level field declarations (VariableDecl nodes that are
- * direct children of the FileRoot, not nested inside a FunctionDecl).
- */
-private fun collectFieldTypes(fileRoot: FileRoot): Map<String, String> {
-    val fieldTypes = mutableMapOf<String, String>()
-
-    fun collectFromChildren(children: List<IRNode>) {
-        for (node in children) {
-            if (node is FunctionDecl) continue
-            if (node is VariableDecl && node.typeName != null) {
-                fieldTypes[node.name] = node.typeName
-            }
-            collectFromChildren(node.children)
-        }
-    }
-    collectFromChildren(fileRoot.children)
-    return fieldTypes
-}
-
-private fun markScalarLookupsInFunction(
-    fn: FunctionDecl,
-    language: com.github.tvinke.algorilla.model.Language,
-    registry: LanguageSemanticsRegistry,
-    typeEnv: TypeEnvironment,
-): FunctionDecl =
-    fn.transform { node ->
-        if (node is LookupCall && node.targetVariable != null && !node.isO1) {
-            val varName = node.targetVariable.removePrefix("this.")
-            val type = typeEnv.typeOf(varName)
-            when {
-                type == null -> node
-                registry.isO1Type(language, type.simpleName) -> node.copy(isO1 = true)
-                !registry.isCollectionType(language, type.simpleName) -> node.copy(isScalar = true)
-                else -> node
-            }
-        } else {
-            node
-        }
-    } as FunctionDecl
 
 private fun createRegistry(config: AnalysisConfig): LanguageSemanticsRegistry {
     val base = LanguageSemanticsRegistry.DEFAULT

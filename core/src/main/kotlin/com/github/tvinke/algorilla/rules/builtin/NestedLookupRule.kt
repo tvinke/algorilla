@@ -31,7 +31,7 @@ import com.github.tvinke.algorilla.util.isRecursive
  * When a collection is searched linearly on every iteration, the combined complexity
  * becomes O(n*m) or O(n^2) where O(n) would suffice with a pre-built Set or Map.
  */
-@Suppress("LargeClass")
+@Suppress("LargeClass") // Cohesive rule: scan + classify + build findings for one anti-pattern
 public class NestedLookupRule : Rule {
     override val id: String = "nested-lookup"
     override val name: String = "Nested Lookup"
@@ -118,7 +118,7 @@ public class NestedLookupRule : Rule {
      * the hidden lookup is on the callee's internal data — demote to LOW.
      * When parameter flow proves the loop variable reaches the hidden lookup — HIGH.
      */
-    @Suppress("ReturnCount")
+    @Suppress("ReturnCount") // Guard clauses with early returns — clearer than nested if/else
     private fun crossMethodConfidence(
         call: FunctionCall,
         hiddenLookup: LookupCall,
@@ -162,7 +162,7 @@ public class NestedLookupRule : Rule {
      * 2. The resolved function is itself recursive (processPackage calls processPackage), or
      * 3. Mutual 2-cycle: resolved function calls back to the enclosing function.
      */
-    @Suppress("ReturnCount")
+    @Suppress("ReturnCount") // Guard clauses with early returns — clearer than nested if/else
     private fun isTreeWalkCall(
         call: FunctionCall,
         enclosingFn: FunctionDecl?,
