@@ -113,7 +113,11 @@ public class IOInLoopRule : Rule {
     ) {
         if (node is FunctionCall) {
             val isDefiniteIO = node.name in ioMethods && !isInMemoryTarget(node, language, context.registry)
-            val isCandidateIO = !isDefiniteIO && node.name in ioCandidates && isIOTarget(node, language, context.registry)
+            val isCandidateIO =
+                !isDefiniteIO &&
+                    node.name in ioCandidates &&
+                    !isInMemoryTarget(node, language, context.registry) &&
+                    isIOTarget(node, language, context.registry)
 
             if (isDefiniteIO || isCandidateIO) {
                 findings.add(buildFinding(node, loopStack, hasLoopParamFlow(fn)))

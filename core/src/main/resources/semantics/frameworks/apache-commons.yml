@@ -345,5 +345,4 @@ io-method-candidates:
   - copyLarge
   - write
   - writeLines
-  - close
   - closeQuietly

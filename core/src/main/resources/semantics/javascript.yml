@@ -1388,7 +1388,6 @@ io-method-candidates:
   - get
   - remove
   - send
-  - close
   - find
   - search
 

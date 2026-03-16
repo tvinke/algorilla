@@ -100,6 +100,20 @@ internal class IOInLoopRuleJavaTest {
 
             findings.shouldBeEmpty()
         }
+
+        @Test
+        fun `should not flag close() in loop as IO - it is resource cleanup`() {
+            val findings = analyzeFixture("io-in-loop/regression/close-is-cleanup-not-io.java")
+
+            findings.shouldBeEmpty()
+        }
+
+        @Test
+        fun `should not flag Collection stream() in loop as IO`() {
+            val findings = analyzeFixture("io-in-loop/regression/collection-stream-not-io.java")
+
+            findings.shouldBeEmpty()
+        }
     }
 
     private fun analyzeFixture(fixturePath: String): List<Finding> {

@@ -1256,7 +1256,6 @@ io-method-candidates:
   - load
   - update
   - insert
-  - close
   - send
   - receive
   - find

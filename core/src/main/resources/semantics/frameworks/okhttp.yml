@@ -86,8 +86,6 @@ io-methods:
   - byteStream
   - charStream
   - source
-  - close
   # WebSocket
   - send
-  - close
   - cancel
