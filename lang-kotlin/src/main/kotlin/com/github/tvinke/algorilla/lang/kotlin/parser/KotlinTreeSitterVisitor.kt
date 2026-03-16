@@ -24,7 +24,7 @@ import org.treesitter.TSNode
  * Walks a tree-sitter Kotlin CST and produces IR nodes.
  * Replaces the preprocessor + Java ANTLR grammar approach with a proper Kotlin parser.
  */
-@Suppress("TooManyFunctions", "LargeClass")
+@Suppress("TooManyFunctions", "LargeClass") // Visitor pattern: one visit method per AST node type
 internal class KotlinTreeSitterVisitor(
     private val filePath: String,
     private val source: String,
@@ -210,7 +210,8 @@ internal class KotlinTreeSitterVisitor(
             if (isConstantSizeFactory(targetChildren)) {
                 return targetChildren + argNodes
             }
-            return targetChildren + listOf(LoopNode(kotlinLoop, targetVar, loc, argNodes))
+            val loopKind = refineLoopKind(methodName, targetText, kotlinLoop)
+            return targetChildren + listOf(LoopNode(loopKind, targetVar, loc, argNodes))
         }
 
         if (targetVar != null && targetVar in lambdaParams) {
@@ -521,6 +522,22 @@ private val KNOWN_ITERATION_CANDIDATES =
     )
 
 private fun kotlinLoopKindFor(methodName: String): LoopKind? = if (methodName in iterationMethods) LoopKind.HIGHER_ORDER else null
+
+/**
+ * Refines the loop kind for chained calls like `parallelStream().forEach()` or `stream().forEach()`.
+ * Without this, the Kotlin parser would classify all forEach calls as HIGHER_ORDER,
+ * missing the parallel-stream distinction that rules like ParallelPipelineBottleneckRule need.
+ */
+private fun refineLoopKind(
+    methodName: String,
+    targetText: String,
+    default: LoopKind,
+): LoopKind =
+    when {
+        methodName == "forEach" && targetText.contains(".parallelStream()") -> LoopKind.PARALLEL_STREAM_FOR_EACH
+        methodName == "forEach" && targetText.contains(".stream()") -> LoopKind.STREAM_FOR_EACH
+        else -> default
+    }
 
 /**
  * Kotlin factory calls that produce constant-size collections.
