@@ -35,6 +35,7 @@ public class RepeatedCollectionIterationRule : Rule {
     override val id: String = "repeated-collection-iteration"
     override val name: String = "Repeated Collection Iteration"
     override val severity: Severity = Severity.INFO
+    override val defaultConfidence: Confidence = Confidence.LOW
     override val languages: Set<Language> = Language.entries.toSet()
     override val category: RuleCategory = RuleCategory.REDUNDANCY
 

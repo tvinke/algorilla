@@ -1,5 +1,6 @@
 package com.github.tvinke.algorilla.rules.builtin
 
+import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.IRNode
@@ -27,6 +28,7 @@ public class HeavyweightObjectPerInvocationRule : Rule {
     override val name: String = "Expensive Construction"
     override val aliases: List<String> = listOf("heavyweight-object-per-invocation")
     override val severity: Severity = Severity.INFO
+    override val defaultConfidence: Confidence = Confidence.LOW
     override val languages: Set<Language> = Language.entries.toSet()
     override val category: RuleCategory = RuleCategory.CONSTRUCTION_COST
 
