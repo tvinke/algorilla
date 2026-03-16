@@ -59,27 +59,37 @@ public class NPlusOneRepositoryCallRule : Rule {
         }
 
         if (loopStack.isNotEmpty() && node is FunctionCall) {
-            // Flow-based confidence: loop iterates a confirmed parameter → HIGH
-            val loopParamConfirmed = fn != null && loopIteratesParam(fn)
-            if (isSingleRecordFetch(node, language, context.registry)) {
-                findings.add(buildFinding(node, loopStack, loopParamConfirmed))
-            } else {
-                // Cross-method: check if a helper method internally calls a repository method
-                val maxDepth = context.config.maxCallDepth.coerceAtMost(2)
-                val hiddenFetch =
-                    CrossMethodResolver.resolveAndFind<FunctionCall>(
-                        node,
-                        context.symbolTable,
-                        maxDepth = maxDepth,
-                    ) { isSingleRecordFetch(it, language, context.registry) }
-                if (hiddenFetch != null) {
-                    findings.add(buildCrossMethodFinding(node, hiddenFetch, loopStack))
-                }
-            }
+            checkCallInLoop(node, fn, loopStack, language, context, findings)
         }
 
         for (child in node.children) {
             scanNode(child, fn, loopStack, language, context, findings)
+        }
+    }
+
+    private fun checkCallInLoop(
+        node: FunctionCall,
+        fn: FunctionDecl?,
+        loopStack: List<LoopNode>,
+        language: Language,
+        context: AnalysisContext,
+        findings: MutableList<Finding>,
+    ) {
+        val loopParamConfirmed = fn != null && loopIteratesParam(fn)
+        if (isSingleRecordFetch(node, language, context.registry)) {
+            val targetMatchesRepo = matchesRepoPattern(node.qualifiedTarget, language, context.registry)
+            findings.add(buildFinding(node, loopStack, loopParamConfirmed, targetMatchesRepo))
+        } else {
+            val maxDepth = context.config.maxCallDepth.coerceAtMost(2)
+            val hiddenFetch =
+                CrossMethodResolver.resolveAndFind<FunctionCall>(
+                    node,
+                    context.symbolTable,
+                    maxDepth = maxDepth,
+                ) { isSingleRecordFetch(it, language, context.registry) }
+            if (hiddenFetch != null) {
+                findings.add(buildCrossMethodFinding(node, hiddenFetch, loopStack))
+            }
         }
     }
 
@@ -125,6 +135,7 @@ public class NPlusOneRepositoryCallRule : Rule {
         call: FunctionCall,
         loopStack: List<LoopNode>,
         flowConfirmed: Boolean = false,
+        targetMatchesRepo: Boolean = false,
     ): Finding {
         val outerLoop = loopStack.first()
         val loopVar = outerLoop.iteratedVariable ?: "items"
@@ -140,11 +151,14 @@ public class NPlusOneRepositoryCallRule : Rule {
                     complexity = "IO \u2190 bottleneck",
                 ),
             )
+        // Target matching repository/dao/entityManager naming patterns is strong evidence
+        // of a real N+1 query — promote to HIGH
+        val highConfidence = flowConfirmed || targetMatchesRepo
         return Finding(
             ruleId = id,
             ruleName = name,
             severity = severity,
-            confidence = if (flowConfirmed) Confidence.HIGH else Confidence.MEDIUM,
+            confidence = if (highConfidence) Confidence.HIGH else Confidence.MEDIUM,
             location = call.location,
             message = "Single-record fetch $target.${call.name}() inside ${outerLoop.kind.label()} (N+1)",
             suggestions = listOf(Suggestion.Freeform("Bulk fetch all needed records before the loop, or build an in-memory Map")),
@@ -152,6 +166,25 @@ public class NPlusOneRepositoryCallRule : Rule {
             suggestedComplexity = "O(1 * IO + |$loopVar|)",
             evidence = evidence,
         )
+    }
+}
+
+/**
+ * Returns true if the target variable matches a repository/DAO naming pattern from the
+ * YAML io-target-patterns section (repository, dao, entityManager, mapper, etc.).
+ */
+private fun matchesRepoPattern(
+    target: String?,
+    language: Language,
+    registry: LanguageSemanticsRegistry,
+): Boolean {
+    val t = target?.lowercase() ?: return false
+    return registry.ioTargetPatterns(language).any { pattern ->
+        if (pattern.startsWith("*")) {
+            t.contains(pattern.removePrefix("*"))
+        } else {
+            t.endsWith(pattern) || t == pattern
+        }
     }
 }
 

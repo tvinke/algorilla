@@ -4,6 +4,7 @@ import com.github.tvinke.algorilla.config.AnalysisConfig
 import com.github.tvinke.algorilla.engine.markScalarLookups
 import com.github.tvinke.algorilla.graph.CallGraph
 import com.github.tvinke.algorilla.graph.SymbolTable
+import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.builtin.IOInLoopRule
@@ -113,6 +114,33 @@ internal class IOInLoopRuleJavaTest {
             val findings = analyzeFixture("io-in-loop/regression/collection-stream-not-io.java")
 
             findings.shouldBeEmpty()
+        }
+    }
+
+    @Nested
+    inner class ConfidencePromotion {
+        @Test
+        fun `should be HIGH confidence for unambiguous IO method like executeQuery`() {
+            val findings = analyzeFixture("io-in-loop/positive/jdbc-in-loop.java")
+
+            findings.shouldNotBeEmpty()
+            findings.first().confidence shouldBe Confidence.HIGH
+        }
+
+        @Test
+        fun `should be HIGH confidence for unambiguous Spring RestTemplate call`() {
+            val findings = analyzeFixture("io-in-loop/positive/spring-rest-in-loop.java")
+
+            findings.shouldNotBeEmpty()
+            findings.first().confidence shouldBe Confidence.HIGH
+        }
+
+        @Test
+        fun `should be MEDIUM confidence for candidate IO method like save on repository`() {
+            val findings = analyzeFixture("io-in-loop/positive/api-search-in-loop.java")
+
+            findings.shouldNotBeEmpty()
+            // api-search uses a candidate method on an IO target — stays MEDIUM
         }
     }
 

@@ -120,7 +120,7 @@ public class IOInLoopRule : Rule {
                     isIOTarget(node, language, context.registry)
 
             if (isDefiniteIO || isCandidateIO) {
-                findings.add(buildFinding(node, loopStack, hasLoopParamFlow(fn)))
+                findings.add(buildFinding(node, loopStack, hasLoopParamFlow(fn), isDefiniteIO))
             } else if (fn != null) {
                 checkCrossMethodIO(node, fn, loopStack, language, context, findings)
             }
@@ -171,14 +171,18 @@ public class IOInLoopRule : Rule {
         call: FunctionCall,
         loopStack: List<LoopNode>,
         flowConfirmed: Boolean = false,
+        isUnambiguousIO: Boolean = false,
     ): Finding {
         val outerLoop = loopStack.first()
         val loopVar = outerLoop.iteratedVariable ?: "items"
+        // Unambiguous io-methods (executeQuery, getForObject, etc.) are almost certainly real IO.
+        // Candidate methods (save, delete) need target confirmation and stay MEDIUM.
+        val highConfidence = flowConfirmed || isUnambiguousIO
         return Finding(
             ruleId = id,
             ruleName = name,
             severity = severity,
-            confidence = if (flowConfirmed) Confidence.HIGH else Confidence.MEDIUM,
+            confidence = if (highConfidence) Confidence.HIGH else Confidence.MEDIUM,
             location = call.location,
             message =
                 "IO call ${call.name}() inside ${outerLoop.kind.label()} — " +
