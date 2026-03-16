@@ -17,7 +17,7 @@ public data class ComplexityEstimate(
  * makes it easy to audit, validate, and extend. Custom rules can use the same
  * factory methods or construct [ComplexityEstimate] directly.
  */
-@Suppress("TooManyFunctions")
+@Suppress("TooManyFunctions") // Registry of complexity scoring functions — each method is a one-liner
 public object ComplexityModel {
     // ── Loop amplifiers ──────────────────────────────────────
 

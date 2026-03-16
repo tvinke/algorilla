@@ -27,6 +27,7 @@ import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
 
+// Gradle task API: one property per CLI option
 @Suppress("TooManyFunctions")
 public abstract class AlgorillaTask : DefaultTask() {
     @get:Input

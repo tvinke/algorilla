@@ -27,7 +27,7 @@ import com.github.tvinke.algorilla.util.findDescendants
  *
  * Also follows method references via cross-method resolution to catch indirect patterns.
  */
-@Suppress("LargeClass")
+@Suppress("LargeClass") // Cohesive rule: scan + classify + build findings for one anti-pattern
 public class ExpensiveSortComparatorRule : Rule {
     override val id: String = "expensive-sort-comparator"
     override val name: String = "Expensive Sort Comparator"

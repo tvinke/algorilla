@@ -30,7 +30,8 @@ public class RepeatedReflectionInLoopRule : Rule {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
             val reflectionMethods = context.registry.reflectionMethods(fileRoot.language)
-            scanNode(fileRoot, emptyList(), reflectionMethods, findings)
+            val reflectionExclusions = context.registry.reflectionExclusions(fileRoot.language)
+            scanNode(fileRoot, emptyList(), reflectionMethods, reflectionExclusions, findings)
         }
         return findings
     }
@@ -39,25 +40,26 @@ public class RepeatedReflectionInLoopRule : Rule {
         node: IRNode,
         loopStack: List<LoopNode>,
         reflectionMethods: Set<String>,
+        reflectionExclusions: Set<String>,
         findings: MutableList<Finding>,
     ) {
         if (node is LoopNode) {
             for (child in node.children) {
-                scanNode(child, loopStack + node, reflectionMethods, findings)
+                scanNode(child, loopStack + node, reflectionMethods, reflectionExclusions, findings)
             }
             return
         }
 
-        if (loopStack.isNotEmpty() && node is FunctionCall && isReflectionCall(node, reflectionMethods)) {
+        if (loopStack.isNotEmpty() && node is FunctionCall && isReflectionCall(node, reflectionMethods, reflectionExclusions)) {
             findings.add(buildFinding(node, loopStack))
         }
 
         for (child in node.children) {
-            scanNode(child, loopStack, reflectionMethods, findings)
+            scanNode(child, loopStack, reflectionMethods, reflectionExclusions, findings)
         }
     }
 
-    @Suppress("LongMethod")
+    @Suppress("LongMethod") // Assembles reflection-specific finding with cost evidence
     private fun buildFinding(
         call: FunctionCall,
         loopStack: List<LoopNode>,
@@ -93,10 +95,8 @@ public class RepeatedReflectionInLoopRule : Rule {
     }
 }
 
-/** Methods that are reflection in some languages but common factories in others. */
-private val REFLECTION_EXCLUSIONS = setOf("create", "keys", "values", "entries")
-
 private fun isReflectionCall(
     call: FunctionCall,
     reflectionMethods: Set<String>,
-): Boolean = call.name in reflectionMethods && call.name !in REFLECTION_EXCLUSIONS
+    reflectionExclusions: Set<String>,
+): Boolean = call.name in reflectionMethods && call.name !in reflectionExclusions

@@ -27,7 +27,7 @@ import org.antlr.v4.runtime.ParserRuleContext
  * Visits the ANTLR parse tree (parsed with Java grammar) and produces IR nodes
  * with Groovy-specific method classification (e.g. .each{}, .collect{}, .findAll{}).
  */
-@Suppress("TooManyFunctions", "LargeClass")
+@Suppress("TooManyFunctions", "LargeClass") // Visitor pattern: one visit method per AST node type
 internal class GroovyIRVisitor(
     private val filePath: String,
 ) : JavaParserBaseVisitor<List<IRNode>>() {

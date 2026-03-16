@@ -31,7 +31,7 @@ import com.github.tvinke.algorilla.util.ParameterFlowQuery
  *
  * Both tiers are loaded from YAML per language and framework overlay.
  */
-@Suppress("LargeClass")
+@Suppress("LargeClass") // Cohesive rule: scan + classify + build findings for one anti-pattern
 public class IOInLoopRule : Rule {
     override val id: String = "io-in-loop"
     override val name: String = "IO In Loop"
@@ -75,7 +75,11 @@ public class IOInLoopRule : Rule {
         // Their lambda arguments are executed per-element, just like a loop body.
         // Exception: monadic single-item types (Mono, Uni, Optional, CompletableFuture) —
         // flatMap on these is a 1-to-1 transformation, not iteration over a collection.
-        if (node is FunctionCall && node.name in IMPLICIT_ITERATION_OPS && !isMonadicTarget(node, language, context.registry)) {
+        val isImplicitIteration =
+            node is FunctionCall &&
+                node.name in context.registry.implicitIterationOps(language) &&
+                !isMonadicTarget(node, language, context.registry)
+        if (isImplicitIteration) {
             val syntheticLoop = LoopNode(LoopKind.HIGHER_ORDER, node.qualifiedTarget, node.location, node.children)
             for (child in node.children) {
                 scanNode(child, fn, loopStack + syntheticLoop, ioMethods, ioCandidates, language, context, findings)
@@ -295,9 +299,6 @@ public class IOInLoopRule : Rule {
         )
     }
 }
-
-/** Stream pipeline methods that implicitly iterate — their lambda args run per-element. */
-private val IMPLICIT_ITERATION_OPS = setOf("map", "flatMap", "filter", "peek", "mapToInt", "mapToLong", "mapToDouble")
 
 /** Returns true if this call's target is a monadic single-item type (not a collection). */
 private fun isMonadicTarget(

@@ -1178,3 +1178,56 @@ getter-excluded-names:
   - load_arg
   - load_this
   - getfield
+
+# Stream pipeline methods that implicitly iterate — their lambda/closure args run per-element.
+implicit-iteration-ops:
+  - collect
+  - findAll
+  - inject
+  - each
+  - eachWithIndex
+  - collectEntries
+  - collectMany
+
+# Higher-order function names that take a callback.
+hof-methods:
+  - collect
+  - inject
+  - findAll
+  - each
+  - collectEntries
+
+# Methods that filter/narrow a collection.
+filter-methods:
+  - findAll
+  - grep
+  - removeIf
+
+# Methods that open a stream/iterator pipeline from a collection.
+stream-entry-methods:
+  - stream
+  - iterator
+
+# Standard object methods — recursive by nature in entity hierarchies.
+object-methods:
+  - equals
+  - hashCode
+  - toString
+  - compareTo
+
+# Methods that are reflection in some languages but common factories in others.
+reflection-exclusions:
+  - create
+  - keys
+  - values
+  - entries
+
+# Type-check predicates (is*, has*) — O(1) boolean checks, too cheap to flag.
+type-check-prefixes:
+  - is
+  - has
+
+# Catches read* and next* methods not explicitly listed in sequential-read-methods.
+sequential-read-prefixes:
+  - read
+  - next

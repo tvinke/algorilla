@@ -80,7 +80,7 @@ public class JavaLanguageParser : LanguageParser {
 /**
  * Visits the ANTLR parse tree and produces IR nodes.
  */
-@Suppress("TooManyFunctions", "LargeClass")
+@Suppress("TooManyFunctions", "LargeClass") // Visitor pattern: one visit method per AST node type
 internal class JavaIRVisitor(
     private val filePath: String,
 ) : JavaParserBaseVisitor<List<IRNode>>() {

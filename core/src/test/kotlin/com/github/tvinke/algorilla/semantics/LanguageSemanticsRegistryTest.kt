@@ -14,6 +14,7 @@ import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 
+// Large API surface requires proportionally large test coverage
 @Suppress("LargeClass")
 internal class LanguageSemanticsRegistryTest {
     private val registry = LanguageSemanticsRegistry.DEFAULT

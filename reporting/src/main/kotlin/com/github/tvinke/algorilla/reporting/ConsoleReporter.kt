@@ -13,7 +13,7 @@ import java.util.Locale
  * Formats analysis results for console display, grouped by file with evidence chains,
  * code snippets, and a summary line showing file/language breakdown.
  */
-@Suppress("LargeClass")
+@Suppress("LargeClass") // Console output logic — each section is a method
 public class ConsoleReporter(
     private val color: Boolean = false,
     private val baseDir: String? = null,

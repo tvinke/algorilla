@@ -40,7 +40,9 @@ public class RedundantExpensiveCallRule : Rule {
             val builder = context.registry.builderMethods(language)
             val cheap = context.registry.cheapMethods(language)
             val seqRead = context.registry.sequentialReadMethods(language)
-            val skipSets = SkipSets(trivial, builder, cheap, seqRead)
+            val typeCheckPrefixes = context.registry.typeCheckPrefixes(language)
+            val sequentialReadPrefixes = context.registry.sequentialReadPrefixes(language)
+            val skipSets = SkipSets(trivial, builder, cheap, seqRead, typeCheckPrefixes, sequentialReadPrefixes)
             scanNode(fileRoot, nonDeterministic, skipSets, language, findings)
         }
         return findings
@@ -70,7 +72,7 @@ public class RedundantExpensiveCallRule : Rule {
     ) {
         val callsWithContext = fn.findDescendantsWithBranchContext<FunctionCall>()
         val filtered = callsWithContext.filter { it.first.arguments.isNotEmpty() && !isSideEffectCall(it.first, skipSets, language) }
-        val grouped = filtered.groupBy { callSignature(it.first, nonDeterministic, skipSets.seqRead) }
+        val grouped = filtered.groupBy { callSignature(it.first, nonDeterministic, skipSets.seqRead, skipSets.sequentialReadPrefixes) }
 
         for ((sig, duplicatesWithContext) in grouped) {
             if (sig.isBlank()) continue
@@ -116,6 +118,8 @@ private data class SkipSets(
     val builder: Set<String>,
     val cheap: Set<String>,
     val seqRead: Set<String>,
+    val typeCheckPrefixes: Set<String>,
+    val sequentialReadPrefixes: Set<String>,
 )
 
 /**
@@ -126,9 +130,10 @@ private fun callSignature(
     call: FunctionCall,
     nonDeterministic: Set<String>,
     seqRead: Set<String>,
+    sequentialReadPrefixes: Set<String>,
 ): String {
     val target = call.qualifiedTarget ?: ""
-    val argsKey = call.arguments.joinToString(",") { argFingerprint(it, nonDeterministic, seqRead) }
+    val argsKey = call.arguments.joinToString(",") { argFingerprint(it, nonDeterministic, seqRead, sequentialReadPrefixes) }
     return "$target.${call.name}($argsKey)"
 }
 
@@ -136,19 +141,24 @@ private fun argFingerprint(
     node: IRNode,
     nonDeterministic: Set<String>,
     seqRead: Set<String>,
+    sequentialReadPrefixes: Set<String>,
 ): String =
     when (node) {
         is FunctionCall -> {
             val base = "${node.qualifiedTarget}.${node.name}(${node.arguments.joinToString(
                 ",",
-            ) { argFingerprint(it, nonDeterministic, seqRead) }})"
-            if (containsNonDeterministic(node, nonDeterministic, seqRead)) "$base@${node.location.line}" else base
+            ) { argFingerprint(it, nonDeterministic, seqRead, sequentialReadPrefixes) }})"
+            if (containsNonDeterministic(node, nonDeterministic, seqRead, sequentialReadPrefixes)) "$base@${node.location.line}" else base
         }
         is GenericNode ->
             if (node.children.isEmpty()) {
                 node.nodeType
             } else {
-                "${node.nodeType}[${node.children.joinToString(",") { argFingerprint(it, nonDeterministic, seqRead) }}]"
+                val inner =
+                    node.children.joinToString(",") {
+                        argFingerprint(it, nonDeterministic, seqRead, sequentialReadPrefixes)
+                    }
+                "${node.nodeType}[$inner]"
             }
         else -> "${node::class.simpleName}@${node.location.line}:${node.location.column}"
     }
@@ -157,10 +167,11 @@ private fun containsNonDeterministic(
     call: FunctionCall,
     nonDeterministic: Set<String>,
     seqRead: Set<String>,
+    sequentialReadPrefixes: Set<String>,
 ): Boolean {
     if (call.name in nonDeterministic) return true
-    if (call.name in seqRead || isSequentialReadPrefix(call.name)) return true
-    return call.children.any { it is FunctionCall && containsNonDeterministic(it, nonDeterministic, seqRead) }
+    if (call.name in seqRead || isSequentialReadPrefix(call.name, sequentialReadPrefixes)) return true
+    return call.children.any { it is FunctionCall && containsNonDeterministic(it, nonDeterministic, seqRead, sequentialReadPrefixes) }
 }
 
 private fun isSideEffectCall(
@@ -172,25 +183,25 @@ private fun isSideEffectCall(
         call.name in skipSets.builder ||
         call.name in skipSets.cheap ||
         call.name in skipSets.seqRead ||
-        isSequentialReadPrefix(call.name) ||
-        isTypeCheckPredicate(call.name) ||
+        isSequentialReadPrefix(call.name, skipSets.sequentialReadPrefixes) ||
+        isTypeCheckPredicate(call.name, skipSets.typeCheckPrefixes) ||
         isBytecodeInstruction(call.name) ||
         MethodPurity.isSideEffect(call.name, call.qualifiedTarget, language)
 
-/** Type-check predicates (is*, has*) are O(1) boolean checks — too cheap to flag as redundant. */
-private val TYPE_CHECK_PREFIXES = listOf("is", "has")
-
-private fun isTypeCheckPredicate(name: String): Boolean =
-    TYPE_CHECK_PREFIXES.any { prefix ->
+private fun isTypeCheckPredicate(
+    name: String,
+    typeCheckPrefixes: Set<String>,
+): Boolean =
+    typeCheckPrefixes.any { prefix ->
         name.length > prefix.length &&
             name.startsWith(prefix) &&
             name[prefix.length].isUpperCase()
     }
 
-/** Catches read* and next* methods not explicitly listed in sequential-read-methods. */
-private val SEQUENTIAL_PREFIXES = listOf("read", "next")
-
-private fun isSequentialReadPrefix(name: String): Boolean = SEQUENTIAL_PREFIXES.any { name.length > it.length && name.startsWith(it) }
+private fun isSequentialReadPrefix(
+    name: String,
+    sequentialReadPrefixes: Set<String>,
+): Boolean = sequentialReadPrefixes.any { name.length > it.length && name.startsWith(it) }
 
 /** Underscore-prefixed ALL_CAPS methods are typically bytecode instructions (_ALOAD, _ISTORE). */
 private fun isBytecodeInstruction(name: String): Boolean = name.startsWith("_") && name.all { it == '_' || it.isUpperCase() }

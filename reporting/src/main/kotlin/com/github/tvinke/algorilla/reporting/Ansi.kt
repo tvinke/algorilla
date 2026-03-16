@@ -1,5 +1,6 @@
 package com.github.tvinke.algorilla.reporting
 
+// Registry of ANSI escape helpers — each method is a one-liner
 @Suppress("TooManyFunctions")
 public object Ansi {
     public fun bold(

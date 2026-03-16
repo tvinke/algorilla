@@ -15,41 +15,9 @@ private val logger = KotlinLogging.logger {}
  * This is the single source of truth for method classification. All hardcoded method name sets
  * in the codebase should derive from this registry instead of maintaining their own lists.
  */
-@Suppress("TooManyFunctions", "LongParameterList", "LargeClass")
+@Suppress("TooManyFunctions", "LargeClass") // Registry of query methods — each is a one-liner delegating to LanguageMaps
 public class LanguageSemanticsRegistry private constructor(
-    private val methodsByLanguage: Map<Language, Map<String, MethodSemantics>>,
-    private val heavyweightByLanguage: Map<Language, Set<String>>,
-    private val collectionTypesByLanguage: Map<Language, Set<String>>,
-    private val o1ByLanguage: Map<Language, Set<String>>,
-    private val streamOpsByLanguage: Map<Language, Set<String>>,
-    private val scopeOpsByLanguage: Map<Language, Set<String>>,
-    private val trivialByLanguage: Map<Language, Set<String>>,
-    private val builderByLanguage: Map<Language, Set<String>>,
-    private val getterPrefixesByLanguage: Map<Language, List<String>>,
-    private val cheapByLanguage: Map<Language, Set<String>>,
-    private val sequentialReadByLanguage: Map<Language, Set<String>>,
-    private val reflectionByLanguage: Map<Language, Set<String>>,
-    private val copyOnModifyByLanguage: Map<Language, Set<String>>,
-    private val regexTypesByLanguage: Map<Language, Set<String>>,
-    private val regexRecompilationByLanguage: Map<Language, Set<String>>,
-    private val mutationByLanguage: Map<Language, Set<String>>,
-    private val removalByLanguage: Map<Language, Set<String>>,
-    private val bulkLoadPrefixesByLanguage: Map<Language, List<String>>,
-    private val fullScanByLanguage: Map<Language, Set<String>>,
-    private val ioByLanguage: Map<Language, Set<String>>,
-    private val o1FactoryByLanguage: Map<Language, Set<String>>,
-    private val memoizationByLanguage: Map<Language, Set<String>>,
-    private val treeTraversalByLanguage: Map<Language, Set<String>>,
-    private val visitedSetNamesByLanguage: Map<Language, Set<String>>,
-    private val purePrefixesByLanguage: Map<Language, List<String>>,
-    private val sideEffectPrefixesByLanguage: Map<Language, List<String>>,
-    private val sideEffectTargetsByLanguage: Map<Language, List<String>>,
-    private val stringIndicatorsByLanguage: Map<Language, Set<String>>,
-    private val stringNameSuffixesByLanguage: Map<Language, Set<String>>,
-    private val stringExactNamesByLanguage: Map<Language, Set<String>>,
-    private val monadicTypesByLanguage: Map<Language, Set<String>>,
-    private val monadicVarNamesByLanguage: Map<Language, Set<String>>,
-    private val extrasByLanguage: Map<Language, Map<String, Set<String>>> = emptyMap(),
+    private val maps: LanguageMaps,
 ) {
     /**
      * Classifies a method name for the given language.
@@ -60,7 +28,7 @@ public class LanguageSemanticsRegistry private constructor(
         methodName: String,
     ): MethodSemantics? {
         val resolved = resolveLanguage(language)
-        return methodsByLanguage[resolved]?.get(methodName)
+        return maps.methods[resolved]?.get(methodName)
     }
 
     /**
@@ -71,7 +39,7 @@ public class LanguageSemanticsRegistry private constructor(
         typeName: String,
     ): Boolean {
         val resolved = resolveLanguage(language)
-        return heavyweightByLanguage[resolved]?.any { typeName.contains(it) } == true
+        return maps.heavyweight[resolved]?.any { typeName.contains(it) } == true
     }
 
     /**
@@ -79,7 +47,7 @@ public class LanguageSemanticsRegistry private constructor(
      */
     public fun heavyweightTypes(language: Language): Set<String> {
         val resolved = resolveLanguage(language)
-        return heavyweightByLanguage[resolved] ?: emptySet()
+        return maps.heavyweight[resolved] ?: emptySet()
     }
 
     /**
@@ -91,14 +59,14 @@ public class LanguageSemanticsRegistry private constructor(
         typeName: String,
     ): Boolean {
         val resolved = resolveLanguage(language)
-        return collectionTypesByLanguage[resolved]?.any { typeName.contains(it) } == true ||
-            o1ByLanguage[resolved]?.any { typeName.contains(it) } == true
+        return maps.collectionTypes[resolved]?.any { typeName.contains(it) } == true ||
+            maps.o1[resolved]?.any { typeName.contains(it) } == true
     }
 
     /**
      * Returns true if the given type name indicates an O(1) lookup type.
      */
-    public fun isO1Type(typeName: String): Boolean = o1ByLanguage.values.any { types -> types.any { typeName.contains(it) } }
+    public fun isO1Type(typeName: String): Boolean = maps.o1.values.any { types -> types.any { typeName.contains(it) } }
 
     /**
      * Returns true if the given type name indicates an O(1) lookup type for the language.
@@ -108,7 +76,7 @@ public class LanguageSemanticsRegistry private constructor(
         typeName: String,
     ): Boolean {
         val resolved = resolveLanguage(language)
-        return o1ByLanguage[resolved]?.any { typeName.contains(it) } == true
+        return maps.o1[resolved]?.any { typeName.contains(it) } == true
     }
 
     /**
@@ -123,9 +91,9 @@ public class LanguageSemanticsRegistry private constructor(
         methodName: String,
     ): Boolean {
         val resolved = resolveLanguage(language)
-        if (streamOpsByLanguage[resolved]?.contains(methodName) == true) return true
-        if (scopeOpsByLanguage[resolved]?.contains(methodName) == true) return true
-        return methodsByLanguage[resolved]?.containsKey(methodName) == true
+        if (maps.streamOps[resolved]?.contains(methodName) == true) return true
+        if (maps.scopeOps[resolved]?.contains(methodName) == true) return true
+        return maps.methods[resolved]?.containsKey(methodName) == true
     }
 
     /**
@@ -134,9 +102,9 @@ public class LanguageSemanticsRegistry private constructor(
     public fun streamOps(language: Language): Set<String> {
         val resolved = resolveLanguage(language)
         val result = mutableSetOf<String>()
-        streamOpsByLanguage[resolved]?.let { result.addAll(it) }
-        scopeOpsByLanguage[resolved]?.let { result.addAll(it) }
-        methodsByLanguage[resolved]?.keys?.let { result.addAll(it) }
+        maps.streamOps[resolved]?.let { result.addAll(it) }
+        maps.scopeOps[resolved]?.let { result.addAll(it) }
+        maps.methods[resolved]?.keys?.let { result.addAll(it) }
         return result
     }
 
@@ -153,7 +121,7 @@ public class LanguageSemanticsRegistry private constructor(
         methodName: String,
     ): Boolean {
         val resolved = resolveLanguage(language)
-        return trivialByLanguage[resolved]?.contains(methodName) == true
+        return maps.trivial[resolved]?.contains(methodName) == true
     }
 
     /**
@@ -161,7 +129,7 @@ public class LanguageSemanticsRegistry private constructor(
      */
     public fun trivialMethods(language: Language): Set<String> {
         val resolved = resolveLanguage(language)
-        return trivialByLanguage[resolved] ?: emptySet()
+        return maps.trivial[resolved] ?: emptySet()
     }
 
     /**
@@ -172,7 +140,7 @@ public class LanguageSemanticsRegistry private constructor(
         methodName: String,
     ): Boolean {
         val resolved = resolveLanguage(language)
-        return builderByLanguage[resolved]?.contains(methodName) == true
+        return maps.builder[resolved]?.contains(methodName) == true
     }
 
     /**
@@ -180,7 +148,7 @@ public class LanguageSemanticsRegistry private constructor(
      */
     public fun builderMethods(language: Language): Set<String> {
         val resolved = resolveLanguage(language)
-        return builderByLanguage[resolved] ?: emptySet()
+        return maps.builder[resolved] ?: emptySet()
     }
 
     /**
@@ -191,7 +159,7 @@ public class LanguageSemanticsRegistry private constructor(
         methodName: String,
     ): Boolean {
         val resolved = resolveLanguage(language)
-        return methodsByLanguage[resolved]?.get(methodName)?.isImplicitlyO1 == true
+        return maps.methods[resolved]?.get(methodName)?.isImplicitlyO1 == true
     }
 
     /**
@@ -199,7 +167,7 @@ public class LanguageSemanticsRegistry private constructor(
      */
     public fun implicitlyO1Methods(language: Language): Set<String> {
         val resolved = resolveLanguage(language)
-        return methodsByLanguage[resolved]
+        return maps.methods[resolved]
             ?.filter { it.value.isImplicitlyO1 }
             ?.keys ?: emptySet()
     }
@@ -209,7 +177,7 @@ public class LanguageSemanticsRegistry private constructor(
      */
     public fun getterPrefixes(language: Language): List<String> {
         val resolved = resolveLanguage(language)
-        return getterPrefixesByLanguage[resolved] ?: emptyList()
+        return maps.getterPrefixes[resolved] ?: emptyList()
     }
 
     /**
@@ -220,7 +188,7 @@ public class LanguageSemanticsRegistry private constructor(
         methodName: String,
     ): Boolean {
         val resolved = resolveLanguage(language)
-        return cheapByLanguage[resolved]?.contains(methodName) == true
+        return maps.cheap[resolved]?.contains(methodName) == true
     }
 
     /**
@@ -228,7 +196,7 @@ public class LanguageSemanticsRegistry private constructor(
      */
     public fun cheapMethods(language: Language): Set<String> {
         val resolved = resolveLanguage(language)
-        return cheapByLanguage[resolved] ?: emptySet()
+        return maps.cheap[resolved] ?: emptySet()
     }
 
     /**
@@ -239,7 +207,7 @@ public class LanguageSemanticsRegistry private constructor(
         methodName: String,
     ): Boolean {
         val resolved = resolveLanguage(language)
-        return sequentialReadByLanguage[resolved]?.contains(methodName) == true
+        return maps.sequentialRead[resolved]?.contains(methodName) == true
     }
 
     /**
@@ -247,7 +215,7 @@ public class LanguageSemanticsRegistry private constructor(
      */
     public fun sequentialReadMethods(language: Language): Set<String> {
         val resolved = resolveLanguage(language)
-        return sequentialReadByLanguage[resolved] ?: emptySet()
+        return maps.sequentialRead[resolved] ?: emptySet()
     }
 
     /**
@@ -255,7 +223,7 @@ public class LanguageSemanticsRegistry private constructor(
      */
     public fun reflectionMethods(language: Language): Set<String> {
         val resolved = resolveLanguage(language)
-        return reflectionByLanguage[resolved] ?: emptySet()
+        return maps.reflection[resolved] ?: emptySet()
     }
 
     /**
@@ -263,7 +231,7 @@ public class LanguageSemanticsRegistry private constructor(
      */
     public fun copyOnModifyMethodsFor(language: Language): Set<String> {
         val resolved = resolveLanguage(language)
-        return copyOnModifyByLanguage[resolved] ?: emptySet()
+        return maps.copyOnModify[resolved] ?: emptySet()
     }
 
     /**
@@ -271,7 +239,7 @@ public class LanguageSemanticsRegistry private constructor(
      */
     public fun regexTypes(language: Language): Set<String> {
         val resolved = resolveLanguage(language)
-        return regexTypesByLanguage[resolved] ?: emptySet()
+        return maps.regexTypes[resolved] ?: emptySet()
     }
 
     /**
@@ -279,7 +247,7 @@ public class LanguageSemanticsRegistry private constructor(
      */
     public fun regexRecompilationMethods(language: Language): Set<String> {
         val resolved = resolveLanguage(language)
-        return regexRecompilationByLanguage[resolved] ?: emptySet()
+        return maps.regexRecompilation[resolved] ?: emptySet()
     }
 
     /**
@@ -287,7 +255,7 @@ public class LanguageSemanticsRegistry private constructor(
      */
     public fun mutationMethods(language: Language): Set<String> {
         val resolved = resolveLanguage(language)
-        return mutationByLanguage[resolved] ?: emptySet()
+        return maps.mutation[resolved] ?: emptySet()
     }
 
     /**
@@ -295,12 +263,12 @@ public class LanguageSemanticsRegistry private constructor(
      */
     public fun removalMethods(language: Language): Set<String> {
         val resolved = resolveLanguage(language)
-        return removalByLanguage[resolved] ?: emptySet()
+        return maps.removal[resolved] ?: emptySet()
     }
 
     public fun bulkLoadPrefixes(language: Language): List<String> {
         val resolved = resolveLanguage(language)
-        return bulkLoadPrefixesByLanguage[resolved] ?: emptyList()
+        return maps.bulkLoadPrefixes[resolved] ?: emptyList()
     }
 
     /**
@@ -309,7 +277,7 @@ public class LanguageSemanticsRegistry private constructor(
      */
     public fun fullScanMethods(language: Language): Set<String> {
         val resolved = resolveLanguage(language)
-        return fullScanByLanguage[resolved] ?: emptySet()
+        return maps.fullScan[resolved] ?: emptySet()
     }
 
     /**
@@ -318,7 +286,7 @@ public class LanguageSemanticsRegistry private constructor(
      */
     public fun ioMethods(language: Language): Set<String> {
         val resolved = resolveLanguage(language)
-        return ioByLanguage[resolved] ?: emptySet()
+        return maps.io[resolved] ?: emptySet()
     }
 
     /**
@@ -330,7 +298,7 @@ public class LanguageSemanticsRegistry private constructor(
         methodName: String,
     ): Boolean {
         val resolved = resolveLanguage(language)
-        return o1FactoryByLanguage[resolved]?.contains(methodName) == true
+        return maps.o1Factory[resolved]?.contains(methodName) == true
     }
 
     /**
@@ -341,7 +309,7 @@ public class LanguageSemanticsRegistry private constructor(
         methodName: String,
     ): Boolean {
         val resolved = resolveLanguage(language)
-        return memoizationByLanguage[resolved]?.contains(methodName) == true
+        return maps.memoization[resolved]?.contains(methodName) == true
     }
 
     /**
@@ -352,7 +320,7 @@ public class LanguageSemanticsRegistry private constructor(
         accessorName: String,
     ): Boolean {
         val resolved = resolveLanguage(language)
-        return treeTraversalByLanguage[resolved]?.contains(accessorName) == true
+        return maps.treeTraversal[resolved]?.contains(accessorName) == true
     }
 
     /**
@@ -363,7 +331,7 @@ public class LanguageSemanticsRegistry private constructor(
         name: String,
     ): Boolean {
         val resolved = resolveLanguage(language)
-        return visitedSetNamesByLanguage[resolved]?.contains(name.lowercase()) == true
+        return maps.visitedSetNames[resolved]?.contains(name.lowercase()) == true
     }
 
     // --- Purity classification ---
@@ -373,7 +341,7 @@ public class LanguageSemanticsRegistry private constructor(
      */
     public fun purePrefixes(language: Language): List<String> {
         val resolved = resolveLanguage(language)
-        return purePrefixesByLanguage[resolved] ?: emptyList()
+        return maps.purePrefixes[resolved] ?: emptyList()
     }
 
     /**
@@ -381,7 +349,7 @@ public class LanguageSemanticsRegistry private constructor(
      */
     public fun sideEffectPrefixes(language: Language): List<String> {
         val resolved = resolveLanguage(language)
-        return sideEffectPrefixesByLanguage[resolved] ?: emptyList()
+        return maps.sideEffectPrefixes[resolved] ?: emptyList()
     }
 
     /**
@@ -389,7 +357,7 @@ public class LanguageSemanticsRegistry private constructor(
      */
     public fun sideEffectTargets(language: Language): List<String> {
         val resolved = resolveLanguage(language)
-        return sideEffectTargetsByLanguage[resolved] ?: emptyList()
+        return maps.sideEffectTargets[resolved] ?: emptyList()
     }
 
     // --- String detection ---
@@ -399,7 +367,7 @@ public class LanguageSemanticsRegistry private constructor(
      */
     public fun stringIndicators(language: Language): Set<String> {
         val resolved = resolveLanguage(language)
-        return stringIndicatorsByLanguage[resolved] ?: emptySet()
+        return maps.stringIndicators[resolved] ?: emptySet()
     }
 
     /**
@@ -407,7 +375,7 @@ public class LanguageSemanticsRegistry private constructor(
      */
     public fun stringNameSuffixes(language: Language): Set<String> {
         val resolved = resolveLanguage(language)
-        return stringNameSuffixesByLanguage[resolved] ?: emptySet()
+        return maps.stringNameSuffixes[resolved] ?: emptySet()
     }
 
     /**
@@ -415,7 +383,7 @@ public class LanguageSemanticsRegistry private constructor(
      */
     public fun stringExactNames(language: Language): Set<String> {
         val resolved = resolveLanguage(language)
-        return stringExactNamesByLanguage[resolved] ?: emptySet()
+        return maps.stringExactNames[resolved] ?: emptySet()
     }
 
     // --- Monadic type detection ---
@@ -425,8 +393,14 @@ public class LanguageSemanticsRegistry private constructor(
      * across all languages.
      */
     public fun isMonadicTarget(targetText: String): Boolean {
-        val allTypes = monadicTypesByLanguage.values.flatten().toSet()
-        val allVarNames = monadicVarNamesByLanguage.values.flatten().toSet()
+        val allTypes =
+            maps.monadicTypes.values
+                .flatten()
+                .toSet()
+        val allVarNames =
+            maps.monadicVarNames.values
+                .flatten()
+                .toSet()
         return allTypes.any { targetText.contains(it) } ||
             matchesCamelCasePrefix(extractBaseVarName(targetText), allVarNames) ||
             extractBaseVarName(targetText) in allVarNames
@@ -441,8 +415,8 @@ public class LanguageSemanticsRegistry private constructor(
         targetText: String,
     ): Boolean {
         val resolved = resolveLanguage(language)
-        val types = monadicTypesByLanguage[resolved] ?: emptySet()
-        val varNames = monadicVarNamesByLanguage[resolved] ?: emptySet()
+        val types = maps.monadicTypes[resolved] ?: emptySet()
+        val varNames = maps.monadicVarNames[resolved] ?: emptySet()
         return types.any { targetText.contains(it) } ||
             matchesCamelCasePrefix(extractBaseVarName(targetText), varNames) ||
             extractBaseVarName(targetText) in varNames
@@ -454,7 +428,7 @@ public class LanguageSemanticsRegistry private constructor(
         key: String,
     ): Set<String> {
         val resolved = resolveLanguage(language)
-        return extrasByLanguage[resolved]?.get(key) ?: emptySet()
+        return maps.extras[resolved]?.get(key) ?: emptySet()
     }
 
     // ── Rule-specific convenience methods (all delegate to extraSection) ──
@@ -517,6 +491,22 @@ public class LanguageSemanticsRegistry private constructor(
 
     public fun nonRegexMatchesTargets(language: Language): Set<String> = extraSection(language, "non-regex-matches-targets")
 
+    public fun implicitIterationOps(language: Language): Set<String> = extraSection(language, "implicit-iteration-ops")
+
+    public fun hofMethods(language: Language): Set<String> = extraSection(language, "hof-methods")
+
+    public fun filterMethods(language: Language): Set<String> = extraSection(language, "filter-methods")
+
+    public fun streamEntryMethods(language: Language): Set<String> = extraSection(language, "stream-entry-methods")
+
+    public fun objectMethods(language: Language): Set<String> = extraSection(language, "object-methods")
+
+    public fun reflectionExclusions(language: Language): Set<String> = extraSection(language, "reflection-exclusions")
+
+    public fun typeCheckPrefixes(language: Language): Set<String> = extraSection(language, "type-check-prefixes")
+
+    public fun sequentialReadPrefixes(language: Language): Set<String> = extraSection(language, "sequential-read-prefixes")
+
     /**
      * Looks up a method's [LookupKind] for a specific language.
      * Returns null if the method has no lookup classification in that language.
@@ -526,7 +516,7 @@ public class LanguageSemanticsRegistry private constructor(
         language: Language,
     ): LookupKind? {
         val resolved = resolveLanguage(language)
-        return methodsByLanguage[resolved]
+        return maps.methods[resolved]
             ?.get(methodName)
             ?.takeIf { it.category == SemanticCategory.LOOKUP }
             ?.lookupKind
@@ -541,7 +531,7 @@ public class LanguageSemanticsRegistry private constructor(
         language: Language,
     ): SortKind? {
         val resolved = resolveLanguage(language)
-        return methodsByLanguage[resolved]
+        return maps.methods[resolved]
             ?.get(methodName)
             ?.takeIf { it.category == SemanticCategory.SORT }
             ?.sortKind
@@ -556,7 +546,7 @@ public class LanguageSemanticsRegistry private constructor(
         language: Language,
     ): AccessKind? {
         val resolved = resolveLanguage(language)
-        return methodsByLanguage[resolved]
+        return maps.methods[resolved]
             ?.get(methodName)
             ?.takeIf { it.category == SemanticCategory.ACCESS }
             ?.accessKind
@@ -585,7 +575,6 @@ public class LanguageSemanticsRegistry private constructor(
         /**
          * Loads the default registry from classpath YAML resources.
          */
-        @Suppress("LongMethod")
         public fun loadDefaults(): LanguageSemanticsRegistry {
             val maps = LanguageMaps()
 
@@ -602,41 +591,7 @@ public class LanguageSemanticsRegistry private constructor(
                     if (frameworkCount > 0) " ($frameworkCount framework overlays)" else ""
             }
 
-            return LanguageSemanticsRegistry(
-                maps.methods,
-                maps.heavyweight,
-                maps.collectionTypes,
-                maps.o1,
-                maps.streamOps,
-                maps.scopeOps,
-                maps.trivial,
-                maps.builder,
-                maps.getterPrefixes,
-                maps.cheap,
-                maps.sequentialRead,
-                maps.reflection,
-                maps.copyOnModify,
-                maps.regexTypes,
-                maps.regexRecompilation,
-                maps.mutation,
-                maps.removal,
-                maps.bulkLoadPrefixes,
-                maps.fullScan,
-                maps.io,
-                maps.o1Factory,
-                maps.memoization,
-                maps.treeTraversal,
-                maps.visitedSetNames,
-                maps.purePrefixes,
-                maps.sideEffectPrefixes,
-                maps.sideEffectTargets,
-                maps.stringIndicators,
-                maps.stringNameSuffixes,
-                maps.stringExactNames,
-                maps.monadicTypes,
-                maps.monadicVarNames,
-                maps.extras,
-            )
+            return LanguageSemanticsRegistry(maps)
         }
 
         private fun mergeFrameworkOverlays(maps: LanguageMaps): Int {
@@ -667,57 +622,21 @@ public class LanguageSemanticsRegistry private constructor(
         /**
          * Returns a registry merged with user-provided overrides.
          */
-        @Suppress("LongMethod")
         public fun withOverrides(
             base: LanguageSemanticsRegistry,
             userHeavyweightTypes: Set<String>,
         ): LanguageSemanticsRegistry {
             if (userHeavyweightTypes.isEmpty()) return base
-            val merged = base.heavyweightByLanguage.toMutableMap()
-            for (lang in merged.keys) {
-                merged[lang] = merged[lang]!! + userHeavyweightTypes
+            val newMaps = base.maps.copy()
+            for (lang in newMaps.heavyweight.keys) {
+                newMaps.heavyweight[lang] = newMaps.heavyweight[lang]!! + userHeavyweightTypes
             }
-            // Also add to all languages that don't have an entry yet
             for (lang in Language.entries) {
-                if (lang !in merged) {
-                    merged[lang] = userHeavyweightTypes
+                if (lang !in newMaps.heavyweight) {
+                    newMaps.heavyweight[lang] = userHeavyweightTypes
                 }
             }
-            return LanguageSemanticsRegistry(
-                methodsByLanguage = base.methodsByLanguage,
-                heavyweightByLanguage = merged,
-                collectionTypesByLanguage = base.collectionTypesByLanguage,
-                o1ByLanguage = base.o1ByLanguage,
-                streamOpsByLanguage = base.streamOpsByLanguage,
-                scopeOpsByLanguage = base.scopeOpsByLanguage,
-                trivialByLanguage = base.trivialByLanguage,
-                builderByLanguage = base.builderByLanguage,
-                getterPrefixesByLanguage = base.getterPrefixesByLanguage,
-                cheapByLanguage = base.cheapByLanguage,
-                sequentialReadByLanguage = base.sequentialReadByLanguage,
-                reflectionByLanguage = base.reflectionByLanguage,
-                copyOnModifyByLanguage = base.copyOnModifyByLanguage,
-                regexTypesByLanguage = base.regexTypesByLanguage,
-                regexRecompilationByLanguage = base.regexRecompilationByLanguage,
-                mutationByLanguage = base.mutationByLanguage,
-                removalByLanguage = base.removalByLanguage,
-                bulkLoadPrefixesByLanguage = base.bulkLoadPrefixesByLanguage,
-                fullScanByLanguage = base.fullScanByLanguage,
-                ioByLanguage = base.ioByLanguage,
-                o1FactoryByLanguage = base.o1FactoryByLanguage,
-                memoizationByLanguage = base.memoizationByLanguage,
-                treeTraversalByLanguage = base.treeTraversalByLanguage,
-                visitedSetNamesByLanguage = base.visitedSetNamesByLanguage,
-                purePrefixesByLanguage = base.purePrefixesByLanguage,
-                sideEffectPrefixesByLanguage = base.sideEffectPrefixesByLanguage,
-                sideEffectTargetsByLanguage = base.sideEffectTargetsByLanguage,
-                stringIndicatorsByLanguage = base.stringIndicatorsByLanguage,
-                stringNameSuffixesByLanguage = base.stringNameSuffixesByLanguage,
-                stringExactNamesByLanguage = base.stringExactNamesByLanguage,
-                monadicTypesByLanguage = base.monadicTypesByLanguage,
-                monadicVarNamesByLanguage = base.monadicVarNamesByLanguage,
-                extrasByLanguage = base.extrasByLanguage,
-            )
+            return LanguageSemanticsRegistry(newMaps)
         }
 
         private fun loadResource(path: String): String? {
@@ -730,341 +649,6 @@ public class LanguageSemanticsRegistry private constructor(
         }
     }
 }
-
-@Suppress("LongParameterList")
-internal class LanguageMaps(
-    val methods: MutableMap<Language, Map<String, MethodSemantics>> = mutableMapOf(),
-    val heavyweight: MutableMap<Language, Set<String>> = mutableMapOf(),
-    val collectionTypes: MutableMap<Language, Set<String>> = mutableMapOf(),
-    val o1: MutableMap<Language, Set<String>> = mutableMapOf(),
-    val streamOps: MutableMap<Language, Set<String>> = mutableMapOf(),
-    val scopeOps: MutableMap<Language, Set<String>> = mutableMapOf(),
-    val trivial: MutableMap<Language, Set<String>> = mutableMapOf(),
-    val builder: MutableMap<Language, Set<String>> = mutableMapOf(),
-    val getterPrefixes: MutableMap<Language, List<String>> = mutableMapOf(),
-    val cheap: MutableMap<Language, Set<String>> = mutableMapOf(),
-    val sequentialRead: MutableMap<Language, Set<String>> = mutableMapOf(),
-    val reflection: MutableMap<Language, Set<String>> = mutableMapOf(),
-    val copyOnModify: MutableMap<Language, Set<String>> = mutableMapOf(),
-    val regexTypes: MutableMap<Language, Set<String>> = mutableMapOf(),
-    val regexRecompilation: MutableMap<Language, Set<String>> = mutableMapOf(),
-    val mutation: MutableMap<Language, Set<String>> = mutableMapOf(),
-    val removal: MutableMap<Language, Set<String>> = mutableMapOf(),
-    val bulkLoadPrefixes: MutableMap<Language, List<String>> = mutableMapOf(),
-    val fullScan: MutableMap<Language, Set<String>> = mutableMapOf(),
-    val io: MutableMap<Language, Set<String>> = mutableMapOf(),
-    val o1Factory: MutableMap<Language, Set<String>> = mutableMapOf(),
-    val memoization: MutableMap<Language, Set<String>> = mutableMapOf(),
-    val treeTraversal: MutableMap<Language, Set<String>> = mutableMapOf(),
-    val visitedSetNames: MutableMap<Language, Set<String>> = mutableMapOf(),
-    val purePrefixes: MutableMap<Language, List<String>> = mutableMapOf(),
-    val sideEffectPrefixes: MutableMap<Language, List<String>> = mutableMapOf(),
-    val sideEffectTargets: MutableMap<Language, List<String>> = mutableMapOf(),
-    val stringIndicators: MutableMap<Language, Set<String>> = mutableMapOf(),
-    val stringNameSuffixes: MutableMap<Language, Set<String>> = mutableMapOf(),
-    val stringExactNames: MutableMap<Language, Set<String>> = mutableMapOf(),
-    val monadicTypes: MutableMap<Language, Set<String>> = mutableMapOf(),
-    val monadicVarNames: MutableMap<Language, Set<String>> = mutableMapOf(),
-    val extras: MutableMap<Language, MutableMap<String, Set<String>>> = mutableMapOf(),
-) {
-    @Suppress("CyclomaticComplexMethod", "LongMethod")
-    fun merge(
-        lang: Language,
-        parsed: ParsedYaml,
-    ) {
-        methods[lang] = (methods[lang] ?: emptyMap()) + parsed.methods
-        heavyweight[lang] = (heavyweight[lang] ?: emptySet()) + parsed.heavyweightTypes
-        collectionTypes[lang] = (collectionTypes[lang] ?: emptySet()) + parsed.collectionTypes
-        o1[lang] = (o1[lang] ?: emptySet()) + parsed.o1Types
-        streamOps[lang] = (streamOps[lang] ?: emptySet()) + parsed.streamOps
-        scopeOps[lang] = (scopeOps[lang] ?: emptySet()) + parsed.scopeOps
-        trivial[lang] = (trivial[lang] ?: emptySet()) + parsed.trivialMethods
-        builder[lang] = (builder[lang] ?: emptySet()) + parsed.builderMethods
-        getterPrefixes[lang] = ((getterPrefixes[lang] ?: emptyList()) + parsed.getterPrefixes).distinct()
-        cheap[lang] = (cheap[lang] ?: emptySet()) + parsed.cheapMethods
-        sequentialRead[lang] = (sequentialRead[lang] ?: emptySet()) + parsed.sequentialReadMethods
-        reflection[lang] = (reflection[lang] ?: emptySet()) + parsed.reflectionMethods
-        copyOnModify[lang] = (copyOnModify[lang] ?: emptySet()) + parsed.copyOnModifyMethods
-        regexTypes[lang] = (regexTypes[lang] ?: emptySet()) + parsed.regexTypes
-        regexRecompilation[lang] = (regexRecompilation[lang] ?: emptySet()) + parsed.regexRecompilationMethods
-        mutation[lang] = (mutation[lang] ?: emptySet()) + parsed.mutationMethods
-        removal[lang] = (removal[lang] ?: emptySet()) + parsed.removalMethods
-        bulkLoadPrefixes[lang] = ((bulkLoadPrefixes[lang] ?: emptyList()) + parsed.bulkLoadPrefixes).distinct()
-        fullScan[lang] = (fullScan[lang] ?: emptySet()) + parsed.fullScanMethods
-        io[lang] = (io[lang] ?: emptySet()) + parsed.ioMethods
-        o1Factory[lang] = (o1Factory[lang] ?: emptySet()) + parsed.o1FactoryMethods
-        memoization[lang] = (memoization[lang] ?: emptySet()) + parsed.memoizationMethods
-        treeTraversal[lang] = (treeTraversal[lang] ?: emptySet()) + parsed.treeTraversalAccessors
-        visitedSetNames[lang] = (visitedSetNames[lang] ?: emptySet()) + parsed.visitedSetNames
-        purePrefixes[lang] = ((purePrefixes[lang] ?: emptyList()) + parsed.purePrefixes).distinct()
-        sideEffectPrefixes[lang] = ((sideEffectPrefixes[lang] ?: emptyList()) + parsed.sideEffectPrefixes).distinct()
-        sideEffectTargets[lang] = ((sideEffectTargets[lang] ?: emptyList()) + parsed.sideEffectTargets).distinct()
-        stringIndicators[lang] = (stringIndicators[lang] ?: emptySet()) + parsed.stringIndicators
-        stringNameSuffixes[lang] = (stringNameSuffixes[lang] ?: emptySet()) + parsed.stringNameSuffixes
-        stringExactNames[lang] = (stringExactNames[lang] ?: emptySet()) + parsed.stringExactNames
-        monadicTypes[lang] = (monadicTypes[lang] ?: emptySet()) + parsed.monadicTypes
-        monadicVarNames[lang] = (monadicVarNames[lang] ?: emptySet()) + parsed.monadicVarNames
-        // Merge all extra sections
-        val langExtras = extras.getOrPut(lang) { mutableMapOf() }
-        for ((key, values) in parsed.extras) {
-            langExtras[key] = (langExtras[key] ?: emptySet()) + values
-        }
-    }
-}
-
-internal data class ParsedYaml(
-    val methods: Map<String, MethodSemantics>,
-    val heavyweightTypes: Set<String>,
-    val collectionTypes: Set<String>,
-    val o1Types: Set<String>,
-    val streamOps: Set<String>,
-    val scopeOps: Set<String>,
-    val trivialMethods: Set<String>,
-    val builderMethods: Set<String>,
-    val getterPrefixes: List<String>,
-    val cheapMethods: Set<String>,
-    val sequentialReadMethods: Set<String>,
-    val reflectionMethods: Set<String>,
-    val copyOnModifyMethods: Set<String>,
-    val regexTypes: Set<String>,
-    val regexRecompilationMethods: Set<String>,
-    val mutationMethods: Set<String>,
-    val removalMethods: Set<String>,
-    val bulkLoadPrefixes: List<String>,
-    val fullScanMethods: Set<String>,
-    val ioMethods: Set<String>,
-    val o1FactoryMethods: Set<String>,
-    val memoizationMethods: Set<String>,
-    val treeTraversalAccessors: Set<String>,
-    val visitedSetNames: Set<String>,
-    val purePrefixes: List<String>,
-    val sideEffectPrefixes: List<String>,
-    val sideEffectTargets: List<String>,
-    val stringIndicators: Set<String>,
-    val stringNameSuffixes: Set<String>,
-    val stringExactNames: Set<String>,
-    val monadicTypes: Set<String>,
-    val monadicVarNames: Set<String>,
-    val extras: Map<String, Set<String>> = emptyMap(),
-)
-
-/**
- * Lightweight YAML parser for the semantics files. These files have a simple, predictable
- * structure so we avoid pulling in a full YAML library dependency for core.
- */
-@Suppress("LongMethod") // Straightforward field-to-section mapping, splitting would reduce readability
-internal fun parseYaml(text: String): ParsedYaml {
-    val sections = splitSections(text)
-    val methods = mutableMapOf<String, MethodSemantics>()
-    sections["methods"]?.forEach { parseMethodLine(it, methods) }
-
-    // Collect all section keys that aren't explicitly parsed into extras
-    val knownSections =
-        setOf(
-            "methods",
-            "heavyweight-types",
-            "collection-types",
-            "o1-types",
-            "stream-ops",
-            "scope-ops",
-            "trivial-methods",
-            "builder-methods",
-            "getter-prefixes",
-            "cheap-methods",
-            "sequential-read-methods",
-            "reflection-methods",
-            "copy-on-modify-methods",
-            "regex-types",
-            "regex-recompilation-methods",
-            "mutation-methods",
-            "removal-methods",
-            "bulk-load-prefixes",
-            "full-scan-methods",
-            "io-methods",
-            "o1-factory-methods",
-            "memoization-methods",
-            "tree-traversal-accessors",
-            "visited-set-names",
-            "pure-prefixes",
-            "side-effect-prefixes",
-            "side-effect-targets",
-            "string-indicators",
-            "string-name-suffixes",
-            "string-exact-names",
-            "monadic-types",
-            "monadic-variable-names",
-            "language",
-        )
-    val extras = mutableMapOf<String, Set<String>>()
-    for ((key, lines) in sections) {
-        if (key !in knownSections) {
-            extras[key] = collectListItems(lines)
-        }
-    }
-
-    return ParsedYaml(
-        methods = methods,
-        heavyweightTypes = collectListItems(sections["heavyweight-types"]),
-        collectionTypes = collectListItems(sections["collection-types"]),
-        o1Types = collectListItems(sections["o1-types"]),
-        streamOps = collectListItems(sections["stream-ops"]),
-        scopeOps = collectListItems(sections["scope-ops"]),
-        trivialMethods = collectListItems(sections["trivial-methods"]),
-        builderMethods = collectListItems(sections["builder-methods"]),
-        getterPrefixes = collectListItems(sections["getter-prefixes"]).toList(),
-        cheapMethods = collectListItems(sections["cheap-methods"]),
-        sequentialReadMethods = collectListItems(sections["sequential-read-methods"]),
-        reflectionMethods = collectListItems(sections["reflection-methods"]),
-        copyOnModifyMethods = collectListItems(sections["copy-on-modify-methods"]),
-        regexTypes = collectListItems(sections["regex-types"]),
-        regexRecompilationMethods = collectListItems(sections["regex-recompilation-methods"]),
-        mutationMethods = collectListItems(sections["mutation-methods"]),
-        removalMethods = collectListItems(sections["removal-methods"]),
-        bulkLoadPrefixes = collectListItems(sections["bulk-load-prefixes"]).toList(),
-        fullScanMethods = collectListItems(sections["full-scan-methods"]),
-        ioMethods = collectListItems(sections["io-methods"]),
-        o1FactoryMethods = collectListItems(sections["o1-factory-methods"]),
-        memoizationMethods = collectListItems(sections["memoization-methods"]),
-        treeTraversalAccessors = collectListItems(sections["tree-traversal-accessors"]),
-        visitedSetNames = collectListItems(sections["visited-set-names"]),
-        purePrefixes = collectListItems(sections["pure-prefixes"]).toList(),
-        sideEffectPrefixes = collectListItems(sections["side-effect-prefixes"]).toList(),
-        sideEffectTargets = collectListItems(sections["side-effect-targets"]).toList(),
-        stringIndicators = collectListItems(sections["string-indicators"]),
-        stringNameSuffixes = collectListItems(sections["string-name-suffixes"]),
-        stringExactNames = collectListItems(sections["string-exact-names"]),
-        monadicTypes = collectListItems(sections["monadic-types"]),
-        monadicVarNames = collectListItems(sections["monadic-variable-names"]),
-        extras = extras,
-    )
-}
-
-/**
- * Extracts the top-level `language:` value from a framework YAML.
- * Returns the corresponding [Language] enum value, or null if not found / unrecognised.
- */
-internal fun extractLanguageFromYaml(text: String): Language? {
-    val pattern = Regex("""^language:\s*(\w+)\s*$""", RegexOption.MULTILINE)
-    val name = pattern.find(text)?.groupValues?.get(1) ?: return null
-    return Language.fromName(name)
-}
-
-@Suppress("LoopWithTooManyJumpStatements")
-internal fun splitSections(text: String): Map<String, List<String>> {
-    val sections = mutableMapOf<String, MutableList<String>>()
-    var currentSection: String? = null
-    for (rawLine in text.lines()) {
-        val line = rawLine.trimEnd()
-        if (line.isBlank() || line.trimStart().startsWith("#")) continue
-        if (!line.startsWith(" ") && !line.startsWith("\t") && line.endsWith(":")) {
-            currentSection = line.removeSuffix(":").trim()
-            continue
-        }
-        if (currentSection != null) {
-            sections.getOrPut(currentSection) { mutableListOf() }.add(line)
-        }
-    }
-    return sections
-}
-
-internal fun collectListItems(lines: List<String>?): Set<String> =
-    lines
-        ?.mapNotNull { parseListItem(it) }
-        ?.toSet()
-        ?: emptySet()
-
-private fun parseMethodLine(
-    line: String,
-    methods: MutableMap<String, MethodSemantics>,
-) {
-    // Format: "  methodName: { semantics: category, kind: KIND, ... }"
-    // or "  methodName: { semantics: category }"
-    val colonIdx = line.indexOf(':')
-    if (colonIdx < 0) return
-    val methodName = line.substring(0, colonIdx).trim()
-    if (methodName.startsWith("-") || methodName.startsWith("#")) return
-
-    val value = line.substring(colonIdx + 1).trim()
-    val props = parseBraceProps(value)
-    val semanticsStr = props["semantics"] ?: return
-
-    val category = parseCategory(semanticsStr) ?: return
-    val lookupKind = props["kind"]?.let { parseLookupKind(it) }
-    val sortKind = props["kind"]?.let { parseSortKind(it) }
-    val accessKind = props["kind"]?.let { parseAccessKind(it) }
-    val complexity = props["complexity"]
-    val note = props["note"]
-    val implicitlyO1 = props["implicitly-o1"]?.lowercase() == "true"
-
-    methods[methodName] =
-        MethodSemantics(
-            category = category,
-            lookupKind = lookupKind,
-            sortKind = sortKind,
-            accessKind = accessKind,
-            complexity = complexity,
-            note = note,
-            isImplicitlyO1 = implicitlyO1,
-        )
-}
-
-private fun parseBraceProps(value: String): Map<String, String> {
-    val content = value.removePrefix("{").removeSuffix("}").trim()
-    if (content.isEmpty()) return emptyMap()
-    val props = mutableMapOf<String, String>()
-    for (part in content.split(",")) {
-        val kv = part.trim().split(":", limit = 2)
-        if (kv.size == 2) {
-            props[kv[0].trim()] = kv[1].trim().removeSurrounding("\"")
-        }
-    }
-    return props
-}
-
-private fun parseListItem(line: String): String? {
-    val trimmed = line.trim()
-    if (!trimmed.startsWith("- ")) return null
-    val value = trimmed.removePrefix("- ").trim()
-    // Strip YAML-style quotes (single or double)
-    if (value.length >= 2 && value.first() == '"' && value.last() == '"') return value.substring(1, value.length - 1)
-    if (value.length >= 2 && value.first() == '\'' && value.last() == '\'') return value.substring(1, value.length - 1)
-    return value
-}
-
-private fun parseCategory(value: String): SemanticCategory? =
-    when (value.lowercase().replace("-", "_")) {
-        "iteration" -> SemanticCategory.ITERATION
-        "lookup" -> SemanticCategory.LOOKUP
-        "sort" -> SemanticCategory.SORT
-        "access" -> SemanticCategory.ACCESS
-        "quadratic" -> SemanticCategory.QUADRATIC
-        "blocking" -> SemanticCategory.BLOCKING
-        "serialization" -> SemanticCategory.SERIALIZATION
-        "repository_call" -> SemanticCategory.REPOSITORY_CALL
-        "copy_on_modify" -> SemanticCategory.COPY_ON_MODIFY
-        else -> null
-    }
-
-private fun parseLookupKind(value: String): LookupKind? =
-    try {
-        LookupKind.valueOf(value)
-    } catch (_: IllegalArgumentException) {
-        null
-    }
-
-private fun parseSortKind(value: String): SortKind? =
-    try {
-        SortKind.valueOf(value)
-    } catch (_: IllegalArgumentException) {
-        null
-    }
-
-private fun parseAccessKind(value: String): AccessKind? =
-    try {
-        AccessKind.valueOf(value)
-    } catch (_: IllegalArgumentException) {
-        null
-    }
 
 private fun matchesCamelCasePrefix(
     varName: String,

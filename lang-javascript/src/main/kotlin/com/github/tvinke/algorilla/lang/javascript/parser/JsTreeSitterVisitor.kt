@@ -24,7 +24,7 @@ import org.treesitter.TSNode
  * Replaces the regex-based [JsRegexScanner] with a proper parse tree walk,
  * enabling BranchNode, VariableDecl, and correct nesting of children.
  */
-@Suppress("TooManyFunctions", "LargeClass")
+@Suppress("TooManyFunctions", "LargeClass") // Visitor pattern: one visit method per AST node type
 internal class JsTreeSitterVisitor(
     private val filePath: String,
     private val source: String,

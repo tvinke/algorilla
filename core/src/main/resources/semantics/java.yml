@@ -1507,3 +1507,64 @@ monadic-variable-names:
   - promise
   - completion
   - either
+
+# Stream pipeline methods that implicitly iterate — their lambda args run per-element.
+implicit-iteration-ops:
+  - map
+  - flatMap
+  - filter
+  - peek
+  - mapToInt
+  - mapToLong
+  - mapToDouble
+  - mapToObj
+
+# Higher-order function names that take a callback (stream API methods besides forEach).
+hof-methods:
+  - map
+  - flatMap
+  - reduce
+  - peek
+  - collect
+  - filter
+
+# Methods that filter/narrow a collection.
+filter-methods:
+  - filter
+  - removeIf
+  - takeWhile
+  - dropWhile
+
+# Methods that open a stream/sequence pipeline from a collection.
+stream-entry-methods:
+  - stream
+  - parallelStream
+  - iterator
+
+# Standard object methods — recursive by nature in entity hierarchies.
+object-methods:
+  - equals
+  - hashCode
+  - toString
+  - compareTo
+  - clone
+  - deepEquals
+  - deepHashCode
+  - deepToString
+
+# Methods that are reflection in some languages but common factories in others.
+reflection-exclusions:
+  - create
+  - keys
+  - values
+  - entries
+
+# Type-check predicates (is*, has*) — O(1) boolean checks, too cheap to flag.
+type-check-prefixes:
+  - is
+  - has
+
+# Catches read* and next* methods not explicitly listed in sequential-read-methods.
+sequential-read-prefixes:
+  - read
+  - next

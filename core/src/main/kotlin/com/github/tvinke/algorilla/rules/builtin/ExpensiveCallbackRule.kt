@@ -33,7 +33,7 @@ import com.github.tvinke.algorilla.util.findDescendants
  *
  * Also follows method references via cross-method resolution to catch indirect patterns.
  */
-@Suppress("LargeClass", "TooManyFunctions")
+@Suppress("LargeClass", "TooManyFunctions") // Cohesive rule: scan + classify + build findings for one anti-pattern
 public class ExpensiveCallbackRule : Rule {
     override val id: String = "expensive-callback"
     override val name: String = "Expensive Callback"
@@ -62,7 +62,7 @@ public class ExpensiveCallbackRule : Rule {
         val fn = if (node is FunctionDecl) node else enclosingFn
         // Skip callbacks inside recursive functions — tree walkers are O(tree_size), not O(n²)
         if (fn == null || !fn.isRecursive) {
-            val container = asCallbackContainer(node)
+            val container = asCallbackContainer(node, context.registry.hofMethods(language))
             if (container != null) {
                 checkCallbackBody(container, language, context, findings)
             }
@@ -399,10 +399,10 @@ private data class CallbackContainer(
         )
 }
 
-/** Higher-order function names that take a callback (stream API methods besides forEach). */
-private val HOF_METHODS = setOf("map", "flatMap", "reduce", "peek", "collect")
-
-private fun asCallbackContainer(node: IRNode): CallbackContainer? =
+private fun asCallbackContainer(
+    node: IRNode,
+    hofMethods: Set<String>,
+): CallbackContainer? =
     when {
         node is LoopNode && (node.kind == LoopKind.HIGHER_ORDER || node.kind == LoopKind.STREAM_FOR_EACH) -> {
             val varName = node.iteratedVariable ?: "items"
@@ -412,7 +412,7 @@ private fun asCallbackContainer(node: IRNode): CallbackContainer? =
             val varName = node.targetVariable ?: "items"
             CallbackContainer(node.location, varName, "${node.kind.label}() over $varName", node.children)
         }
-        node is FunctionCall && node.name in HOF_METHODS -> {
+        node is FunctionCall && node.name in hofMethods -> {
             val varName = node.qualifiedTarget ?: "items"
             CallbackContainer(node.location, varName, "${node.name}() over $varName", node.children)
         }

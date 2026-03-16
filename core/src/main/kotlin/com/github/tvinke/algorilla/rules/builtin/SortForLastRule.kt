@@ -24,7 +24,7 @@ import com.github.tvinke.algorilla.util.findDescendants
  * Detects sorting an entire collection just to retrieve the first or last element.
  * Using `.max()` or `.min()` is O(n), while sorting first is O(n log n).
  */
-@Suppress("LargeClass")
+@Suppress("LargeClass") // Cohesive rule: scan + classify + build findings for one anti-pattern
 public class SortForLastRule : Rule {
     override val id: String = "sort-for-last"
     override val name: String = "Sort For Last"
