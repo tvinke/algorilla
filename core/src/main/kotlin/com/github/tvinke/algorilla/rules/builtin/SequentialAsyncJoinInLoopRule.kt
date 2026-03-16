@@ -72,7 +72,7 @@ public class SequentialAsyncJoinInLoopRule : Rule {
         val loopVar = outerLoop.iteratedVariable ?: "items"
         val evidence =
             listOf(
-                Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP, complexity = "O(|$loopVar|)"),
+                Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP, complexity = "O($loopVar)"),
                 Evidence(
                     call.location,
                     ".${call.name}() blocks on each iteration",
@@ -93,7 +93,7 @@ public class SequentialAsyncJoinInLoopRule : Rule {
                         "Collect all futures first, then call .join()/.get() outside the loop (e.g. CompletableFuture.allOf)",
                     ),
                 ),
-            currentComplexity = "O(|$loopVar| * wait)",
+            currentComplexity = "O($loopVar * wait)",
             suggestedComplexity = "O(max-wait)",
             evidence = evidence,
         )

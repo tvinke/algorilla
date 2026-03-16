@@ -14,10 +14,10 @@ Function calls inside loop bodies that don't depend on the loop variable — the
     | | |
     |---|---|
     | **Rule ID** | `loop-invariant-hoisting` |
-    | **Severity** | INFO |
-    | **Confidence** | LOW |
+    | **[Severity](/algorilla/guide/understanding-output/#severity-levels)** | INFO — worth knowing, may not matter at your scale |
+    | **[Confidence](/algorilla/guide/understanding-output/#confidence-levels)** | LOW — heuristic, check manually |
     | **Category** | Redundancy |
-    | **Complexity** | O(n × call) → O(call) |
+    | **[Complexity](/algorilla/concepts/big-o-primer/)** | O(n × call) → O(call) |
 
 ## What it detects
 

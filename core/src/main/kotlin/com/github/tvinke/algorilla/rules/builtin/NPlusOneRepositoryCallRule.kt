@@ -98,7 +98,7 @@ public class NPlusOneRepositoryCallRule : Rule {
         val target = hiddenFetch.qualifiedTarget ?: "repository"
         val evidence =
             listOf(
-                Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP, complexity = "O(|$loopVar|)"),
+                Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP, complexity = "O($loopVar)"),
                 Evidence(call.location, "${call.name}() called per iteration", ExecutionContext.INSIDE_LOOP, depth = 1),
                 Evidence(
                     hiddenFetch.location,
@@ -115,8 +115,8 @@ public class NPlusOneRepositoryCallRule : Rule {
             location = call.location,
             message = "Single-record fetch $target.${hiddenFetch.name}() inside ${call.name}() called from ${outerLoop.kind.label()} (N+1)",
             suggestions = listOf(Suggestion.Freeform("Bulk fetch all needed records before the loop, or build an in-memory Map")),
-            currentComplexity = "O(|$loopVar| * IO)",
-            suggestedComplexity = "O(1 * IO + |$loopVar|)",
+            currentComplexity = "O($loopVar * IO)",
+            suggestedComplexity = "O(1 * IO + $loopVar)",
             evidence = evidence,
         )
     }
@@ -131,7 +131,7 @@ public class NPlusOneRepositoryCallRule : Rule {
         val target = call.qualifiedTarget ?: "repository"
         val evidence =
             listOf(
-                Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP, complexity = "O(|$loopVar|)"),
+                Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP, complexity = "O($loopVar)"),
                 Evidence(
                     call.location,
                     "$target.${call.name}() called per iteration",
@@ -148,8 +148,8 @@ public class NPlusOneRepositoryCallRule : Rule {
             location = call.location,
             message = "Single-record fetch $target.${call.name}() inside ${outerLoop.kind.label()} (N+1)",
             suggestions = listOf(Suggestion.Freeform("Bulk fetch all needed records before the loop, or build an in-memory Map")),
-            currentComplexity = "O(|$loopVar| * IO)",
-            suggestedComplexity = "O(1 * IO + |$loopVar|)",
+            currentComplexity = "O($loopVar * IO)",
+            suggestedComplexity = "O(1 * IO + $loopVar)",
             evidence = evidence,
         )
     }

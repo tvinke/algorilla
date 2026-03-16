@@ -4,10 +4,10 @@
     | | |
     |---|---|
     | **Rule ID** | `repeated-collection-iteration` |
-    | **Severity** | INFO |
-    | **Confidence** | MEDIUM |
+    | **[Severity](/algorilla/guide/understanding-output/#severity-levels)** | INFO — worth knowing, may not matter at your scale |
+    | **[Confidence](/algorilla/guide/understanding-output/#confidence-levels)** | MEDIUM — likely correct, some context-dependent |
     | **Category** | Redundancy |
-    | **Complexity** | O(k·n) → O(n) |
+    | **[Complexity](/algorilla/concepts/big-o-primer/)** | O(k·n) → O(n) |
 
 Flags multiple passes over the same collection that could potentially be fused into a single pass.
 

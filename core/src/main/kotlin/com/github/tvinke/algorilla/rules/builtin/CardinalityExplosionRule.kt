@@ -247,14 +247,14 @@ public class CardinalityExplosionRule : Rule {
                     outerLoop.location,
                     outerLoop.kind.label(),
                     ExecutionContext.INSIDE_LOOP,
-                    complexity = "O(|$outerVar|)",
+                    complexity = "O($outerVar)",
                 ),
                 Evidence(
                     innerLoop.location,
                     innerLoop.kind.label(),
                     ExecutionContext.INSIDE_LOOP,
                     depth = 1,
-                    complexity = "O(|$innerVar|)",
+                    complexity = "O($innerVar)",
                 ),
                 Evidence(
                     firstCall.location,
@@ -263,7 +263,7 @@ public class CardinalityExplosionRule : Rule {
                     depth = 2,
                     complexity =
                         ComplexityModel.bottleneck(
-                            "O(|$outerVar| \u00d7 |$innerVar|)",
+                            "O($outerVar \u00d7 $innerVar)",
                         ),
                 ),
             )
@@ -354,7 +354,7 @@ public class CardinalityExplosionRule : Rule {
                     call.location,
                     "flatMap over $sourceVar",
                     ExecutionContext.INSIDE_LOOP,
-                    complexity = "O(|$sourceVar|)",
+                    complexity = "O($sourceVar)",
                 ),
                 Evidence(
                     call.location,
@@ -363,7 +363,7 @@ public class CardinalityExplosionRule : Rule {
                     depth = 1,
                     complexity =
                         ComplexityModel.bottleneck(
-                            "O(|$sourceVar| \u00d7 |$innerVar|)",
+                            "O($sourceVar \u00d7 $innerVar)",
                         ),
                 ),
             )

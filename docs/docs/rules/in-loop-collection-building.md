@@ -12,10 +12,10 @@ tags:
     | | |
     |---|---|
     | **Rule ID** | `in-loop-collection-building` |
-    | **Severity** | WARNING |
-    | **Confidence** | MEDIUM |
+    | **[Severity](/algorilla/guide/understanding-output/#severity-levels)** | WARNING — likely performance problem |
+    | **[Confidence](/algorilla/guide/understanding-output/#confidence-levels)** | MEDIUM — likely correct, some context-dependent |
     | **Category** | Loop amplifiers |
-    | **Complexity** | O(n·m) → O(n+m) |
+    | **[Complexity](/algorilla/concepts/big-o-primer/)** | O(n·m) → O(n+m) |
 
 ## Description
 

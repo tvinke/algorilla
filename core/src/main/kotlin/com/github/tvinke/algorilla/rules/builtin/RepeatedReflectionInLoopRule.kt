@@ -69,7 +69,7 @@ public class RepeatedReflectionInLoopRule : Rule {
         val target = call.qualifiedTarget ?: "class"
         val evidence =
             listOf(
-                Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP, complexity = "O(|$loopVar|)"),
+                Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP, complexity = "O($loopVar)"),
                 Evidence(
                     call.location,
                     "$target.${call.name}() inside loop",
@@ -88,8 +88,8 @@ public class RepeatedReflectionInLoopRule : Rule {
                 listOf(
                     Suggestion.Freeform("Cache the reflection result in a local variable or Map<Class, ...> outside the loop"),
                 ),
-            currentComplexity = "O(|$loopVar| × reflection)",
-            suggestedComplexity = "O(|$loopVar|)",
+            currentComplexity = "O($loopVar × reflection)",
+            suggestedComplexity = "O($loopVar)",
             evidence = evidence,
         )
     }

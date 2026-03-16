@@ -12,10 +12,10 @@ tags:
     | | |
     |---|---|
     | **Rule ID** | `regex-recompilation-in-loop` |
-    | **Severity** | WARNING |
-    | **Confidence** | MEDIUM |
+    | **[Severity](/algorilla/guide/understanding-output/#severity-levels)** | WARNING — likely performance problem |
+    | **[Confidence](/algorilla/guide/understanding-output/#confidence-levels)** | MEDIUM — likely correct, some context-dependent |
     | **Category** | Loop amplifiers |
-    | **Complexity** | O(n·compile) → O(n) |
+    | **[Complexity](/algorilla/concepts/big-o-primer/)** | O(n·compile) → O(n) |
 
 ## Description
 

@@ -23,11 +23,27 @@ theme:
         icon: material/brightness-4
         name: Switch to light mode
   features:
+    # Navigation
+    - navigation.instant
+    - navigation.instant.prefetch
     - navigation.tabs
     - navigation.tabs.sticky
     - navigation.sections
-    - content.code.copy
+    - navigation.indexes
+    - navigation.top
+    - navigation.footer
+    - navigation.path
+    - navigation.prune
+    - toc.follow
+    # Search
+    - search.suggest
     - search.highlight
+    - search.share
+    # Content
+    - content.code.copy
+    - content.code.select
+    - content.code.annotate
+    - content.tooltips
   icon:
     repo: fontawesome/brands/github
 
@@ -43,12 +59,19 @@ extra_javascript:
 markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets:
+      auto_append:
+        - includes/glossary.md
   - pymdownx.superfences
   - pymdownx.tabbed:
       alternate_style: true
   - admonition
   - pymdownx.details
   - tables
+  - abbr
   - toc:
       permalink: true
   - attr_list
@@ -63,6 +86,14 @@ nav:
     - Installation: getting-started/installation.md
     - Quick Start: getting-started/quickstart.md
     - Configuration: getting-started/configuration.md
+    - FAQ: faq.md
+  - Learn:
+    - The Hidden O(n²) Problem: hidden-complexity.md
+    - The Hidden Triple Scan: hidden-duplication.md
+    - The Hidden N+1: hidden-io.md
+    - Big-O Primer: concepts/big-o-primer.md
+    - How Detection Works: concepts/how-detection-works.md
+    - Cross-File Analysis: concepts/cross-file-analysis.md
   - Use Algorilla:
     - Workflow: guide/workflow.md
     - Understanding Output: guide/understanding-output.md
@@ -74,16 +105,9 @@ nav:
     - Incremental Analysis: guide/incremental-analysis.md
     - Custom Rules: guide/custom-rules.md
     - Pre-Commit Hooks: guide/pre-commit.md
-  - Concepts:
-    - The Hidden O(n²) Problem: hidden-complexity.md
-    - The Hidden Triple Scan: hidden-duplication.md
-    - The Hidden N+1: hidden-io.md
-    - Big-O Primer: concepts/big-o-primer.md
-    - How Detection Works: concepts/how-detection-works.md
-    - Cross-File Analysis: concepts/cross-file-analysis.md
   - Reference:
     - Rules:
-      - Overview: rules/index.md
+      - rules/index.md
       - Loop Amplifiers:
         - Nested Lookup: rules/nested-lookup.md
         - Repeated Linear Scan: rules/repeated-linear-scan.md
@@ -119,7 +143,7 @@ nav:
       - Concurrency:
         - Parallel Pipeline Bottleneck: rules/parallel-pipeline-bottleneck.md
     - Languages:
-      - Overview: languages/index.md
+      - languages/index.md
       - Java: languages/java.md
       - Kotlin: languages/kotlin.md
       - Groovy: languages/groovy.md

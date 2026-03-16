@@ -12,10 +12,10 @@ tags:
     | | |
     |---|---|
     | **Rule ID** | `redundant-expensive-call` |
-    | **Severity** | INFO |
-    | **Confidence** | MEDIUM |
+    | **[Severity](/algorilla/guide/understanding-output/#severity-levels)** | INFO — worth knowing, may not matter at your scale |
+    | **[Confidence](/algorilla/guide/understanding-output/#confidence-levels)** | MEDIUM — likely correct, some context-dependent |
     | **Category** | Redundancy |
-    | **Complexity** | k·O(f) → O(f) |
+    | **[Complexity](/algorilla/concepts/big-o-primer/)** | k·O(f) → O(f) |
 
 ## Description
 

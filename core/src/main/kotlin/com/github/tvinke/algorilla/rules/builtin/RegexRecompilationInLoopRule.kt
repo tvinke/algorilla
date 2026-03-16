@@ -79,7 +79,7 @@ public class RegexRecompilationInLoopRule : Rule {
         val target = call.qualifiedTarget ?: "string"
         val evidence =
             listOf(
-                Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP, complexity = "O(|$loopVar|)"),
+                Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP, complexity = "O($loopVar)"),
                 Evidence(
                     call.location,
                     "$target.${call.name}() inside loop",
@@ -95,8 +95,8 @@ public class RegexRecompilationInLoopRule : Rule {
             location = call.location,
             message = "${call.name}() compiles a regex on every call inside ${outerLoop.kind.label()}",
             suggestions = listOf(Suggestion.HoistBeforeLoop(call = "Pattern.compile()")),
-            currentComplexity = "O(|$loopVar| × compile)",
-            suggestedComplexity = "O(|$loopVar|)",
+            currentComplexity = "O($loopVar × compile)",
+            suggestedComplexity = "O($loopVar)",
             evidence = evidence,
         )
     }

@@ -12,10 +12,10 @@ tags:
     | | |
     |---|---|
     | **Rule ID** | `uncached-getter` |
-    | **Severity** | INFO |
-    | **Confidence** | MEDIUM |
+    | **[Severity](/algorilla/guide/understanding-output/#severity-levels)** | INFO — worth knowing, may not matter at your scale |
+    | **[Confidence](/algorilla/guide/understanding-output/#confidence-levels)** | MEDIUM — likely correct, some context-dependent |
     | **Category** | Redundancy |
-    | **Complexity** | k·O(lookup) → O(lookup) |
+    | **[Complexity](/algorilla/concepts/big-o-primer/)** | k·O(lookup) → O(lookup) |
 
 ## Description
 

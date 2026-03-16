@@ -29,7 +29,7 @@ The "O" stands for *order* — as in "order of growth." The notation ignores con
 
 ## Why it matters
 
-The difference between O(n) and O(n²) is invisible at small scale but devastating at production scale:
+The difference between O(n) and O(n²) is negligible at small scale but grows fast:
 
 ```
 Items    O(n)        O(n²)            Ratio

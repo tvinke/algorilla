@@ -69,7 +69,7 @@ public class ExpensiveSerializationInLoopRule : Rule {
         val loopVar = outerLoop.iteratedVariable ?: "items"
         val evidence =
             listOf(
-                Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP, complexity = "O(|$loopVar|)"),
+                Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP, complexity = "O($loopVar)"),
                 Evidence(
                     call.location,
                     "${call.name}() inside loop",
@@ -85,8 +85,8 @@ public class ExpensiveSerializationInLoopRule : Rule {
             location = call.location,
             message = "Serialization call ${call.name}() inside ${outerLoop.kind.label()}",
             suggestions = listOf(Suggestion.Freeform("Move serialization outside the loop, or use batch serialization")),
-            currentComplexity = "O(|$loopVar| * serialize)",
-            suggestedComplexity = "O(|$loopVar|)",
+            currentComplexity = "O($loopVar * serialize)",
+            suggestedComplexity = "O($loopVar)",
             evidence = evidence,
         )
     }

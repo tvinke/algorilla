@@ -12,10 +12,10 @@ tags:
     | | |
     |---|---|
     | **Rule ID** | `bulk-load-for-single-lookup` |
-    | **Severity** | WARNING |
-    | **Confidence** | MEDIUM |
+    | **[Severity](/algorilla/guide/understanding-output/#severity-levels)** | WARNING — likely performance problem |
+    | **[Confidence](/algorilla/guide/understanding-output/#confidence-levels)** | MEDIUM — likely correct, some context-dependent |
     | **Category** | Query patterns |
-    | **Complexity** | O(n) → O(1) |
+    | **[Complexity](/algorilla/concepts/big-o-primer/)** | O(n) → O(1) |
 
 ## Description
 

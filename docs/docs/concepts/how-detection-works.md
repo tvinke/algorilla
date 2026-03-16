@@ -38,6 +38,32 @@ To avoid false positives, Algorilla checks whether a collection target is an O(1
 3. **Variable declarations** — checks the declared type of local variables
 4. **Type hints** — user-provided hints in `.algorilla.yml`
 
+## Detection Mechanisms
+
+Algorilla uses three mechanisms to understand what code does, each with different accuracy and applicability. The mechanism a rule uses directly determines its confidence level.
+
+### Structural analysis (→ HIGH confidence)
+
+Some patterns are always problematic regardless of types. `String.concat()` inside a loop always copies the entire string — no type information needed. A `sort()` followed by `.first()` is always wasteful compared to `min()`. These rules match on code structure alone and produce HIGH confidence findings.
+
+### Type resolution (→ MEDIUM confidence)
+
+For rules like [nested-lookup](../rules/nested-lookup.md), the key question is: "is this collection a `List` (O(n) lookup) or a `Set` (O(1) lookup)?" Algorilla resolves types by tracing variable declarations, parameter types, and constructor calls _within the source code it can see_. This works well for Java (static types are explicit) and reasonably for TypeScript (annotations help), but has limits:
+
+- **No classpath scanning.** Algorilla analyzes source code only — it doesn't load your compiled classes, inspect bytecode, or resolve types from dependencies. If a method returns `Collection<String>` and the actual runtime type is `HashSet`, Algorilla can't see that.
+- **No build required.** The tradeoff is speed and simplicity: you don't need to compile your project first. Algorilla works on raw source files.
+- **Type hints fill the gap.** When Algorilla can't resolve a type, you can declare it in `.algorilla.yml` — see [configuration](../getting-started/configuration.md).
+
+When type resolution succeeds, findings are MEDIUM or HIGH confidence. When it can't resolve a type, the rule either skips the finding or drops to LOW confidence.
+
+### Name-based heuristics (→ LOW confidence)
+
+Some patterns can only be detected by looking at method and variable names. Does `order.getLineItems()` trigger a lazy-loaded SQL query, or does it return a preloaded list? Without type information or classpath access, Algorilla guesses based on the name: plural-sounding getters (`getOrders`, `getLineItems`, `getRoles`) on variables fetched from repository-like sources are _probably_ lazy-loaded associations.
+
+This works surprisingly often in practice — naming conventions are strong in Java/Kotlin codebases — but it's inherently uncertain. That's why these findings are LOW confidence: the tool is flagging something that _looks like_ a pattern, not something it can prove.
+
+Use `--confidence high` to filter these out, or `--confidence low` to see everything and triage manually.
+
 ## Confidence Tiers
 
 Each finding carries a confidence level that tells you how certain Algorilla is that it's a real issue:
@@ -59,3 +85,10 @@ Algorilla handles this automatically: when a more specific rule and a more gener
 ## Suppression Handling
 
 After overlap resolution, the **Suppression Filter** removes findings that have `// algorilla:ignore` comments on or near the finding's location and evidence chain locations.
+
+## Next steps
+
+- [Browse the rules](../rules/index.md) — see what the pipeline detects in practice, with before/after examples
+- [Understanding output](../guide/understanding-output.md) — how findings, evidence chains, and confidence levels are presented
+- [The hidden O(n²) problem](../hidden-complexity.md) — a step-by-step walkthrough of how these patterns hide in real code
+- [FAQ](../faq.md) — common questions about confidence, severity, types, suppression, and how Algorilla compares to other tools

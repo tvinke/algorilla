@@ -176,7 +176,7 @@ public class LoopInvariantHoistingRule : Rule {
             location = call.location,
             message = "${target}${call.name}() inside ${outerLoop.kind.label()} does not depend on '$loopVar'",
             suggestions = listOf(Suggestion.HoistBeforeLoop(call = "${target}${call.name}()")),
-            currentComplexity = ComplexityModel.redundantCalls(0).current.replace("0x", "|$loopVar|x"),
+            currentComplexity = ComplexityModel.redundantCalls(0).current.replace("0x", "${loopVar}x"),
             suggestedComplexity = "O(1)",
             evidence =
                 listOf(
@@ -184,7 +184,7 @@ public class LoopInvariantHoistingRule : Rule {
                         outerLoop.location,
                         outerLoop.kind.label(),
                         ExecutionContext.INSIDE_LOOP,
-                        complexity = "O(|$loopVar|)",
+                        complexity = "O($loopVar)",
                     ),
                     Evidence(
                         call.location,

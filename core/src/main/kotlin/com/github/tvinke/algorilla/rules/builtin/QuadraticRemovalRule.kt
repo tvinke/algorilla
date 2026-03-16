@@ -78,7 +78,7 @@ public class QuadraticRemovalRule : Rule {
         val target = call.qualifiedTarget ?: "list"
         val evidence =
             listOf(
-                Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP, complexity = "O(|$loopVar|)"),
+                Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP, complexity = "O($loopVar)"),
                 Evidence(
                     call.location,
                     "$target.${call.name}() inside loop",
@@ -94,8 +94,8 @@ public class QuadraticRemovalRule : Rule {
             location = call.location,
             message = "${call.name}() on '$target' inside ${outerLoop.kind.label()} shifts elements on each removal",
             suggestions = listOf(Suggestion.Freeform("Use removeAll() with a Set, Iterator.remove(), or filter into a new collection")),
-            currentComplexity = "O(|$loopVar|²)",
-            suggestedComplexity = "O(|$loopVar|)",
+            currentComplexity = "O($loopVar²)",
+            suggestedComplexity = "O($loopVar)",
             evidence = evidence,
         )
     }

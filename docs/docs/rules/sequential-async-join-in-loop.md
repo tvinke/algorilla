@@ -12,10 +12,10 @@ tags:
     | | |
     |---|---|
     | **Rule ID** | `sequential-async-join-in-loop` |
-    | **Severity** | WARNING |
-    | **Confidence** | HIGH |
+    | **[Severity](/algorilla/guide/understanding-output/#severity-levels)** | WARNING — likely performance problem |
+    | **[Confidence](/algorilla/guide/understanding-output/#confidence-levels)** | HIGH — structurally proven |
     | **Category** | Loop amplifiers |
-    | **Complexity** | O(n·wait) → O(max-wait) |
+    | **[Complexity](/algorilla/concepts/big-o-primer/)** | O(n·wait) → O(max-wait) |
 
 ## Description
 
@@ -53,6 +53,8 @@ Detects blocking calls (`.join()`, `.get()`) on futures inside loops. Awaiting e
     ```
 
 === "JavaScript"
+
+    Use [`Promise.all`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/all) to await all promises concurrently:
 
     ```javascript
     const results = await Promise.all(paymentPromises);

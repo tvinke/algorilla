@@ -4,10 +4,10 @@
     | | |
     |---|---|
     | **Rule ID** | `unmemoized-recursion` |
-    | **Severity** | WARNING |
+    | **[Severity](/algorilla/guide/understanding-output/#severity-levels)** | WARNING — likely performance problem |
     | **Confidence** | HIGH (2+ calls) · MEDIUM (loop) · LOW (single call) |
     | **Category** | Redundancy |
-    | **Complexity** | O(2^n) → O(n) |
+    | **[Complexity](/algorilla/concepts/big-o-primer/)** | O(2^n) → O(n) |
 
 Flags recursive functions that recompute the same subproblem multiple times because there's no caching or memoization.
 

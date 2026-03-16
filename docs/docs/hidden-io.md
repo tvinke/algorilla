@@ -2,7 +2,7 @@
 
 Some performance problems aren't about CPU at all — they're about I/O. The N+1 query pattern turns a single bulk database call into N individual round-trips, each adding network latency. It's invisible on your local machine, where the database is on localhost and the dataset has 10 rows. It surfaces in production, where every query crosses a network and the dataset has thousands of rows.
 
-This is one of the most common performance issues in web applications, and one of the hardest to spot in code review.
+It's a common pattern in web applications and easy to miss in code review.
 
 ## One query is fine
 
@@ -88,6 +88,7 @@ Running algorilla on the simple loop example:
 
       Repository call 'findById' inside for-each loop — N+1 query
       → Bulk fetch all needed records before the loop, or build an in-memory Map
+      ↳ https://tvinke.github.io/algorilla/rules/n-plus-one-query
 
           22 │ List<Order> results = new ArrayList<>();
           23 │ for (Long orderId : orderIds) {

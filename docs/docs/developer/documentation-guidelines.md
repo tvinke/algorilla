@@ -11,6 +11,17 @@ Direct, technical, slightly conversational. The reader is a developer — don't 
 - **Acknowledge the reader's reality.** Enterprise codebases are messy. Fixes aren't always simple. Don't pretend `new HashSet<>()` solves everything when the collection lives behind three service boundaries. A short "in practice, this might require..." goes a long way.
 - **Vary the register.** Not every sentence needs to be crisp and punchy. Mix short observations with longer explanations. Monotone writing — whether monotone-formal or monotone-casual — reads as robotic.
 
+## Complexity notation
+
+When showing complexity in **technical contexts** (rule metadata tables, evidence chains, code comments), use formal Big-O: `O(n²) → O(n)`, `O(n·IO) → O(1·IO + n)`.
+
+When showing complexity in **summary or marketing contexts** (the "What it finds" table, taglines, landing page bullets, badge labels), use plain language that a developer can understand without mentally parsing notation. Compare:
+
+- Formal: `k·O(f) → O(f)`
+- Plain: `Same work done k times → done once`
+
+The test: if someone scanning the page has to stop and decode the notation, it's too formal for that context. Rule detail pages and evidence chains are where readers expect precision. Overview tables and landing pages are where they expect quick understanding.
+
 ## Example domain
 
 All code examples should use the [example domain](example-domain.md) (orders, payments, products, etc.). This keeps the documentation cohesive — readers build context once and carry it across pages.
@@ -19,16 +30,20 @@ All code examples should use the [example domain](example-domain.md) (orders, pa
 
 Every rule page follows this structure, in this order:
 
-1. **Title** — rule name as `# heading`
-2. **Rule ID line** — `` **Rule ID:** `rule-id` · **Severity:** WARNING · **Complexity:** O(bad) → O(good) ``
-3. **Description** — what the rule detects and why it matters
-4. **Bad Example** — the anti-pattern, with language tabs if applicable
-5. **Good Example** — the fix, with language tabs if applicable
-6. **How Detection Works** — numbered list of what the rule engine does (optional for simple rules)
-7. **Suggestion** — the one-liner shown in algorilla output, as a blockquote
-8. **Related Rules** — links to rules that detect similar or adjacent patterns (optional)
+1. **Front matter** — tags (languages, frameworks, keywords) and `description` meta for search snippets
+2. **Title** — rule name as `# heading`
+3. **Rule details** — admonition table with Rule ID, Severity, Confidence, Category, Complexity
+4. **"The problem"** — 2-3 paragraphs. Start with the one-liner, then real-world context: where this shows up, why it passes code review, what the production impact looks like
+5. **"Where this shows up"** — 2-5 bullets describing real-world scenarios by framework/ecosystem. Narrative, not code.
+6. **"The pattern"** — the anti-pattern with language tabs. Add framework-specific tabs only where the API is meaningfully different
+7. **"The fix"** — expanded with multiple fix variants where applicable (e.g. HashSet approach AND Map approach, or findAllById AND custom @Query). Language tabs mirroring the pattern section
+8. **"Suggestion variants"** — the `Suggestion` subtypes this rule emits, shown as content tabs with a mini code snippet per variant
+9. **"When to ignore this"** — brief guidance on when suppression is legitimate. Builds trust.
+10. **"How detection works"** — numbered list of what the rule engine does (keep for complex rules, drop for straightforward ones)
+11. **"Related rules"** — narrative prose grouping related rules by cluster (I/O cluster, lookup cluster, loop overhead cluster, etc.), not just bare links
+12. **"Configuration"** — 3-5 lines showing disable in `.algorilla.yml` + inline suppression
 
-Not every rule page needs all sections — simpler rules can skip "How Detection Works" — but the order should be consistent.
+Not every rule page needs all sections — simpler rules can skip "How detection works" and "Suggestion variants" — but the order should be consistent. See [nested-lookup](../rules/nested-lookup.md) as the reference implementation.
 
 ### When to use language tabs
 
@@ -58,6 +73,17 @@ Every rule page has a "Bad Example" and "Good Example". The fix should be **visu
 - **Make the structural change jump out.** The good example should look different at a glance: a new line before the loop, a different API call (`sorted` → `max`), a variable extracted, a method call moved outside. If the only difference is a type name buried in a declaration, the payoff is invisible.
 - **Comment the complexity, not the syntax.** Use `// O(1) per iteration` or `// O(n) per comparison` rather than `// Uses HashSet`. The reader should see *why* it's better, not just *what* changed.
 
+## Framework-specific fixes
+
+When a rule's fix section recommends a framework-specific API or concept (fetch joins, `@EntityGraph`, `Promise.all`, `useMemo`, etc.), **always link to the framework's own documentation**. The reader may have landed on this page directly from a console finding and may not know what the concept means.
+
+- **Link the concept, not just the API name.** "Use a [JPQL fetch join](https://docs.oracle.com/...)" is better than just "Use a fetch join." The reader needs to know _where to learn more_, not just _what to type_.
+- **Prefer official docs over blog posts.** Link to Spring Reference, MDN, Kotlin docs, Hibernate User Guide, etc.
+- **One link per concept is enough.** Don't link every mention — link it the first time it appears in the fix section.
+- **If the fix has multiple framework variants** (e.g. Spring Data vs plain JPA), show both with their own links.
+
+This applies to rule pages, language pages, and the frameworks page. If we mention a framework concept as part of a fix, the reader should be one click away from understanding it.
+
 ## Output examples
 
 When a page includes algorilla console output (the `⏺ file (N findings)` blocks), it must match the **current output format**. Stale output with old formatting undermines trust — the reader tries to match what they see in their terminal against the docs and it doesn't line up.
@@ -69,6 +95,8 @@ If the output format changes, update all output blocks across the docs. The page
 - `hidden-duplication.md` (triple scan output)
 - `hidden-io.md` (N+1 output)
 - `guide/understanding-output.md` (format reference — this one defines the canonical format)
+- `getting-started/quickstart.md` (example output section)
+- `languages/java.md`, `languages/kotlin.md`, `languages/groovy.md`, `languages/javascript.md` (hero snippets and "Top complexity traps" scenarios)
 - `README.md` (project README)
 
 ## Admonition blocks

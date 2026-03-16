@@ -71,7 +71,7 @@ public class InLoopCollectionBuildingRule : Rule {
         val loopVar = outerLoop.iteratedVariable ?: "items"
         val evidence =
             listOf(
-                Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP, complexity = "O(|$loopVar|)"),
+                Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP, complexity = "O($loopVar)"),
                 Evidence(
                     call.location,
                     "${call.name}() inside loop",
@@ -87,8 +87,8 @@ public class InLoopCollectionBuildingRule : Rule {
             location = call.location,
             message = "${call.name}() inside ${outerLoop.kind.label()} repeatedly copies collection",
             suggestions = listOf(Suggestion.Freeform("Accumulate into a single collection, then call ${call.name}() once after the loop")),
-            currentComplexity = "O(|$loopVar| * copy)",
-            suggestedComplexity = "O(|$loopVar| + copy)",
+            currentComplexity = "O($loopVar * copy)",
+            suggestedComplexity = "O($loopVar + copy)",
             evidence = evidence,
         )
     }

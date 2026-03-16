@@ -108,7 +108,7 @@ public class StringConcatInLoopRule : Rule {
         val target = call.qualifiedTarget ?: "string"
         val evidence =
             listOf(
-                Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP, complexity = "O(|$loopVar|)"),
+                Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP, complexity = "O($loopVar)"),
                 Evidence(
                     call.location,
                     "$target.${call.name}() inside loop",
@@ -130,8 +130,8 @@ public class StringConcatInLoopRule : Rule {
                         reason = "accumulate the result, then call toString() after the loop",
                     ),
                 ),
-            currentComplexity = "O(|$loopVar|\u00b2)",
-            suggestedComplexity = "O(|$loopVar|)",
+            currentComplexity = "O($loopVar\u00b2)",
+            suggestedComplexity = "O($loopVar)",
             evidence = evidence,
         )
     }

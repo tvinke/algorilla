@@ -11,10 +11,10 @@ tags:
     | | |
     |---|---|
     | **Rule ID** | `parallel-pipeline-bottleneck` |
-    | **Severity** | WARNING |
-    | **Confidence** | MEDIUM |
+    | **[Severity](/algorilla/guide/understanding-output/#severity-levels)** | WARNING — likely performance problem |
+    | **[Confidence](/algorilla/guide/understanding-output/#confidence-levels)** | MEDIUM — likely correct, some context-dependent |
     | **Category** | Concurrency |
-    | **Complexity** | O(n) contended → O(n) lock-free |
+    | **[Complexity](/algorilla/concepts/big-o-primer/)** | O(n) contended → O(n) lock-free |
 
 ## Description
 

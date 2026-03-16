@@ -72,6 +72,26 @@ internal class ConsoleReporterTest {
     }
 
     @Nested
+    inner class RuleUrl {
+        @Test
+        fun `shows rule URL after suggestion`() {
+            val output = StringBuilder()
+            reporter.report(result(finding()), output)
+
+            output.toString() shouldContain "https://tvinke.github.io/algorilla/rules/nested-lookup"
+        }
+
+        @Test
+        fun `URL uses the finding ruleId`() {
+            val f = finding(ruleId = "io-in-loop")
+            val output = StringBuilder()
+            reporter.report(result(f), output)
+
+            output.toString() shouldContain "https://tvinke.github.io/algorilla/rules/io-in-loop"
+        }
+    }
+
+    @Nested
     inner class FileGroupOrdering {
         @Test
         fun `files with higher severity findings appear first`() {

@@ -11,10 +11,10 @@ tags:
     | | |
     |---|---|
     | **Rule ID** | `repeated-reflection-in-loop` |
-    | **Severity** | INFO |
-    | **Confidence** | MEDIUM |
+    | **[Severity](/algorilla/guide/understanding-output/#severity-levels)** | INFO — worth knowing, may not matter at your scale |
+    | **[Confidence](/algorilla/guide/understanding-output/#confidence-levels)** | MEDIUM — likely correct, some context-dependent |
     | **Category** | Loop amplifiers |
-    | **Complexity** | O(n·reflection) → O(n) |
+    | **[Complexity](/algorilla/concepts/big-o-primer/)** | O(n·reflection) → O(n) |
 
 ## Description
 

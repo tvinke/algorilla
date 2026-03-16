@@ -12,10 +12,10 @@ tags:
     | | |
     |---|---|
     | **Rule ID** | `expensive-serialization-in-loop` |
-    | **Severity** | WARNING |
-    | **Confidence** | MEDIUM |
+    | **[Severity](/algorilla/guide/understanding-output/#severity-levels)** | WARNING — likely performance problem |
+    | **[Confidence](/algorilla/guide/understanding-output/#confidence-levels)** | MEDIUM — likely correct, some context-dependent |
     | **Category** | Loop amplifiers |
-    | **Complexity** | O(n·serialize) → O(n) |
+    | **[Complexity](/algorilla/concepts/big-o-primer/)** | O(n·serialize) → O(n) |
 
 ## Description
 

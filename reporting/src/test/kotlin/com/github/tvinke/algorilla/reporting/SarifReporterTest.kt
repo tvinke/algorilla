@@ -37,6 +37,12 @@ internal class SarifReporterTest {
     }
 
     @Test
+    fun `SARIF output includes rule helpURI`() {
+        val sarif = report(finding())
+        sarif shouldContain "https://tvinke.github.io/algorilla/rules/nested-lookup"
+    }
+
+    @Test
     fun `SARIF output includes rank for confidence`() {
         val sarif = report(finding(Confidence.HIGH))
         sarif shouldContain "\"rank\""

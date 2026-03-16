@@ -5,12 +5,13 @@
 The quickest way to get started. No Java installation needed — a JRE is bundled automatically if Java isn't available on your system.
 
 ```bash
-# Run directly
+# Run directly on the current project
 npx algorilla .
 
 # Or install globally
 npm install -g algorilla
-algorilla .
+algorilla .                        # current directory
+algorilla /path/to/your/project    # or point at any project
 ```
 
 Requires Node.js 16+.

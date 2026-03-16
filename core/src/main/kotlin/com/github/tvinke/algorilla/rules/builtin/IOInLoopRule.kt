@@ -182,8 +182,8 @@ public class IOInLoopRule : Rule {
                             "or use a bulk API (e.g. saveAll, findAllById)",
                     ),
                 ),
-            currentComplexity = "O(|$loopVar| \u00d7 IO)",
-            suggestedComplexity = "O(1) IO + O(|$loopVar|)",
+            currentComplexity = "O($loopVar \u00d7 IO)",
+            suggestedComplexity = "O(1) IO + O($loopVar)",
             evidence = buildEvidence(call, outerLoop, loopVar),
         )
     }
@@ -211,15 +211,15 @@ public class IOInLoopRule : Rule {
                             "or restructure ${call.name}() to accept a collection",
                     ),
                 ),
-            currentComplexity = "O(|$loopVar| \u00d7 IO)",
-            suggestedComplexity = "O(1) IO + O(|$loopVar|)",
+            currentComplexity = "O($loopVar \u00d7 IO)",
+            suggestedComplexity = "O(1) IO + O($loopVar)",
             evidence =
                 listOf(
                     Evidence(
                         outerLoop.location,
                         outerLoop.kind.label(),
                         ExecutionContext.INSIDE_LOOP,
-                        complexity = "O(|$loopVar|)",
+                        complexity = "O($loopVar)",
                     ),
                     Evidence(
                         call.location,
@@ -242,7 +242,7 @@ public class IOInLoopRule : Rule {
                 outerLoop.location,
                 outerLoop.kind.label(),
                 ExecutionContext.INSIDE_LOOP,
-                complexity = "O(|$loopVar|)",
+                complexity = "O($loopVar)",
             ),
             Evidence(
                 call.location,
@@ -278,15 +278,15 @@ public class IOInLoopRule : Rule {
                             "or use a bulk API (e.g. findAll, findAllById)",
                     ),
                 ),
-            currentComplexity = "O(|$loopVar| \u00d7 IO)",
-            suggestedComplexity = "O(1) IO + O(|$loopVar|)",
+            currentComplexity = "O($loopVar \u00d7 IO)",
+            suggestedComplexity = "O(1) IO + O($loopVar)",
             evidence =
                 listOf(
                     Evidence(
                         outerLoop.location,
                         outerLoop.kind.label(),
                         ExecutionContext.INSIDE_LOOP,
-                        complexity = "O(|$loopVar|)",
+                        complexity = "O($loopVar)",
                     ),
                     Evidence(
                         call.location,

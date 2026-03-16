@@ -77,6 +77,22 @@ internal class JsonReporterTest {
     }
 
     @Nested
+    inner class RuleUrl {
+        @Test
+        fun `output includes ruleUrl field`() {
+            val json = report()
+            json shouldContain "\"ruleUrl\""
+            json shouldContain "https://tvinke.github.io/algorilla/rules/nested-lookup"
+        }
+
+        @Test
+        fun `ruleUrl reflects the finding ruleId`() {
+            val json = report(listOf(finding(ruleId = "io-in-loop")))
+            json shouldContain "https://tvinke.github.io/algorilla/rules/io-in-loop"
+        }
+    }
+
+    @Nested
     inner class Structure {
         @Test
         fun `output includes summary`() {

@@ -12,10 +12,10 @@ tags:
     | | |
     |---|---|
     | **Rule ID** | `filter-after-sort` |
-    | **Severity** | INFO |
-    | **Confidence** | HIGH |
+    | **[Severity](/algorilla/guide/understanding-output/#severity-levels)** | INFO — worth knowing, may not matter at your scale |
+    | **[Confidence](/algorilla/guide/understanding-output/#confidence-levels)** | HIGH — structurally proven |
     | **Category** | Sort abuse |
-    | **Complexity** | O(n log n + k) → O(k log k + n) |
+    | **[Complexity](/algorilla/concepts/big-o-primer/)** | O(n log n + k) → O(k log k + n) |
 
 ## Description
 

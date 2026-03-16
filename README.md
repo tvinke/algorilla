@@ -1,5 +1,10 @@
 # Algorilla
 
+[![CI](https://img.shields.io/github/actions/workflow/status/tvinke/algorilla/ci.yml?branch=main&logo=github&label=CI)](https://github.com/tvinke/algorilla/actions/workflows/ci.yml)
+[![Docs](https://img.shields.io/badge/docs-algorilla-blue?logo=materialformkdocs)](https://tvinke.github.io/algorilla/)
+[![License](https://img.shields.io/github/license/tvinke/algorilla)](https://github.com/tvinke/algorilla/blob/main/LICENSE)
+[![Languages](https://img.shields.io/badge/Java%20%7C%20Kotlin%20%7C%20Groovy%20%7C%20JS%2FTS-supported-green)]()
+
 **Find the hidden O(n^2) in your codebase before your users do.**
 
 Algorilla is a static analysis tool that detects algorithmic complexity anti-patterns in Java, Groovy, Kotlin, and JavaScript/TypeScript code. It spots the kind of performance bugs that pass code review, work fine in tests, and then bring production to its knees when real data hits.
@@ -32,6 +37,7 @@ Run it on the code above:
 
       Linear contains on 'priorityIds' inside for-each loop
       → Build a HashSet/Map from 'priorityIds' before the loop
+      ↳ https://tvinke.github.io/algorilla/rules/nested-lookup
 
           2 │ for (Order order : orders) {
           3 │     if (priorityIds.contains(order.getId())) {
@@ -97,7 +103,7 @@ Requires Java 11+.
 
 ## Features
 
-- **Multi-language**: Java, Groovy, Kotlin, JavaScript/TypeScript (including Vue SFC)
+- **Multi-language**: Java, Kotlin, Groovy, JavaScript/TypeScript (including `.vue` single-file components)
 - **Cross-file analysis**: Follows call chains across files and languages
 - **Evidence chains**: Every finding shows *exactly* why it's a problem
 - **SARIF output**: Plugs into GitHub Code Scanning and VS Code

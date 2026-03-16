@@ -12,10 +12,10 @@ tags:
     | | |
     |---|---|
     | **Rule ID** | `repeated-linear-scan` |
-    | **Severity** | WARNING |
-    | **Confidence** | MEDIUM |
+    | **[Severity](/algorilla/guide/understanding-output/#severity-levels)** | WARNING — likely performance problem |
+    | **[Confidence](/algorilla/guide/understanding-output/#confidence-levels)** | MEDIUM — likely correct, some context-dependent |
     | **Category** | Redundancy |
-    | **Complexity** | O(n·k) → O(n) |
+    | **[Complexity](/algorilla/concepts/big-o-primer/)** | O(n·k) → O(n) |
 
 ## Description
 

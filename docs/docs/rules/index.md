@@ -1,76 +1,76 @@
 # Rules Overview
 
-Algorilla ships with 29 built-in rules that detect common algorithmic complexity anti-patterns, organized in six categories.
+Algorilla ships with 28 built-in rules that detect common algorithmic complexity anti-patterns, organized in six categories.
 
 ## Loop amplifiers
 
 Expensive operations hidden inside loop bodies that multiply the cost per iteration.
 
-| Rule ID | Name | Severity | Detected Complexity |
-|---------|------|----------|-------------------|
-| `nested-lookup` | [Nested Lookup](nested-lookup.md) | WARNING | O(n²) where O(n) suffices |
-| `repeated-linear-scan` | [Repeated Linear Scan](repeated-linear-scan.md) | WARNING | O(n·k) where O(n) suffices |
-| `repeated-regex-in-loop` | [Repeated Regex in Loop](repeated-regex-in-loop.md) | WARNING | O(n·compile) where O(n) suffices |
-| `regex-recompilation-in-loop` | [Regex Recompilation in Loop](regex-recompilation-in-loop.md) | WARNING | O(n·compile) where O(n) suffices |
-| `expensive-serialization-in-loop` | [Expensive Serialization in Loop](expensive-serialization-in-loop.md) | WARNING | O(n·serialize) where O(n) suffices |
-| `sequential-async-join-in-loop` | [Sequential Async Join in Loop](sequential-async-join-in-loop.md) | WARNING | O(n·wait) where O(max-wait) suffices |
-| `in-loop-collection-building` | [In-Loop Collection Building](in-loop-collection-building.md) | WARNING | O(n·m) where O(n+m) suffices |
-| `string-concat-in-loop` | [String Concat in Loop](string-concat-in-loop.md) | WARNING | O(n²) where O(n) suffices |
-| `quadratic-removal` | [Quadratic Removal](quadratic-removal.md) | WARNING | O(n²) where O(n) suffices |
-| `repeated-reflection-in-loop` | [Repeated Reflection in Loop](repeated-reflection-in-loop.md) | INFO | O(n·reflection) where O(n) suffices |
-| `hidden-nested-loop` | [Hidden Nested Loop](hidden-nested-loop.md) | WARNING | O(n·m) hidden behind method call |
-| `io-in-loop` | [IO In Loop](io-in-loop.md) | WARNING | O(n·IO) where O(1·IO+n) suffices |
-| `expensive-callback` | [Expensive Callback](expensive-callback.md) | WARNING | Expensive operations inside HOF callbacks |
-| `cardinality-explosion` | [Cardinality Explosion](cardinality-explosion.md) | WARNING | O(n×m) cross-product output |
+| Rule | Impact |
+|------|--------|
+| [Nested Lookup](nested-lookup.md) | Linear search in a loop → quadratic cost. Fix: use a Set |
+| [Repeated Linear Scan](repeated-linear-scan.md) | Same collection scanned multiple times → combine into one pass |
+| [Repeated Regex in Loop](repeated-regex-in-loop.md) | Regex compiled every iteration → compile once before the loop |
+| [Regex Recompilation in Loop](regex-recompilation-in-loop.md) | Regex literal recompiled per call → hoist to a constant |
+| [Expensive Serialization in Loop](expensive-serialization-in-loop.md) | Serializer created per iteration → reuse a single instance |
+| [Sequential Async Join in Loop](sequential-async-join-in-loop.md) | Awaits one-by-one in a loop → launch all, await together |
+| [In-Loop Collection Building](in-loop-collection-building.md) | Collection copied every iteration → build once outside the loop |
+| [String Concat in Loop](string-concat-in-loop.md) | String copied every iteration → use StringBuilder |
+| [Quadratic Removal](quadratic-removal.md) | Removing from middle of a list shifts all elements → use an iterator or filter |
+| [Repeated Reflection in Loop](repeated-reflection-in-loop.md) | Reflection lookup per iteration → cache the Method/Field |
+| [Hidden Nested Loop](hidden-nested-loop.md) | Method call hides a nested loop → O(n²) invisible at call site |
+| [IO In Loop](io-in-loop.md) | Network/DB/file call per iteration → batch or parallelize |
+| [Expensive Callback](expensive-callback.md) | Expensive operation inside a callback (filter, map, sort) |
+| [Cardinality Explosion](cardinality-explosion.md) | Cross-product output grows as O(n×m) |
 
 ## Sort abuse
 
 Wasteful sort operations or expensive work inside sort comparators.
 
-| Rule ID | Name | Severity | Detected Complexity |
-|---------|------|----------|-------------------|
-| `sort-for-last` | [Sort for Last](sort-for-last.md) | WARNING | O(n log n) where O(n) suffices |
-| `expensive-sort-comparator` | [Expensive Sort Comparator](expensive-sort-comparator.md) | WARNING | O(n² log n) where O(n log n) suffices |
-| `filter-after-sort` | [Filter After Sort](filter-after-sort.md) | INFO | O(n log n) wasted on filtered-out elements |
+| Rule | Impact |
+|------|--------|
+| [Sort for Last](sort-for-last.md) | Sorting entire collection just to get min/max → use min()/max() |
+| [Expensive Sort Comparator](expensive-sort-comparator.md) | Expensive computation inside comparator runs O(n log n) times → precompute |
+| [Filter After Sort](filter-after-sort.md) | Sort runs before filter → filter first, sort fewer elements |
 
 ## Query patterns
 
 Database and service call patterns that cause excessive I/O.
 
-| Rule ID | Name | Severity | Detected Complexity |
-|---------|------|----------|-------------------|
-| `n-plus-one-query` | [N+1 Query](n-plus-one-query.md) | WARNING | O(n·IO) where O(1·IO) suffices |
-| `bulk-load-for-single-lookup` | [Bulk Load for Single Lookup](bulk-load-for-single-lookup.md) | WARNING | O(n) where O(1) suffices |
-| `lazy-loading-in-loop` | [Lazy Loading In Loop](lazy-loading-in-loop.md) | WARNING | O(n·IO) lazy-load per iteration |
+| Rule | Impact |
+|------|--------|
+| [N+1 Query](n-plus-one-query.md) | DB query per item in a loop → single bulk query |
+| [Bulk Load for Single Lookup](bulk-load-for-single-lookup.md) | Loads all records to find one → query for just the one |
+| [Lazy Loading In Loop](lazy-loading-in-loop.md) | ORM lazy-loads per iteration → eager fetch or batch |
 
 ## Construction cost
 
 Unnecessary object creation overhead.
 
-| Rule ID | Name | Severity | Detected Complexity |
-|---------|------|----------|-------------------|
-| `expensive-construction` | [Expensive Construction](expensive-construction.md) | INFO | Unnecessary allocation overhead |
+| Rule | Impact |
+|------|--------|
+| [Expensive Construction](expensive-construction.md) | Heavyweight object created per iteration → reuse a single instance |
 
 ## Redundancy
 
 Repeated computations that could be cached.
 
-| Rule ID | Name | Severity | Detected Complexity |
-|---------|------|----------|-------------------|
-| `redundant-expensive-call` | [Redundant Expensive Call](redundant-expensive-call.md) | INFO | k·O(f) where O(f) suffices |
-| `uncached-getter` | [Uncached Getter](uncached-getter.md) | INFO | k·O(lookup) where O(lookup) suffices |
-| `chained-getters` | [Chained Getters](chained-getters.md) | INFO | O(n^k) where O(n) suffices |
-| `unmemoized-recursion` | [Unmemoized Recursion](unmemoized-recursion.md) | WARNING | O(2^n) where O(n) with memo suffices |
-| `repeated-collection-iteration` | [Repeated Collection Iteration](repeated-collection-iteration.md) | INFO | O(k·n) where O(n) suffices |
-| `loop-invariant-hoisting` | [Loop-Invariant Hoisting](loop-invariant-hoisting.md) | INFO | O(n·call) where O(call) suffices |
+| Rule | Impact |
+|------|--------|
+| [Redundant Expensive Call](redundant-expensive-call.md) | Same expensive call made multiple times → cache in a local variable |
+| [Uncached Getter](uncached-getter.md) | Same getter called repeatedly → cache the result |
+| [Chained Getters](chained-getters.md) | Deep getter chain traversed multiple times → flatten or cache |
+| [Unmemoized Recursion](unmemoized-recursion.md) | Recursive function recomputes same inputs → add memoization |
+| [Repeated Collection Iteration](repeated-collection-iteration.md) | Same collection iterated multiple times → combine into one pass |
+| [Loop-Invariant Hoisting](loop-invariant-hoisting.md) | Same call repeated every iteration with same result → hoist before the loop |
 
 ## Concurrency
 
 Patterns that undermine parallel execution performance.
 
-| Rule ID | Name | Severity | Detected Complexity |
-|---------|------|----------|-------------------|
-| `parallel-pipeline-bottleneck` | [Parallel Pipeline Bottleneck](parallel-pipeline-bottleneck.md) | WARNING | Synchronization bottleneck in parallel pipeline |
+| Rule | Impact |
+|------|--------|
+| [Parallel Pipeline Bottleneck](parallel-pipeline-bottleneck.md) | Synchronization bottleneck in parallel pipeline |
 
 ## Disabling Rules
 
@@ -90,3 +90,5 @@ for (Order order : orders) {
     if (discountedProductIds.contains(order.getProductId())) { ... }
 }
 ```
+
+Have questions about how rules work, what the confidence levels mean, or how Algorilla compares to other tools? Check the [FAQ](../faq.md).

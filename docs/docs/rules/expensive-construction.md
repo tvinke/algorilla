@@ -12,10 +12,10 @@ tags:
     | | |
     |---|---|
     | **Rule ID** | `expensive-construction` |
-    | **Severity** | INFO |
-    | **Confidence** | MEDIUM |
+    | **[Severity](/algorilla/guide/understanding-output/#severity-levels)** | INFO — worth knowing, may not matter at your scale |
+    | **[Confidence](/algorilla/guide/understanding-output/#confidence-levels)** | MEDIUM — likely correct, some context-dependent |
     | **Category** | Construction cost |
-    | **Complexity** | O(init) per call → O(1) amortized |
+    | **[Complexity](/algorilla/concepts/big-o-primer/)** | O(init) per call → O(1) amortized |
 
 ## Description
 
@@ -31,6 +31,8 @@ public String generateJson(Invoice invoice) {
 ```
 
 ## After
+
+Reuse the [`ObjectMapper`](https://javadoc.io/doc/com.fasterxml.jackson.core/jackson-databind/latest/com/fasterxml/jackson/databind/ObjectMapper.html) as a static field:
 
 ```java
 private static final ObjectMapper MAPPER = new ObjectMapper();

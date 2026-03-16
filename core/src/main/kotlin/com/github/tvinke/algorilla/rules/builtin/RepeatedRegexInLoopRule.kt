@@ -73,7 +73,7 @@ public class RepeatedRegexInLoopRule : Rule {
         val loopVar = outerLoop.iteratedVariable ?: "items"
         val evidence =
             listOf(
-                Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP, complexity = "O(|$loopVar|)"),
+                Evidence(outerLoop.location, outerLoop.kind.label(), ExecutionContext.INSIDE_LOOP, complexity = "O($loopVar)"),
                 Evidence(
                     node.location,
                     "$desc inside loop",
@@ -89,8 +89,8 @@ public class RepeatedRegexInLoopRule : Rule {
             location = node.location,
             message = "Regex compilation ($desc) inside ${outerLoop.kind.label()}",
             suggestions = listOf(Suggestion.Freeform("Compile the pattern once outside the loop and reuse the compiled Pattern")),
-            currentComplexity = "O(|$loopVar| * compile)",
-            suggestedComplexity = "O(|$loopVar|)",
+            currentComplexity = "O($loopVar * compile)",
+            suggestedComplexity = "O($loopVar)",
             evidence = evidence,
         )
     }

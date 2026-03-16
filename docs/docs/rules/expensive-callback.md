@@ -12,10 +12,10 @@ tags:
     | | |
     |---|---|
     | **Rule ID** | `expensive-callback` |
-    | **Severity** | WARNING |
-    | **Confidence** | LOW |
+    | **[Severity](/algorilla/guide/understanding-output/#severity-levels)** | WARNING — likely performance problem |
+    | **[Confidence](/algorilla/guide/understanding-output/#confidence-levels)** | LOW — heuristic, check manually |
     | **Category** | Loop amplifiers |
-    | **Complexity** | O(n × cost) → O(n) |
+    | **[Complexity](/algorilla/concepts/big-o-primer/)** | O(n × cost) → O(n) |
 
 ## Description
 

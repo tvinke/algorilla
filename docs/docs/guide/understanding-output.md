@@ -16,6 +16,7 @@ Each finding then shows:
 
       Linear contains on 'discountedProductIds' inside for-each loop
       → Build a HashSet/Map from 'discountedProductIds' before the loop
+      ↳ https://tvinke.github.io/algorilla/rules/nested-lookup
 
           38 │ public List<Order> applyDiscounts(List<Order> orders, List<String> discountedProductIds) {
              │
@@ -25,10 +26,19 @@ Each finding then shows:
 
       ⎿  for-each loop over orders OrderService.java:44 O(orders)
         ⎿  contains on 'discountedProductIds' OrderService.java:45 O(discountedProductIds) ← bottleneck
-      # a1b2c3d4e5f6g7h8
+      # a1b2c3d4e5f6g7h8  ← accept with --accept a1b2c3d4e5f6g7h8
 ```
 
-Findings with HIGH confidence show a `✔ high confidence` marker after the severity tag. LOW confidence findings show `• low confidence`. MEDIUM (the default) has no marker.
+The `← accept with --accept <hash>` hint appears on the first finding only; subsequent findings show just `# <hash>`.
+
+Findings with HIGH confidence show a `✔ high confidence` marker after the severity tag. LOW confidence findings show `• low confidence`. MEDIUM (the default) has no marker. For example:
+
+```
+     warning ✔ high confidence · string-concat-in-loop · Loop amplifiers · O(n²) → O(n)
+```
+```
+     warning • low confidence · lazy-loading-in-loop · Query patterns · O(n·IO) → O(1·IO + n)
+```
 
 The format breaks down as:
 
@@ -36,17 +46,34 @@ The format breaks down as:
 2. **Fully qualified location** (class name and line number)
 3. **Description** of the detected pattern
 4. **Suggestion** prefixed with `→`
-5. **Code snippet** with line numbers showing the relevant context
-6. **Evidence chain** with tree markers (`⎿`) tracing the path from outer context to the bottleneck
-7. **Fingerprint hash** — a stable identifier for this finding, used with `--accept` to add it to the [ignore list](workflow.md#accept-it-ignore-list)
+5. **Rule URL** prefixed with `↳` — a clickable link to the rule's documentation page
+6. **Code snippet** with line numbers showing the relevant context
+7. **Evidence chain** with tree markers (`⎿`) tracing the path from outer context to the bottleneck
+8. **Fingerprint hash** — a stable identifier for this finding, used with `--accept` to add it to the [ignore list](workflow.md#accept-it-ignore-list)
 
 ### Severity levels
 
-- **warning** — likely performance problems worth investigating
-- **info** — informational findings that may or may not matter in practice
+Severity tells you how likely the finding is to be a real performance problem at production scale:
+
+- **warning** — likely performance issue. These patterns typically cause measurable slowdowns once data volumes grow past test-sized inputs. Investigate these first.
+- **info** — worth knowing about but may not matter in practice. The pattern exists, but the cost may be acceptable for your data sizes or the fix isn't straightforward.
 
 !!! tip "Start with warnings"
     If algorilla reports many findings, focus on **warnings** first — they flag the patterns most likely to cause real performance issues. Use `--severity warning` to filter out info-level findings.
+
+### Confidence levels
+
+Confidence tells you how certain Algorilla is that the finding is correct — not how severe the problem is, but how much the tool trusts its own analysis:
+
+- **HIGH** — structurally proven. The pattern is always an anti-pattern regardless of types (e.g. string concatenation in a loop), or type analysis confirms the data path. Very few false positives.
+- **MEDIUM** — likely correct based on available evidence, but depends on context or type information that can't be fully verified statically. This is the default level.
+- **LOW** — plausible but uncertain. Detection relies on naming conventions or heuristics. Worth investigating, but expect some false positives.
+
+Use `--confidence high` for a focused view of the most trustworthy findings, or `--confidence low` to see everything.
+
+### Complexity
+
+The complexity notation on the first line (e.g. `O(orders × discountedProductIds) → O(orders + discountedProductIds)`) shows the cost before and after the suggested fix, using [Big-O notation](../concepts/big-o-primer.md). The arrow `→` means "could be reduced to." If you're unfamiliar with Big-O, the [Big-O primer](../concepts/big-o-primer.md) covers it in 5 minutes — the key insight is: O(n) means cost grows linearly with input, O(n²) means it grows with the _square_.
 
 ### Evidence chain
 
@@ -115,6 +142,7 @@ Files with multiple findings show them sequentially under the same file header:
 
       Sorting entire collection just to access the first element
       → Use .min(comparator) or .max(comparator) — O(n) single pass instead of O(n log n) sort — picks one element directly
+      ↳ https://tvinke.github.io/algorilla/rules/sort-for-last
 
           65 │ return orders.stream()
           66 │         .sorted(Comparator.comparing(Order::getTotal).reversed())
@@ -128,6 +156,7 @@ Files with multiple findings show them sequentially under the same file header:
 
       filter() after sorted() — sorting all elements before filtering
       → Move filter() before sorted() to sort fewer elements
+      ↳ https://tvinke.github.io/algorilla/rules/filter-after-sort
 
           87 │ return orders.stream()
           88 │         .sorted(Comparator.comparing(Order::getTotal).reversed())
@@ -142,6 +171,7 @@ Files with multiple findings show them sequentially under the same file header:
 
       calculateDiscount() called 2 times with same arguments in applyDiscounts()
       → Cache the result in a local variable
+      ↳ https://tvinke.github.io/algorilla/rules/redundant-expensive-call
 
           110 │ if (calculateDiscount(order.getLineItems()).compareTo(BigDecimal.ZERO) > 0) {
               │

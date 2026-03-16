@@ -2,7 +2,7 @@
 
 Most developers know that iterating a collection is O(n). What's less obvious is how quickly those linear scans accumulate when the same collection is streamed multiple times in a single method. Each scan looks clean and independent. The combined cost is invisible during code review because the operations don't *look* related — they're just separate lines doing separate things.
 
-This is the most frequently detected pattern across the codebases algorilla has been tested against.
+In practice, this is one of the patterns algorilla detects most often.
 
 ## One scan is fine
 
@@ -103,6 +103,7 @@ Algorilla detects multiple linear scans on the same collection within a single m
 
       3 linear scans on 'orders' in summarize() — combine into a single pass
       → Cache the result of the first lookup, or combine into a single pass
+      ↳ https://tvinke.github.io/algorilla/rules/repeated-linear-scan
 
           38 │ Order highestTotal = orders.stream()
           39 │     .max(Comparator.comparing(Order::getTotal)).orElse(null);

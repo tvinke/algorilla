@@ -1,6 +1,6 @@
 # The hidden O(n²) problem
 
-Most developers understand that a loop inside a loop is slow. But in real codebases, the inner loop is rarely that obvious. It hides behind method calls, stream operations, and utility functions — invisible during code review, harmless in tests, catastrophic in production.
+Most developers understand that a loop inside a loop is slow. But in real codebases, the inner loop is rarely that obvious. It hides behind method calls, stream operations, and utility functions — easy to miss during code review and hard to notice in tests with small datasets.
 
 This page walks through how that happens, step by step.
 
@@ -142,6 +142,7 @@ Running algorilla on the `OrderService` example from Step 2 would produce:
 
       Linear contains on 'discountedProductIds' inside for-each loop
       → Build a HashSet/Map from 'discountedProductIds' before the loop
+      ↳ https://tvinke.github.io/algorilla/rules/nested-lookup
 
           25 │ List<Order> result = new ArrayList<>();
           26 │ for (Order order : orders) {

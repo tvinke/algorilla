@@ -12,10 +12,10 @@ tags:
     | | |
     |---|---|
     | **Rule ID** | `chained-getters` |
-    | **Severity** | INFO |
-    | **Confidence** | LOW |
+    | **[Severity](/algorilla/guide/understanding-output/#severity-levels)** | INFO — worth knowing, may not matter at your scale |
+    | **[Confidence](/algorilla/guide/understanding-output/#confidence-levels)** | LOW — heuristic, check manually |
     | **Category** | Redundancy |
-    | **Complexity** | O(n^k) → O(n) |
+    | **[Complexity](/algorilla/concepts/big-o-primer/)** | O(n^k) → O(n) |
 
 ## Description
 

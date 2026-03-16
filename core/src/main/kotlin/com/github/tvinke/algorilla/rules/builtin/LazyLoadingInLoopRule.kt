@@ -181,7 +181,7 @@ public class LazyLoadingInLoopRule : Rule {
                         loop.location,
                         loop.kind.label(),
                         ExecutionContext.INSIDE_LOOP,
-                        complexity = "O(|$loopVar|)",
+                        complexity = "O($loopVar)",
                     ),
                     Evidence(
                         call.location,

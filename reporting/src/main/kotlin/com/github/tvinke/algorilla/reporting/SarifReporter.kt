@@ -103,7 +103,7 @@ public class SarifReporter : Reporter {
         const val SARIF_SCHEMA_URI =
             "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json"
         const val TOOL_NAME = "algorilla"
-        const val DOCS_BASE_URL = "https://tvinke.github.io/algorilla/rules/"
+        const val DOCS_BASE_URL = ReporterConstants.DOCS_BASE_URL
 
         val TOOL_VERSION: String by lazy {
             val props = java.util.Properties()

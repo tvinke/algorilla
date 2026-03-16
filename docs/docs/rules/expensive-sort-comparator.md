@@ -12,10 +12,10 @@ tags:
     | | |
     |---|---|
     | **Rule ID** | `expensive-sort-comparator` |
-    | **Severity** | WARNING |
-    | **Confidence** | HIGH |
+    | **[Severity](/algorilla/guide/understanding-output/#severity-levels)** | WARNING — likely performance problem |
+    | **[Confidence](/algorilla/guide/understanding-output/#confidence-levels)** | HIGH — structurally proven |
     | **Category** | Sort abuse |
-    | **Complexity** | O(n² log n) → O(n log n) |
+    | **[Complexity](/algorilla/concepts/big-o-primer/)** | O(n² log n) → O(n log n) |
 
 ## Description
 

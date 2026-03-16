@@ -1,6 +1,6 @@
 # Language Support
 
-Algorilla analyzes source code in four language groups, each with its own parser. All 23 rules work across all languages unless noted otherwise.
+Algorilla analyzes source code in four language groups, each with its own parser. All 28 rules work across all languages unless noted otherwise.
 
 ## Supported Languages
 
@@ -54,8 +54,14 @@ All rules work on the language-agnostic intermediate representation (IR), so mos
 | `string-concat-in-loop` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | `quadratic-removal` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | `hidden-nested-loop` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| `io-in-loop` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | `expensive-callback` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| `cardinality-explosion` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| `lazy-loading-in-loop` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | `redundant-expensive-call` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| `unmemoized-recursion` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| `repeated-collection-iteration` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| `loop-invariant-hoisting` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | `uncached-getter` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | `chained-getters` | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | `repeated-reflection-in-loop` | :white_check_mark: | :white_check_mark: | :white_check_mark: | |

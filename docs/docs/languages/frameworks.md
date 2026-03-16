@@ -1,6 +1,20 @@
 ---
 tags:
   - Frameworks
+  - Spring
+  - JPA
+  - Guava
+  - Reactor
+  - Coroutines
+  - Ktor
+  - GORM
+  - Grails
+  - Vue
+  - React
+  - Angular
+  - RxJS
+  - Node.js
+description: "Built-in framework knowledge in Algorilla — how framework overlays reduce false positives for Spring, JPA, Guava, Vue, React, Angular, and 10+ more frameworks."
 ---
 
 # Framework Support
@@ -9,49 +23,51 @@ Algorilla ships with built-in knowledge of popular frameworks. This doesn't add 
 
 ## How it works
 
-When you scan a Spring project, Algorilla knows that `BeanUtils.copyProperties()` is a trivial utility call, not an expensive operation worth flagging. It knows that `ApplicationContext` and `RestTemplate` are heavyweight types — constructing them in a loop is a real problem. And it knows that `repository.findById()` is a cheap lookup, so it won't flag it as an expensive callback.
+When you scan a Spring project, Algorilla knows that `BeanUtils.copyProperties()` is a trivial utility call, not an expensive operation worth flagging. It knows that `ApplicationContext` and `RestTemplate` are heavyweight types — constructing them in a loop is a real problem. And it knows that `repository.findById()` is a database call, so it flags it inside loops as an [N+1 query](../rules/n-plus-one-query.md).
 
 This knowledge is loaded automatically based on the language being scanned. No configuration needed.
 
 ## Supported frameworks
 
-### Java
+=== "Java"
 
-**Spring** — ApplicationContext, BeanFactory, Environment, RestTemplate, WebClient, Spring MVC response builders, Spring Data repositories (queries, paging, specifications), Spring Security, Spring Validation, transaction management, event publishing. Heavyweight types include `ApplicationContext`, `RestTemplate`, `JdbcTemplate`, and `EntityManagerFactory`.
+    | Framework | What Algorilla knows | Most relevant rules |
+    |-----------|---------------------|-------------------|
+    | **Spring** | ApplicationContext, BeanFactory, RestTemplate, WebClient, Spring MVC, Data repositories, Security, Validation, transaction management, event publishing | [n-plus-one-query](../rules/n-plus-one-query.md), [io-in-loop](../rules/io-in-loop.md), [expensive-construction](../rules/expensive-construction.md) |
+    | **JPA / Hibernate** | EntityManager, CriteriaBuilder, Session, TypedQuery, ScrollableResults, Specification helpers. IO-triggering methods (`persist`, `flush`, `getResultList`) are classified separately from cheap query builders | [n-plus-one-query](../rules/n-plus-one-query.md), [lazy-loading-in-loop](../rules/lazy-loading-in-loop.md), [io-in-loop](../rules/io-in-loop.md) |
+    | **Guava** | Immutable collection factories, `Cache`/`LoadingCache`, `Multimap`, `BiMap`, `Table`, `RangeSet`, `Optional`, `Ordering`, `Joiner`/`Splitter`, `Hashing`, `Futures`, `EventBus` | [nested-lookup](../rules/nested-lookup.md), [redundant-expensive-call](../rules/redundant-expensive-call.md) |
+    | **Project Reactor** | `Mono`/`Flux` transformations, factory methods, Schedulers, context propagation. `block()`, `subscribe()`, `toFuture()` are I/O-triggering | [io-in-loop](../rules/io-in-loop.md), [sequential-async-join-in-loop](../rules/sequential-async-join-in-loop.md) |
+    | **Apache Commons** | StringUtils (150+ ops), CollectionUtils, IOUtils, FileUtils, NumberUtils, ArrayUtils. IO methods (`copyFile`, `writeStringToFile`) classified separately from in-memory utilities | [io-in-loop](../rules/io-in-loop.md), [redundant-expensive-call](../rules/redundant-expensive-call.md) |
+    | **Jackson** | ObjectMapper, JsonParser, JsonGenerator, serialization/deserialization methods | [expensive-construction](../rules/expensive-construction.md), [expensive-serialization-in-loop](../rules/expensive-serialization-in-loop.md) |
 
-**Guava** — Immutable collection factories, `Cache`/`LoadingCache`, `CacheBuilder`, `Multimap`, `BiMap`, `Table`, `RangeSet`, `Optional`, `Ordering`, `Preconditions`, `Joiner`/`Splitter`, `CharMatcher`, `Hashing`, `Futures`/`ListenableFuture`, `EventBus`, and primitive utilities.
+=== "Kotlin"
 
-**Project Reactor** — `Mono` and `Flux` transformations (map, flatMap, filter, zip, merge, concat, etc.), factory methods (just, empty, defer, fromCallable, create, generate), Schedulers, context propagation, and signal inspection. I/O-triggering methods (`block`, `subscribe`, `toFuture`) are classified separately. Heavyweight types include deprecated processors (`FluxProcessor`, `EmitterProcessor`).
+    | Framework | What Algorilla knows | Most relevant rules |
+    |-----------|---------------------|-------------------|
+    | **Kotlin Coroutines** | Builders (`launch`, `async`, `runBlocking`), `Flow` (builders, operators, terminal ops), `Channel`, `Deferred`, `Dispatchers`, `Job`, `Mutex`/`Semaphore`, structured concurrency | [sequential-async-join-in-loop](../rules/sequential-async-join-in-loop.md), [io-in-loop](../rules/io-in-loop.md) |
+    | **Ktor** | Routing DSL, client (`get`, `post`, `submitForm`), content negotiation, sessions, WebSockets, URL building | [io-in-loop](../rules/io-in-loop.md), [expensive-construction](../rules/expensive-construction.md) |
 
-**JPA / Hibernate** — EntityManager operations (find, persist, merge, remove, refresh, flush, clear), CriteriaBuilder predicates and query composition, Root/Join/Path navigation, TypedQuery configuration (setParameter, setFirstResult, setMaxResults), Hibernate Session (save, saveOrUpdate, update, delete, load, get, evict), ScrollableResults, legacy Criteria API, JPA transaction management, and Spring Data JPA Specification helpers. IO-triggering methods (persist, merge, flush, getResultList, getSingleResult, executeUpdate) are classified separately from cheap query-building methods. Heavyweight types include `EntityManagerFactory`, `SessionFactory`, and `StatelessSession`.
+    Kotlin also inherits all Java framework knowledge — Spring, JPA, Guava, Reactor, and Apache Commons all apply when detected in Kotlin code.
 
-**Apache Commons** — StringUtils (150+ string operations), ObjectUtils, BooleanUtils, NumberUtils, ArrayUtils, ClassUtils, SystemUtils, CharUtils, RegExUtils. CollectionUtils, MapUtils, IterableUtils, IteratorUtils, ListUtils (collection wrappers and utilities). IOUtils (stream copy, read, write), FileUtils (file operations, directory traversal), and FilenameUtils (path string operations). IO-triggering methods (copyFile, moveFile, writeStringToFile, readFileToString, deleteDirectory) are classified separately from in-memory utility methods.
+=== "Groovy"
 
-### Kotlin
+    | Framework | What Algorilla knows | Most relevant rules |
+    |-----------|---------------------|-------------------|
+    | **Grails / GORM** | CRUD operations (`save`, `delete`, `get`), dynamic finders (`findBy*`, `countBy*`), criteria/where queries, domain class helpers, controller methods | [n-plus-one-query](../rules/n-plus-one-query.md), [io-in-loop](../rules/io-in-loop.md) |
+    | **Spock** | Mock creation, interaction DSL, mocking operators, specification helpers | — (test framework, mainly used for false-positive suppression) |
 
-**Kotlin Coroutines** — Coroutine builders, `Flow` (builders, operators, combining, terminal operations), `Channel`, `Deferred`, `Dispatchers`, `Job` management, `Mutex`/`Semaphore`, and structured concurrency patterns.
+    Groovy also inherits all Java framework knowledge.
 
-**Ktor** — Routing DSL, client, request/response handling, content negotiation, sessions, status pages, WebSockets, and URL building.
+=== "JavaScript / TypeScript"
 
-### Groovy
-
-**Grails / GORM** — GORM CRUD operations, dynamic finders, criteria/where queries, criteria builder, domain class helpers, controller methods, and service patterns.
-
-**Spock** — Mock creation, interaction DSL, mocking operators, and specification helpers.
-
-### JavaScript / TypeScript
-
-**Vue 3** — Composition API reactivity (`ref`, `reactive`, `computed`, `watch`), lifecycle hooks, provide/inject, Vue Router, Pinia stores, and Vuetify utilities.
-
-**React** — Hooks (`useState`, `useEffect`, `useMemo`, etc.), component factories, render methods, state checks, and React Router.
-
-**Angular** — Dependency injection, signals, change detection, lifecycle hooks, router, and template utilities.
-
-**RxJS** — Creation, transformation, filtering, join, multicast, error handling, and subscription management operators.
-
-**Lodash / Underscore** — Array, collection, object, string, function, math, and general utility methods.
-
-**Node.js / Browser DOM** — DOM event registration, DOM factories, query methods, Node.js `EventEmitter`, `Buffer`, `path`, `process`, `Stream`, `Crypto`, timers, and `Promise` creation. Heavyweight types include `Worker`, `WebSocket`, and `XMLHttpRequest`.
+    | Framework | What Algorilla knows | Most relevant rules |
+    |-----------|---------------------|-------------------|
+    | **Vue 3** | `ref`, `reactive`, `computed`, `watch`, `watchEffect`, lifecycle hooks, `provide`/`inject`, Vue Router, Pinia stores, Vuetify utilities | [nested-lookup](../rules/nested-lookup.md), [expensive-callback](../rules/expensive-callback.md) |
+    | **React** | `useState`, `useEffect`, `useMemo`, `useCallback`, `useRef`, component factories, render methods, React Router | [nested-lookup](../rules/nested-lookup.md), [expensive-callback](../rules/expensive-callback.md) |
+    | **Angular** | DI, signals, change detection, lifecycle hooks, router, template utilities | [nested-lookup](../rules/nested-lookup.md), [io-in-loop](../rules/io-in-loop.md) |
+    | **RxJS** | Creation (`of`, `from`, `interval`), transformation (`map`, `flatMap`, `switchMap`), filtering, join, multicast, error handling, subscription management | [sequential-async-join-in-loop](../rules/sequential-async-join-in-loop.md) |
+    | **Lodash / Underscore** | Array, collection, object, string, function, math, and general utility methods | [nested-lookup](../rules/nested-lookup.md), [repeated-linear-scan](../rules/repeated-linear-scan.md) |
+    | **Node.js / Browser DOM** | DOM events, DOM factories, query methods, `EventEmitter`, `Buffer`, `path`, `process`, `Stream`, `Crypto`, timers, `Promise`. Heavyweight: `Worker`, `WebSocket`, `XMLHttpRequest` | [io-in-loop](../rules/io-in-loop.md), [expensive-construction](../rules/expensive-construction.md) |
 
 ## What "cheap," "trivial," and "heavyweight" mean
 
