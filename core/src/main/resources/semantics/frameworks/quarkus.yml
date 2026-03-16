@@ -1,0 +1,91 @@
+# Quarkus — framework overlay for Java
+# Quarkus, Panache (Active Record + Repository), RESTEasy, CDI, SmallRye
+
+language: java
+
+methods: {}
+
+cheap-methods:
+  # Panache entity — static metadata methods (no DB)
+  - getEntityClass
+  - isPersistent
+  # CDI — bean resolution (cached after first lookup)
+  - select
+  - get
+  # RESTEasy — request context accessors
+  - getHeaders
+  - getMediaType
+  - getMethod
+  - getUriInfo
+  - getLanguage
+  - getAcceptableLanguages
+  - getAcceptableMediaTypes
+  # Mutiny Uni/Multi — reactive operator constructors (no IO until subscribed)
+  - onItem
+  - onFailure
+  - onCompletion
+  - transform
+  - transformToUni
+  - transformToMulti
+  - eventually
+  - replaceWith
+  - replaceIfNullWith
+  - ifNoItem
+  - chain
+  - invoke
+  - call
+
+heavyweight-types:
+  # Quarkus REST client builders
+  - RestClientBuilder
+  - QuarkusRestClientBuilder
+
+io-methods:
+  # Panache Active Record — these hit the database
+  - persist
+  - persistAndFlush
+  - deleteById
+  - deleteAll
+  - findById
+  - findAll
+  - listAll
+  - count
+  - update
+  - streamAll
+  # Panache repository
+  - persistAndFlush
+  # RESTEasy client — HTTP calls
+  - invoke
+  - rx
+  - submit
+  # SmallRye Reactive Messaging
+  - ack
+  - nack
+
+io-method-candidates:
+  - find
+  - list
+  - stream
+  - delete
+  - flush
+
+io-target-patterns:
+  - "*repository"
+  - "*resource"
+  - "*endpoint"
+  - "*client"
+  - "*dao"
+
+non-io-targets:
+  # Mutiny types — reactive wrappers, not IO
+  - uni
+  - multi
+  - uniemitter
+  - multiemitter
+  # Panache query builder — no IO until terminal
+  - panachequery
+
+monadic-types:
+  - Uni
+
+non-repository-targets: []

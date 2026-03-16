@@ -5,6 +5,7 @@ build/
 
 # IDE
 .idea/
+.claude/
 *.iml
 .vscode/
 *.swp

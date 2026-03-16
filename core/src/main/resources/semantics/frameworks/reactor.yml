@@ -152,3 +152,6 @@ heavyweight-types:
   - EmitterProcessor
   - ReplayProcessor
   - UnicastProcessor
+
+monadic-types:
+  - Mono

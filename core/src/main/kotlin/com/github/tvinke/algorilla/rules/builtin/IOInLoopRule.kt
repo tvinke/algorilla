@@ -73,7 +73,9 @@ public class IOInLoopRule : Rule {
 
         // Treat stream pipeline ops (map, flatMap, filter) as implicit iteration contexts.
         // Their lambda arguments are executed per-element, just like a loop body.
-        if (node is FunctionCall && node.name in IMPLICIT_ITERATION_OPS) {
+        // Exception: monadic single-item types (Mono, Uni, Optional, CompletableFuture) —
+        // flatMap on these is a 1-to-1 transformation, not iteration over a collection.
+        if (node is FunctionCall && node.name in IMPLICIT_ITERATION_OPS && !isMonadicTarget(node, language, context.registry)) {
             val syntheticLoop = LoopNode(LoopKind.HIGHER_ORDER, node.qualifiedTarget, node.location, node.children)
             for (child in node.children) {
                 scanNode(child, fn, loopStack + syntheticLoop, ioMethods, ioCandidates, language, context, findings)
@@ -108,7 +110,7 @@ public class IOInLoopRule : Rule {
             if (isDefiniteIO || isCandidateIO) {
                 findings.add(buildFinding(node, loopStack, hasLoopParamFlow(fn)))
             } else if (fn != null) {
-                checkCrossMethodIO(node, fn, loopStack, context, findings)
+                checkCrossMethodIO(node, fn, loopStack, language, context, findings)
             }
         }
 
@@ -132,9 +134,11 @@ public class IOInLoopRule : Rule {
         call: FunctionCall,
         callerFn: FunctionDecl,
         loopStack: List<LoopNode>,
+        language: Language,
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
+        val languageIoMethods = context.registry.ioMethods(language)
         val evidence =
             ParameterFlowQuery.parameterFlowsThrough(
                 call = call,
@@ -144,7 +148,7 @@ public class IOInLoopRule : Rule {
             ) { target ->
                 // Check if the terminal operation is a method call to an IO method
                 target is FlowTarget.MethodCallReceiver &&
-                    context.registry.allIoMethods().contains(target.methodName)
+                    target.methodName in languageIoMethods
             }
         if (evidence != null) {
             findings.add(buildCrossMethodFinding(call, evidence.paramName, loopStack))
@@ -294,6 +298,16 @@ public class IOInLoopRule : Rule {
 
 /** Stream pipeline methods that implicitly iterate — their lambda args run per-element. */
 private val IMPLICIT_ITERATION_OPS = setOf("map", "flatMap", "filter", "peek", "mapToInt", "mapToLong", "mapToDouble")
+
+/** Returns true if this call's target is a monadic single-item type (not a collection). */
+private fun isMonadicTarget(
+    call: FunctionCall,
+    language: Language,
+    registry: LanguageSemanticsRegistry,
+): Boolean {
+    val target = call.qualifiedTarget ?: return false
+    return registry.isMonadicTarget(language, target)
+}
 
 /** Returns true if the call target is a known in-memory buffer (not real IO). */
 private fun isInMemoryTarget(

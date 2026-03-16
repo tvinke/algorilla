@@ -281,7 +281,6 @@ heavyweight-types:
   - ScheduledExecutorService
   - ThreadPoolExecutor
   - ForkJoinPool
-  - CompletableFuture
   - DateTimeFormatter
   - XPathFactory
   - SchemaFactory
@@ -1409,6 +1408,22 @@ non-io-targets:
   - stringtokenizer
   - scanner
   - tok
+  # Thread pools and async — execute()/cancel()/submit() are in-memory dispatch
+  - executor
+  - threadpool
+  - executorservice
+  - scheduledexecutorservice
+  - threadpoolexecutor
+  - forkjoinpool
+  - fixedthreadpool
+  - cachedthreadpool
+  # Futures — cancel() is in-memory flag, not IO
+  - future
+  - completablefuture
+  - completionstage
+  - promise
+  - task
+  - callable
 
 io-method-candidates:
   - save
@@ -1478,6 +1493,11 @@ monadic-types:
   - CompletableFuture
   - CompletionStage
   - Stream  # Single-value stream from Optional.stream()
+  # Reactive single-item types (framework overlays may add more)
+  - Mono
+  - Uni
+  - Single
+  - Maybe
 
 monadic-variable-names:
   - result
