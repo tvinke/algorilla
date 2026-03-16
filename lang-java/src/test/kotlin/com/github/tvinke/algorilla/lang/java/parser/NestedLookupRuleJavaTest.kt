@@ -116,6 +116,13 @@ internal class NestedLookupRuleJavaTest {
     }
 
     @Test
+    fun `should not flag String contains when variable name suggests string type`() {
+        val findings = analyzeFixture("nested-lookup/regression/string-contains-not-collection.java")
+
+        findings.shouldBeEmpty()
+    }
+
+    @Test
     fun `should suggest Map for indexOf lookup`() {
         val findings = analyzeFixture("nested-lookup/positive/foreach-indexOf.java")
 

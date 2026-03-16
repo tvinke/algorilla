@@ -165,6 +165,9 @@ public fun LookupCall.isCollectionLookup(
     if (typeEnv != null && targetVariable != null) {
         return !(typeEnv.isO1(targetVariable) || typeEnv.isString(targetVariable))
     }
+    // Name-based string heuristic: String.contains(substring) is O(n) on string length,
+    // not O(n) on a collection — skip when the variable name suggests a String type.
+    if (targetVariable != null && hasStringTargetName(targetVariable, registry, language)) return false
     return fn == null || !fn.hasO1Type(targetVariable)
 }
 
@@ -185,6 +188,20 @@ private fun LookupCall.hasO1TargetName(
     val target = targetVariable?.lowercase() ?: return false
     val suffixes = registry.nonListTargetsSuffixes(language ?: Language.JAVA)
     return suffixes.any { target.endsWith(it) || target == it }
+}
+
+/**
+ * Returns true if the variable name suggests a String type based on naming conventions.
+ * Uses the YAML-driven string-name-suffixes and string-exact-names sections.
+ */
+private fun hasStringTargetName(
+    varName: String,
+    registry: LanguageSemanticsRegistry,
+    language: Language? = null,
+): Boolean {
+    val lang = language ?: Language.JAVA
+    if (varName in registry.stringExactNames(lang)) return true
+    return registry.stringNameSuffixes(lang).any { varName.endsWith(it) }
 }
 
 /**
