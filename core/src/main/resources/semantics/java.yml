@@ -257,12 +257,10 @@ builder-methods:
 
 heavyweight-types:
   - ObjectMapper
-  - Gson
   - XmlMapper
   - DocumentBuilderFactory
   - TransformerFactory
   - Pattern
-  - DecimalFormat
   - SimpleDateFormat
   - Collator
   - RuleBasedCollator
@@ -1424,6 +1422,14 @@ non-io-targets:
   - promise
   - task
   - callable
+  # Command pattern — execute() is in-memory dispatch, not IO
+  - command
+  - cmd
+  - runnable
+  - action
+  - handler
+  - job
+  - interceptor
 
 io-method-candidates:
   - save

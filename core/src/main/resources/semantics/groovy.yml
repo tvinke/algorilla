@@ -180,7 +180,6 @@ builder-methods:
 
 heavyweight-types:
   - ObjectMapper
-  - Gson
   - XmlMapper
   - DocumentBuilderFactory
   - TransformerFactory
@@ -1118,6 +1117,30 @@ non-io-targets:
   - stringtokenizer
   - scanner
   - tok
+  # Thread pools and async — execute()/cancel()/submit() are in-memory dispatch
+  - executor
+  - threadpool
+  - executorservice
+  - scheduledexecutorservice
+  - threadpoolexecutor
+  - forkjoinpool
+  - fixedthreadpool
+  - cachedthreadpool
+  # Futures — cancel() is in-memory flag, not IO
+  - future
+  - completablefuture
+  - completionstage
+  - promise
+  - task
+  - callable
+  # Command pattern — execute() is in-memory dispatch, not IO
+  - command
+  - cmd
+  - runnable
+  - action
+  - handler
+  - job
+  - interceptor
 
 io-method-candidates:
   - save
