@@ -380,7 +380,7 @@ internal class ConsoleReporterTest {
             val output = StringBuilder()
             reporter.report(result(*findings.toTypedArray()), output)
 
-            output.toString() shouldContain "Focus on high-confidence findings with --confidence high"
+            output.toString() shouldContain "Use --limit 5 to focus on the top findings first"
         }
 
         @Test

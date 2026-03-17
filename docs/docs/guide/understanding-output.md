@@ -121,7 +121,7 @@ When a scan produces more than 10 findings, an overview section appears before t
   Hotspot: CategoryFacadeImpl.java (11 findings)
 ────────────────────────────────────────────
 
-Tip: Focus on high-confidence findings with --confidence high
+Tip: Use --limit 5 to focus on the top findings first
 ```
 
 When a single info-level rule dominates the output (>30% of findings), a note suggests filtering:

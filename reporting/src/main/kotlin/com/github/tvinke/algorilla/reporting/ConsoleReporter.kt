@@ -344,7 +344,7 @@ public class ConsoleReporter(
         output.appendLine(Ansi.dim(line + "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500", color))
         output.appendLine()
         output.appendLine(
-            Ansi.dim("Tip: Focus on high-confidence findings with --confidence high", color),
+            Ansi.dim("Tip: Use --limit 5 to focus on the top findings first", color),
         )
         output.appendLine()
     }
