@@ -199,6 +199,30 @@ public data class GenericNode(
 ) : IRNode
 
 /**
+ * A class/interface/object declaration. Wraps the class body and captures
+ * the supertype list for hierarchy resolution (L3).
+ */
+public data class ClassNode(
+    val name: String,
+    /** Supertypes (implements/extends), generics stripped. */
+    val supertypes: List<String> = emptyList(),
+    override val location: SourceLocation,
+    override val children: List<IRNode>,
+) : IRNode
+
+/**
+ * A type check expression, e.g. `x instanceof Set` (Java) or `x is Set` (Kotlin).
+ * Used by flow typing (L5) to narrow variable types within branch scopes.
+ */
+public data class TypeCheck(
+    val variableName: String,
+    val checkedType: String,
+    override val location: SourceLocation,
+) : IRNode {
+    override val children: List<IRNode> get() = emptyList()
+}
+
+/**
  * The root node of an IR tree for a single source file.
  */
 public data class FileRoot(

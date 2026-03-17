@@ -2,6 +2,7 @@ package com.github.tvinke.algorilla.lang.javascript.parser
 
 import com.github.tvinke.algorilla.model.AccessKind
 import com.github.tvinke.algorilla.model.BranchNode
+import com.github.tvinke.algorilla.model.ClassNode
 import com.github.tvinke.algorilla.model.CollectionAccess
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
@@ -16,6 +17,7 @@ import com.github.tvinke.algorilla.model.Parameter
 import com.github.tvinke.algorilla.model.SortCall
 import com.github.tvinke.algorilla.model.SortKind
 import com.github.tvinke.algorilla.model.SourceLocation
+import com.github.tvinke.algorilla.model.TypeCheck
 import com.github.tvinke.algorilla.model.VariableDecl
 import org.treesitter.TSNode
 
@@ -49,6 +51,7 @@ internal class JsTreeSitterVisitor(
             "new_expression" -> visitNewExpression(node)
             "class_declaration" -> visitClassDeclaration(node)
             "ternary_expression" -> visitTernaryExpression(node)
+            "binary_expression" -> visitBinaryExpression(node)
             "member_expression" -> emptyList()
             in TRANSPARENT_TYPES -> visitChildren(node)
             else -> emptyList()
@@ -289,11 +292,80 @@ internal class JsTreeSitterVisitor(
     private fun visitClassDeclaration(node: TSNode): List<IRNode> {
         val prev = enclosingClass
         val nameNode = node.getChildByFieldName("name")
-        enclosingClass = if (!nameNode.isNull) nodeText(nameNode) else null
+        val className = if (!nameNode.isNull) nodeText(nameNode) else null
+        enclosingClass = className
         val result = visitChildren(node)
         enclosingClass = prev
-        return result
+        if (className == null) return result
+        val supertypes = extractJsSupertypes(node)
+        return listOf(
+            ClassNode(
+                name = className,
+                supertypes = supertypes,
+                location = locationOf(node),
+                children = result,
+            ),
+        )
     }
+
+    /** Extracts supertypes from class_heritage (extends/implements). */
+    private fun extractJsSupertypes(classNode: TSNode): List<String> {
+        val supertypes = mutableListOf<String>()
+        collectChildTypeNames(classNode, setOf("class_heritage", "extends_clause"), supertypes)
+        return supertypes
+    }
+
+    private fun collectChildTypeNames(
+        parent: TSNode,
+        targetTypes: Set<String>,
+        result: MutableList<String>,
+    ) {
+        for (i in 0 until parent.namedChildCount) {
+            val child = parent.getNamedChild(i)
+            if (child.isNull) continue
+            if (child.type in targetTypes) {
+                extractTypeRefs(child, result)
+            }
+        }
+    }
+
+    private fun extractTypeRefs(
+        clause: TSNode,
+        result: MutableList<String>,
+    ) {
+        for (i in 0 until clause.namedChildCount) {
+            val ref = clause.getNamedChild(i)
+            if (ref.isNull) continue
+            // Recurse into nested heritage clauses
+            if (ref.type in setOf("class_heritage", "extends_clause", "implements_clause")) {
+                extractTypeRefs(ref, result)
+            } else {
+                val typeName = nodeText(ref).substringBefore('<').trim()
+                if (typeName.isNotEmpty()) result.add(typeName)
+            }
+        }
+    }
+
+    /** Handles binary expressions, emitting TypeCheck for `x instanceof Set`. */
+    private fun visitBinaryExpression(node: TSNode): List<IRNode> {
+        val left = node.getChildByFieldName("left")
+        val right = node.getChildByFieldName("right")
+        val op = node.getChildByFieldName("operator")
+        if (isInstanceofExpression(op, left, right)) {
+            val varName = jsExtractVariableName(nodeText(left))
+            val checkedType = nodeText(right).substringBefore('<').trim()
+            if (varName != null && checkedType.isNotEmpty()) {
+                return visit(left) + listOf(TypeCheck(varName, checkedType, locationOf(node)))
+            }
+        }
+        return visitChildren(node)
+    }
+
+    private fun isInstanceofExpression(
+        op: TSNode,
+        left: TSNode,
+        right: TSNode,
+    ): Boolean = !op.isNull && nodeText(op) == "instanceof" && !left.isNull && !right.isNull
 
     private fun visitField(
         node: TSNode,
@@ -446,7 +518,6 @@ private val TRANSPARENT_TYPES =
         "parenthesized_expression",
         "assignment_expression",
         "augmented_assignment_expression",
-        "binary_expression",
         "unary_expression",
         "update_expression",
         "sequence_expression",
