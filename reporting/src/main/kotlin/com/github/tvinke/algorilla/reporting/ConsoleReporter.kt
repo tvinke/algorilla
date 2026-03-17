@@ -94,9 +94,9 @@ public class ConsoleReporter(
         output.appendLine("      ${Ansi.green("\u2192 ${finding.suggestion}", color)}")
         finding.suggestedCode?.let { sc ->
             val fw = sc.framework?.let { " ($it)" } ?: ""
-            output.appendLine(Ansi.dim("      $fw", color))
-            for (codeLine in sc.code.lines()) {
-                output.appendLine(Ansi.dim("        $codeLine", color))
+            for ((i, codeLine) in sc.code.lines().withIndex()) {
+                val prefix = if (i == 0) "\u2570 " else "  "
+                output.appendLine("        ${Ansi.green("$prefix$codeLine${ if (i == 0) fw else "" }", color)}")
             }
         }
         output.appendLine("      ${Ansi.dim("\u2197 ${ReporterConstants.ruleUrl(finding.ruleId)}", color)}")
