@@ -7,7 +7,7 @@
 
 **Find the hidden O(n²) in your codebase before your users do.**
 
-Algorilla is a static analysis tool that detects algorithmic complexity anti-patterns — the kind of performance bugs that pass code review, work fine with test data, and then crawl under real load.
+Algorilla scans your source code for algorithmic complexity anti-patterns — the kind of performance issues that pass code review, work fine with test data, and then surface under real load. It points out where to look; you decide what's worth fixing.
 
 ## The problem
 
@@ -43,7 +43,7 @@ But `List.contains()` is O(n). Inside that loop, the real cost is **O(orders × 
         ⎿  contains on 'priorityIds' OrderService.java:3 O(priorityIds) ← bottleneck
 ```
 
-Every finding shows the complexity before and after, a concrete suggestion, an evidence chain tracing the execution path, and a link to the rule docs. The fix usually takes 30 seconds.
+Every finding shows the complexity before and after, a concrete suggestion, an evidence chain tracing the execution path, and a link to the [rule docs](https://tvinke.github.io/algorilla/rules/nested-lookup/). You judge whether the data sizes in your context actually make it matter — algorilla raises it, you call it.
 
 ## Quick start
 
@@ -87,7 +87,7 @@ plugins {
 
 ## What it detects
 
-29 rules across 6 categories. A few highlights:
+29 rules across [6 categories](https://tvinke.github.io/algorilla/rules/). Not every finding is a bug — some patterns are fine at small scale. Algorilla flags the spots worth reviewing:
 
 - **Nested lookups** — `contains()`/`filter()` inside a loop turning O(n) into O(n×m)
 - **N+1 queries** — `findById()` or repository calls inside loops
@@ -96,7 +96,7 @@ plugins {
 - **Hidden nested loops** — method calls that hide an inner loop behind an innocuous name
 - **Redundant expensive calls** — same heavy computation repeated with the same arguments
 
-Full rule reference with examples: [all rules](https://tvinke.github.io/algorilla/rules/)
+Each rule page explains the pattern, shows real examples, and discusses when the finding matters (and when it doesn't): **[browse all rules](https://tvinke.github.io/algorilla/rules/)**
 
 ## How it works
 
@@ -108,25 +108,28 @@ Pure AST pattern matching — no AI, no ML, fully deterministic. Algorilla parse
 
 ## Confidence levels
 
-Not all findings are equally certain. Each one has a confidence tier:
+Not all findings are equally certain. Each one has a [confidence tier](https://tvinke.github.io/algorilla/guide/understanding-output/#confidence-levels):
 
 - **HIGH** — structurally proven, very few false positives
 - **MEDIUM** — likely correct, may need context
-- **LOW** — heuristic-based, worth checking
+- **LOW** — heuristic-based, worth investigating
 
-Default output shows HIGH confidence only. Widen with `--confidence medium` or `--confidence low` as you triage.
+Default output shows HIGH confidence only. Widen with `--confidence medium` or `--confidence low` as you work through them. See [triaging a large scan](https://tvinke.github.io/algorilla/guide/understanding-output/#triaging-a-large-scan) for the recommended workflow.
 
 ## Stability
 
 Pre-1.0. Breaking changes documented in the [CHANGELOG](CHANGELOG.md). CLI flags, rule IDs, JSON output, and exit codes are treated as stable — we avoid breaking them, and when we must, we call it out. See [Stability & Compatibility](https://tvinke.github.io/algorilla/stability/) for the full policy.
 
-## Docs
+## Documentation
 
-- [Quick start](https://tvinke.github.io/algorilla/getting-started/quickstart/)
-- [Understanding output](https://tvinke.github.io/algorilla/guide/understanding-output/)
-- [CI/CD integration](https://tvinke.github.io/algorilla/guide/ci-integration/)
-- [All rules](https://tvinke.github.io/algorilla/rules/)
-- [Configuration](https://tvinke.github.io/algorilla/getting-started/configuration/)
+Full docs at **[tvinke.github.io/algorilla](https://tvinke.github.io/algorilla/)**
+
+- [Quick start](https://tvinke.github.io/algorilla/getting-started/quickstart/) — first scan in 2 minutes
+- [Understanding output](https://tvinke.github.io/algorilla/guide/understanding-output/) — what each part of a finding means
+- [Workflow](https://tvinke.github.io/algorilla/guide/workflow/) — scan, triage, fix or accept, repeat
+- [All rules](https://tvinke.github.io/algorilla/rules/) — 29 rules with examples and guidance
+- [CI/CD integration](https://tvinke.github.io/algorilla/guide/ci-integration/) — GitHub Actions, SARIF, quality gates
+- [Configuration](https://tvinke.github.io/algorilla/getting-started/configuration/) — `.algorilla.yml` reference
 
 ## Building from source
 
