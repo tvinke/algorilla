@@ -287,6 +287,21 @@ heavyweight-types:
   - MBeanServer
   - ScriptEngine
 
+string-types:
+  - String
+  - StringBuilder
+  - StringBuffer
+  - CharSequence
+
+list-types:
+  - List
+  - ArrayList
+  - LinkedList
+  - Vector
+  - Stack
+  - CopyOnWriteArrayList
+  - Array
+
 collection-types:
   - List
   - ArrayList
@@ -327,6 +342,10 @@ o1-types:
   - ConcurrentLinkedQueue
   - ConcurrentLinkedDeque
   - ArrayDeque
+  - NavigableSet
+  - NavigableMap
+  - SortedSet
+  - SortedMap
 
 # Method name prefixes for getter-pattern detection (shared across rules)
 getter-prefixes:

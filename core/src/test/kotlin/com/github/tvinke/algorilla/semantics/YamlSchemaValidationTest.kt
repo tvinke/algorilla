@@ -89,6 +89,8 @@ internal class YamlSchemaValidationTest {
             "reflection-exclusions",
             "type-check-prefixes",
             "sequential-read-prefixes",
+            "string-types",
+            "list-types",
         )
 
     @ParameterizedTest(name = "language file {0} has no unknown sections")

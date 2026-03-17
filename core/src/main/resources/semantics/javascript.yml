@@ -430,6 +430,13 @@ heavyweight-types:
   - Server
   - Agent
 
+string-types:
+  - String
+  - string
+
+list-types:
+  - Array
+
 collection-types:
   - Array
   - TypedArray

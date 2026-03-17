@@ -230,6 +230,14 @@ trivial-methods:
   - asSet
   - transform
 
+collection-types:
+  - ImmutableList
+  - ImmutableSortedSet
+  - ImmutableSortedMap
+  - ImmutableMultimap
+  - ImmutableSetMultimap
+  - ImmutableListMultimap
+
 o1-types:
   - ImmutableSet
   - ImmutableMap

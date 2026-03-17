@@ -236,6 +236,19 @@ heavyweight-types:
   - DocumentBuilderFactory
   - TransformerFactory
 
+string-types:
+  - String
+  - StringBuilder
+  - StringBuffer
+  - CharSequence
+
+list-types:
+  - List
+  - MutableList
+  - ArrayList
+  - LinkedList
+  - Array
+
 collection-types:
   - List
   - MutableList
