@@ -119,6 +119,12 @@ internal class JavaIRVisitor(
         val body = ctx.methodBody()?.let { visitChildren(it) } ?: emptyList()
         val loc = locationOf(ctx)
         val qName = if (enclosingClass != null) "$enclosingClass.$name" else name
+        val returnType =
+            ctx
+                .typeTypeOrVoid()
+                ?.typeType()
+                ?.text
+                ?.simplifyGenericType()
 
         return listOf(
             FunctionDecl(
@@ -126,6 +132,7 @@ internal class JavaIRVisitor(
                 qualifiedName = qName,
                 parameters = params,
                 declaringClass = enclosingClass,
+                returnType = returnType,
                 location = loc,
                 children = body,
             ),
@@ -448,3 +455,6 @@ private fun isConstantSizeFactory(targetChildren: List<IRNode>): Boolean {
     val call = targetChildren.filterIsInstance<FunctionCall>().firstOrNull() ?: return false
     return call.name in JAVA_CONSTANT_SIZE_FACTORIES && call.arguments.size <= SMALL_COLLECTION_THRESHOLD
 }
+
+/** Strips generic type parameters: "List<Order>" → "List", "Map<String,Integer>" → "Map". */
+private fun String.simplifyGenericType(): String = substringBefore('<').substringAfterLast('.')

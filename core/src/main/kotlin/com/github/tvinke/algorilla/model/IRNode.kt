@@ -138,6 +138,8 @@ public data class FunctionDecl(
     val parameters: List<Parameter>,
     val isConstructor: Boolean = false,
     val declaringClass: String? = null,
+    /** Declared return type, e.g. "List", "Map", "void". Null when unresolvable (JS, Groovy dynamic). */
+    val returnType: String? = null,
     var estimatedComplexity: Complexity? = null,
     var executionContext: ExecutionContext = ExecutionContext.SINGLE,
     var parameterFlows: List<ParameterFlow> = emptyList(),
