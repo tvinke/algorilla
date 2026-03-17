@@ -95,7 +95,7 @@ public class ConsoleReporter(
         finding.suggestedCode?.let { sc ->
             val fw = sc.framework?.let { " ($it)" } ?: ""
             for ((i, codeLine) in sc.code.lines().withIndex()) {
-                val prefix = if (i == 0) "\u2570 " else "  "
+                val prefix = if (i == 0) "\u2570 e.g. " else "       "
                 output.appendLine("        ${Ansi.green("$prefix$codeLine${ if (i == 0) fw else "" }", color)}")
             }
         }
