@@ -5,29 +5,25 @@
 [![License](https://img.shields.io/github/license/tvinke/algorilla)](https://github.com/tvinke/algorilla/blob/main/LICENSE)
 [![Languages](https://img.shields.io/badge/Java%20%7C%20Kotlin%20%7C%20Groovy%20%7C%20JS%2FTS-supported-green)]()
 
-**Find the hidden O(n^2) in your codebase before your users do.**
+**Find the hidden O(n²) in your codebase before your users do.**
 
-Algorilla is a static analysis tool that detects algorithmic complexity anti-patterns in Java, Groovy, Kotlin, and JavaScript/TypeScript code. It spots the kind of performance bugs that pass code review, work fine in tests, and then bring production to its knees when real data hits.
+Algorilla is a static analysis tool that detects algorithmic complexity anti-patterns — the kind of performance bugs that pass code review, work fine with test data, and then crawl under real load.
 
-## The Problem
+## The problem
 
-This code looks fine. It passes every code review. It works perfectly in your test suite with 10 items:
+This code looks fine. It passes every code review:
 
 ```java
-void processOrders(List<Order> orders, List<String> priorityIds) {
-    for (Order order : orders) {
-        if (priorityIds.contains(order.getId())) {
-            ship(order);
-        }
+for (Order order : orders) {
+    if (priorityIds.contains(order.getId())) {
+        ship(order);
     }
 }
 ```
 
-But `List.contains()` is O(n) — it scans the entire list on every call. Inside that loop, the real complexity is **O(n * m)**. With 10,000 orders and 8,000 priority IDs? That's **80 million comparisons**.
+But `List.contains()` is O(n). Inside that loop, the real cost is **O(orders × priorityIds)**. With 10,000 orders and 8,000 priority IDs, that's 80 million comparisons.
 
-## What Algorilla finds
-
-Run it on the code above:
+## What algorilla finds
 
 ```
 ⏺ src/main/java/com/example/shop/service/OrderService.java (1 finding)
@@ -47,129 +43,99 @@ Run it on the code above:
         ⎿  contains on 'priorityIds' OrderService.java:3 O(priorityIds) ← bottleneck
 ```
 
-The fix takes 30 seconds — convert `priorityIds` to a `HashSet` before the loop. 80 million operations become 10,000.
+Every finding shows the complexity before and after, a concrete suggestion, an evidence chain tracing the execution path, and a link to the rule docs. The fix usually takes 30 seconds.
 
-## Installation
-
-### npm (recommended)
+## Quick start
 
 ```bash
 npx algorilla .
-# or install globally
-npm install -g algorilla
-algorilla .
 ```
 
-Bundles a JRE automatically if Java isn't available.
+That's it. Scans the current project, auto-detects the build system, and reports findings. Bundles a JRE if Java isn't on your PATH.
 
-### Gradle plugin
+Too many findings? Start small:
 
+```bash
+npx algorilla --limit 5 .
+```
+
+## Install
+
+**npm** (recommended):
+```bash
+npm install -g algorilla
+```
+
+**Gradle plugin**:
 ```kotlin
-// build.gradle.kts
 plugins {
-    id("io.github.tvinke.algorilla") version "0.2.0"
+    id("io.github.tvinke.algorilla") version "0.3.0"
 }
 ```
-
 ```bash
 ./gradlew algorilla
 ```
 
-### GitHub Action
-
+**GitHub Action** (uploads SARIF to Code Scanning automatically):
 ```yaml
-- uses: tvinke/algorilla@v0.2.0
+- uses: tvinke/algorilla@v0.3.0
   with:
     paths: '.'
 ```
 
-Uploads SARIF to GitHub Code Scanning automatically.
+**Docker** / **JAR**: see [installation docs](https://tvinke.github.io/algorilla/getting-started/installation/).
 
-### Docker
+## What it detects
 
-```bash
-docker run --rm -v "$(pwd):/src" ghcr.io/tvinke/algorilla /src
-```
+29 rules across 6 categories. A few highlights:
 
-### Download JAR
+- **Nested lookups** — `contains()`/`filter()` inside a loop turning O(n) into O(n×m)
+- **N+1 queries** — `findById()` or repository calls inside loops
+- **Sort abuse** — sorting an entire collection just to pick the first/last element
+- **IO in loops** — HTTP, DB, or file calls per iteration instead of batching
+- **Hidden nested loops** — method calls that hide an inner loop behind an innocuous name
+- **Redundant expensive calls** — same heavy computation repeated with the same arguments
 
-Download from [releases](https://github.com/tvinke/algorilla/releases) and run directly:
+Full rule reference with examples: [all rules](https://tvinke.github.io/algorilla/rules/)
 
-```bash
-java -jar algorilla.jar .
-```
+## How it works
 
-Requires Java 11+.
+Pure AST pattern matching — no AI, no ML, fully deterministic. Algorilla parses your code into an intermediate representation, runs rules against it, and follows call chains across files. Results are reproducible: same code, same findings, every time.
 
-## Features
+**Languages**: Java (GA), Kotlin (Alpha), Groovy (Beta), JavaScript/TypeScript (Beta)
+**Output**: Console (default), SARIF for GitHub Code Scanning, JSON for tooling
+**Speed**: Incremental caching — only re-analyzes changed files
 
-- **Multi-language**: Java, Kotlin, Groovy, JavaScript/TypeScript (including `.vue` single-file components)
-- **Cross-file analysis**: Follows call chains across files and languages
-- **Evidence chains**: Every finding shows *exactly* why it's a problem
-- **SARIF output**: Plugs into GitHub Code Scanning and VS Code
-- **Incremental**: Caches results per file — re-analyzes only what changed
-- **Baseline mode**: Suppress existing findings, catch only new ones
-- **Configurable**: `.algorilla.yml` for rules, type hints, exclusions
-- **Custom rules**: Extend with your own patterns via Kotlin Script DSL
-- **Deterministic**: No AI/ML — pure AST pattern matching, fully reproducible
+## Confidence levels
 
-## Rules
+Not all findings are equally certain. Each one has a confidence tier:
 
-29 built-in rules across 6 categories, each with a confidence tier (HIGH / MEDIUM / LOW) so you know which findings to act on first. See [all rules](docs/docs/rules/index.md) for details.
+- **HIGH** — structurally proven, very few false positives
+- **MEDIUM** — likely correct, may need context
+- **LOW** — heuristic-based, worth checking
 
-| Rule | What it catches | Impact |
-|------|----------------|--------|
-| `nested-lookup` | `contains()`/`filter()`/`find()` inside a loop | O(n*m) → O(n+m) |
-| `repeated-linear-scan` | Same collection scanned 2+ times in one method | k * O(n) → O(n) |
-| `sort-for-last` | `sort()` just to get `first()`/`last()` | O(n log n) → O(n) |
-| `expensive-sort-comparator` | Linear search, date parsing, or heavy objects in sort comparator | O(n² log n) → O(n log n) |
-| `filter-after-sort` | `sorted().filter()` — filtering after sorting wastes sort effort | O(n log n) → O(k log k) |
-| `bulk-load-for-single-lookup` | `findAll()` + filter when a targeted query would do | O(n) → O(1) |
-| `n-plus-one-query` | `findById()`/`countBy*` inside a loop | O(n * IO) → O(1 * IO) |
-| `expensive-construction` | `new ObjectMapper()` inside a method body | ~1ms allocation per call |
-| `repeated-regex-in-loop` | `Pattern.compile()` / `new RegExp()` inside loop | Recompilation per iteration |
-| `regex-recompilation-in-loop` | `String.matches()`/`replaceAll()` inside loop | Hidden recompilation per iteration |
-| `expensive-serialization-in-loop` | `writeValueAsString()`/`JSON.parse()` inside loop | O(n * serialize) |
-| `sequential-async-join-in-loop` | `.join()`/`.get()` on futures in loop | Sequential I/O instead of parallel |
-| `in-loop-collection-building` | `addAll()`/`concat()` inside loop | O(n*m) copying per iteration |
-| `string-concat-in-loop` | String concatenation with `+=` inside loop | O(n²) copying |
-| `quadratic-removal` | `remove()`/`removeFirst()` on ArrayList in loop | O(n²) shifting |
-| `repeated-reflection-in-loop` | Reflection calls inside loop | O(n * reflection) |
-| `hidden-nested-loop` | Method call inside loop hides an inner loop | O(n*m) hidden behind method call |
-| `expensive-callback` | Expensive operations inside `filter`/`map`/`forEach` | O(n * expensive-op) |
-| `redundant-expensive-call` | Same call with same args invoked multiple times | k * O(f) → O(f) |
-| `uncached-getter` | `getXxx(id)` called repeatedly with same argument | Cache in local variable |
-| `chained-getters` | Cascading getter chain: `a=get(x)` → `b=get(a)` → `c=get(b)` | Compound lookup cost |
-| `parallel-pipeline-bottleneck` | Shared mutable state in `parallelStream().forEach()` | Thread-safety + serialization |
+Default output shows HIGH confidence only. Widen with `--confidence medium` or `--confidence low` as you triage.
 
 ## Stability
 
-Algorilla is pre-1.0. Breaking changes may occur between minor versions (0.x → 0.y). Pin your version in CI and check the [CHANGELOG](CHANGELOG.md) before upgrading.
+Pre-1.0. Breaking changes documented in the [CHANGELOG](CHANGELOG.md). CLI flags, rule IDs, JSON output, and exit codes are treated as stable — we avoid breaking them, and when we must, we call it out. See [Stability & Compatibility](https://tvinke.github.io/algorilla/stability/) for the full policy.
 
-CLI flags, config keys, rule IDs, JSON output fields, and exit codes are treated as stable — we avoid breaking them, and when we must, we document it clearly. See [Stability & Compatibility](docs/docs/stability.md) for the full policy.
+## Docs
 
-## Documentation
+- [Quick start](https://tvinke.github.io/algorilla/getting-started/quickstart/)
+- [Understanding output](https://tvinke.github.io/algorilla/guide/understanding-output/)
+- [CI/CD integration](https://tvinke.github.io/algorilla/guide/ci-integration/)
+- [All rules](https://tvinke.github.io/algorilla/rules/)
+- [Configuration](https://tvinke.github.io/algorilla/getting-started/configuration/)
 
-- [Getting started](docs/docs/getting-started/quickstart.md)
-- [CLI reference](docs/docs/guide/cli-reference.md)
-- [CI/CD integration](docs/docs/guide/ci-integration.md)
-- [All rules](docs/docs/rules/index.md)
-- [Configuration](docs/docs/getting-started/configuration.md)
-
-## Building from Source
-
-Requires JDK 21 and Gradle 8.12+ (wrapper included).
+## Building from source
 
 ```bash
 ./gradlew build        # compile + test + detekt + ktlint
 ./gradlew shadowJar    # create executable JAR
 ```
 
-See [developer docs](docs/docs/developer/building.md) for details.
-
-## Author
-
-Ted Vinke
+Requires JDK 21. See [developer docs](https://tvinke.github.io/algorilla/developer/building/).
 
 ## License
 
