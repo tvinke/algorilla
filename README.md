@@ -37,7 +37,7 @@ Run it on the code above:
 
       Linear contains on 'priorityIds' inside for-each loop
       → Build a HashSet/Map from 'priorityIds' before the loop
-      ↳ https://tvinke.github.io/algorilla/rules/nested-lookup
+      ↗ https://tvinke.github.io/algorilla/rules/nested-lookup
 
           2 │ for (Order order : orders) {
           3 │     if (priorityIds.contains(order.getId())) {

@@ -103,7 +103,7 @@ Algorilla detects multiple linear scans on the same collection within a single m
 
       3 linear scans on 'orders' in summarize() — combine into a single pass
       → Cache the result of the first lookup, or combine into a single pass
-      ↳ https://tvinke.github.io/algorilla/rules/repeated-linear-scan
+      ↗ https://tvinke.github.io/algorilla/rules/repeated-linear-scan
 
           38 │ Order highestTotal = orders.stream()
           39 │     .max(Comparator.comparing(Order::getTotal)).orElse(null);

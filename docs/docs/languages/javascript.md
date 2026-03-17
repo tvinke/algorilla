@@ -32,7 +32,7 @@ warning  · nested-lookup · Loop amplifiers · O(incoming × processed) → O(i
 
   Linear includes on 'processed' inside for-each loop
   → Build a HashSet/Map from 'processed' before the loop
-  ↳ https://tvinke.github.io/algorilla/rules/nested-lookup
+  ↗ https://tvinke.github.io/algorilla/rules/nested-lookup
 
       3 │ for (const event of incoming) {
       4 │     if (processed.includes(event.id)) {
@@ -61,7 +61,7 @@ const filtered = items.filter(item =>
 warning  · nested-lookup · O(items × allowedIds) → O(items + allowedIds)
 
   → Build a HashSet/Map from 'allowedIds' before the loop
-  ↳ https://tvinke.github.io/algorilla/rules/nested-lookup
+  ↗ https://tvinke.github.io/algorilla/rules/nested-lookup
 ```
 
 Fix: `const allowedSet = new Set(allowedIds)` then `allowedSet.has(item.id)`. See [nested-lookup](../rules/nested-lookup.md).
@@ -82,7 +82,7 @@ warning  · io-in-loop · O(orderIds·IO) → O(1·IO + orderIds)
 
   fetch() called inside for-each loop — IO per iteration
   → Batch the IO operation outside the loop, or use a bulk API
-  ↳ https://tvinke.github.io/algorilla/rules/io-in-loop
+  ↗ https://tvinke.github.io/algorilla/rules/io-in-loop
 ```
 
 Fix: [`Promise.all`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/all) with `orderIds.map(id => fetch(...))`, or a batch endpoint. See [io-in-loop](../rules/io-in-loop.md).
@@ -102,7 +102,7 @@ for (const line of lines) {
 warning  · regex-recompilation-in-loop · O(|lines| × compile) → O(|lines|)
 
   replace() compiles a regex on every call inside for-each loop
-  ↳ https://tvinke.github.io/algorilla/rules/regex-recompilation-in-loop
+  ↗ https://tvinke.github.io/algorilla/rules/regex-recompilation-in-loop
 ```
 
 Pull the regex out of the loop and assign it to a `const`. See [regex-recompilation-in-loop](../rules/regex-recompilation-in-loop.md).
@@ -126,7 +126,7 @@ warning  · nested-lookup · O(orders × discounts)
 
   Linear find on 'discounts' inside map()
   → Build a HashSet/Map from 'discounts' before the loop
-  ↳ https://tvinke.github.io/algorilla/rules/nested-lookup
+  ↗ https://tvinke.github.io/algorilla/rules/nested-lookup
 ```
 
 Fix: build a `Map` from `discounts` before the `map()`, or wrap in [`useMemo()`](https://react.dev/reference/react/useMemo). See [expensive-callback](../rules/expensive-callback.md).
@@ -146,7 +146,7 @@ for (const line of lines) {
 warning  · regex-recompilation-in-loop · O(|lines| × compile) → O(|lines|)
 
   replace() compiles a regex on every call inside for-each loop
-  ↳ https://tvinke.github.io/algorilla/rules/regex-recompilation-in-loop
+  ↗ https://tvinke.github.io/algorilla/rules/regex-recompilation-in-loop
 
   ⎿  for-each loop   O(|lines|)
     ⎿  line.replace() inside loop   compile ← bottleneck

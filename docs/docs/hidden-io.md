@@ -88,7 +88,7 @@ Running algorilla on the simple loop example:
 
       Repository call 'findById' inside for-each loop — N+1 query
       → Bulk fetch all needed records before the loop, or build an in-memory Map
-      ↳ https://tvinke.github.io/algorilla/rules/n-plus-one-query
+      ↗ https://tvinke.github.io/algorilla/rules/n-plus-one-query
 
           22 │ List<Order> results = new ArrayList<>();
           23 │ for (Long orderId : orderIds) {

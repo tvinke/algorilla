@@ -141,7 +141,7 @@ Running algorilla on the `OrderService` example from Step 2 would produce:
 
       Linear contains on 'discountedProductIds' inside for-each loop
       → Build a HashSet/Map from 'discountedProductIds' before the loop
-      ↳ https://tvinke.github.io/algorilla/rules/nested-lookup
+      ↗ https://tvinke.github.io/algorilla/rules/nested-lookup
 
           25 │ List<Order> result = new ArrayList<>();
           26 │ for (Order order : orders) {

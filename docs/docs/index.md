@@ -81,7 +81,7 @@ Algorilla scans your source files and reports what it finds. Here it detected a 
 
       Linear contains on 'discountedProductIds' inside for-each loop
       → Build a HashSet/Map from 'discountedProductIds' before the loop
-      ↳ https://tvinke.github.io/algorilla/rules/nested-lookup
+      ↗ https://tvinke.github.io/algorilla/rules/nested-lookup
 
           38 │ public List<Order> applyDiscounts(List<Order> orders, List<String> discountedProductIds) {
              │

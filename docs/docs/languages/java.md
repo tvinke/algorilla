@@ -29,7 +29,7 @@ warning  · nested-lookup · Loop amplifiers · O(events × processedIds) → O(
 
   Linear contains on 'processedIds' inside filter()
   → Build a HashSet/Map from 'processedIds' before the loop
-  ↳ https://tvinke.github.io/algorilla/rules/nested-lookup
+  ↗ https://tvinke.github.io/algorilla/rules/nested-lookup
 
       1 │ incoming.stream()
       2 │     .filter(event -> !processedIds.contains(event.orderId()))
@@ -58,7 +58,7 @@ warning  · n-plus-one-query · Query patterns · O(orderIds·IO) → O(1·IO + 
 
   findById() called inside for-each loop — N+1 query pattern
   → Use findAllById (Spring Data) instead of calling findById per iteration
-  ↳ https://tvinke.github.io/algorilla/rules/n-plus-one-query
+  ↗ https://tvinke.github.io/algorilla/rules/n-plus-one-query
 ```
 
 Fix: `orderRepository.findAllById(orderIds)` — one query instead of N. See [n-plus-one-query](../rules/n-plus-one-query.md).
@@ -80,7 +80,7 @@ for (Request req : requests) {
 warning  · nested-lookup · O(requests × blocklist) → O(requests + blocklist)
 
   → Build a HashSet from 'blocklist' before the loop
-  ↳ https://tvinke.github.io/algorilla/rules/nested-lookup
+  ↗ https://tvinke.github.io/algorilla/rules/nested-lookup
 ```
 
 One line: `Set<String> blockSet = new HashSet<>(blocklist);`. See [nested-lookup](../rules/nested-lookup.md).
@@ -101,7 +101,7 @@ for (Order order : orders) {
 warning  · expensive-construction · Construction cost
 
   ObjectMapper constructed inside for-each loop — heavyweight allocation per iteration
-  ↳ https://tvinke.github.io/algorilla/rules/expensive-construction
+  ↗ https://tvinke.github.io/algorilla/rules/expensive-construction
 ```
 
 Move the construction before the loop (or make it a field). See [expensive-construction](../rules/expensive-construction.md).
@@ -121,7 +121,7 @@ for (Order order : orders) {
 warning  · string-concat-in-loop · O(n²) → O(n)
 
   → Use a StringBuilder to accumulate the result, then call toString() after the loop
-  ↳ https://tvinke.github.io/algorilla/rules/string-concat-in-loop
+  ↗ https://tvinke.github.io/algorilla/rules/string-concat-in-loop
 ```
 
 `StringBuilder` or `Collectors.joining(", ")`. See [string-concat-in-loop](../rules/string-concat-in-loop.md).
@@ -140,7 +140,7 @@ for (Order order : orders) {
 warning  · hidden-nested-loop · O(orders × order.getItems())
 
   validateItems() contains a for-each loop — hidden O(n²) complexity
-  ↳ https://tvinke.github.io/algorilla/rules/hidden-nested-loop
+  ↗ https://tvinke.github.io/algorilla/rules/hidden-nested-loop
 ```
 
 Algorilla uses cross-method analysis to trace through the call. See [hidden-nested-loop](../rules/hidden-nested-loop.md).

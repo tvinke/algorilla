@@ -64,7 +64,7 @@ When algorilla finds something, it prints findings grouped by file with a sugges
 
       Linear contains on 'priorityIds' inside for-each loop
       → Build a HashSet/Map from 'priorityIds' before the loop
-      ↳ https://tvinke.github.io/algorilla/rules/nested-lookup
+      ↗ https://tvinke.github.io/algorilla/rules/nested-lookup
 
           11 │ for (Order order : orders) {
           12 │     if (priorityIds.contains(order.getId())) {

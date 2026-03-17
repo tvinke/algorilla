@@ -16,7 +16,7 @@ Each finding then shows:
 
       Linear contains on 'discountedProductIds' inside for-each loop
       → Build a HashSet/Map from 'discountedProductIds' before the loop
-      ↳ https://tvinke.github.io/algorilla/rules/nested-lookup
+      ↗ https://tvinke.github.io/algorilla/rules/nested-lookup
 
           38 │ public List<Order> applyDiscounts(List<Order> orders, List<String> discountedProductIds) {
              │
@@ -46,7 +46,7 @@ The format breaks down as:
 2. **Fully qualified location** (class name and line number)
 3. **Description** of the detected pattern
 4. **Suggestion** prefixed with `→`
-5. **Rule URL** prefixed with `↳` — a clickable link to the rule's documentation page
+5. **Rule URL** prefixed with `↗` — a clickable link to the rule's documentation page
 6. **Code snippet** with line numbers showing the relevant context
 7. **Evidence chain** with tree markers (`⎿`) tracing the path from outer context to the bottleneck
 8. **Fingerprint hash** — a stable identifier for this finding, used with `--accept` to add it to the [ignore list](workflow.md#accept-it-ignore-list)
@@ -150,7 +150,7 @@ Files with multiple findings show them sequentially under the same file header:
 
       Sorting entire collection just to access the first element
       → Use .min(comparator) or .max(comparator) — O(n) single pass instead of O(n log n) sort — picks one element directly
-      ↳ https://tvinke.github.io/algorilla/rules/sort-for-last
+      ↗ https://tvinke.github.io/algorilla/rules/sort-for-last
 
           65 │ return orders.stream()
           66 │         .sorted(Comparator.comparing(Order::getTotal).reversed())
@@ -164,7 +164,7 @@ Files with multiple findings show them sequentially under the same file header:
 
       filter() after sorted() — sorting all elements before filtering
       → Move filter() before sorted() to sort fewer elements
-      ↳ https://tvinke.github.io/algorilla/rules/filter-after-sort
+      ↗ https://tvinke.github.io/algorilla/rules/filter-after-sort
 
           87 │ return orders.stream()
           88 │         .sorted(Comparator.comparing(Order::getTotal).reversed())
@@ -179,7 +179,7 @@ Files with multiple findings show them sequentially under the same file header:
 
       calculateDiscount() called 2 times with same arguments in applyDiscounts()
       → Cache the result in a local variable
-      ↳ https://tvinke.github.io/algorilla/rules/redundant-expensive-call
+      ↗ https://tvinke.github.io/algorilla/rules/redundant-expensive-call
 
           110 │ if (calculateDiscount(order.getLineItems()).compareTo(BigDecimal.ZERO) > 0) {
               │

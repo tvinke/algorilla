@@ -90,7 +90,7 @@ public class ConsoleReporter(
         output.appendLine()
         output.appendLine("      ${finding.message}")
         output.appendLine("      ${Ansi.green("\u2192 ${finding.suggestion}", color)}")
-        output.appendLine("      ${Ansi.dim("\u21b3 ${ReporterConstants.ruleUrl(finding.ruleId)}", color)}")
+        output.appendLine("      ${Ansi.dim("\u2197 ${ReporterConstants.ruleUrl(finding.ruleId)}", color)}")
         snippetRenderer.render(finding.location.file, finding.location.line, finding.severity, output)
         formatEvidence(finding, snippetRenderer, output)
         val hash = Baseline.fingerprintOf(finding, projectRoot).contentHash

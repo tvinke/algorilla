@@ -26,7 +26,7 @@ warning  · nested-lookup · Loop amplifiers · O(orders × activeIds) → O(ord
 
   Linear contains on 'activeIds' inside filter()
   → Build a HashSet/Map from 'activeIds' before the loop
-  ↳ https://tvinke.github.io/algorilla/rules/nested-lookup
+  ↗ https://tvinke.github.io/algorilla/rules/nested-lookup
 
       3 │ orders.filter { it.id in activeIds }
 
@@ -54,7 +54,7 @@ for (order in orders) {
 warning  · sequential-async-join-in-loop · O(orders·wait) → O(max-wait)
 
   await() called inside for-each loop — sequential instead of parallel
-  ↳ https://tvinke.github.io/algorilla/rules/sequential-async-join-in-loop
+  ↗ https://tvinke.github.io/algorilla/rules/sequential-async-join-in-loop
 ```
 
 Fix: launch all coroutines first, await them together with [`coroutineScope`](https://kotlinlang.org/docs/coroutines-basics.html#structured-concurrency) and [`awaitAll`](https://kotlinlang.org/docs/composing-suspending-functions.html#concurrent-using-async):
@@ -87,7 +87,7 @@ products.filter { product ->
 warning  · nested-lookup · O(products × allowedCodes) → O(products + allowedCodes)
 
   → Build a HashSet/Map from 'allowedCodes' before the loop
-  ↳ https://tvinke.github.io/algorilla/rules/nested-lookup
+  ↗ https://tvinke.github.io/algorilla/rules/nested-lookup
 ```
 
 Fix: `val allowedSet = allowedCodes.toHashSet()`. See [nested-lookup](../rules/nested-lookup.md).
@@ -109,7 +109,7 @@ warning  · io-in-loop · O(users·IO) → O(1·IO + users)
 
   get() called inside for-each loop — IO per iteration
   → Batch the IO operation outside the loop, or use a bulk API
-  ↳ https://tvinke.github.io/algorilla/rules/io-in-loop
+  ↗ https://tvinke.github.io/algorilla/rules/io-in-loop
 ```
 
 Fix: use `async` to parallelize, or call a batch endpoint. See [io-in-loop](../rules/io-in-loop.md).
@@ -126,7 +126,7 @@ val cheapest = products.sortedBy { it.price }.first()
 warning  · sort-for-last · Sort abuse · O(n log n) → O(n)
 
   → Use minByOrNull { it.price } — avoids sorting the entire collection
-  ↳ https://tvinke.github.io/algorilla/rules/sort-for-last
+  ↗ https://tvinke.github.io/algorilla/rules/sort-for-last
 ```
 
 One character difference in readability, orders of magnitude difference at scale. See [sort-for-last](../rules/sort-for-last.md).

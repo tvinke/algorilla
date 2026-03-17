@@ -30,7 +30,7 @@ warning  · nested-lookup · Loop amplifiers · O(items × activeIds) → O(item
 
   Linear contains on 'activeIds' inside forEach()
   → Build a HashSet/Map from 'activeIds' before the loop
-  ↳ https://tvinke.github.io/algorilla/rules/nested-lookup
+  ↗ https://tvinke.github.io/algorilla/rules/nested-lookup
 
       4 │     if (activeIds.contains(item.id)) {
 
@@ -58,7 +58,7 @@ warning  · n-plus-one-query · Query patterns · O(orderIds·IO) → O(1·IO + 
 
   findById() called inside forEach() — N+1 query pattern
   → Bulk fetch all needed records before the loop, or build an in-memory Map
-  ↳ https://tvinke.github.io/algorilla/rules/n-plus-one-query
+  ↗ https://tvinke.github.io/algorilla/rules/n-plus-one-query
 ```
 
 Fix: [`Order.findAllByIdInList(orderIds)`](https://gorm.grails.org/latest/hibernate/manual/index.html#simpleQueries) or a criteria query. See [n-plus-one-query](../rules/n-plus-one-query.md).
@@ -79,7 +79,7 @@ def allowed = requests.findAll { req ->
 warning  · nested-lookup · O(requests × blocklist) → O(requests + blocklist)
 
   → Build a HashSet/Map from 'blocklist' before the loop
-  ↳ https://tvinke.github.io/algorilla/rules/nested-lookup
+  ↗ https://tvinke.github.io/algorilla/rules/nested-lookup
 ```
 
 Fix: `def blockSet = blocklist.toSet()`. See [nested-lookup](../rules/nested-lookup.md).
@@ -104,7 +104,7 @@ def summarize(dept) {
 warning  · hidden-nested-loop · O(departments × dept.employees)
 
   summarize() contains a forEach() — hidden O(n²) complexity
-  ↳ https://tvinke.github.io/algorilla/rules/hidden-nested-loop
+  ↗ https://tvinke.github.io/algorilla/rules/hidden-nested-loop
 ```
 
 Fix: flatten and batch, or accept the cost if the data volumes are small. See [hidden-nested-loop](../rules/hidden-nested-loop.md).
@@ -121,7 +121,7 @@ def oldest = people.sort { it.age }.last()
 warning  · sort-for-last · Sort abuse · O(n log n) → O(n)
 
   → Use max { it.age } — avoids sorting the entire collection
-  ↳ https://tvinke.github.io/algorilla/rules/sort-for-last
+  ↗ https://tvinke.github.io/algorilla/rules/sort-for-last
 ```
 
 See [sort-for-last](../rules/sort-for-last.md).
