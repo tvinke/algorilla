@@ -35,6 +35,7 @@ internal class ConsoleReporterTest {
         vararg findings: Finding,
         unfilteredCounts: Map<Severity, Int> = emptyMap(),
         unfilteredConfidenceCounts: Map<Confidence, Int> = emptyMap(),
+        acceptedCount: Int = 0,
     ) = AnalysisResult(
         findings = findings.toList(),
         filesAnalyzed = 1,
@@ -42,6 +43,7 @@ internal class ConsoleReporterTest {
         elapsedMs = 100,
         unfilteredCounts = unfilteredCounts,
         unfilteredConfidenceCounts = unfilteredConfidenceCounts,
+        acceptedCount = acceptedCount,
     )
 
     @Nested
@@ -199,6 +201,29 @@ internal class ConsoleReporterTest {
             reporter.report(r, output)
 
             output.toString() shouldNotContain "hidden"
+        }
+    }
+
+    @Nested
+    inner class AcceptedCount {
+        @Test
+        fun `shows accepted count when findings were accepted`() {
+            val warning = finding(severity = Severity.WARNING)
+            val output = StringBuilder()
+            reporter.report(result(warning, acceptedCount = 3), output)
+
+            val text = output.toString()
+            text shouldContain "3 accepted (reviewed)"
+            text shouldContain "ignore-list.json"
+        }
+
+        @Test
+        fun `no accepted line when count is zero`() {
+            val warning = finding(severity = Severity.WARNING)
+            val output = StringBuilder()
+            reporter.report(result(warning, acceptedCount = 0), output)
+
+            output.toString() shouldNotContain "accepted"
         }
     }
 

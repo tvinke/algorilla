@@ -221,6 +221,14 @@ public class ConsoleReporter(
             }
 
         output.appendLine("$scanned ${summaryColor("$foundText$acrossText")}")
+        if (result.acceptedCount > 0) {
+            output.appendLine(
+                Ansi.dim(
+                    "  ${result.acceptedCount} accepted (reviewed) \u2014 see .algorilla/ignore-list.json",
+                    color,
+                ),
+            )
+        }
         if (hiddenSuffix.isNotEmpty()) {
             output.appendLine(hiddenSuffix)
         }

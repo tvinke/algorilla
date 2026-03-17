@@ -295,6 +295,7 @@ public data class AnalysisResult(
     val unfilteredCounts: Map<Severity, Int> = emptyMap(),
     val unfilteredConfidenceCounts: Map<Confidence, Int> = emptyMap(),
     val projectRoot: java.io.File? = null,
+    val acceptedCount: Int = 0,
 )
 
 /**

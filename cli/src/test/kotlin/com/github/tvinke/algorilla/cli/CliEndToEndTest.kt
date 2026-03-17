@@ -18,6 +18,7 @@ import java.io.StringWriter
  * These exercise AlgorillaCommand via PicoCLI without spawning a process,
  * verifying that the public option surface works as documented.
  */
+@Suppress("LargeClass") // CLI surface test — one class per distribution method, splitting would scatter contract tests
 internal class CliEndToEndTest {
     @TempDir
     lateinit var tempDir: File
@@ -233,6 +234,19 @@ internal class CliEndToEndTest {
         second.stderr shouldContain "Accepted 1 finding"
         second.stdout shouldNotContain "nested-lookup"
         second.stdout shouldContain "Found 0 issues"
+    }
+
+    @Test
+    fun `accepted findings show count in summary`() {
+        val project = writeSource("Bad.java", NESTED_LOOKUP_SOURCE)
+        // First run: accept the finding
+        val first = run("--no-cache", "--fail-on", "error", project.absolutePath)
+        val hash = Regex("# ([a-f0-9]+)").find(first.stdout)!!.groupValues[1]
+        run("--no-cache", "--accept", hash, "--fail-on", "error", project.absolutePath)
+
+        // Third run: accepted count should appear in summary
+        val third = run("--no-cache", "--fail-on", "error", project.absolutePath)
+        third.stdout shouldContain "1 accepted (reviewed)"
     }
 
     // -- Limit flag --

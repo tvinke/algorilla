@@ -98,7 +98,9 @@ internal fun applyIgnoreList(
     val ignoreFile = IgnoreList.defaultFile(projectRoot)
     val ignoreList = IgnoreList.load(ignoreFile)
     if (ignoreList.size == 0) return result
-    return result.copy(findings = ignoreList.filter(result.findings, projectRoot))
+    val filtered = ignoreList.filter(result.findings, projectRoot)
+    val accepted = result.findings.size - filtered.size
+    return result.copy(findings = filtered, acceptedCount = accepted)
 }
 
 internal fun resolveSeverity(severity: String): Severity =
