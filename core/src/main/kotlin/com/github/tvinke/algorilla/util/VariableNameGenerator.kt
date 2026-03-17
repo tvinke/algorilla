@@ -9,7 +9,7 @@ public object VariableNameGenerator {
      * e.g. "orders" → "orderSet", "itemList" → "itemSet"
      */
     public fun suggestSetName(collectionName: String): String {
-        val base = stripCollectionSuffix(collectionName)
+        val base = stripCollectionSuffix(extractSimpleName(collectionName))
         return "${base}Set"
     }
 
@@ -21,11 +21,37 @@ public object VariableNameGenerator {
         collectionName: String,
         keyName: String,
     ): String {
-        val base = stripCollectionSuffix(collectionName)
+        val base = stripCollectionSuffix(extractSimpleName(collectionName))
         val keyCapitalized =
             keyName
                 .replaceFirstChar { it.uppercaseChar() }
         return "${base}By$keyCapitalized"
+    }
+
+    /**
+     * Extracts a simple variable name from an expression.
+     * "product.getImages()" → "images", "isoCodes" → "isoCodes",
+     * "attribute.getProductOption().getDescriptions()" → "descriptions"
+     */
+    internal fun extractSimpleName(expression: String): String {
+        // Take last segment of a dotted chain
+        val lastSegment = expression.substringAfterLast('.')
+
+        // Strip trailing ()
+        val withoutParens = lastSegment.removeSuffix("()")
+
+        // Strip get prefix: getImages → images, getDescriptions → descriptions
+        val withoutGet =
+            if (withoutParens.length > GET_PREFIX_LENGTH &&
+                withoutParens.startsWith("get") &&
+                withoutParens[GET_PREFIX_LENGTH].isUpperCase()
+            ) {
+                withoutParens.removePrefix("get").replaceFirstChar { it.lowercaseChar() }
+            } else {
+                withoutParens
+            }
+
+        return withoutGet.ifEmpty { expression }
     }
 
     private fun stripCollectionSuffix(name: String): String {
@@ -37,4 +63,6 @@ public object VariableNameGenerator {
         }
         return name
     }
+
+    private const val GET_PREFIX_LENGTH = 3
 }
