@@ -28,4 +28,7 @@ public interface AlgorillaExtension {
 
     /** Baseline file path. */
     public val baseline: Property<java.io.File>
+
+    /** Maximum number of findings to display in console output. 0 = all. */
+    public val limit: Property<Int>
 }

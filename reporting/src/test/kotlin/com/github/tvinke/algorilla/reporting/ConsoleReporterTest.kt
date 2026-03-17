@@ -402,4 +402,68 @@ internal class ConsoleReporterTest {
             text shouldContain "--severity warning"
         }
     }
+
+    @Nested
+    inner class LimitFlag {
+        @Test
+        fun `limit truncates output to N findings`() {
+            val findings =
+                (1..5).map { i ->
+                    finding(
+                        file = "/src/File$i.java",
+                        line = i * 10,
+                        message = "Finding $i",
+                    )
+                }
+            val limited = ConsoleReporter(color = false, limit = 2)
+            val output = StringBuilder()
+            limited.report(result(*findings.toTypedArray()), output)
+
+            val text = output.toString()
+            text shouldContain "Showing 2 of 5"
+            // Only 2 file sections should appear (each finding is in a different file)
+            val fileHeaders = "\u23fa ".toRegex().findAll(text).count()
+            assert(fileHeaders == 2) { "Expected 2 file sections but got $fileHeaders" }
+        }
+
+        @Test
+        fun `limit 0 shows all findings`() {
+            val findings =
+                (1..5).map { i ->
+                    finding(
+                        file = "/src/File$i.java",
+                        line = i * 10,
+                        message = "Finding $i",
+                    )
+                }
+            val unlimited = ConsoleReporter(color = false, limit = 0)
+            val output = StringBuilder()
+            unlimited.report(result(*findings.toTypedArray()), output)
+
+            val text = output.toString()
+            text shouldNotContain "Showing"
+            val fileHeaders = "\u23fa ".toRegex().findAll(text).count()
+            assert(fileHeaders == 5) { "Expected 5 file sections but got $fileHeaders" }
+        }
+
+        @Test
+        fun `limit greater than count shows all`() {
+            val findings =
+                (1..3).map { i ->
+                    finding(
+                        file = "/src/File$i.java",
+                        line = i * 10,
+                        message = "Finding $i",
+                    )
+                }
+            val limited = ConsoleReporter(color = false, limit = 10)
+            val output = StringBuilder()
+            limited.report(result(*findings.toTypedArray()), output)
+
+            val text = output.toString()
+            text shouldNotContain "Showing"
+            val fileHeaders = "\u23fa ".toRegex().findAll(text).count()
+            assert(fileHeaders == 3) { "Expected 3 file sections but got $fileHeaders" }
+        }
+    }
 }

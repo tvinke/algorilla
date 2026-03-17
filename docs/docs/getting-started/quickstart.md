@@ -114,6 +114,9 @@ algorilla --include-tests .
 
 # Verbose output for debugging
 algorilla -v .
+
+# Cap output at 5 findings (great for first evaluation)
+algorilla --limit 5 .
 ```
 
 ## Confidence Levels

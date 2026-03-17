@@ -113,5 +113,6 @@ Full reference for the `algorilla { }` extension block.
 | `excludePatterns` | `List<String>` | none | Glob patterns for files to skip (e.g., `**/generated/**`) |
 | `includeTests` | `Boolean` | `false` | Whether to scan test source sets |
 | `baseline` | `File` | none | Path to a baseline file. Findings present in the baseline are filtered out |
+| `limit` | `Int` | `0` | Maximum number of findings to display in console output. 0 = all |
 
 These are the same concepts as the CLI flags (`--severity`, `--fail-on`, `--format`, etc.) and the [GitHub Action inputs](../guide/ci-integration.md#action-inputs). The naming differs slightly to match Gradle conventions.

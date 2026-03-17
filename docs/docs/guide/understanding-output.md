@@ -221,6 +221,9 @@ If you consume JSON output programmatically, **ignore unknown fields** — new f
 
 A first scan on a big codebase can easily return dozens of findings. Rather than tackling them all at once, work in layers:
 
+!!! tip "Overwhelmed by the output?"
+    Use `--limit 5` to cap the display at 5 findings. You still get the full count in the summary, but the output stays manageable. Exit codes reflect all findings regardless of the limit.
+
 1. **Start at the default (high confidence)**: Algorilla defaults to `--confidence high`, showing only findings where it has strong evidence — type-confirmed collection lookups, unambiguous IO calls, structural patterns. These are your quick wins.
 
 2. **Fix or accept each finding**: Either fix the code, or if the pattern is intentional, accept it with `--accept <hash>`. The hash after each finding (e.g. `# a1b2c3d4`) is a stable fingerprint.

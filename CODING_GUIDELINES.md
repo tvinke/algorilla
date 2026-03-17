@@ -258,6 +258,8 @@ Use the same pattern for any expensive initialization that should happen at most
 
 **`public` means contract.** Anything marked `public` in `core/` is part of the API that `lang-*`, `cli/`, `gradle-plugin/`, and `reporting/` depend on. Changing a `public` signature is a breaking change. Think twice before making something `public` — once it's out there, downstream code depends on it.
 
+**CLI options are cross-cutting.** Adding or renaming a CLI flag affects multiple files across the CLI, Gradle plugin, GitHub Action, contract tests, and docs. See [Adding CLI Options](https://tvinke.github.io/algorilla/developer/adding-cli-options/) for the full checklist.
+
 ## 9. @Suppress Policy
 
 **Always with exact rule ID.** Never suppress a category or wildcard — always the specific detekt/ktlint rule ID.

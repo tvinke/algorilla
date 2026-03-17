@@ -18,6 +18,7 @@ public class ConsoleReporter(
     private val color: Boolean = false,
     private val baseDir: String? = null,
     private val sourceRoots: List<String> = emptyList(),
+    private val limit: Int = 0,
 ) : Reporter {
     private var firstFindingShown = false
     private var projectRoot: java.io.File? = null
@@ -39,9 +40,13 @@ public class ConsoleReporter(
             formatOverview(result, output)
         }
 
+        val totalFindings = result.findings.size
+        val isLimited = limit > 0 && limit < totalFindings
+        val displayFindings = if (isLimited) result.findings.take(limit) else result.findings
+
         val snippetRenderer = SnippetRenderer(color)
         val grouped =
-            result.findings
+            displayFindings
                 .groupBy { it.location.file }
                 .entries
                 .sortedWith(
@@ -61,6 +66,9 @@ public class ConsoleReporter(
             output.appendLine()
         }
 
+        if (isLimited) {
+            output.appendLine("Showing $limit of $totalFindings findings. Run without --limit to see all.")
+        }
         formatSummary(result, output)
     }
 

@@ -34,6 +34,7 @@ internal class DistributionContractTest {
                 "--baseline",
                 "--language",
                 "--output",
+                "--limit",
             )
         optionNames() shouldContainAll requiredByAction
     }
@@ -52,6 +53,7 @@ internal class DistributionContractTest {
                 "--exclude",
                 "--include-tests",
                 "--output",
+                "--limit",
             )
         optionNames() shouldContainAll requiredByGradle
     }
@@ -76,6 +78,7 @@ internal class DistributionContractTest {
                 "--color",
                 "--list-rules",
                 "--accept",
+                "--limit",
                 "--verbose",
             )
         optionNames() shouldContainAll documentedFlags

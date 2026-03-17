@@ -160,6 +160,13 @@ internal class AlgorillaCommand :
     )
     private var acceptHashes: List<String> = emptyList()
 
+    @Option(
+        names = ["--limit"],
+        description = ["Maximum number of findings to display (default: all)"],
+        defaultValue = "0",
+    )
+    private var limit: Int = 0
+
     private var projectRoot: File = File(".")
     private var scanRoots: List<File> = emptyList()
 
@@ -180,7 +187,7 @@ internal class AlgorillaCommand :
         val accepted = applyIgnoreList(baselined, projectRoot)
         processAcceptHashes(result)
 
-        writeReport(accepted, format, outputFile, useColor, projectRoot, scanRoots)
+        writeReport(accepted, format, outputFile, useColor, projectRoot, scanRoots, limit)
         if (outputFile == null) printFrameworkCoverageNotice(scanRoots, useColor)
         return exitCodeFor(accepted, resolveFailOn(failOn))
     }

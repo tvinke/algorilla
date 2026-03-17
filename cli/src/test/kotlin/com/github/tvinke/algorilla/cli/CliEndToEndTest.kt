@@ -85,6 +85,7 @@ internal class CliEndToEndTest {
         result.stdout shouldContain "--exclude"
         result.stdout shouldContain "--include-tests"
         result.stdout shouldContain "--accept"
+        result.stdout shouldContain "--limit"
         result.stdout shouldContain "--no-cache"
         result.stdout shouldContain "--list-rules"
         result.stdout shouldContain "--color"
@@ -214,6 +215,24 @@ internal class CliEndToEndTest {
         // nested-lookup on a List.contains is medium/high confidence — the exact level
         // depends on type resolution. Just verify the flag is accepted and doesn't crash.
         result.exitCode shouldBe 0
+    }
+
+    // -- Limit flag --
+
+    @Test
+    fun `limit flag caps findings shown`() {
+        writeSource("Bad.java", NESTED_LOOKUP_SOURCE)
+        val project = writeSource("Bad2.java", NESTED_LOOKUP_SOURCE.replace("class Bad", "class Bad2"))
+        val result = run("--no-cache", "--confidence", "low", "--limit", "1", "--fail-on", "error", project.absolutePath)
+        result.stdout shouldContain "Showing 1 of"
+    }
+
+    @Test
+    fun `limit 0 shows all findings`() {
+        writeSource("Bad.java", NESTED_LOOKUP_SOURCE)
+        val project = writeSource("Bad2.java", NESTED_LOOKUP_SOURCE.replace("class Bad", "class Bad2"))
+        val result = run("--no-cache", "--confidence", "low", "--limit", "0", "--fail-on", "error", project.absolutePath)
+        result.stdout shouldNotContain "Showing"
     }
 
     companion object {

@@ -129,6 +129,7 @@ internal fun writeReport(
     useColor: Boolean,
     projectRoot: File,
     scanRoots: List<File> = emptyList(),
+    limit: Int = 0,
 ) {
     val baseDir = projectRoot.absoluteFile.normalize().path
     val sourceRootPaths = scanRoots.map { it.absoluteFile.normalize().path }
@@ -136,7 +137,7 @@ internal fun writeReport(
         when (format.lowercase()) {
             "sarif" -> SarifReporter()
             "json" -> JsonReporter()
-            else -> ConsoleReporter(color = useColor, baseDir = baseDir, sourceRoots = sourceRootPaths)
+            else -> ConsoleReporter(color = useColor, baseDir = baseDir, sourceRoots = sourceRootPaths, limit = limit)
         }
     val output = outputFile?.bufferedWriter() ?: System.out.bufferedWriter()
     output.use { reporter.report(result, it) }

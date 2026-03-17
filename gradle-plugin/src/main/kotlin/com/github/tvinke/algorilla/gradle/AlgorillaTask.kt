@@ -55,6 +55,9 @@ public abstract class AlgorillaTask : DefaultTask() {
     @get:Optional
     public abstract val baseline: Property<java.io.File>
 
+    @get:Input
+    public abstract val limit: Property<Int>
+
     @get:InputFiles
     @get:PathSensitive(PathSensitivity.RELATIVE)
     public abstract val sourceDirectories: ConfigurableFileCollection
@@ -130,7 +133,7 @@ public abstract class AlgorillaTask : DefaultTask() {
         val reporter =
             when (format.get().lowercase()) {
                 "sarif" -> SarifReporter()
-                "console" -> ConsoleReporter(color = false)
+                "console" -> ConsoleReporter(color = false, limit = limit.get())
                 else -> JsonReporter()
             }
         output.bufferedWriter().use { reporter.report(result, it) }

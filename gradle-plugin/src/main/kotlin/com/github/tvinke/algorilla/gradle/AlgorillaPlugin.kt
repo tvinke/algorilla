@@ -23,22 +23,32 @@ public class AlgorillaPlugin : Plugin<Project> {
                 excludePatterns.convention(emptyList())
                 rules.convention(emptyList())
                 includeTests.convention(false)
+                limit.convention(0)
             }
 
         project.tasks.register("algorilla", AlgorillaTask::class.java) { task ->
-            task.group = "verification"
-            task.description = "Detect algorithmic complexity anti-patterns"
-
-            task.minSeverity.set(extension.minSeverity)
-            task.failOn.set(extension.failOn)
-            task.format.set(extension.format)
-            task.outputFile.set(extension.outputFile)
-            task.excludePatterns.set(extension.excludePatterns)
-            task.ruleIds.set(extension.rules)
-            task.includeTests.set(extension.includeTests)
-            task.baseline.set(extension.baseline)
-            task.sourceDirectories.setFrom(resolveSourceDirs(project, extension))
+            configureTask(task, extension, project)
         }
+    }
+
+    private fun configureTask(
+        task: AlgorillaTask,
+        extension: AlgorillaExtension,
+        project: Project,
+    ) {
+        task.group = "verification"
+        task.description = "Detect algorithmic complexity anti-patterns"
+
+        task.minSeverity.set(extension.minSeverity)
+        task.failOn.set(extension.failOn)
+        task.format.set(extension.format)
+        task.outputFile.set(extension.outputFile)
+        task.excludePatterns.set(extension.excludePatterns)
+        task.ruleIds.set(extension.rules)
+        task.includeTests.set(extension.includeTests)
+        task.baseline.set(extension.baseline)
+        task.limit.set(extension.limit)
+        task.sourceDirectories.setFrom(resolveSourceDirs(project, extension))
     }
 
     private fun resolveSourceDirs(

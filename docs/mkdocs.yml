@@ -165,6 +165,7 @@ nav:
     - Architecture: developer/architecture.md
     - Adding Rules: developer/adding-rules.md
     - Adding Languages: developer/adding-languages.md
+    - Adding CLI Options: developer/adding-cli-options.md
     - Adding Frameworks: developer/adding-frameworks.md
     - Testing: developer/testing.md
     - Example Domain: developer/example-domain.md
