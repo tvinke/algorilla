@@ -41,18 +41,38 @@ public sealed class Suggestion {
                 (if (qualifier != null) " ($qualifier)" else "")
 
         override fun renderCode(ctx: SuggestionContext): CodeSuggestion? {
-            val setName = VariableNameGenerator.suggestSetName(variable)
-            val langName =
-                ctx.language.displayName
-                    .lowercase()
+            val isMap = structure.contains("Map")
+            val langName = ctx.language.displayName.lowercase()
             val code =
-                when (ctx.language) {
-                    Language.JAVA -> "Set<$GENERIC> $setName = new HashSet<>($variable);"
-                    Language.KOTLIN -> "val $setName = $variable.toHashSet()"
-                    Language.GROOVY -> "def $setName = $variable.toSet()"
-                    Language.JAVASCRIPT, Language.TYPESCRIPT -> "const $setName = new Set($variable);"
+                if (isMap) {
+                    renderMapCode(ctx.language)
+                } else {
+                    renderSetCode(ctx.language)
                 }
             return CodeSuggestion(code = code, language = langName)
+        }
+
+        private fun renderSetCode(language: Language): String {
+            val setName = VariableNameGenerator.suggestSetName(variable)
+            return when (language) {
+                Language.JAVA -> "Set<$GENERIC> $setName = new HashSet<>($variable);"
+                Language.KOTLIN -> "val $setName = $variable.toHashSet()"
+                Language.GROOVY -> "def $setName = $variable.toSet()"
+                Language.JAVASCRIPT, Language.TYPESCRIPT -> "const $setName = new Set($variable);"
+            }
+        }
+
+        private fun renderMapCode(language: Language): String {
+            val mapName = VariableNameGenerator.suggestMapName(variable, "key")
+            return when (language) {
+                Language.JAVA ->
+                    "Map<$GENERIC, List<$GENERIC>> $mapName = $variable.stream()\n" +
+                        "    .collect(Collectors.groupingBy(e -> e.getKey()));"
+                Language.KOTLIN -> "val $mapName = $variable.groupBy { it.key }"
+                Language.GROOVY -> "def $mapName = $variable.groupBy { it.key }"
+                Language.JAVASCRIPT, Language.TYPESCRIPT ->
+                    "const $mapName = Map.groupBy($variable, e => e.key);"
+            }
         }
 
         private companion object {
