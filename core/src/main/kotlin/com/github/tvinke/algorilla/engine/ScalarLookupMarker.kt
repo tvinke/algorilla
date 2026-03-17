@@ -3,14 +3,15 @@
 
 package com.github.tvinke.algorilla.engine
 
+import com.github.tvinke.algorilla.model.ClassNode
 import com.github.tvinke.algorilla.model.FileRoot
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.IRNode
-import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LookupCall
 import com.github.tvinke.algorilla.model.VariableDecl
 import com.github.tvinke.algorilla.rules.signatureKey
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
+import com.github.tvinke.algorilla.semantics.TypeContext
 import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import com.github.tvinke.algorilla.util.findDescendants
 import com.github.tvinke.algorilla.util.transform
@@ -31,45 +32,71 @@ public data class MarkScalarLookupsResult(
  * Also builds a [TypeEnvironment] per function, which is returned alongside the refined trees
  * for use by rules during evaluation.
  *
- * Uses both same-file field types and a cross-file field type registry (keyed by declaring class)
- * so that `this.field` references resolve even when the cross-method resolver follows calls
- * into other files.
+ * Uses [TypeContext] to carry field types, method return types, class hierarchy, and
+ * cross-file return types to [TypeEnvironment.build].
  */
 public fun markScalarLookups(
     irTrees: Map<String, FileRoot>,
     registry: LanguageSemanticsRegistry,
 ): MarkScalarLookupsResult {
     val globalFieldTypes = collectGlobalFieldTypes(irTrees)
-    // Merge all field types across all classes as a fallback for inherited fields.
-    // Precedence: local file > declaring class > any class in scan scope.
     val allGlobalFields = globalFieldTypes.values.fold(emptyMap<String, String>()) { acc, m -> acc + m }
+    val globalMethodReturnTypes = collectGlobalMethodReturnTypes(irTrees)
+    val classHierarchy = collectClassHierarchy(irTrees)
     val result = mutableMapOf<String, FileRoot>()
     val typeEnvs = mutableMapOf<String, TypeEnvironment>()
     for ((file, fileRoot) in irTrees) {
-        val language = fileRoot.language
-        val localFieldTypes = collectFieldTypes(fileRoot)
-        val methodReturnTypes = collectMethodReturnTypes(fileRoot)
         val transformed =
-            fileRoot.transform { node ->
-                if (node is FunctionDecl) {
-                    val classFields = node.declaringClass?.let { globalFieldTypes[it] } ?: emptyMap()
-                    val mergedFields = allGlobalFields + classFields + localFieldTypes
-                    val typeEnv = TypeEnvironment.build(node, mergedFields, language, registry, methodReturnTypes)
-                    typeEnvs[signatureKey(node)] = typeEnv
-                    markScalarLookupsInFunction(node, language, registry, typeEnv)
-                } else {
-                    node
-                }
-            }
-        result[file] = transformed as FileRoot
+            processFile(
+                fileRoot,
+                globalFieldTypes,
+                allGlobalFields,
+                globalMethodReturnTypes,
+                classHierarchy,
+                registry,
+                typeEnvs,
+            )
+        result[file] = transformed
     }
     return MarkScalarLookupsResult(result, typeEnvs)
 }
 
+private fun processFile(
+    fileRoot: FileRoot,
+    globalFieldTypes: Map<String, Map<String, String>>,
+    allGlobalFields: Map<String, String>,
+    globalMethodReturnTypes: Map<String, String>,
+    classHierarchy: Map<String, Set<String>>,
+    registry: LanguageSemanticsRegistry,
+    typeEnvs: MutableMap<String, TypeEnvironment>,
+): FileRoot {
+    val language = fileRoot.language
+    val localFieldTypes = collectFieldTypes(fileRoot)
+    val localMethodReturnTypes = collectMethodReturnTypes(fileRoot)
+    val transformed =
+        fileRoot.transform { node ->
+            if (node is FunctionDecl) {
+                val classFields = node.declaringClass?.let { globalFieldTypes[it] } ?: emptyMap()
+                val mergedFields = allGlobalFields + classFields + localFieldTypes
+                val context =
+                    TypeContext(
+                        fieldTypes = mergedFields,
+                        localMethodReturnTypes = localMethodReturnTypes,
+                        globalMethodReturnTypes = globalMethodReturnTypes,
+                        classHierarchy = classHierarchy,
+                    )
+                val typeEnv = TypeEnvironment.build(node, context, language, registry)
+                typeEnvs[signatureKey(node)] = typeEnv
+                markScalarLookupsInFunction(node, typeEnv)
+            } else {
+                node
+            }
+        } as FileRoot
+    return transformed
+}
+
 /**
  * Builds a cross-file field type registry: className → (fieldName → typeName).
- * For each file, determines the declaring class from FunctionDecl nodes and associates
- * all class-level VariableDecl types with that class.
  */
 private fun collectGlobalFieldTypes(irTrees: Map<String, FileRoot>): Map<String, Map<String, String>> {
     val global = mutableMapOf<String, MutableMap<String, String>>()
@@ -85,7 +112,7 @@ private fun collectGlobalFieldTypes(irTrees: Map<String, FileRoot>): Map<String,
 
 /**
  * Collects type info from class-level field declarations (VariableDecl nodes that are
- * direct children of the FileRoot, not nested inside a FunctionDecl).
+ * direct children of the FileRoot or ClassNode, not nested inside a FunctionDecl).
  */
 private fun collectFieldTypes(fileRoot: FileRoot): Map<String, String> {
     val fieldTypes = mutableMapOf<String, String>()
@@ -105,7 +132,6 @@ private fun collectFieldTypes(fileRoot: FileRoot): Map<String, String> {
 
 /**
  * Collects declared return types from all methods in a file: methodName → returnType.
- * Used by [TypeEnvironment] to resolve `var x = someMethod()` when the method is in the same file.
  */
 private fun collectMethodReturnTypes(fileRoot: FileRoot): Map<String, String> =
     fileRoot
@@ -113,10 +139,39 @@ private fun collectMethodReturnTypes(fileRoot: FileRoot): Map<String, String> =
         .filter { !it.isConstructor && it.returnType != null }
         .associate { it.name to it.returnType!! }
 
+/**
+ * Builds cross-file method return type index: "ClassName.methodName" → returnType (L1b).
+ * Uses qualified keys so different classes with the same method name don't conflict.
+ */
+private fun collectGlobalMethodReturnTypes(irTrees: Map<String, FileRoot>): Map<String, String> {
+    val global = mutableMapOf<String, String>()
+    for ((_, fileRoot) in irTrees) {
+        fileRoot
+            .findDescendants<FunctionDecl>()
+            .filter { !it.isConstructor && it.returnType != null && it.declaringClass != null }
+            .forEach { fn -> global["${fn.declaringClass}.${fn.name}"] = fn.returnType!! }
+    }
+    return global
+}
+
+/**
+ * Builds the class hierarchy from [ClassNode] supertypes across all files (L3).
+ * Returns className → set of direct supertypes.
+ */
+private fun collectClassHierarchy(irTrees: Map<String, FileRoot>): Map<String, Set<String>> {
+    val hierarchy = mutableMapOf<String, MutableSet<String>>()
+    for ((_, fileRoot) in irTrees) {
+        for (classNode in fileRoot.findDescendants<ClassNode>()) {
+            if (classNode.supertypes.isNotEmpty()) {
+                hierarchy.getOrPut(classNode.name) { mutableSetOf() }.addAll(classNode.supertypes)
+            }
+        }
+    }
+    return hierarchy
+}
+
 private fun markScalarLookupsInFunction(
     fn: FunctionDecl,
-    language: Language,
-    registry: LanguageSemanticsRegistry,
     typeEnv: TypeEnvironment,
 ): FunctionDecl =
     fn.transform { node ->
@@ -125,8 +180,8 @@ private fun markScalarLookupsInFunction(
             val type = typeEnv.typeOf(varName)
             when {
                 type == null -> node
-                registry.isO1Type(language, type.simpleName) -> node.copy(isO1 = true)
-                !registry.isCollectionType(language, type.simpleName) -> node.copy(isScalar = true)
+                typeEnv.isO1(varName) -> node.copy(isO1 = true)
+                !typeEnv.isCollection(varName) -> node.copy(isScalar = true)
                 else -> node
             }
         } else {
