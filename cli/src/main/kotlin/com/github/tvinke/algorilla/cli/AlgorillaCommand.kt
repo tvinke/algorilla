@@ -184,8 +184,8 @@ internal class AlgorillaCommand :
         if (outputFile == null) printScanTarget(paths, useColor)
         val result = runAnalysis(paths).copy(projectRoot = projectRoot)
         val baselined = applyBaseline(result, baselineFile, saveBaselineFile)
-        val accepted = applyIgnoreList(baselined, projectRoot)
         processAcceptHashes(result)
+        val accepted = applyIgnoreList(baselined, projectRoot)
 
         writeReport(accepted, format, outputFile, useColor, projectRoot, scanRoots, limit)
         if (outputFile == null) printFrameworkCoverageNotice(scanRoots, useColor)

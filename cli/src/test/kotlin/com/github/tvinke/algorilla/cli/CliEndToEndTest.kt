@@ -217,6 +217,24 @@ internal class CliEndToEndTest {
         result.exitCode shouldBe 0
     }
 
+    // -- Accept flag --
+
+    @Test
+    fun `accept excludes finding from same run`() {
+        val project = writeSource("Bad.java", NESTED_LOOKUP_SOURCE)
+        // First run: get the finding hash
+        val first = run("--no-cache", "--fail-on", "error", project.absolutePath)
+        first.stdout shouldContain "nested-lookup"
+        val hashMatch = Regex("# ([a-f0-9]+)").find(first.stdout)
+        val hash = hashMatch!!.groupValues[1]
+
+        // Second run with --accept: finding should be excluded from output
+        val second = run("--no-cache", "--accept", hash, "--fail-on", "error", project.absolutePath)
+        second.stderr shouldContain "Accepted 1 finding"
+        second.stdout shouldNotContain "nested-lookup"
+        second.stdout shouldContain "Found 0 issues"
+    }
+
     // -- Limit flag --
 
     @Test
