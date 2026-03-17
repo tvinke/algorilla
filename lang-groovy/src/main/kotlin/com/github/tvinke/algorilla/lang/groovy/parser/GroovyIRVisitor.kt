@@ -67,6 +67,12 @@ internal class GroovyIRVisitor(
         // Groovy constructors parsed as methods: name starts with uppercase, no explicit return type
         val isCtor = name.first().isUpperCase() && ctx.typeTypeOrVoid()?.text?.let { it == "void" || it == name } != true
         val qName = if (enclosingClass != null) "$enclosingClass.$name" else name
+        val returnType =
+            ctx
+                .typeTypeOrVoid()
+                ?.typeType()
+                ?.text
+                ?.simplifyGenericType()
 
         return listOf(
             FunctionDecl(
@@ -75,6 +81,7 @@ internal class GroovyIRVisitor(
                 parameters = params,
                 isConstructor = isCtor,
                 declaringClass = enclosingClass,
+                returnType = returnType,
                 location = locationOf(ctx),
                 children = body,
             ),
@@ -275,3 +282,6 @@ private fun groovyLoopKindFor(methodName: String): LoopKind? =
         "collect", "collectEntries" -> LoopKind.HIGHER_ORDER
         else -> null
     }
+
+/** Strips generic type parameters: "List<Order>" → "List", "Map<String,Integer>" → "Map". */
+private fun String.simplifyGenericType(): String = substringBefore('<').substringAfterLast('.')

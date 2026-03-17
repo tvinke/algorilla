@@ -71,6 +71,7 @@ internal class KotlinTreeSitterVisitor(
         val bodyNode = findChildByType(node, "function_body")
         val bodyChildren = if (bodyNode != null) visitChildren(bodyNode) else emptyList()
         val qName = if (enclosingClass != null) "$enclosingClass.$name" else name
+        val returnType = extractReturnType(node)
 
         return listOf(
             FunctionDecl(
@@ -78,6 +79,7 @@ internal class KotlinTreeSitterVisitor(
                 qualifiedName = qName,
                 parameters = params,
                 declaringClass = enclosingClass,
+                returnType = returnType,
                 location = locationOf(node),
                 children = bodyChildren,
             ),
@@ -366,6 +368,17 @@ internal class KotlinTreeSitterVisitor(
     private fun extractPropertyType(varDecl: TSNode): String? {
         val userType = findChildByType(varDecl, "user_type") ?: return null
         return nodeText(userType)
+    }
+
+    /** Extracts the return type from a function_declaration node: `fun foo(): List<Order>` → "List". */
+    private fun extractReturnType(funcNode: TSNode): String? {
+        // Return type is a user_type that's a direct child of function_declaration (not inside parameters)
+        val userType = findChildByType(funcNode, "user_type")
+        val nullableType = findChildByType(funcNode, "nullable_type")
+        val typeNode = userType ?: nullableType?.let { findChildByType(it, "user_type") } ?: return null
+        val fullType = nodeText(typeNode)
+        // Strip generic parameters: "List<Order>" → "List"
+        return fullType.substringBefore('<')
     }
 
     private fun extractMethodName(navExpr: TSNode): String {
