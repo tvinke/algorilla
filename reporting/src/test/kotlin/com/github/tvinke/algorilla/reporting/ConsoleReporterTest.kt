@@ -472,6 +472,38 @@ internal class ConsoleReporterTest {
         }
 
         @Test
+        fun `limit suppresses overview`() {
+            val findings =
+                (1..12).map { i ->
+                    finding(line = i * 10, message = "Finding $i")
+                }
+            val limited = ConsoleReporter(color = false, limit = 3)
+            val output = StringBuilder()
+            limited.report(result(*findings.toTypedArray()), output)
+
+            val text = output.toString()
+            text shouldNotContain "Overview"
+            text shouldContain "Showing 3 of 12"
+        }
+
+        @Test
+        fun `limit suppresses accept tip`() {
+            val findings =
+                (1..3).map { i ->
+                    finding(
+                        file = "/src/File$i.java",
+                        line = i * 10,
+                        message = "Finding $i",
+                    )
+                }
+            val limited = ConsoleReporter(color = false, limit = 2)
+            val output = StringBuilder()
+            limited.report(result(*findings.toTypedArray()), output)
+
+            output.toString() shouldNotContain "Tip: --accept"
+        }
+
+        @Test
         fun `limit greater than count shows all`() {
             val findings =
                 (1..3).map { i ->

@@ -36,12 +36,13 @@ public class ConsoleReporter(
         firstFindingShown = false
         projectRoot = result.projectRoot
 
-        if (result.findings.size > OVERVIEW_THRESHOLD) {
+        val totalFindings = result.findings.size
+        val isLimited = limit > 0 && limit < totalFindings
+
+        if (!isLimited && totalFindings > OVERVIEW_THRESHOLD) {
             formatOverview(result, output)
         }
 
-        val totalFindings = result.findings.size
-        val isLimited = limit > 0 && limit < totalFindings
         val displayFindings = if (isLimited) result.findings.take(limit) else result.findings
 
         val snippetRenderer = SnippetRenderer(color)
@@ -69,7 +70,7 @@ public class ConsoleReporter(
         if (isLimited) {
             output.appendLine("Showing $limit of $totalFindings findings. Run without --limit to see all.")
         }
-        formatSummary(result, output)
+        formatSummary(result, output, isLimited)
     }
 
     private fun formatFinding(
@@ -187,6 +188,7 @@ public class ConsoleReporter(
     private fun formatSummary(
         result: AnalysisResult,
         output: Appendable,
+        isLimited: Boolean = false,
     ) {
         val fileCount =
             result.findings
@@ -232,7 +234,7 @@ public class ConsoleReporter(
         if (hiddenSuffix.isNotEmpty()) {
             output.appendLine(hiddenSuffix)
         }
-        if (result.findings.isNotEmpty()) {
+        if (result.findings.isNotEmpty() && !isLimited) {
             output.appendLine(
                 Ansi.dim(
                     "Tip: --accept <hash> to mark reviewed, // algorilla:ignore to suppress in code",
