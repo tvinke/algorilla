@@ -212,11 +212,14 @@ public class ConsoleReporter(
                 else -> { text: String -> text }
             }
 
-        output.appendLine("$scanned ${summaryColor("$foundText$acrossText")}$hiddenSuffix")
+        output.appendLine("$scanned ${summaryColor("$foundText$acrossText")}")
+        if (hiddenSuffix.isNotEmpty()) {
+            output.appendLine(hiddenSuffix)
+        }
         if (result.findings.isNotEmpty()) {
             output.appendLine(
                 Ansi.dim(
-                    "Tip: Accept reviewed findings with --accept <hash>, or suppress in code with // algorilla:ignore",
+                    "Tip: --accept <hash> to mark reviewed, // algorilla:ignore to suppress in code",
                     color,
                 ),
             )
@@ -235,32 +238,37 @@ public class ConsoleReporter(
     }
 
     private fun formatHiddenCounts(result: AnalysisResult): String {
-        val severityParts =
-            Severity.entries.mapNotNull { severity ->
+        // Both unfiltered maps count from the same pool before filtering.
+        // Use the larger total to get the true pre-filter count.
+        val totalUnfiltered =
+            maxOf(
+                result.unfilteredCounts.values.sum(),
+                result.unfilteredConfidenceCounts.values.sum(),
+            )
+        val totalShown = result.findings.size
+        val totalHidden = totalUnfiltered - totalShown
+        if (totalHidden <= 0) return ""
+
+        // Determine which filters contributed by checking what each removed
+        val hiddenBySeverity =
+            Severity.entries.sumOf { severity ->
                 val total = result.unfilteredCounts.getOrDefault(severity, 0)
                 val shown = result.findings.count { it.severity == severity }
-                val hidden = total - shown
-                if (hidden > 0) "$hidden ${severity.name.lowercase()}" else null
+                total - shown
             }
-        val confidenceParts =
-            Confidence.entries.mapNotNull { confidence ->
+        val hiddenByConfidence =
+            Confidence.entries.sumOf { confidence ->
                 val total = result.unfilteredConfidenceCounts.getOrDefault(confidence, 0)
                 val shown = result.findings.count { it.confidence == confidence }
-                val hidden = total - shown
-                if (hidden > 0) "$hidden ${confidence.name.lowercase()}-confidence" else null
+                total - shown
             }
-        val parts = mutableListOf<String>()
-        if (severityParts.isNotEmpty()) {
-            parts.add("${severityParts.joinToString(", ")} hidden — use --severity info to show")
-        }
-        if (confidenceParts.isNotEmpty()) {
-            parts.add("${confidenceParts.joinToString(", ")} hidden — use --confidence low to show")
-        }
-        return if (parts.isNotEmpty()) {
-            " " + Ansi.dim("[${parts.joinToString("; ")}]", color)
-        } else {
-            ""
-        }
+
+        val hints = mutableListOf<String>()
+        if (hiddenBySeverity > 0) hints.add("--severity info")
+        if (hiddenByConfidence > 0) hints.add("--confidence low")
+
+        val hint = if (hints.isNotEmpty()) " \u2014 use ${hints.joinToString(" or ")} to show" else ""
+        return Ansi.dim("  $totalHidden hidden by filters$hint", color)
     }
 
     @Suppress("LongMethod")

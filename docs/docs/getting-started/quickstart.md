@@ -75,7 +75,7 @@ When algorilla finds something, it prints findings grouped by file with a sugges
       # a1b2c3d4  ← accept with --accept a1b2c3d4
 
 Scanned 42 files in 0.3s. Found 1 issue (1 warning) across 1 file.
-Tip: Accept reviewed findings with --accept <hash>, or suppress in code with // algorilla:ignore
+Tip: --accept <hash> to mark reviewed, // algorilla:ignore to suppress in code
 ```
 
 Each finding shows severity, rule name, complexity trade-off, a human-readable description, a concrete fix suggestion, and an evidence chain tracing the path to the bottleneck. The `# a1b2c3d4` at the end is the finding's **fingerprint hash** — a stable identifier you can use with `--accept <hash>` to mark a finding as reviewed. See [understanding output](../guide/understanding-output.md) for the full format reference.

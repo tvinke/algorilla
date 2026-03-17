@@ -137,7 +137,7 @@ internal class ConsoleReporterTest {
     @Nested
     inner class HiddenCounts {
         @Test
-        fun `shows hidden info count when findings were filtered`() {
+        fun `shows combined hidden count when severity filter hides findings`() {
             val warning = finding(severity = Severity.WARNING)
             val output = StringBuilder()
             val r =
@@ -148,12 +148,47 @@ internal class ConsoleReporterTest {
             reporter.report(r, output)
 
             val text = output.toString()
-            text shouldContain "3 info hidden"
-            text shouldContain "--severity info to show"
+            text shouldContain "3 hidden by filters"
+            text shouldContain "--severity info"
         }
 
         @Test
-        fun `no hidden suffix when all findings are shown`() {
+        fun `shows combined hidden count when confidence filter hides findings`() {
+            val warning = finding(severity = Severity.WARNING)
+            val output = StringBuilder()
+            val r =
+                result(
+                    warning,
+                    unfilteredCounts = mapOf(Severity.WARNING to 1),
+                    unfilteredConfidenceCounts = mapOf(Confidence.MEDIUM to 1, Confidence.LOW to 2),
+                )
+            reporter.report(r, output)
+
+            val text = output.toString()
+            text shouldContain "2 hidden by filters"
+            text shouldContain "--confidence low"
+        }
+
+        @Test
+        fun `shows both filter hints when both filters hide findings`() {
+            val warning = finding(severity = Severity.WARNING)
+            val output = StringBuilder()
+            val r =
+                result(
+                    warning,
+                    unfilteredCounts = mapOf(Severity.WARNING to 1, Severity.INFO to 3),
+                    unfilteredConfidenceCounts = mapOf(Confidence.MEDIUM to 1, Confidence.LOW to 2),
+                )
+            reporter.report(r, output)
+
+            val text = output.toString()
+            text shouldContain "hidden by filters"
+            text shouldContain "--severity info"
+            text shouldContain "--confidence low"
+        }
+
+        @Test
+        fun `no hidden line when all findings are shown`() {
             val warning = finding(severity = Severity.WARNING)
             val output = StringBuilder()
             val r =
@@ -164,39 +199,6 @@ internal class ConsoleReporterTest {
             reporter.report(r, output)
 
             output.toString() shouldNotContain "hidden"
-        }
-    }
-
-    @Nested
-    inner class ConfidenceHiddenCounts {
-        @Test
-        fun `shows hidden confidence count when findings were filtered`() {
-            val warning = finding(severity = Severity.WARNING)
-            val output = StringBuilder()
-            val r =
-                result(
-                    warning,
-                    unfilteredConfidenceCounts = mapOf(Confidence.MEDIUM to 1, Confidence.LOW to 2),
-                )
-            reporter.report(r, output)
-
-            val text = output.toString()
-            text shouldContain "2 low-confidence hidden"
-            text shouldContain "--confidence low to show"
-        }
-
-        @Test
-        fun `no confidence hidden suffix when all confidence levels shown`() {
-            val warning = finding(severity = Severity.WARNING)
-            val output = StringBuilder()
-            val r =
-                result(
-                    warning,
-                    unfilteredConfidenceCounts = mapOf(Confidence.MEDIUM to 1),
-                )
-            reporter.report(r, output)
-
-            output.toString() shouldNotContain "confidence hidden"
         }
     }
 
@@ -323,7 +325,7 @@ internal class ConsoleReporterTest {
         fun `summary includes tip when findings exist`() {
             val output = StringBuilder()
             reporter.report(result(finding()), output)
-            output.toString() shouldContain "Tip: Accept reviewed findings with --accept <hash>"
+            output.toString() shouldContain "Tip: --accept <hash> to mark reviewed"
             output.toString() shouldContain "// algorilla:ignore"
         }
 
