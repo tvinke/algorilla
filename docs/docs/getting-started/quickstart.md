@@ -12,10 +12,16 @@ Point algorilla at your project root:
 algorilla /path/to/your/project
 ```
 
-!!! tip "Zero config"
-    Algorilla automatically detects the build system (Gradle, Maven, or JS/TS), resolves where source code lives, and excludes test code and build output. There is no need to point at `src/main` — just pass the project root.
+Or use the named `--input` option:
 
-For example, for a Gradle project:
+```bash
+algorilla --input /path/to/your/project
+```
+
+!!! tip "Zero config"
+    Algorilla automatically detects the build system (Gradle, Maven, or JS/TS), resolves where source code lives, and excludes test code and build output. There is no need to point at `src/main` — just pass the project root. Note: at least one input path is required — running `algorilla` with no arguments will show an error.
+
+For a Gradle project in the current directory:
 
 ```bash
 algorilla .

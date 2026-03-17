@@ -554,7 +554,7 @@ public class LanguageSemanticsRegistry private constructor(
 
     private fun resolveLanguage(language: Language): Language =
         when (language) {
-            Language.TYPESCRIPT, Language.VUE -> Language.JAVASCRIPT
+            Language.TYPESCRIPT -> Language.JAVASCRIPT
             else -> language
         }
 

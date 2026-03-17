@@ -68,6 +68,7 @@ Point algorilla at your project:
 
 ```bash
 algorilla /path/to/your/project
+# or: algorilla --input /path/to/your/project
 ```
 
 Algorilla scans your source files and reports what it finds. Here it detected a `List.contains()` call inside a for-each loop — meaning every iteration does a linear scan of `discountedProductIds`, making the whole method O(n²). Not sure why that's a problem? Read [the hidden O(n²) problem](hidden-complexity.md) first.
@@ -123,7 +124,7 @@ Most static analyzers focus on correctness — null checks, type errors, securit
 What it offers:
 
 - **28 built-in rules** across 6 categories, each with evidence chains that show *why* it's a problem
-- **Multi-language**: [Java](languages/java.md), [Kotlin](languages/kotlin.md), [Groovy](languages/groovy.md), [JavaScript/TypeScript](languages/javascript.md) (including `.vue` single-file components)
+- **Multi-language**: [Java](languages/java.md), [Kotlin](languages/kotlin.md), [Groovy](languages/groovy.md), [JavaScript/TypeScript](languages/javascript.md) (including `.vue` single-file components and JSX)
 - **Cross-file analysis**: follows call chains across files and languages to catch indirect patterns
 - **Fast**: analyzes 500+ files/second with incremental caching
 - **Zero config**: works out of the box with automatic project detection

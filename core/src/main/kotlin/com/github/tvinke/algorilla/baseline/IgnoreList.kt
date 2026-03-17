@@ -24,8 +24,22 @@ public class IgnoreList(
 ) {
     /**
      * Returns only findings that are not in this ignore list.
+     * Uses dual-check: tries v2 fingerprint first, falls back to v1 for migration.
      */
-    public fun filter(findings: List<Finding>): List<Finding> = findings.filter { Baseline.fingerprintOf(it).contentHash !in entries }
+    public fun filter(
+        findings: List<Finding>,
+        projectRoot: File? = null,
+    ): List<Finding> =
+        findings.filter { finding ->
+            val v2Hash = Baseline.fingerprintOf(finding, projectRoot).contentHash
+            if (v2Hash in entries) return@filter false
+            if (projectRoot != null) {
+                val v1Hash = Baseline.fingerprintV1(finding).contentHash
+                v1Hash !in entries
+            } else {
+                true
+            }
+        }
 
     /**
      * Number of ignored findings.
@@ -70,17 +84,18 @@ public class IgnoreList(
             file: File,
             findings: List<Finding>,
             hashes: Set<String>,
+            projectRoot: File? = null,
         ): Int {
             val existing = load(file)
             val matched =
                 findings.filter { finding ->
-                    Baseline.fingerprintOf(finding).contentHash in hashes
+                    Baseline.fingerprintOf(finding, projectRoot).contentHash in hashes
                 }
             if (matched.isEmpty()) return 0
 
             val newEntries = existing.entries.toMutableMap()
             for (finding in matched) {
-                val fp = Baseline.fingerprintOf(finding)
+                val fp = Baseline.fingerprintOf(finding, projectRoot)
                 newEntries[fp.contentHash] =
                     IgnoredEntry(
                         fingerprint = fp.contentHash,

@@ -9,6 +9,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Nested
@@ -53,10 +54,10 @@ internal class JsonReporterTest {
         }
 
         @Test
-        fun `schemaVersion is 1`() {
+        fun `schemaVersion is 2`() {
             val json = report()
             val root = Json.parseToJsonElement(json).jsonObject
-            root["schemaVersion"]!!.jsonPrimitive.int shouldBe 1
+            root["schemaVersion"]!!.jsonPrimitive.int shouldBe 2
         }
 
         @Test
@@ -93,6 +94,25 @@ internal class JsonReporterTest {
     }
 
     @Nested
+    inner class Fingerprints {
+        @Test
+        fun `output includes fingerprint field for each finding`() {
+            val json = report()
+            json shouldContain "\"fingerprint\""
+        }
+
+        @Test
+        fun `fingerprint is a non-empty hex string`() {
+            val json = report()
+            val root = Json.parseToJsonElement(json).jsonObject
+            val findings = root["findings"]!!.jsonArray
+            val fingerprint = findings[0].jsonObject["fingerprint"]!!.jsonPrimitive.content
+            fingerprint.length shouldBe 16
+            fingerprint.all { it in '0'..'9' || it in 'a'..'f' } shouldBe true
+        }
+    }
+
+    @Nested
     inner class Structure {
         @Test
         fun `output includes summary`() {
@@ -111,7 +131,7 @@ internal class JsonReporterTest {
         fun `empty findings produces valid JSON`() {
             val json = report(emptyList())
             val root = Json.parseToJsonElement(json).jsonObject
-            root["schemaVersion"]!!.jsonPrimitive.int shouldBe 1
+            root["schemaVersion"]!!.jsonPrimitive.int shouldBe 2
         }
 
         @Test

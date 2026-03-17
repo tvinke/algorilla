@@ -294,6 +294,7 @@ public data class AnalysisResult(
     val elapsedMs: Long,
     val unfilteredCounts: Map<Severity, Int> = emptyMap(),
     val unfilteredConfidenceCounts: Map<Confidence, Int> = emptyMap(),
+    val projectRoot: java.io.File? = null,
 )
 
 /**

@@ -20,6 +20,7 @@ public class ConsoleReporter(
     private val sourceRoots: List<String> = emptyList(),
 ) : Reporter {
     private var firstFindingShown = false
+    private var projectRoot: java.io.File? = null
 
     @Suppress("LongMethod")
     override fun report(
@@ -32,6 +33,7 @@ public class ConsoleReporter(
         }
 
         firstFindingShown = false
+        projectRoot = result.projectRoot
 
         if (result.findings.size > OVERVIEW_THRESHOLD) {
             formatOverview(result, output)
@@ -83,7 +85,7 @@ public class ConsoleReporter(
         output.appendLine("      ${Ansi.dim("\u21b3 ${ReporterConstants.ruleUrl(finding.ruleId)}", color)}")
         snippetRenderer.render(finding.location.file, finding.location.line, finding.severity, output)
         formatEvidence(finding, snippetRenderer, output)
-        val hash = Baseline.fingerprintOf(finding).contentHash
+        val hash = Baseline.fingerprintOf(finding, projectRoot).contentHash
         if (!firstFindingShown) {
             output.appendLine(
                 "      ${Ansi.dim("# $hash  \u2190 accept with --accept $hash", color)}",

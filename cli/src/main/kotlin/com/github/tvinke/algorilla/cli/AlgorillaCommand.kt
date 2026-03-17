@@ -36,10 +36,16 @@ internal class AlgorillaCommand :
 
     @Parameters(
         index = "0..*",
-        description = ["Files or directories to analyze (default: current directory)"],
-        defaultValue = ".",
+        description = ["Files or directories to analyze"],
     )
-    private var paths: List<File> = listOf(File("."))
+    private var positionalPaths: List<File> = emptyList()
+
+    @Option(
+        names = ["-i", "--input"],
+        description = ["Files or directories to analyze"],
+        split = ",",
+    )
+    private var inputPaths: List<File> = emptyList()
 
     @Option(
         names = ["-f", "--format"],
@@ -114,7 +120,7 @@ internal class AlgorillaCommand :
         names = ["-l", "--language"],
         description = [
             "Only analyze specified language(s). Comma-separated or repeated: --language java,groovy or -l java -l groovy. " +
-                "Available: java, groovy, kotlin, javascript, typescript, vue",
+                "Available: java, groovy, kotlin, javascript, typescript",
         ],
         split = ",",
     )
@@ -166,27 +172,36 @@ internal class AlgorillaCommand :
             return EXIT_OK
         }
 
+        val paths = resolvePaths() ?: return EXIT_ERROR
+
         if (outputFile == null) printScanTarget(paths, useColor)
-        val result = runAnalysis()
+        val result = runAnalysis(paths).copy(projectRoot = projectRoot)
         val baselined = applyBaseline(result, baselineFile, saveBaselineFile)
         val accepted = applyIgnoreList(baselined, projectRoot)
-
-        if (acceptHashes.isNotEmpty()) {
-            val count =
-                IgnoreList.accept(
-                    IgnoreList.defaultFile(projectRoot),
-                    result.findings,
-                    acceptHashes.toSet(),
-                )
-            System.err.println("Accepted $count ${if (count == 1) "finding" else "findings"}.")
-        }
+        processAcceptHashes(result)
 
         writeReport(accepted, format, outputFile, useColor, projectRoot, scanRoots)
         if (outputFile == null) printFrameworkCoverageNotice(scanRoots, useColor)
         return exitCodeFor(accepted, resolveFailOn(failOn))
     }
 
-    private fun runAnalysis(): AnalysisResult {
+    private fun resolvePaths(): List<File>? {
+        val merged = inputPaths + positionalPaths
+        if (merged.isEmpty()) {
+            System.err.println("Error: no input specified. Usage: algorilla <path> or algorilla --input <path>")
+            return null
+        }
+        return merged
+    }
+
+    private fun processAcceptHashes(result: AnalysisResult) {
+        if (acceptHashes.isEmpty()) return
+        val count =
+            IgnoreList.accept(IgnoreList.defaultFile(projectRoot), result.findings, acceptHashes.toSet(), projectRoot)
+        System.err.println("Accepted $count ${if (count == 1) "finding" else "findings"}.")
+    }
+
+    private fun runAnalysis(paths: List<File>): AnalysisResult {
         val config = buildConfig()
         val detector = ProjectStructureDetector()
         projectRoot = detector.resolveProjectRoot(paths.first())

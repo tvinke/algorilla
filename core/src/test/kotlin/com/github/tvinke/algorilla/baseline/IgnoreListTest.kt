@@ -144,6 +144,30 @@ internal class IgnoreListTest {
     }
 
     @Nested
+    inner class PortableFilter {
+        @Test
+        fun `filter with projectRoot uses relative paths`(
+            @TempDir tmp: File,
+        ) {
+            val projectRoot = File(tmp, "project")
+            projectRoot.mkdirs()
+            val absolutePath = "${projectRoot.absolutePath}/src/Main.java"
+            val f1 = finding(file = absolutePath)
+            val f2 = finding(file = absolutePath, ruleId = "sort-for-last", message = "Sort for last element")
+            val ignoreFile = File(tmp, "ignore-list.json")
+
+            val hash1 = Baseline.fingerprintOf(f1, projectRoot).contentHash
+            IgnoreList.accept(ignoreFile, listOf(f1, f2), setOf(hash1), projectRoot)
+
+            val loaded = IgnoreList.load(ignoreFile)
+            val filtered = loaded.filter(listOf(f1, f2), projectRoot)
+
+            filtered shouldHaveSize 1
+            filtered[0].ruleId shouldBe "sort-for-last"
+        }
+    }
+
+    @Nested
     inner class Compat {
         @Test
         fun `ignores unknown fields in ignore list JSON`(

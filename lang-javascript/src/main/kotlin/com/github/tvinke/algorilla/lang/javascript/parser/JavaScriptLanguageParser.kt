@@ -33,8 +33,7 @@ public class JavaScriptLanguageParser : LanguageParser {
             return FileRoot(filePath = filePath, language = language, location = SourceLocation(filePath, 1, 1), children = emptyList())
         }
 
-        val lang = detectLanguage(filePath)
-        val source = extractSource(file)
+        val (source, lang) = readSource(file)
         val treeSitterResult = parseWithTreeSitter(filePath, source, lang)
         if (treeSitterResult == null) {
             logger.warn { "Tree-sitter failed for $filePath, falling back to regex scanner" }
@@ -91,18 +90,27 @@ internal fun tsLanguageFor(lang: Language): TSLanguage =
         else -> TreeSitterJavascript()
     }
 
-internal fun detectLanguage(filePath: String): Language =
-    when {
-        filePath.endsWith(".ts") || filePath.endsWith(".tsx") -> Language.TYPESCRIPT
-        filePath.endsWith(".vue") -> Language.VUE
-        else -> Language.JAVASCRIPT
-    }
+private val vueScriptPattern = Regex("""<script(\s[^>]*)?>([\s\S]*?)</script>""")
+private val vueLangTsPattern = Regex("""lang=["']ts["']""")
 
-private val vueScriptPattern = Regex("""<script(?:\s+lang="ts")?[^>]*>([\s\S]*?)</script>""")
-
-internal fun extractSource(file: File): String {
+/**
+ * Reads source content and detects the analysis language in a single pass.
+ * For Vue SFCs, extracts the `<script>` block and detects `lang="ts"` from the
+ * same read — no second file access needed.
+ */
+internal fun readSource(file: File): Pair<String, Language> {
     val raw = file.readText()
-    if (!file.name.endsWith(".vue")) return raw
-    val match = vueScriptPattern.find(raw) ?: return ""
-    return match.groupValues[1]
+    if (!file.name.endsWith(".vue")) {
+        val lang =
+            when {
+                file.name.endsWith(".ts") || file.name.endsWith(".tsx") -> Language.TYPESCRIPT
+                else -> Language.JAVASCRIPT
+            }
+        return Pair(raw, lang)
+    }
+    // Vue SFC: extract <script> block and detect lang="ts" from the tag attributes
+    val match = vueScriptPattern.find(raw) ?: return Pair("", Language.JAVASCRIPT)
+    val attrs = match.groupValues[1]
+    val lang = if (vueLangTsPattern.containsMatchIn(attrs)) Language.TYPESCRIPT else Language.JAVASCRIPT
+    return Pair(match.groupValues[2], lang)
 }

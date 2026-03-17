@@ -10,7 +10,7 @@ When you run `algorilla /path/to/project`, Algorilla:
 2. **Detects source directories** based on the build system's conventions.
 3. **Places `.algorilla/`** (cache, baseline) in the project root — never in a subdirectory.
 
-If no build system is detected, Algorilla scans the given path as-is.
+If no build system is detected, Algorilla prints a notice and scans the given path as-is.
 
 ## Supported Build Systems
 

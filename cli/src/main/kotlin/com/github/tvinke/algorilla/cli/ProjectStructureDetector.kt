@@ -36,6 +36,7 @@ internal class ProjectStructureDetector {
             logger.info { "Resolved project root: ${resolved.path}" }
         } else {
             logger.info { "No build system detected, using path as-is: ${dir.path}" }
+            System.err.println("Note: no build system detected at ${dir.canonicalPath}, scanning all supported files.")
         }
         return resolved ?: dir.canonicalFile
     }

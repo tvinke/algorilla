@@ -2,13 +2,33 @@
 
 ```
 algorilla [OPTIONS] [PATHS...]
+algorilla --input <path>[,<path>...] [OPTIONS]
 ```
 
-## Positional Arguments
+## Input
+
+Algorilla requires at least one input path. You can specify paths as positional arguments or with `--input`/`-i`:
+
+```bash
+# Positional (shorthand)
+algorilla /path/to/project
+
+# Named option
+algorilla --input /path/to/project
+
+# Multiple paths
+algorilla src/main/java src/main/kotlin
+algorilla -i src/main/java,src/main/kotlin
+```
+
+Running `algorilla` with no arguments prints an error — there is no implicit "scan current directory" default. This prevents accidental full-disk scans.
 
 | Argument | Description |
 |----------|-------------|
-| `PATHS` | Files or directories to analyze. Default: current directory. When pointing at a project root, Algorilla auto-detects source directories based on the build system (Gradle, Maven, JS/TS). |
+| `PATHS` | Files or directories to analyze (positional). |
+| `-i`, `--input` | Files or directories to analyze (named, comma-separated). |
+
+When pointing at a project root, Algorilla auto-detects source directories based on the build system (Gradle, Maven, JS/TS).
 
 ## Project Root Detection
 
@@ -18,12 +38,13 @@ Algorilla walks up from the given path to find the project root by looking for b
 - **Where `.algorilla/` lives**: the cache directory is always placed in the project root, not in the scan target.
 - **Where to look for config**: `.algorilla.yml` is loaded from the project root.
 
-If no build system is detected, the given path is used as-is.
+If no build system is detected, the given path is used as-is and a notice is printed.
 
 ## Options
 
 | Option | Description | Default |
 |--------|-------------|---------|
+| `-i`, `--input` | Files or directories to analyze (alternative to positional args) | |
 | `-f`, `--format` | Output format: `console`, `sarif`, `json` | `console` |
 | `-o`, `--output` | Write report to file instead of stdout | stdout |
 | `-v`, `--verbose` | Show detailed analysis progress (DEBUG logging) | off |
@@ -48,10 +69,13 @@ If no build system is detected, the given path is used as-is.
 
 ```bash
 # Scan current directory (auto-detects project structure)
-algorilla
+algorilla .
 
 # Scan specific project
 algorilla /path/to/project
+
+# Using named input
+algorilla --input /path/to/project
 
 # Targeted scan of a single module
 algorilla /path/to/project/api/src/main/java
