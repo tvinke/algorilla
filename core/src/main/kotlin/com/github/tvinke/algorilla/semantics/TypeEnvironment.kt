@@ -21,6 +21,7 @@ public class TypeEnvironment private constructor(
     private val types: Map<String, InferredType>,
     private val registry: LanguageSemanticsRegistry,
     private val language: Language,
+    private val classHierarchy: Map<String, Set<String>> = emptyMap(),
 ) {
     /** Returns the inferred type for [variableName], or null if unknown. */
     public fun typeOf(variableName: String): InferredType? = types[variableName.removePrefix("this.")]
@@ -29,23 +30,55 @@ public class TypeEnvironment private constructor(
      * Returns true if [variableName] is known to be an O(1) lookup type (Set, Map, etc.).
      * Only high-trust sources are considered — [TypeSource.NAME_HEURISTIC] is excluded
      * because e.g. `getCharacterSet()` returning "Set" would suppress real List findings.
+     * Also resolves through the class hierarchy (L3): if the type itself isn't O(1),
+     * checks whether any of its supertypes are.
      */
     public fun isO1(variableName: String): Boolean {
         val type = typeOf(variableName) ?: return false
         if (type.source == TypeSource.NAME_HEURISTIC) return false
-        return registry.isO1Type(language, type.simpleName)
+        if (registry.isO1Type(language, type.simpleName)) return true
+        return resolvesViaHierarchy(type.simpleName) { registry.isO1Type(language, it) }
     }
 
-    /** Returns true if [variableName] is known to be a collection type (List, Set, Map, etc.). */
+    /**
+     * Returns true if [variableName] is known to be a collection type (List, Set, Map, etc.).
+     * Also resolves through the class hierarchy (L3).
+     */
     public fun isCollection(variableName: String): Boolean {
         val type = typeOf(variableName) ?: return false
-        return registry.isCollectionType(language, type.simpleName)
+        if (registry.isCollectionType(language, type.simpleName)) return true
+        return resolvesViaHierarchy(type.simpleName) { registry.isCollectionType(language, it) }
+    }
+
+    /**
+     * Walks the class hierarchy transitively to check if any supertype satisfies [predicate].
+     * Protects against cycles with a visited set.
+     */
+    private fun resolvesViaHierarchy(
+        typeName: String,
+        predicate: (String) -> Boolean,
+    ): Boolean {
+        if (classHierarchy.isEmpty()) return false
+        val visited = mutableSetOf(typeName)
+        val queue = ArrayDeque(classHierarchy[typeName] ?: return false)
+        while (queue.isNotEmpty()) {
+            val supertype = queue.removeFirst()
+            if (!visited.add(supertype)) continue
+            if (predicate(supertype)) return true
+            classHierarchy[supertype]?.let { queue.addAll(it) }
+        }
+        return false
     }
 
     /** Returns true if [variableName] is known to be a String-like type. */
     public fun isString(variableName: String): Boolean {
         val type = typeOf(variableName) ?: return false
-        return type.simpleName in STRING_TYPES
+        val yamlStringTypes = registry.extraSection(language, "string-types")
+        return if (yamlStringTypes.isNotEmpty()) {
+            type.simpleName in yamlStringTypes
+        } else {
+            type.simpleName in FALLBACK_STRING_TYPES
+        }
     }
 
     /**
@@ -54,29 +87,21 @@ public class TypeEnvironment private constructor(
      */
     public fun isList(variableName: String): Boolean {
         val type = typeOf(variableName) ?: return false
-        return type.simpleName in LIST_TYPES
+        val yamlListTypes = registry.extraSection(language, "list-types")
+        return if (yamlListTypes.isNotEmpty()) {
+            type.simpleName in yamlListTypes
+        } else {
+            type.simpleName in FALLBACK_LIST_TYPES
+        }
     }
 
+    @Suppress("TooManyFunctions") // Type inference strategies: each handles a distinct source
     public companion object {
-        private val STRING_TYPES =
-            setOf(
-                "String",
-                "StringBuilder",
-                "StringBuffer",
-                "CharSequence",
-            )
+        private val FALLBACK_STRING_TYPES =
+            setOf("String", "StringBuilder", "StringBuffer", "CharSequence")
 
-        private val LIST_TYPES =
-            setOf(
-                "List",
-                "ArrayList",
-                "LinkedList",
-                "Vector",
-                "Stack",
-                "CopyOnWriteArrayList",
-                "MutableList",
-                "Array",
-            )
+        private val FALLBACK_LIST_TYPES =
+            setOf("List", "ArrayList", "LinkedList", "Vector", "Stack", "CopyOnWriteArrayList", "MutableList", "Array")
 
         private val TERMINAL_OPS =
             setOf(
@@ -99,30 +124,26 @@ public class TypeEnvironment private constructor(
         private val LIST_TERMINALS = setOf("toList", "toMutableList", "toUnmodifiableList")
 
         /**
-         * Builds a [TypeEnvironment] for [fn] using the given field types as a base layer.
-         * Variables assigned more than once get type UNKNOWN (reassignment guard).
-         *
-         * @param methodReturnTypes maps method names to their declared return types (same-file sibling methods).
-         *   Used to infer types from `var x = someMethod()` when the method has an explicit return type.
+         * Builds a [TypeEnvironment] for [fn] using the given [context] as the source of
+         * external type knowledge. Variables assigned more than once get type UNKNOWN (reassignment guard).
          */
         public fun build(
             fn: FunctionDecl,
-            fieldTypes: Map<String, String>,
+            context: TypeContext,
             language: Language,
             registry: LanguageSemanticsRegistry,
-            methodReturnTypes: Map<String, String> = emptyMap(),
         ): TypeEnvironment {
             val typeMap = mutableMapOf<String, InferredType>()
 
-            // Layer 1: field types (lowest priority, will be overridden by params/locals)
-            for ((name, type) in fieldTypes) {
-                typeMap[name] = InferredType(type, TypeSource.DECLARED)
+            // Layer 1: field types (lowest priority, overridden by params/locals/narrowings)
+            for ((name, type) in context.fieldTypes) {
+                typeMap[name] = inferredTypeFromAnnotation(type)
             }
 
             // Layer 2: parameter types
             for (param in fn.parameters) {
                 if (param.typeName != null) {
-                    typeMap[param.name] = InferredType(param.typeName, TypeSource.DECLARED)
+                    typeMap[param.name] = inferredTypeFromAnnotation(param.typeName)
                 }
             }
 
@@ -132,36 +153,60 @@ public class TypeEnvironment private constructor(
                 assignmentCounts.merge(varDecl.name, 1, Int::plus)
             }
 
-            // Layer 3: local variable types (highest priority)
+            // Layer 3: local variable types
             // Skip reassigned variables — type is ambiguous when assigned more than once
             fn
                 .findDescendants<VariableDecl>()
                 .filter { (assignmentCounts[it.name] ?: 0) <= 1 }
                 .forEach { varDecl ->
-                    val inferred = inferVariableType(varDecl, language, registry, methodReturnTypes)
+                    val inferred = inferVariableType(varDecl, language, registry, context)
                     if (inferred != null) typeMap[varDecl.name] = inferred
                 }
 
-            return TypeEnvironment(typeMap, registry, language)
+            // Layer 4: branch narrowings (highest priority — instanceof/is checks within branch scope)
+            for ((name, type) in context.branchNarrowings) {
+                typeMap[name] = InferredType(stripGenerics(type), TypeSource.DECLARED, fullTypeName = type)
+            }
+
+            return TypeEnvironment(typeMap, registry, language, context.classHierarchy)
         }
 
-        // Each return handles a distinct inference strategy (declared, constructor, factory, chain, return type, heuristic)
+        /**
+         * Legacy overload for backward compatibility with existing callers.
+         * Constructs a [TypeContext] from the individual parameters and delegates.
+         */
+        public fun build(
+            fn: FunctionDecl,
+            fieldTypes: Map<String, String>,
+            language: Language,
+            registry: LanguageSemanticsRegistry,
+            methodReturnTypes: Map<String, String> = emptyMap(),
+        ): TypeEnvironment =
+            build(
+                fn,
+                TypeContext(fieldTypes = fieldTypes, localMethodReturnTypes = methodReturnTypes),
+                language,
+                registry,
+            )
+
+        // Each return handles a distinct inference strategy (declared, constructor, factory, chain, return type, cross-file, heuristic)
         @Suppress("ReturnCount")
         private fun inferVariableType(
             varDecl: VariableDecl,
             language: Language,
             registry: LanguageSemanticsRegistry,
-            methodReturnTypes: Map<String, String> = emptyMap(),
+            context: TypeContext,
         ): InferredType? {
             // Explicit type annotation
             if (varDecl.typeName != null) {
-                return InferredType(varDecl.typeName, TypeSource.DECLARED)
+                return inferredTypeFromAnnotation(varDecl.typeName)
             }
 
             // Constructor: new HashMap(), HashMap()
             val construction = varDecl.children.filterIsInstance<ObjectCreation>().firstOrNull()
             if (construction != null) {
-                return InferredType(construction.typeName, TypeSource.CONSTRUCTOR)
+                val full = if (construction.typeName.contains('<')) construction.typeName else null
+                return InferredType(stripGenerics(construction.typeName), TypeSource.CONSTRUCTOR, fullTypeName = full)
             }
 
             // O(1) factory method: Set.of(), setOf(), ConcurrentHashMap.newKeySet()
@@ -173,8 +218,12 @@ public class TypeEnvironment private constructor(
             if (chainType != null) return chainType
 
             // Same-file method return type: var x = getAllOrders() → List
-            val returnType = inferFromMethodReturnType(varDecl, methodReturnTypes)
+            val returnType = inferFromMethodReturnType(varDecl, context.localMethodReturnTypes)
             if (returnType != null) return returnType
+
+            // Cross-file method return type (L1b): var orders = userService.getAllOrders()
+            val crossFileType = inferFromCrossFileReturnType(varDecl, context.globalMethodReturnTypes)
+            if (crossFileType != null) return crossFileType
 
             // Method name suffix heuristic (lowest trust)
             return inferFromMethodNameSuffix(varDecl)
@@ -250,6 +299,36 @@ public class TypeEnvironment private constructor(
             return InferredType(returnType, TypeSource.FACTORY)
         }
 
+        /**
+         * Infers type from cross-file method return types (L1b). Tries qualified match
+         * (className.methodName) first, then falls back to unambiguous simple-name match.
+         */
+        private fun inferFromCrossFileReturnType(
+            varDecl: VariableDecl,
+            globalMethodReturnTypes: Map<String, String>,
+        ): InferredType? {
+            if (globalMethodReturnTypes.isEmpty()) return null
+            val call = varDecl.children.filterIsInstance<FunctionCall>().firstOrNull() ?: return null
+            // Try qualified: target.methodName
+            if (call.qualifiedTarget != null) {
+                val qualifiedKey = "${call.qualifiedTarget}.${call.name}"
+                val returnType = globalMethodReturnTypes[qualifiedKey]
+                if (returnType != null && returnType != "void") {
+                    return InferredType(returnType, TypeSource.CROSS_FILE_RETURN)
+                }
+            }
+            // Fallback: unambiguous simple name match — only if exactly one entry ends with .methodName
+            val suffix = ".${call.name}"
+            val matches = globalMethodReturnTypes.entries.filter { it.key.endsWith(suffix) }
+            if (matches.size == 1) {
+                val returnType = matches[0].value
+                if (returnType != "void") {
+                    return InferredType(returnType, TypeSource.CROSS_FILE_RETURN)
+                }
+            }
+            return null
+        }
+
         @Suppress("CyclomaticComplexMethod") // When/else dispatch over suffix patterns — each branch maps to a distinct type
         private fun inferFromMethodNameSuffix(varDecl: VariableDecl): InferredType? {
             val call =
@@ -268,5 +347,14 @@ public class TypeEnvironment private constructor(
                 } ?: return null
             return InferredType(typeName, TypeSource.NAME_HEURISTIC)
         }
+
+        /** Creates an InferredType from a raw type annotation, preserving generics as fullTypeName. */
+        private fun inferredTypeFromAnnotation(rawType: String): InferredType {
+            val full = if (rawType.contains('<')) rawType else null
+            return InferredType(stripGenerics(rawType), TypeSource.DECLARED, fullTypeName = full)
+        }
+
+        /** Strips generic parameters: "List<Order>" → "List", "Map<String,Integer>" → "Map". */
+        private fun stripGenerics(type: String): String = type.substringBefore('<')
     }
 }

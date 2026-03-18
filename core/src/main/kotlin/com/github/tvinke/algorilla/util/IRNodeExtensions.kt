@@ -1,6 +1,7 @@
 package com.github.tvinke.algorilla.util
 
 import com.github.tvinke.algorilla.model.BranchNode
+import com.github.tvinke.algorilla.model.ClassNode
 import com.github.tvinke.algorilla.model.CollectionAccess
 import com.github.tvinke.algorilla.model.FileRoot
 import com.github.tvinke.algorilla.model.FunctionCall
@@ -12,6 +13,7 @@ import com.github.tvinke.algorilla.model.LookupCall
 import com.github.tvinke.algorilla.model.LoopNode
 import com.github.tvinke.algorilla.model.ObjectCreation
 import com.github.tvinke.algorilla.model.SortCall
+import com.github.tvinke.algorilla.model.TypeCheck
 import com.github.tvinke.algorilla.model.VariableDecl
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.semantics.TypeEnvironment
@@ -216,6 +218,7 @@ public fun IRNode.referencesName(name: String): Boolean =
         is LookupCall -> targetVariable == name
         is FunctionCall -> qualifiedTarget == name || (qualifiedTarget == null && this.name == name)
         is VariableDecl -> this.name == name
+        is TypeCheck -> variableName == name
         else -> false
     }
 
@@ -253,6 +256,8 @@ public fun IRNode.withChildren(newChildren: List<IRNode>): IRNode =
         is VariableDecl -> copy(children = newChildren)
         is BranchNode -> copy(branches = listOf(newChildren))
         is GenericNode -> copy(children = newChildren)
+        is ClassNode -> copy(children = newChildren)
+        is TypeCheck -> this // leaf node, no children to replace
         is FileRoot -> copy(children = newChildren)
     }
 

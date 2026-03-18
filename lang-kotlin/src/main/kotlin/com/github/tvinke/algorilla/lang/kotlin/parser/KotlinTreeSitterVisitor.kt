@@ -4,6 +4,7 @@ import com.github.tvinke.algorilla.lang.java.parser.classifyChainedCall
 import com.github.tvinke.algorilla.lang.java.parser.classifyStandaloneCall
 import com.github.tvinke.algorilla.lang.java.parser.extractVariableName
 import com.github.tvinke.algorilla.model.BranchNode
+import com.github.tvinke.algorilla.model.ClassNode
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.GenericNode
@@ -15,6 +16,7 @@ import com.github.tvinke.algorilla.model.LoopNode
 import com.github.tvinke.algorilla.model.ObjectCreation
 import com.github.tvinke.algorilla.model.Parameter
 import com.github.tvinke.algorilla.model.SourceLocation
+import com.github.tvinke.algorilla.model.TypeCheck
 import com.github.tvinke.algorilla.model.VariableDecl
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.semantics.SemanticCategory
@@ -47,6 +49,7 @@ internal class KotlinTreeSitterVisitor(
             "property_declaration" -> visitPropertyDeclaration(node)
             "class_declaration" -> visitClassDeclaration(node)
             "object_declaration" -> visitObjectDeclaration(node)
+            "is_expression" -> visitIsExpression(node)
             "lambda_literal" -> visitLambdaLiteral(node)
             "navigation_expression" -> emptyList()
             in TRANSPARENT_TYPES -> visitChildren(node)
@@ -88,11 +91,53 @@ internal class KotlinTreeSitterVisitor(
 
     private fun visitClassDeclaration(node: TSNode): List<IRNode> {
         val prev = enclosingClass
-        enclosingClass = findChildByType(node, "type_identifier")?.let { nodeText(it) }
+        val className = findChildByType(node, "type_identifier")?.let { nodeText(it) }
+        enclosingClass = className
         val body = findChildByType(node, "class_body")
         val result = if (body != null) visitChildren(body) else emptyList()
         enclosingClass = prev
-        return result
+        if (className == null) return result
+        val supertypes = extractKotlinSupertypes(node)
+        return listOf(
+            ClassNode(
+                name = className,
+                supertypes = supertypes,
+                location = locationOf(node),
+                children = result,
+            ),
+        )
+    }
+
+    /** Extracts supertypes from delegation_specifiers: `class Foo : Set<String>, Serializable`. */
+    private fun extractKotlinSupertypes(classNode: TSNode): List<String> {
+        val delegationSpecifiers = findChildByType(classNode, "delegation_specifiers") ?: return emptyList()
+        val supertypes = mutableListOf<String>()
+        for (i in 0 until delegationSpecifiers.namedChildCount) {
+            val child = delegationSpecifiers.getNamedChild(i)
+            if (child.isNull) continue
+            // delegation_specifier contains either user_type, constructor_invocation, or explicit_delegation
+            val userType =
+                findChildByType(child, "user_type")
+                    ?: findChildByType(child, "constructor_invocation")?.let { findChildByType(it, "user_type") }
+            if (userType != null) {
+                supertypes.add(nodeText(userType).substringBefore('<'))
+            }
+        }
+        return supertypes
+    }
+
+    /** Emits TypeCheck for `x is Set` / `x !is Set` expressions (L5 flow typing). */
+    private fun visitIsExpression(node: TSNode): List<IRNode> {
+        // is_expression: expression ("is" | "!is") type
+        val exprNode = node.getNamedChild(0)
+        if (exprNode.isNull) return emptyList()
+        val varName = extractVariableName(nodeText(exprNode)) ?: return emptyList()
+        val typeNode =
+            findChildByType(node, "user_type")
+                ?: findChildByType(node, "nullable_type")?.let { findChildByType(it, "user_type") }
+                ?: return emptyList()
+        val checkedType = nodeText(typeNode).substringBefore('<')
+        return listOf(TypeCheck(varName, checkedType, locationOf(node)))
     }
 
     private fun visitObjectDeclaration(node: TSNode): List<IRNode> {

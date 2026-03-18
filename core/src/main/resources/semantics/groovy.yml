@@ -187,6 +187,20 @@ heavyweight-types:
   - XmlSlurper
   - Pattern
 
+string-types:
+  - String
+  - StringBuilder
+  - StringBuffer
+  - CharSequence
+  - GString
+
+list-types:
+  - List
+  - ArrayList
+  - LinkedList
+  - Vector
+  - Array
+
 collection-types:
   - List
   - ArrayList

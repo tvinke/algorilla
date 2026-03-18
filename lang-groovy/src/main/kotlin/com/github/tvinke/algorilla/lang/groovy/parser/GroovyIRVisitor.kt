@@ -9,6 +9,7 @@ import com.github.tvinke.algorilla.lang.java.parser.extractVariableName
 import com.github.tvinke.algorilla.lang.java.parser.handleTryCatchStatement
 import com.github.tvinke.algorilla.lang.java.parser.processBlockStatements
 import com.github.tvinke.algorilla.model.BranchNode
+import com.github.tvinke.algorilla.model.ClassNode
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.GenericNode
@@ -20,6 +21,7 @@ import com.github.tvinke.algorilla.model.LoopNode
 import com.github.tvinke.algorilla.model.ObjectCreation
 import com.github.tvinke.algorilla.model.Parameter
 import com.github.tvinke.algorilla.model.SourceLocation
+import com.github.tvinke.algorilla.model.TypeCheck
 import com.github.tvinke.algorilla.model.VariableDecl
 import org.antlr.v4.runtime.ParserRuleContext
 
@@ -43,10 +45,43 @@ internal class GroovyIRVisitor(
 
     override fun visitClassDeclaration(ctx: JavaParser.ClassDeclarationContext): List<IRNode> {
         val prev = enclosingClass
-        enclosingClass = ctx.identifier()?.text
+        val className = ctx.identifier()?.text
+        enclosingClass = className
         val result = visitChildren(ctx)
         enclosingClass = prev
-        return result
+        if (className == null) return result
+        val supertypes = extractSupertypes(ctx)
+        return listOf(
+            ClassNode(
+                name = className,
+                supertypes = supertypes,
+                location = locationOf(ctx),
+                children = result,
+            ),
+        )
+    }
+
+    private fun extractSupertypes(ctx: JavaParser.ClassDeclarationContext): List<String> {
+        val supertypes = mutableListOf<String>()
+        ctx
+            .typeType()
+            ?.text
+            ?.simplifyGenericType()
+            ?.let { supertypes.add(it) }
+        for (typeList in ctx.typeList()) {
+            for (typeType in typeList.typeType()) {
+                supertypes.add(typeType.text.simplifyGenericType())
+            }
+        }
+        return supertypes
+    }
+
+    override fun visitInstanceOfOperatorExpression(ctx: JavaParser.InstanceOfOperatorExpressionContext): List<IRNode> {
+        val expr = ctx.expression() ?: return visitChildren(ctx)
+        val varName = extractVariableName(expr.text) ?: return visitChildren(ctx)
+        val typeCtx = ctx.typeType() ?: return visitChildren(ctx)
+        val checkedType = typeCtx.text.simplifyGenericType()
+        return visit(expr) + listOf(TypeCheck(varName, checkedType, locationOf(ctx)))
     }
 
     override fun visitBlock(ctx: JavaParser.BlockContext): List<IRNode> =
