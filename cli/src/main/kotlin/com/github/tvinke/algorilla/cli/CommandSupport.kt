@@ -83,9 +83,20 @@ internal fun applyBaseline(
     if (saveBaselineFile != null) {
         Baseline.save(result.findings, saveBaselineFile, projectRoot)
     }
-    val baseline = baselineFile?.let { Baseline.load(it) }
+    // Auto-load baseline if none explicitly provided
+    val effectiveBaseline =
+        baselineFile
+            ?: projectRoot?.let {
+                File(it, ".algorilla.baseline.json").takeIf { f -> f.exists() }
+            }
+    val baseline = effectiveBaseline?.let { Baseline.load(it) }
     return if (baseline != null) {
-        result.copy(findings = baseline.filterNew(result.findings, projectRoot))
+        val filtered = baseline.filterNew(result.findings, projectRoot)
+        val baselinedCount = result.findings.size - filtered.size
+        result.copy(
+            findings = filtered,
+            baselinedCount = baselinedCount,
+        )
     } else {
         result
     }

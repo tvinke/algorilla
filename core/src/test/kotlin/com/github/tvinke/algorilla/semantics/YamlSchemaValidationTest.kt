@@ -48,6 +48,7 @@ internal class YamlSchemaValidationTest {
             "string-exact-names",
             "monadic-types",
             "monadic-variable-names",
+            "bulk-alternatives",
             // Framework overlay metadata
             "language",
             // Extras: consumed by rules via extraSection()

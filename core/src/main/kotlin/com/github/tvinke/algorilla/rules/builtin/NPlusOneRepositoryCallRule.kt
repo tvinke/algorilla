@@ -98,6 +98,7 @@ public class NPlusOneRepositoryCallRule : Rule {
             flow.flowsInto.any { it is FlowTarget.LoopIteration }
         }
 
+    @Suppress("LongMethod")
     private fun buildCrossMethodFinding(
         call: FunctionCall,
         hiddenFetch: FunctionCall,
@@ -124,13 +125,20 @@ public class NPlusOneRepositoryCallRule : Rule {
             severity = severity,
             location = call.location,
             message = "Single-record fetch $target.${hiddenFetch.name}() inside ${call.name}() called from ${outerLoop.kind.label()} (N+1)",
-            suggestions = listOf(Suggestion.Freeform("Bulk fetch all needed records before the loop, or build an in-memory Map")),
-            currentComplexity = "O($loopVar * IO)",
+            suggestions =
+                listOf(
+                    Suggestion.UseBulkAPI(
+                        bulkMethod = "bulk fetch (e.g. findAllById)",
+                        singleMethod = call.name,
+                    ),
+                ),
+            currentComplexity = "O($loopVar| * IO)",
             suggestedComplexity = "O(1 * IO + $loopVar)",
             evidence = evidence,
         )
     }
 
+    @Suppress("LongMethod")
     private fun buildFinding(
         call: FunctionCall,
         loopStack: List<LoopNode>,
@@ -161,8 +169,14 @@ public class NPlusOneRepositoryCallRule : Rule {
             confidence = if (highConfidence) Confidence.HIGH else Confidence.MEDIUM,
             location = call.location,
             message = "Single-record fetch $target.${call.name}() inside ${outerLoop.kind.label()} (N+1)",
-            suggestions = listOf(Suggestion.Freeform("Bulk fetch all needed records before the loop, or build an in-memory Map")),
-            currentComplexity = "O($loopVar * IO)",
+            suggestions =
+                listOf(
+                    Suggestion.UseBulkAPI(
+                        bulkMethod = "bulk fetch (e.g. findAllById)",
+                        singleMethod = call.name,
+                    ),
+                ),
+            currentComplexity = "O($loopVar| * IO)",
             suggestedComplexity = "O(1 * IO + $loopVar)",
             evidence = evidence,
         )

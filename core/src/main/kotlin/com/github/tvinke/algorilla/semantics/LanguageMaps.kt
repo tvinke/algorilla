@@ -36,6 +36,7 @@ internal class LanguageMaps(
     val stringExactNames: MutableMap<Language, Set<String>> = mutableMapOf(),
     val monadicTypes: MutableMap<Language, Set<String>> = mutableMapOf(),
     val monadicVarNames: MutableMap<Language, Set<String>> = mutableMapOf(),
+    val bulkAlternatives: MutableMap<Language, Map<String, String>> = mutableMapOf(),
     val extras: MutableMap<Language, MutableMap<String, Set<String>>> = mutableMapOf(),
 ) {
     @Suppress("CyclomaticComplexMethod", "LongMethod")
@@ -75,6 +76,7 @@ internal class LanguageMaps(
         stringExactNames[lang] = (stringExactNames[lang] ?: emptySet()) + parsed.stringExactNames
         monadicTypes[lang] = (monadicTypes[lang] ?: emptySet()) + parsed.monadicTypes
         monadicVarNames[lang] = (monadicVarNames[lang] ?: emptySet()) + parsed.monadicVarNames
+        bulkAlternatives[lang] = (bulkAlternatives[lang] ?: emptyMap()) + parsed.bulkAlternatives
         // Merge all extra sections
         val langExtras = extras.getOrPut(lang) { mutableMapOf() }
         for ((key, values) in parsed.extras) {
@@ -117,6 +119,7 @@ internal class LanguageMaps(
             stringExactNames = stringExactNames.toMutableMap(),
             monadicTypes = monadicTypes.toMutableMap(),
             monadicVarNames = monadicVarNames.toMutableMap(),
+            bulkAlternatives = bulkAlternatives.toMutableMap(),
             extras = extras.toMutableMap(),
         )
 }

@@ -1,0 +1,45 @@
+# Micronaut Data — framework overlay for Java
+# Micronaut Data repositories and HTTP clients
+
+language: java
+
+methods: {}
+
+cheap-methods:
+  # HTTP client builder
+  - uri
+  - header
+  - headers
+  - contentType
+  - accept
+  - basicAuth
+  - bearerAuth
+  - body
+
+io-methods:
+  # Micronaut Data repository — DB round-trips
+  - findById
+  - findAll
+  - existsById
+  - count
+  - deleteById
+  - deleteAll
+  - updateAll
+
+io-method-candidates:
+  - save
+  - saveAll
+  - update
+  - delete
+  - find
+  - list
+  - get
+
+io-target-patterns:
+  - "*repository"
+  - "*client"
+  - "*dao"
+
+monadic-types:
+  - Publisher
+  - Flowable

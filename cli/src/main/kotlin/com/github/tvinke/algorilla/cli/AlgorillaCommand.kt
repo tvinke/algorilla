@@ -21,6 +21,7 @@ import kotlin.system.exitProcess
     mixinStandardHelpOptions = true,
     versionProvider = AlgorillaCommand::class,
     description = ["Detects algorithmic complexity anti-patterns in source code."],
+    subcommands = [InitCommand::class],
 )
 internal class AlgorillaCommand :
     Callable<Int>,

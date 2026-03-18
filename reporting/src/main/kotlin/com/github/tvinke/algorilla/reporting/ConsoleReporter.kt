@@ -73,6 +73,7 @@ public class ConsoleReporter(
         formatSummary(result, output, isLimited)
     }
 
+    @Suppress("LongMethod")
     private fun formatFinding(
         finding: Finding,
         snippetRenderer: SnippetRenderer,
@@ -91,6 +92,13 @@ public class ConsoleReporter(
         output.appendLine()
         output.appendLine("      ${finding.message}")
         output.appendLine("      ${Ansi.green("\u2192 ${finding.suggestion}", color)}")
+        finding.suggestedCode?.let { sc ->
+            val fw = sc.framework?.let { " ($it)" } ?: ""
+            output.appendLine(Ansi.dim("      $fw", color))
+            for (codeLine in sc.code.lines()) {
+                output.appendLine(Ansi.dim("        $codeLine", color))
+            }
+        }
         output.appendLine("      ${Ansi.dim("\u2197 ${ReporterConstants.ruleUrl(finding.ruleId)}", color)}")
         snippetRenderer.render(finding.location.file, finding.location.line, finding.severity, output)
         formatEvidence(finding, snippetRenderer, output)
@@ -209,7 +217,10 @@ public class ConsoleReporter(
 
         val scanned = "Scanned ${result.filesAnalyzed} files$cacheInfo$parseInfo in ${elapsedStr}s."
         val issueCount = result.findings.size
-        val foundText = "Found $issueCount ${pluralize("issue", issueCount)}$breakdown"
+        val newLabel = if (result.baselinedCount > 0) "new " else ""
+        val baselineText =
+            if (result.baselinedCount > 0) " (${result.baselinedCount} baselined)" else ""
+        val foundText = "Found $issueCount ${newLabel}${pluralize("issue", issueCount)}$breakdown$baselineText"
         val acrossText = if (fileCount > 0) " across $fileCount ${pluralize("file", fileCount)}." else "."
         val errors = result.findings.count { it.severity == Severity.ERROR }
         val warnings = result.findings.count { it.severity == Severity.WARNING }

@@ -1,5 +1,6 @@
 package com.github.tvinke.algorilla.cache
 
+import com.github.tvinke.algorilla.engine.FileContext
 import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.Severity
@@ -138,6 +139,7 @@ public data class CachedFileEntry(
     val filePath: String,
     val contentHash: String,
     val findings: List<CachedFinding>,
+    val fileContext: FileContext? = null,
 )
 
 /**

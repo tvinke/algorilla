@@ -24,3 +24,5 @@ netty.yml
 apache-httpclient.yml
 eclipse-collections.yml
 quarkus.yml
+micronaut-data.yml
+jooq.yml

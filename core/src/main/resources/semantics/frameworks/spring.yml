@@ -115,6 +115,14 @@ cheap-methods:
   - commit
   - rollback
 
+bulk-alternatives:
+  findById: findAllById
+  save: saveAll
+  saveAndFlush: saveAllAndFlush
+  delete: deleteAll
+  deleteById: deleteAllById
+  existsById: findAllById
+
 trivial-methods:
   # BeanUtils
   - copyProperties

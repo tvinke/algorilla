@@ -1,0 +1,81 @@
+# jOOQ — framework overlay for Java
+# SQL query builder and execution
+
+language: java
+
+methods: {}
+
+cheap-methods:
+  # DSL query construction (no DB until execute/fetch)
+  - select
+  - selectFrom
+  - selectCount
+  - selectDistinct
+  - selectOne
+  - insertInto
+  - update
+  - deleteFrom
+  - mergeInto
+  - with
+  - where
+  - and
+  - or
+  - orderBy
+  - groupBy
+  - having
+  - limit
+  - offset
+  - join
+  - leftJoin
+  - rightJoin
+  - fullJoin
+  - crossJoin
+  - on
+  - using
+  - set
+  - values
+  - onDuplicateKeyUpdate
+  - onConflict
+  - returning
+  - field
+  - table
+  - val
+  - value
+  - inline
+  - param
+  - condition
+  - trueCondition
+  - falseCondition
+  - noCondition
+  - row
+  - asterisk
+  - count
+  - sum
+  - avg
+  - min
+  - max
+  - coalesce
+  - nullif
+  - cast
+  - coerce
+
+io-methods:
+  # Terminal operations — DB round-trips
+  - execute
+  - fetch
+  - fetchOne
+  - fetchAny
+  - fetchOptional
+  - fetchSingle
+  - fetchMany
+  - fetchLazy
+  - fetchAsync
+  - fetchInto
+  - fetchMap
+  - fetchGroups
+  - fetchResultSet
+  - fetchCount
+
+heavyweight-types:
+  - DSLContext
+  - DefaultDSLContext

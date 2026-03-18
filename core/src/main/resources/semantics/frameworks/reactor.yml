@@ -88,6 +88,18 @@ cheap-methods:
   - repeat
   - expand
   - expandDeep
+  # Flux — additional transformations
+  - flatMapSequential
+  - flatMapIterable
+  - handle
+  - share
+  - replay
+  - publish
+  - limitRate
+  - onBackpressureBuffer
+  - onBackpressureDrop
+  - onBackpressureLatest
+  - onBackpressureError
   # Mono/Flux — factory methods (lazy, create a pipeline definition)
   - just
   - empty
@@ -155,3 +167,4 @@ heavyweight-types:
 
 monadic-types:
   - Mono
+  - Flux

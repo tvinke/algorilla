@@ -10,6 +10,7 @@ import com.github.tvinke.algorilla.graph.CallGraphBuilder
 import com.github.tvinke.algorilla.graph.ComplexityAnnotator
 import com.github.tvinke.algorilla.graph.ParameterFlowAnnotator
 import com.github.tvinke.algorilla.graph.SymbolTable
+import com.github.tvinke.algorilla.model.ClassNode
 import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.FileRoot
 import com.github.tvinke.algorilla.model.FunctionDecl
@@ -20,6 +21,7 @@ import com.github.tvinke.algorilla.model.VariableDecl
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
+import com.github.tvinke.algorilla.rules.SuggestionContext
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import com.github.tvinke.algorilla.util.findDescendants
@@ -51,6 +53,7 @@ public class AnalysisEngine(
                 rule.aliases.map { alias -> alias to rule.id }
             }.toMap()
 
+    @Suppress("LongMethod")
     public fun analyze(sourceFiles: List<String>): AnalysisResult {
         logger.info { "Starting analysis of ${sourceFiles.size} files" }
         val startTime = System.currentTimeMillis()
@@ -61,25 +64,29 @@ public class AnalysisEngine(
         logger.info { "Cache: ${sourceFiles.size - filesToParse.size} files unchanged, ${filesToParse.size} to analyze" }
 
         val (parsedTrees, _, errors) = parseFiles(filesToParse)
+        val fileContexts = buildInitialFileContexts(parsedTrees)
         val (irTrees, typeEnvironments) = markScalarLookups(parsedTrees, registry)
+        val enrichedContexts = enrichFileContextsFromTypes(fileContexts, irTrees)
         val symbolTable = rebuildSymbolTable(irTrees)
         val callGraph = buildCallGraph(irTrees, symbolTable)
+        val finalContexts = enrichFileContextsFromCallGraph(enrichedContexts, callGraph, irTrees)
         annotateRecursion(irTrees)
         annotateParameterFlows(irTrees, symbolTable)
         annotateComplexity(symbolTable, callGraph)
-        val rawFindings = evaluateRules(irTrees, symbolTable, callGraph, typeEnvironments)
+        val rawFindings = evaluateRules(irTrees, symbolTable, callGraph, typeEnvironments, finalContexts)
         val deduplicated = applySubsumption(rawFindings, rules)
         val vendoredDemoted = demoteVendoredCode(deduplicated)
         val fileLanguages = irTrees.mapValues { (_, root) -> root.language }
         val ruleIndex = rules.associateBy { it.id }
         val confidenceAdjusted = adjustConfidence(vendoredDemoted, fileLanguages, ruleIndex)
-        val freshFindings = SuppressionFilter().filter(confidenceAdjusted, irTrees, aliasIndex)
+        val suppressed = SuppressionFilter().filter(confidenceAdjusted, irTrees, aliasIndex)
+        val freshFindings = renderCodeSuggestions(suppressed, finalContexts, fileLanguages)
 
         val allFindings =
             (freshFindings + cachedFindings).distinctBy { finding ->
                 Baseline.fingerprintOf(finding).contentHash
             }
-        saveCache(sourceFiles, filesToParse, freshFindings, cachedEntries)
+        saveCache(sourceFiles, filesToParse, freshFindings, cachedEntries, finalContexts)
 
         val elapsed = System.currentTimeMillis() - startTime
         logger.info { "Analysis complete: ${allFindings.size} findings in ${elapsed}ms" }
@@ -137,6 +144,7 @@ public class AnalysisEngine(
         freshFiles: List<String>,
         freshFindings: List<Finding>,
         previousCache: Map<String, CachedFileEntry>,
+        fileContexts: Map<String, FileContext> = emptyMap(),
     ) {
         if (cache == null) return
 
@@ -149,6 +157,7 @@ public class AnalysisEngine(
                         filePath = file,
                         contentHash = AnalysisCache.hashFile(file),
                         findings = (freshFindingsByFile[file] ?: emptyList()).map { CachedFinding.fromFinding(it) },
+                        fileContext = fileContexts[file],
                     )
                 } else {
                     previousCache[file] ?: CachedFileEntry(
@@ -221,8 +230,9 @@ public class AnalysisEngine(
         symbolTable: SymbolTable,
         callGraph: CallGraph,
         typeEnvironments: Map<String, TypeEnvironment>,
+        fileContexts: Map<String, FileContext> = emptyMap(),
     ): List<Finding> {
-        val context = AnalysisContext(irTrees, symbolTable, callGraph, config, registry, typeEnvironments)
+        val context = AnalysisContext(irTrees, symbolTable, callGraph, config, registry, typeEnvironments, fileContexts)
         return rules
             .filter { rule -> isRuleEnabled(rule) }
             .flatMap { rule -> rule.evaluate(context).map { it.copy(category = rule.category) } }
@@ -232,6 +242,103 @@ public class AnalysisEngine(
         val overrides = config.ruleOverrides
         if (overrides[rule.id]?.enabled == false) return false
         return rule.aliases.none { overrides[it]?.enabled == false }
+    }
+
+    private fun renderCodeSuggestions(
+        findings: List<Finding>,
+        fileContexts: Map<String, FileContext>,
+        fileLanguages: Map<String, com.github.tvinke.algorilla.model.Language>,
+    ): List<Finding> =
+        findings.map { finding ->
+            if (finding.confidence == Confidence.LOW || finding.suggestedCode != null) {
+                return@map finding
+            }
+            val lang = fileLanguages[finding.location.file] ?: return@map finding
+            val fc = fileContexts[finding.location.file]
+            val ctx =
+                SuggestionContext(
+                    language = lang,
+                    imports = fc?.imports ?: emptySet(),
+                    bulkAlternatives = registry.bulkAlternatives(lang),
+                    detectedFrameworks = fc?.detectedFrameworks ?: emptySet(),
+                )
+            val code = finding.suggestions.firstNotNullOfOrNull { it.renderCode(ctx) }
+            if (code != null) finding.copy(suggestedCode = code) else finding
+        }
+
+    private fun buildInitialFileContexts(irTrees: Map<String, FileRoot>): Map<String, FileContext> =
+        irTrees.mapValues { (file, root) ->
+            val imports = collectImports(file)
+            val classNames =
+                root
+                    .findDescendants<ClassNode>()
+                    .map { it.name }
+                    .toSet()
+            FileContext(
+                filePath = file,
+                language = root.language.name,
+                imports = imports,
+                classNames = classNames,
+                detectedFrameworks = FrameworkDetector.detect(imports),
+            )
+        }
+
+    private fun collectImports(filePath: String): Set<String> {
+        val imports = mutableSetOf<String>()
+        try {
+            java.io.File(filePath).useLines { lines ->
+                lines.take(IMPORT_SCAN_LINES).forEach { line ->
+                    val trimmed = line.trimStart()
+                    if (trimmed.startsWith("import ") || trimmed.startsWith("from ")) {
+                        imports.add(trimmed)
+                    }
+                }
+            }
+        } catch (_: Exception) {
+            // File might have been deleted between scan and parse
+        }
+        return imports
+    }
+
+    private fun enrichFileContextsFromTypes(
+        contexts: Map<String, FileContext>,
+        irTrees: Map<String, FileRoot>,
+    ): Map<String, FileContext> =
+        contexts.mapValues { (file, ctx) ->
+            val root = irTrees[file] ?: return@mapValues ctx
+            val exported = mutableMapOf<String, String>()
+            root
+                .findDescendants<FunctionDecl>()
+                .filter { !it.isConstructor && it.returnType != null && it.declaringClass != null }
+                .forEach { fn -> exported["${fn.declaringClass}.${fn.name}"] = fn.returnType!! }
+            ctx.copy(exportedTypes = exported)
+        }
+
+    private fun enrichFileContextsFromCallGraph(
+        contexts: Map<String, FileContext>,
+        callGraph: CallGraph,
+        irTrees: Map<String, FileRoot>,
+    ): Map<String, FileContext> {
+        val fnToFile = mutableMapOf<String, String>()
+        for ((file, root) in irTrees) {
+            root.findDescendants<FunctionDecl>().forEach { fn ->
+                fnToFile[fn.qualifiedName] = file
+            }
+        }
+        val fileDeps = mutableMapOf<String, MutableSet<String>>()
+        for ((caller, callees) in callGraph.allEdges()) {
+            val callerFile = fnToFile[caller] ?: continue
+            for (callee in callees) {
+                val calleeFile = fnToFile[callee] ?: continue
+                if (callerFile != calleeFile) {
+                    fileDeps.getOrPut(callerFile) { mutableSetOf() }.add(calleeFile)
+                }
+            }
+        }
+        return contexts.mapValues { (file, ctx) ->
+            val deps = fileDeps[file]
+            if (deps != null) ctx.copy(dependsOn = deps) else ctx
+        }
     }
 
     private fun collectSymbols(
@@ -296,6 +403,7 @@ public data class AnalysisResult(
     val unfilteredConfidenceCounts: Map<Confidence, Int> = emptyMap(),
     val projectRoot: java.io.File? = null,
     val acceptedCount: Int = 0,
+    val baselinedCount: Int = 0,
 )
 
 /**
@@ -332,6 +440,8 @@ private val findingOrder: Comparator<Finding> =
         .thenBy { it.category?.ordinal ?: Int.MAX_VALUE }
         .thenBy { it.location.file }
         .thenBy { it.location.line }
+
+private const val IMPORT_SCAN_LINES = 50
 
 private fun createRegistry(config: AnalysisConfig): LanguageSemanticsRegistry {
     val base = LanguageSemanticsRegistry.DEFAULT

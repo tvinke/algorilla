@@ -51,6 +51,9 @@ public class JsonReporter : Reporter {
             ruleUrl = ReporterConstants.ruleUrl(finding.ruleId),
             evidence = finding.evidence.map { it.toJsonEvidence() },
             fingerprint = Baseline.fingerprintOf(finding, projectRoot).contentHash,
+            suggestedCode = finding.suggestedCode?.code,
+            suggestedCodeLanguage = finding.suggestedCode?.language,
+            suggestedCodeFramework = finding.suggestedCode?.framework,
         )
 
     private fun buildSummary(result: AnalysisResult): JsonSummary {
@@ -62,6 +65,7 @@ public class JsonReporter : Reporter {
             infos = findings.count { it.severity == Severity.INFO },
             filesAnalyzed = result.filesAnalyzed,
             elapsedMs = result.elapsedMs,
+            baselinedCount = result.baselinedCount,
         )
     }
 
@@ -118,6 +122,7 @@ internal data class JsonSummary(
     val infos: Int,
     val filesAnalyzed: Int,
     val elapsedMs: Long,
+    val baselinedCount: Int = 0,
 )
 
 /**
@@ -148,6 +153,9 @@ internal data class JsonFinding(
     val suggestedComplexity: String? = null,
     val evidence: List<JsonEvidence> = emptyList(),
     val fingerprint: String? = null,
+    val suggestedCode: String? = null,
+    val suggestedCodeLanguage: String? = null,
+    val suggestedCodeFramework: String? = null,
 )
 
 @Serializable

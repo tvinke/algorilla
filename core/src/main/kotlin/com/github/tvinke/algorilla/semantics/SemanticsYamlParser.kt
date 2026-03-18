@@ -40,6 +40,7 @@ internal data class ParsedYaml(
     val stringExactNames: Set<String>,
     val monadicTypes: Set<String>,
     val monadicVarNames: Set<String>,
+    val bulkAlternatives: Map<String, String> = emptyMap(),
     val extras: Map<String, Set<String>> = emptyMap(),
 )
 
@@ -88,6 +89,7 @@ internal fun parseYaml(text: String): ParsedYaml {
             "string-exact-names",
             "monadic-types",
             "monadic-variable-names",
+            "bulk-alternatives",
             "language",
         )
     val extras = mutableMapOf<String, Set<String>>()
@@ -130,6 +132,7 @@ internal fun parseYaml(text: String): ParsedYaml {
         stringExactNames = collectListItems(sections["string-exact-names"]),
         monadicTypes = collectListItems(sections["monadic-types"]),
         monadicVarNames = collectListItems(sections["monadic-variable-names"]),
+        bulkAlternatives = collectMapItems(sections["bulk-alternatives"]),
         extras = extras,
     )
 }
@@ -160,6 +163,24 @@ internal fun splitSections(text: String): Map<String, List<String>> {
         }
     }
     return sections
+}
+
+@Suppress("LoopWithTooManyJumpStatements")
+internal fun collectMapItems(lines: List<String>?): Map<String, String> {
+    if (lines == null) return emptyMap()
+    val result = mutableMapOf<String, String>()
+    for (line in lines) {
+        val trimmed = line.trim()
+        if (trimmed.startsWith("#") || trimmed.startsWith("-")) continue
+        val colonIdx = trimmed.indexOf(':')
+        if (colonIdx < 0) continue
+        val key = trimmed.substring(0, colonIdx).trim()
+        val value = trimmed.substring(colonIdx + 1).trim()
+        if (key.isNotEmpty() && value.isNotEmpty()) {
+            result[key] = value
+        }
+    }
+    return result
 }
 
 internal fun collectListItems(lines: List<String>?): Set<String> =
