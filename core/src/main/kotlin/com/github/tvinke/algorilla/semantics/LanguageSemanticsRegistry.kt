@@ -422,6 +422,26 @@ public class LanguageSemanticsRegistry private constructor(
             extractBaseVarName(targetText) in varNames
     }
 
+    /**
+     * Returns the bulk-alternative method name for a single-record operation.
+     * e.g. for "findById" → "findAllById" (Spring Data).
+     */
+    public fun bulkAlternative(
+        language: Language,
+        methodName: String,
+    ): String? {
+        val resolved = resolveLanguage(language)
+        return maps.bulkAlternatives[resolved]?.get(methodName)
+    }
+
+    /**
+     * Returns all bulk alternatives for the language as a map (single → bulk).
+     */
+    public fun bulkAlternatives(language: Language): Map<String, String> {
+        val resolved = resolveLanguage(language)
+        return maps.bulkAlternatives[resolved] ?: emptyMap()
+    }
+
     /** Generic query for extra YAML sections not covered by explicit fields. */
     public fun extraSection(
         language: Language,

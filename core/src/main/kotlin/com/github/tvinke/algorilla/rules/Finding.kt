@@ -38,6 +38,7 @@ public data class Finding(
     val suggestedComplexity: String? = null,
     val evidence: List<Evidence> = emptyList(),
     val category: RuleCategory? = null,
+    val suggestedCode: CodeSuggestion? = null,
 ) {
     /** Primary suggestion text for reporters that render a single string. */
     val suggestion: String get() = suggestions.firstOrNull()?.render() ?: ""

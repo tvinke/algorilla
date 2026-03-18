@@ -113,6 +113,11 @@ cheap-methods:
   - not
   - toPredicate
 
+bulk-alternatives:
+  find: createQuery
+  persist: merge
+  merge: merge
+
 trivial-methods:
   # JPA Metamodel — class/attribute introspection
   - entity
