@@ -74,6 +74,9 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Set release version in gradle.properties
+        run: sed -i "s/^version=.*/version=${{ needs.build.outputs.version }}/" gradle.properties
+
       - name: Publish to Gradle Plugin Portal
         run: ./gradlew :gradle-plugin:publishPlugins
         env:
@@ -120,6 +123,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   bump-snapshot:
+    if: always() && needs.build.result == 'success'
     needs: [build, publish-gradle-plugin, publish-npm, publish-docker]
     runs-on: ubuntu-latest
     steps:

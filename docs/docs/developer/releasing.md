@@ -110,6 +110,12 @@ This works because tags pushed by a real user (not a GitHub Action bot) do trigg
 
 **Permanent fix:** use a PAT or GitHub App token for Release Please instead of `GITHUB_TOKEN`. Haven't set this up yet because releases are infrequent enough that the manual re-tag takes 10 seconds.
 
+### Gradle Plugin Portal publishes with SNAPSHOT version
+
+**Fixed in v0.3.0+.** The `publish-gradle-plugin` job checks out the repo fresh, so `gradle.properties` still has the `-SNAPSHOT` version. The `build` job strips it but that's a separate checkout. Fix: the plugin job now runs `sed` to set the release version before publishing, same as the build job does.
+
+If you see `-SNAPSHOT plugin versions not supported` in the logs, the `sed` step is missing from the gradle plugin job.
+
 ### Gradle Plugin Portal rejects `com.github` group ID
 
 The Portal requires `io.github` as the prefix for GitHub-based plugins. The plugin ID is `io.github.tvinke.algorilla` — this is permanent once published and cannot be changed later.
