@@ -99,6 +99,11 @@ public class SarifReporter : Reporter {
                 if (finding.currentComplexity != null && finding.suggestedComplexity != null) {
                     append(" (${finding.currentComplexity} -> ${finding.suggestedComplexity})")
                 }
+                finding.suggestedCode?.let { sc ->
+                    append("\n\nSuggested fix:\n```${sc.language}\n")
+                    append(sc.code)
+                    append("\n```")
+                }
             }
         return Message(text = text)
     }

@@ -69,6 +69,7 @@ public class QuadraticRemovalRule : Rule {
         }
     }
 
+    @Suppress("LongMethod")
     private fun buildFinding(
         call: FunctionCall,
         loopStack: List<LoopNode>,
@@ -93,7 +94,13 @@ public class QuadraticRemovalRule : Rule {
             severity = severity,
             location = call.location,
             message = "${call.name}() on '$target' inside ${outerLoop.kind.label()} shifts elements on each removal",
-            suggestions = listOf(Suggestion.Freeform("Use removeAll() with a Set, Iterator.remove(), or filter into a new collection")),
+            suggestions =
+                listOf(
+                    Suggestion.UseAlternativeAPI(
+                        alternative = "removeAll() with a Set or filter into a new collection",
+                        reason = "avoids element shifting on each removal",
+                    ),
+                ),
             currentComplexity = "O($loopVar²)",
             suggestedComplexity = "O($loopVar)",
             evidence = evidence,
