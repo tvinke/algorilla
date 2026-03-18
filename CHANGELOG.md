@@ -43,7 +43,7 @@
 * use signature key for TypeEnvironment to handle overloaded methods ([f07ed25](https://github.com/tvinke/algorilla/commit/f07ed251a3268fc6a8d9946bdfe9c17e76735d80))
 * use SymbolTable type check for string-concat-in-loop receivers ([0b64d57](https://github.com/tvinke/algorilla/commit/0b64d575c4ab7b0c17f1f3850254457efbb0bcb8))
 
-## [0.3.0](https://github.com/tvinke/algorilla/compare/v0.2.0...v0.3.0) (unreleased)
+## [0.3.0](https://github.com/tvinke/algorilla/compare/v0.2.0...v0.3.0) (2026-03-18) — continued
 
 ### BREAKING CHANGES
 
