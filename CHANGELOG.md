@@ -34,6 +34,16 @@
 * **Smarter fix suggestions** — `nested-lookup` and `repeated-linear-scan` now suggest Map+groupBy vs HashSet vs indexed Map based on the actual LookupKind ([#86](https://github.com/tvinke/algorilla/issues/86))
 * **Repeated sort/groupBy detection** — `repeated-linear-scan` extended to catch repeated `groupBy`, `distinct`, `toMap` on the same collection ([#87](https://github.com/tvinke/algorilla/issues/87))
 * **`Language.hasTypeDeclarations`** — engine uses language abstractions instead of file-extension checks for confidence adjustment
+* **Type inference (L1b–L5)** — 48% false positive reduction. Cross-file method return types, initializer expression inference, class hierarchy for O(1) classification, generic type argument tracking, parameter flow typing. All five languages. ([#70](https://github.com/tvinke/algorilla/issues/70), [#15](https://github.com/tvinke/algorilla/issues/15))
+* **`algorilla init`** — new subcommand scans a project, saves `.algorilla.baseline.json`, creates `.algorilla/` cache directory. Makes any existing codebase usable immediately — run once, then only see new findings. Auto-loads baseline when present (no `--baseline` flag needed).
+* **Code suggestions** — findings can now include language-specific code snippets. `PreBuildStructure` generates `new HashSet<>()` (Java), `.toHashSet()` (Kotlin), `new Set()` (JS). `UseBulkAPI` uses `bulk-alternatives` from YAML to suggest batch operations. Only shown on MEDIUM+ confidence. ([#86](https://github.com/tvinke/algorilla/issues/86))
+* **`bulk-alternatives` YAML section** — maps single-record operations to batch equivalents (e.g. `findById` → `findAllById` for Spring Data). Rules pick up alternatives automatically.
+* **FileContext pipeline** — per-file metadata (imports, class names, detected frameworks, exported types, cross-file dependencies) flows through the pipeline. Foundation for incremental analysis.
+* **Framework detection** — engine detects Spring, JPA, Reactor, Quarkus, Micronaut, jOOQ etc. from import statements. Detected frameworks available to rules via `FileContext`.
+* **New framework overlays:** Micronaut Data (repository IO, HTTP client) and jOOQ (SQL builder as cheap, execute/fetch as IO)
+* **Overlay enhancements:** Reactor `Flux` as monadic type + backpressure operators; Quarkus `Multi` as monadic + SmallRye Mutiny operators; Coroutines `Deferred` as monadic
+* **`--limit N`** — cap console output to top N findings ([#68](https://github.com/tvinke/algorilla/issues/68))
+* **Rule documentation URLs** in console output (↗ link per finding), JSON (`ruleUrl` field), and SARIF (`helpURI`) ([#63](https://github.com/tvinke/algorilla/issues/63))
 
 ### Bug Fixes
 
@@ -52,6 +62,8 @@
 * `n-plus-one-query` excludes cache/memo/pool targets — `userCache.findById()` in a loop is not a DB round-trip
 * `nested-lookup` checks target variable names against known O(1) data structure suffixes (map, set, cache, index)
 * Fix YAML parser stripping quotes incorrectly — entries like `".getValue()"` now parse as `.getValue()` instead of keeping the literal quotes
+* `--accept` now correctly excludes the accepted finding from the same run's output
+* `n-plus-one-query` and `quadratic-removal` upgraded from `Freeform` to typed suggestions (`UseBulkAPI`, `UseAlternativeAPI`) — reporters render code blocks
 
 ### Maintenance
 
@@ -66,6 +78,11 @@
 * Added compatibility tests for config, baseline, ignore-list, and JSON output formats
 * Added issue templates, PR template, security policy, and code of conduct ([711cd28](https://github.com/tvinke/algorilla/commit/711cd28), [1ecfb0a](https://github.com/tvinke/algorilla/commit/1ecfb0a))
 * Docs: restructured navigation, horizontal tabs, rule subsumption docs, cleaned up rule doc pages
+* **Micronaut Data overlay** — repository IO methods, HTTP client builder, Publisher/Flowable as monadic types
+* **jOOQ overlay** — DSL query construction as cheap-methods, terminal fetch/execute as IO, DSLContext as heavyweight
+* **Console output cleanup** — compact hidden-count display, overview tip updated to mention `--limit`
+* `VariableNameGenerator` — suggests idiomatic names for pre-built structures (`orders` → `orderSet`, `ordersById`)
+* `CallGraph.allEdges()` exposed for cross-file dependency tracking in FileContext
 
 ### Contributors
 
