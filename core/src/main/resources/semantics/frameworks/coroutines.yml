@@ -144,3 +144,6 @@ trivial-methods:
   # Yield
   - yield
   - delay
+
+monadic-types:
+  - Deferred

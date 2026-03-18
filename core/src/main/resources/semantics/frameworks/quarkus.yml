@@ -34,6 +34,25 @@ cheap-methods:
   - chain
   - invoke
   - call
+  # SmallRye Mutiny — additional operators
+  - map
+  - flatMap
+  - merge
+  - concatenate
+  - collect
+  - group
+  - select
+  - skip
+  - broadcast
+  - toHotStream
+  - cache
+  - memoize
+  - onSubscription
+  - onCancellation
+  - onTermination
+  - onOverflow
+  - paceDemand
+  - capDemandsTo
 
 heavyweight-types:
   # Quarkus REST client builders
@@ -86,5 +105,6 @@ non-io-targets:
 
 monadic-types:
   - Uni
+  - Multi
 
 non-repository-targets: []
