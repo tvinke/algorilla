@@ -54,6 +54,7 @@ internal class YamlSchemaValidationTest {
             "hidden-loop-skip-methods",
             "hidden-loop-skip-prefixes",
             "hidden-loop-skip-keywords",
+            "constant-bound-keywords",
             "static-utility-classes",
             "non-list-targets-exact",
             "non-list-targets-suffixes",

@@ -49,7 +49,6 @@ io-methods:
   - findById
   - findAll
   - listAll
-  - count
   - update
   - streamAll
   # Panache repository
@@ -65,7 +64,7 @@ io-methods:
 io-method-candidates:
   - find
   - list
-  - stream
+  - count
   - delete
   - flush
 

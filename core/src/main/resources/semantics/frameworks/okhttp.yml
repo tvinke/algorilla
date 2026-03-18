@@ -78,8 +78,7 @@ heavyweight-types:
   - OkHttpClient
 
 io-methods:
-  # Call — HTTP round-trip
-  - execute
+  # Call — HTTP round-trip (enqueue is unambiguous, execute needs target check)
   - enqueue
   # ResponseBody — reading body (IO)
   - string
@@ -87,8 +86,6 @@ io-methods:
   - byteStream
   - charStream
   - source
-  - close
   # WebSocket
   - send
-  - close
   - cancel

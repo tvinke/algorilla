@@ -92,6 +92,5 @@ io-methods:
 
 io-method-candidates:
   # Ambiguous names that could be HashMap/POJO methods
-  - close
   - getContent
   - writeTo

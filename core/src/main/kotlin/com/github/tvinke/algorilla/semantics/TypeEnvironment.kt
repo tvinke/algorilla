@@ -101,12 +101,16 @@ public class TypeEnvironment private constructor(
         /**
          * Builds a [TypeEnvironment] for [fn] using the given field types as a base layer.
          * Variables assigned more than once get type UNKNOWN (reassignment guard).
+         *
+         * @param methodReturnTypes maps method names to their declared return types (same-file sibling methods).
+         *   Used to infer types from `var x = someMethod()` when the method has an explicit return type.
          */
         public fun build(
             fn: FunctionDecl,
             fieldTypes: Map<String, String>,
             language: Language,
             registry: LanguageSemanticsRegistry,
+            methodReturnTypes: Map<String, String> = emptyMap(),
         ): TypeEnvironment {
             val typeMap = mutableMapOf<String, InferredType>()
 
@@ -134,17 +138,20 @@ public class TypeEnvironment private constructor(
                 .findDescendants<VariableDecl>()
                 .filter { (assignmentCounts[it.name] ?: 0) <= 1 }
                 .forEach { varDecl ->
-                    val inferred = inferVariableType(varDecl, language, registry)
+                    val inferred = inferVariableType(varDecl, language, registry, methodReturnTypes)
                     if (inferred != null) typeMap[varDecl.name] = inferred
                 }
 
             return TypeEnvironment(typeMap, registry, language)
         }
 
+        // Each return handles a distinct inference strategy (declared, constructor, factory, chain, return type, heuristic)
+        @Suppress("ReturnCount")
         private fun inferVariableType(
             varDecl: VariableDecl,
             language: Language,
             registry: LanguageSemanticsRegistry,
+            methodReturnTypes: Map<String, String> = emptyMap(),
         ): InferredType? {
             // Explicit type annotation
             if (varDecl.typeName != null) {
@@ -164,6 +171,10 @@ public class TypeEnvironment private constructor(
             // Chain-end inference: .collect(toSet()), .toList()
             val chainType = inferChainEnd(varDecl, language, registry)
             if (chainType != null) return chainType
+
+            // Same-file method return type: var x = getAllOrders() → List
+            val returnType = inferFromMethodReturnType(varDecl, methodReturnTypes)
+            if (returnType != null) return returnType
 
             // Method name suffix heuristic (lowest trust)
             return inferFromMethodNameSuffix(varDecl)
@@ -221,6 +232,23 @@ public class TypeEnvironment private constructor(
                 "groupingBy", "partitioningBy" -> "Map"
                 else -> null
             }
+
+        /**
+         * Infers type from same-file method return types. When `var x = getAllOrders()` is
+         * assigned from a method whose return type is known (e.g. `List<Order> getAllOrders()`),
+         * we can resolve x as `List`. Higher trust than NAME_HEURISTIC since it comes from
+         * an actual declaration.
+         */
+        private fun inferFromMethodReturnType(
+            varDecl: VariableDecl,
+            methodReturnTypes: Map<String, String>,
+        ): InferredType? {
+            if (methodReturnTypes.isEmpty()) return null
+            val call = varDecl.children.filterIsInstance<FunctionCall>().firstOrNull() ?: return null
+            val returnType = methodReturnTypes[call.name] ?: return null
+            if (returnType == "void") return null
+            return InferredType(returnType, TypeSource.FACTORY)
+        }
 
         @Suppress("CyclomaticComplexMethod") // When/else dispatch over suffix patterns — each branch maps to a distinct type
         private fun inferFromMethodNameSuffix(varDecl: VariableDecl): InferredType? {

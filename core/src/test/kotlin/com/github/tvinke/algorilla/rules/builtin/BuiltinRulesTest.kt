@@ -1,5 +1,6 @@
 package com.github.tvinke.algorilla.rules.builtin
 
+import com.github.tvinke.algorilla.model.Confidence
 import io.kotest.matchers.collections.shouldHaveAtLeastSize
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -35,6 +36,29 @@ internal class BuiltinRulesTest {
             val second = BuiltinRules.all()
             first shouldHaveSize second.size
             (first[0] !== second[0]) shouldBe true
+        }
+    }
+
+    @Nested
+    inner class DefaultConfidence {
+        @Test
+        fun `redundant-expensive-call defaults to LOW`() {
+            RedundantExpensiveCallRule().defaultConfidence shouldBe Confidence.LOW
+        }
+
+        @Test
+        fun `expensive-construction defaults to LOW`() {
+            HeavyweightObjectPerInvocationRule().defaultConfidence shouldBe Confidence.LOW
+        }
+
+        @Test
+        fun `repeated-collection-iteration defaults to LOW`() {
+            RepeatedCollectionIterationRule().defaultConfidence shouldBe Confidence.LOW
+        }
+
+        @Test
+        fun `repeated-linear-scan defaults to LOW`() {
+            RepeatedLinearScanRule().defaultConfidence shouldBe Confidence.LOW
         }
     }
 }

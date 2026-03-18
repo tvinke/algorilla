@@ -19,6 +19,7 @@ import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
+import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import com.github.tvinke.algorilla.util.CrossMethodResolver
 import com.github.tvinke.algorilla.util.findDescendants
 import com.github.tvinke.algorilla.util.isCollectionLookup
@@ -68,7 +69,7 @@ public class NestedLookupRule : Rule {
         if (node is LookupCall) {
             val typeEnv = fn?.let { context.typeEnvironmentFor(it) }
             if (iterationStack.isNotEmpty() && node.isCollectionLookup(fn, typeEnv, language, context.registry)) {
-                findings.add(buildFinding(node, iterationStack, fn))
+                findings.add(buildFinding(node, iterationStack, fn, isTypeConfirmedCollection(node, typeEnv)))
             }
             if (node.children.isNotEmpty() && isIteratingLookup(node.kind)) {
                 for (child in node.children) {
@@ -194,6 +195,7 @@ public class NestedLookupRule : Rule {
         lookup: LookupCall,
         iterationStack: List<IRNode>,
         enclosingFn: FunctionDecl? = null,
+        typeConfirmedList: Boolean = false,
     ): Finding {
         val targetVar = lookup.targetVariable ?: "collection"
         val outerVar = iteratedVar(iterationStack.first())
@@ -202,14 +204,17 @@ public class NestedLookupRule : Rule {
         val cx = ComplexityModel.loopTimesLookup(outerVar, targetVar)
 
         // Flow-based confidence: if the lookup target is a parameter (or alias of one),
-        // we have proof it's a collection being scanned, not a scalar or O(1) type
+        // we have proof it's a collection being scanned, not a scalar or O(1) type.
+        // Type-based confidence: TypeEnvironment confirms target is a non-O1 collection
+        // (List, ArrayList, etc.) — the lookup is definitely O(n).
         val paramBacked = enclosingFn != null && isParamBacked(targetVar, enclosingFn)
+        val highConfidence = paramBacked || typeConfirmedList
 
         return Finding(
             ruleId = id,
             ruleName = name,
             severity = severity,
-            confidence = if (paramBacked) Confidence.HIGH else Confidence.MEDIUM,
+            confidence = if (highConfidence) Confidence.HIGH else Confidence.MEDIUM,
             location = lookup.location,
             message = "Linear ${lookup.kind.label} on '$targetVar' inside ${iterationLabel(outerIteration)}",
             suggestions =
@@ -311,6 +316,18 @@ public class NestedLookupRule : Rule {
                 depth = iterationStack.size,
                 complexity = ComplexityModel.bottleneckO(targetVar),
             )
+    }
+
+    /**
+     * Returns true if the TypeEnvironment confirms the target is a non-O1 collection type
+     * (e.g. List, ArrayList, LinkedList). This proves the lookup is O(n), not O(1).
+     */
+    private fun isTypeConfirmedCollection(
+        node: LookupCall,
+        typeEnv: TypeEnvironment?,
+    ): Boolean {
+        val target = node.targetVariable ?: return false
+        return typeEnv != null && !typeEnv.isO1(target) && typeEnv.isCollection(target)
     }
 
     /**

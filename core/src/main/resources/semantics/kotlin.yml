@@ -229,10 +229,8 @@ builder-methods:
 
 heavyweight-types:
   - ObjectMapper
-  - Gson
   - XmlMapper
   - Pattern
-  - DecimalFormat
   - SimpleDateFormat
   - MessageDigest
   - DocumentBuilderFactory
@@ -994,6 +992,29 @@ hidden-loop-skip-keywords:
   - metadata
   - descriptor
 
+# Method name keywords suggesting iteration over a small, constant-bound collection.
+constant-bound-keywords:
+  - mappers
+  - validators
+  - interceptors
+  - processors
+  - converters
+  - transformers
+  - decorators
+  - plugins
+  - strategies
+  - resolvers
+  - adapters
+  - hooks
+  - middleware
+  - extensions
+  - providers
+  - phases
+  - steps
+  - stages
+  - pipes
+  - chains
+
 # ── Static utility classes ──
 
 static-utility-classes:
@@ -1218,6 +1239,32 @@ non-io-targets:
   - stringtokenizer
   - scanner
   - tok
+  # Thread pools and async — execute()/cancel()/submit() are in-memory dispatch
+  - executor
+  - threadpool
+  - executorservice
+  - scheduledexecutorservice
+  - threadpoolexecutor
+  - forkjoinpool
+  - fixedthreadpool
+  - cachedthreadpool
+  # Futures — cancel() is in-memory flag, not IO
+  - future
+  - completablefuture
+  - completionstage
+  - promise
+  - task
+  - callable
+  # Coroutine primitives
+  - deferred
+  - job
+  # Command pattern — execute() is in-memory dispatch, not IO
+  - command
+  - cmd
+  - runnable
+  - action
+  - handler
+  - interceptor
 
 io-method-candidates:
   - save
@@ -1232,7 +1279,6 @@ io-method-candidates:
   - load
   - update
   - insert
-  - close
   - send
   - receive
   - find

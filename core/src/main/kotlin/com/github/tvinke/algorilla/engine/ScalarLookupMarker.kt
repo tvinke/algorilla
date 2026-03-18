@@ -48,12 +48,13 @@ public fun markScalarLookups(
     for ((file, fileRoot) in irTrees) {
         val language = fileRoot.language
         val localFieldTypes = collectFieldTypes(fileRoot)
+        val methodReturnTypes = collectMethodReturnTypes(fileRoot)
         val transformed =
             fileRoot.transform { node ->
                 if (node is FunctionDecl) {
                     val classFields = node.declaringClass?.let { globalFieldTypes[it] } ?: emptyMap()
                     val mergedFields = allGlobalFields + classFields + localFieldTypes
-                    val typeEnv = TypeEnvironment.build(node, mergedFields, language, registry)
+                    val typeEnv = TypeEnvironment.build(node, mergedFields, language, registry, methodReturnTypes)
                     typeEnvs[signatureKey(node)] = typeEnv
                     markScalarLookupsInFunction(node, language, registry, typeEnv)
                 } else {
@@ -101,6 +102,16 @@ private fun collectFieldTypes(fileRoot: FileRoot): Map<String, String> {
     collectFromChildren(fileRoot.children)
     return fieldTypes
 }
+
+/**
+ * Collects declared return types from all methods in a file: methodName → returnType.
+ * Used by [TypeEnvironment] to resolve `var x = someMethod()` when the method is in the same file.
+ */
+private fun collectMethodReturnTypes(fileRoot: FileRoot): Map<String, String> =
+    fileRoot
+        .findDescendants<FunctionDecl>()
+        .filter { !it.isConstructor && it.returnType != null }
+        .associate { it.name to it.returnType!! }
 
 private fun markScalarLookupsInFunction(
     fn: FunctionDecl,

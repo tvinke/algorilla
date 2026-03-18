@@ -78,6 +78,13 @@ internal class RepeatedCollectionIterationRuleJavaTest {
 
             findings.shouldBeEmpty()
         }
+
+        @Test
+        fun `should not flag small constant collection iterated twice`() {
+            val findings = analyzeFixture("repeated-collection-iteration/regression/small-constant-set-not-flagged.java")
+
+            findings.shouldBeEmpty()
+        }
     }
 
     private fun analyzeFixture(fixturePath: String): List<Finding> {

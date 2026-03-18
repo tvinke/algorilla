@@ -32,6 +32,7 @@ public class RepeatedLinearScanRule : Rule {
     override val id: String = "repeated-linear-scan"
     override val name: String = "Repeated Linear Scan"
     override val severity: Severity = Severity.WARNING
+    override val defaultConfidence: Confidence = Confidence.LOW
     override val languages: Set<Language> = Language.entries.toSet()
     override val category: RuleCategory = RuleCategory.REDUNDANCY
     override val subsumes: Set<String> = setOf("repeated-collection-iteration")

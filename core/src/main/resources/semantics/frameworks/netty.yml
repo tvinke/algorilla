@@ -132,5 +132,4 @@ io-method-candidates:
   - write
   - flush
   - read
-  - close
   - disconnect

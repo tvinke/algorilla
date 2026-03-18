@@ -163,6 +163,14 @@ internal class HiddenNestedLoopRuleJavaTest {
             // addAll() and putAll() are O(n) copy ops, not algorithmic nested loops
             findings.shouldBeEmpty()
         }
+
+        @Test
+        fun `should not flag constant-bound inner collection like mappers`() {
+            val findings = analyzeFixture("hidden-nested-loop/regression/constant-bound-mappers.java")
+
+            // Inner loop over mappers is O(n*k) with small constant k — skip
+            findings.shouldBeEmpty()
+        }
     }
 
     @Nested

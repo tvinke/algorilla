@@ -119,6 +119,12 @@ internal class JavaIRVisitor(
         val body = ctx.methodBody()?.let { visitChildren(it) } ?: emptyList()
         val loc = locationOf(ctx)
         val qName = if (enclosingClass != null) "$enclosingClass.$name" else name
+        val returnType =
+            ctx
+                .typeTypeOrVoid()
+                ?.typeType()
+                ?.text
+                ?.simplifyGenericType()
 
         return listOf(
             FunctionDecl(
@@ -126,6 +132,7 @@ internal class JavaIRVisitor(
                 qualifiedName = qName,
                 parameters = params,
                 declaringClass = enclosingClass,
+                returnType = returnType,
                 location = loc,
                 children = body,
             ),
@@ -190,6 +197,17 @@ internal class JavaIRVisitor(
             val loc = locationOf(methodCall)
 
             return handleChainedMethodCall(methodName, targetText, methodCall, targetExpr, loc)
+        }
+        return visitChildren(ctx)
+    }
+
+    override fun visitTernaryExpression(ctx: JavaParser.TernaryExpressionContext): List<IRNode> {
+        val expressions = ctx.expression()
+        if (expressions.size == TERNARY_CHILD_COUNT) {
+            val conditionNodes = visit(expressions[0])
+            val thenBranch = visit(expressions[1])
+            val elseBranch = visit(expressions[2])
+            return conditionNodes + listOf(BranchNode(listOf(thenBranch, elseBranch), locationOf(ctx)))
         }
         return visitChildren(ctx)
     }
@@ -411,6 +429,9 @@ internal class JavaIRVisitor(
         )
 }
 
+/** Ternary expressions have exactly 3 sub-expressions: condition, then, else. */
+private const val TERNARY_CHILD_COUNT = 3
+
 private val JAVA_CONSTANT_SIZE_FACTORIES =
     setOf(
         "asList",
@@ -434,3 +455,6 @@ private fun isConstantSizeFactory(targetChildren: List<IRNode>): Boolean {
     val call = targetChildren.filterIsInstance<FunctionCall>().firstOrNull() ?: return false
     return call.name in JAVA_CONSTANT_SIZE_FACTORIES && call.arguments.size <= SMALL_COLLECTION_THRESHOLD
 }
+
+/** Strips generic type parameters: "List<Order>" → "List", "Map<String,Integer>" → "Map". */
+private fun String.simplifyGenericType(): String = substringBefore('<').substringAfterLast('.')

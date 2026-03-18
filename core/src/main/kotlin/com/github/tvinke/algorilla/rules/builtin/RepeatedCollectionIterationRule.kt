@@ -9,6 +9,7 @@ import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LoopKind
 import com.github.tvinke.algorilla.model.LoopNode
 import com.github.tvinke.algorilla.model.Severity
+import com.github.tvinke.algorilla.model.VariableDecl
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.ComplexityModel
 import com.github.tvinke.algorilla.rules.Evidence
@@ -16,6 +17,7 @@ import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
+import com.github.tvinke.algorilla.util.findDescendants
 import com.github.tvinke.algorilla.util.findDescendantsWithBranchContext
 import com.github.tvinke.algorilla.util.maxCoExecutableSubset
 
@@ -33,6 +35,7 @@ public class RepeatedCollectionIterationRule : Rule {
     override val id: String = "repeated-collection-iteration"
     override val name: String = "Repeated Collection Iteration"
     override val severity: Severity = Severity.INFO
+    override val defaultConfidence: Confidence = Confidence.LOW
     override val languages: Set<Language> = Language.entries.toSet()
     override val category: RuleCategory = RuleCategory.REDUNDANCY
 
@@ -81,9 +84,10 @@ public class RepeatedCollectionIterationRule : Rule {
         val reported = mutableSetOf<String?>()
 
         for ((target, callsWithContext) in byTarget) {
+            if (isSmallConstantCollection(fn, target!!)) continue
             val coExecutable = maxCoExecutableSubset(callsWithContext)
             if (coExecutable.size >= MIN_PASSES_TO_REPORT) {
-                findings.add(buildStreamFinding(fn, target!!, coExecutable))
+                findings.add(buildStreamFinding(fn, target, coExecutable))
                 reported.add(target)
             }
         }
@@ -109,9 +113,10 @@ public class RepeatedCollectionIterationRule : Rule {
         val byTarget = filtered.groupBy { it.first.iteratedVariable }
 
         for ((target, callsWithContext) in byTarget) {
+            if (isSmallConstantCollection(fn, target!!)) continue
             val coExecutable = maxCoExecutableSubset(callsWithContext)
             if (coExecutable.size >= MIN_PASSES_TO_REPORT) {
-                findings.add(buildForEachFinding(fn, target!!, coExecutable))
+                findings.add(buildForEachFinding(fn, target, coExecutable))
             }
         }
     }
@@ -200,7 +205,47 @@ public class RepeatedCollectionIterationRule : Rule {
             )
         }
 
+    /**
+     * Returns true if [target] is a variable initialized from a small constant collection factory
+     * (e.g. `Set.of("a", "b", "c")`). Multiple passes over 3-5 elements are negligible.
+     */
+    private fun isSmallConstantCollection(
+        fn: FunctionDecl,
+        target: String,
+    ): Boolean {
+        val decl = fn.findDescendants<VariableDecl>().firstOrNull { it.name == target } ?: return false
+        val initCall = decl.children.filterIsInstance<FunctionCall>().firstOrNull() ?: return false
+        return initCall.name in CONSTANT_COLLECTION_FACTORIES &&
+            initCall.arguments.size <= SMALL_COLLECTION_THRESHOLD
+    }
+
     internal companion object {
         const val MIN_PASSES_TO_REPORT = 2
+
+        /** Max elements for a collection literal to be considered "small enough to ignore". */
+        private const val SMALL_COLLECTION_THRESHOLD = 5
+
+        /** Factory method names that create constant-size collections from their arguments. */
+        private val CONSTANT_COLLECTION_FACTORIES =
+            setOf(
+                "of",
+                "asList",
+                "listOf",
+                "setOf",
+                "mapOf",
+                "emptyList",
+                "emptySet",
+                "emptyMap",
+                "singletonList",
+                "singleton",
+                "nCopies",
+                "mutableListOf",
+                "mutableSetOf",
+                "mutableMapOf",
+                "hashSetOf",
+                "hashMapOf",
+                "linkedSetOf",
+                "linkedMapOf",
+            )
     }
 }

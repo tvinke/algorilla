@@ -47,6 +47,13 @@ internal class HeavyweightObjectPerInvocationRuleJavaTest {
 
             findings.shouldBeEmpty()
         }
+
+        @Test
+        fun `should not flag cheap constructors like DecimalFormat or File`() {
+            val findings = analyzeFixture("heavyweight-object-per-invocation/regression/cheap-constructors-not-heavyweight.java")
+
+            findings.shouldBeEmpty()
+        }
     }
 
     @Nested

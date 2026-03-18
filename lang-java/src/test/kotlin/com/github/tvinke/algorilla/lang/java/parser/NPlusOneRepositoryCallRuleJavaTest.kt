@@ -3,6 +3,7 @@ package com.github.tvinke.algorilla.lang.java.parser
 import com.github.tvinke.algorilla.config.AnalysisConfig
 import com.github.tvinke.algorilla.graph.CallGraph
 import com.github.tvinke.algorilla.graph.SymbolTable
+import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Finding
@@ -50,6 +51,28 @@ internal class NPlusOneRepositoryCallRuleJavaTest {
             val findings = analyzeFixture("n-plus-one-query/negative/cache-target-excluded.java")
 
             findings.shouldBeEmpty()
+        }
+    }
+
+    @Nested
+    inner class ConfidencePromotion {
+        @Test
+        fun `should be HIGH confidence when target matches repository pattern`() {
+            val findings = analyzeFixture("n-plus-one-query/regression/repo-target-high-confidence.java")
+
+            findings shouldHaveSize 2
+            // userRepository matches 'repository' in io-target-patterns
+            val repoFinding = findings.first { it.message.contains("userRepository") }
+            repoFinding.confidence shouldBe Confidence.HIGH
+        }
+
+        @Test
+        fun `should be HIGH confidence for wide-pattern repo targets`() {
+            val findings = analyzeFixture("n-plus-one-query/positive/wide-pattern-match.java")
+
+            findings shouldHaveSize 3
+            // orderRepository and productRepository match io-target-patterns
+            findings.filter { it.confidence == Confidence.HIGH }.size shouldBe 3
         }
     }
 

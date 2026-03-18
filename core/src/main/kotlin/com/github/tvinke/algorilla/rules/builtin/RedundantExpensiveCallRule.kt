@@ -1,5 +1,6 @@
 package com.github.tvinke.algorilla.rules.builtin
 
+import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.FileRoot
 import com.github.tvinke.algorilla.model.FunctionCall
@@ -27,6 +28,7 @@ public class RedundantExpensiveCallRule : Rule {
     override val id: String = "redundant-expensive-call"
     override val name: String = "Redundant Expensive Call"
     override val severity: Severity = Severity.INFO
+    override val defaultConfidence: Confidence = Confidence.LOW
     override val languages: Set<Language> = Language.entries.toSet()
     override val category: RuleCategory = RuleCategory.REDUNDANCY
     override val subsumes: Set<String> = setOf("uncached-getter")
@@ -77,7 +79,10 @@ public class RedundantExpensiveCallRule : Rule {
         for ((sig, duplicatesWithContext) in grouped) {
             if (sig.isBlank()) continue
             val coExecutable = maxCoExecutableSubset(duplicatesWithContext)
-            if (coExecutable.size >= MIN_DUPLICATES) {
+            // Getter-pattern methods (getX, isX, hasX, toX) are typically cheap —
+            // require more duplicates before flagging to reduce noise on accessor calls
+            val threshold = if (isGetterPattern(coExecutable.first().name)) GETTER_THRESHOLD else MIN_DUPLICATES
+            if (coExecutable.size >= threshold) {
                 findings.add(buildFinding(fn, coExecutable))
             }
         }
@@ -110,6 +115,7 @@ public class RedundantExpensiveCallRule : Rule {
 
     internal companion object {
         const val MIN_DUPLICATES = 2
+        const val GETTER_THRESHOLD = 3
     }
 }
 
@@ -205,3 +211,16 @@ private fun isSequentialReadPrefix(
 
 /** Underscore-prefixed ALL_CAPS methods are typically bytecode instructions (_ALOAD, _ISTORE). */
 private fun isBytecodeInstruction(name: String): Boolean = name.startsWith("_") && name.all { it == '_' || it.isUpperCase() }
+
+/**
+ * Returns true if the method name matches a getter/accessor pattern (getX, isX, hasX, toX).
+ * These are typically cheap O(1) field reads that don't warrant caching when called only twice.
+ */
+private fun isGetterPattern(name: String): Boolean =
+    GETTER_PATTERN_PREFIXES.any { prefix ->
+        name.length > prefix.length &&
+            name.startsWith(prefix) &&
+            name[prefix.length].isUpperCase()
+    }
+
+private val GETTER_PATTERN_PREFIXES = listOf("get", "is", "has", "to")
