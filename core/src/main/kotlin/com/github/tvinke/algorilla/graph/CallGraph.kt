@@ -35,6 +35,11 @@ public class CallGraph {
     public fun edgeCount(): Int = edges.values.sumOf { it.size }
 
     /**
+     * Returns all edges as a map from caller to set of callees.
+     */
+    public fun allEdges(): Map<String, Set<String>> = edges
+
+    /**
      * Returns all transitive callees reachable from [qualifiedName], bounded by [maxDepth].
      * Handles cycles by tracking visited nodes.
      */
