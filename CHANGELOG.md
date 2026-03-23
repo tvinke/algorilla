@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.1](https://github.com/tvinke/algorilla/compare/v0.3.0...v0.3.1) (2026-03-23)
+
+
+### Features
+
+* LoopBoundAnnotator — cross-cutting constant-size loop detection ([6d0d8f0](https://github.com/tvinke/algorilla/commit/6d0d8f05395cb47f1e22b23cb5dd63b1fe593bec)), closes [#98](https://github.com/tvinke/algorilla/issues/98)
+
+
+### Bug Fixes
+
+* release workflow — set version for gradle plugin, handle no-op snapshot bump ([ff551b2](https://github.com/tvinke/algorilla/commit/ff551b2fd37c772c6ce9e6074ce16cf14337d1cc))
+* sort-for-last stop flagging .get(variable), language-aware variable extraction ([8ccdea7](https://github.com/tvinke/algorilla/commit/8ccdea77c95cfd9df4c0bea38e7d50baf78bfb15)), closes [#99](https://github.com/tvinke/algorilla/issues/99)
+* strip collection-view .values() via YAML, prevent iteratedVariable regression ([1ed83f1](https://github.com/tvinke/algorilla/commit/1ed83f155be84fb462ce8430eb9a5d97249367f6))
+
 ## [0.3.0](https://github.com/tvinke/algorilla/compare/v0.2.0...v0.3.0) (2026-03-18)
 
 
