@@ -74,6 +74,9 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Set release version in gradle.properties
+        run: sed -i "s/^version=.*/version=${{ needs.build.outputs.version }}/" gradle.properties
+
       - name: Publish to Gradle Plugin Portal
         run: ./gradlew :gradle-plugin:publishPlugins
         env:
@@ -132,8 +135,9 @@ jobs:
           RELEASED="${{ needs.build.outputs.version }}"
           MAJOR=$(echo "$RELEASED" | cut -d. -f1)
           MINOR=$(echo "$RELEASED" | cut -d. -f2)
-          NEXT_MINOR=$((MINOR + 1))
-          NEXT="${MAJOR}.${NEXT_MINOR}.0-SNAPSHOT"
+          PATCH=$(echo "$RELEASED" | cut -d. -f3)
+          NEXT_PATCH=$((PATCH + 1))
+          NEXT="${MAJOR}.${MINOR}.${NEXT_PATCH}-SNAPSHOT"
           sed -i "s/^version=.*/version=$NEXT/" gradle.properties
           echo "Bumping version to $NEXT"
 
@@ -142,6 +146,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add gradle.properties
+          git diff --cached --quiet && echo "Already at next SNAPSHOT, nothing to commit" && exit 0
           git commit -m "chore: bump to ${{ needs.build.outputs.version }} → next SNAPSHOT"
           git push origin main
 
