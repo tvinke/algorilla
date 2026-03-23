@@ -168,7 +168,10 @@ public fun accessKindFor(
         else -> registryInstance.accessKindFor(methodName, language)
     }
 
-public fun extractVariableName(expr: String?): String? {
+public fun extractVariableName(
+    expr: String?,
+    language: Language = Language.JAVA,
+): String? {
     if (expr == null) return null
     var cleaned = expr
     // Strip static utility wrappers like Arrays.stream(...), Collections.unmodifiableList(...)
@@ -176,7 +179,7 @@ public fun extractVariableName(expr: String?): String? {
     // Strip stream entry points
     cleaned = cleaned.replace(".stream()", "").replace(".parallelStream()", "")
     // Strip chained stream intermediate operations (e.g. .map(...), .flatMap(...), .filter(...))
-    cleaned = stripStreamChainOps(cleaned)
+    cleaned = stripStreamChainOps(cleaned, language)
     // Return the full remaining expression — don't strip the last dotted segment,
     // as it may be a meaningful field access (e.g. "resource.currentLocationIds")
     return cleaned.ifBlank { null }
@@ -186,15 +189,20 @@ public fun extractVariableName(expr: String?): String? {
  * Strips chained stream operations with balanced parentheses from the expression.
  * Handles arbitrary nesting like `.map(x -> foo(bar(x)))`.
  *
- * Uses the union of all languages since extractVariableName is called from parsers
- * that may not have language context yet.
+ * Uses language-specific stream ops so that e.g. `.values()` is only stripped for
+ * JavaScript (where it's a stream/iteration op) but preserved for Java/Kotlin/Groovy
+ * (where it's enum iteration).
  */
-private fun stripStreamChainOps(input: String): String {
+private fun stripStreamChainOps(
+    input: String,
+    language: Language,
+): String {
+    val ops = LanguageSemanticsRegistry.DEFAULT.streamOps(language)
     var result = input
     var changed = true
     while (changed) {
         changed = false
-        for (op in STREAM_CHAIN_OPS) {
+        for (op in ops) {
             val stripped = stripSingleOp(result, op)
             if (stripped != null) {
                 result = stripped
@@ -203,20 +211,6 @@ private fun stripStreamChainOps(input: String): String {
         }
     }
     return result
-}
-
-/**
- * Set of method names that should be stripped from variable name expressions.
- * Since extractVariableName is called from parsers without guaranteed language context,
- * this collects stream ops from all base languages. This is the only cross-language union
- * remaining — all rule-level code uses language-specific versions.
- */
-private val STREAM_CHAIN_OPS: Set<String> by lazy {
-    val result = mutableSetOf<String>()
-    for (lang in listOf(Language.JAVA, Language.KOTLIN, Language.GROOVY, Language.JAVASCRIPT)) {
-        result.addAll(LanguageSemanticsRegistry.DEFAULT.streamOps(lang))
-    }
-    result
 }
 
 private fun stripSingleOp(
@@ -300,7 +294,7 @@ public fun isStringTarget(
     val registry = registryInstance
     return registry.stringIndicators(language).any { targetText.contains(it) } ||
         registry.stringNameSuffixes(language).any { targetText.endsWith(it) } ||
-        extractVariableName(targetText) in registry.stringExactNames(language)
+        extractVariableName(targetText, language) in registry.stringExactNames(language)
 }
 
 /** Returns true when the argument list is a single literal `0` (for `.get(0)` detection). */

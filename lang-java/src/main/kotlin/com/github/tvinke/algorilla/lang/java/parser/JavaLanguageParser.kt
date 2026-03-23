@@ -134,7 +134,7 @@ internal class JavaIRVisitor(
 
     override fun visitInstanceOfOperatorExpression(ctx: JavaParser.InstanceOfOperatorExpressionContext): List<IRNode> {
         val expr = ctx.expression() ?: return visitChildren(ctx)
-        val varName = extractVariableName(expr.text) ?: return visitChildren(ctx)
+        val varName = extractVariableName(expr.text, Language.JAVA) ?: return visitChildren(ctx)
         val typeCtx = ctx.typeType() ?: return visitChildren(ctx)
         val checkedType = typeCtx.text.simplifyGenericType()
         return visit(expr) + listOf(TypeCheck(varName, checkedType, locationOf(ctx)))
@@ -342,7 +342,7 @@ internal class JavaIRVisitor(
             return listOf(
                 LoopNode(
                     kind = LoopKind.FOR_EACH,
-                    iteratedVariable = extractVariableName(iterVar),
+                    iteratedVariable = extractVariableName(iterVar, Language.JAVA),
                     location = locationOf(ctx),
                     children = loopVarDecl + body,
                 ),
@@ -389,7 +389,7 @@ internal class JavaIRVisitor(
         targetExpr: JavaParser.ExpressionContext,
         loc: SourceLocation,
     ): List<IRNode> {
-        val targetVar = extractVariableName(targetText)
+        val targetVar = extractVariableName(targetText, Language.JAVA)
         val argNodes = visitArgNodes(methodCall)
         val targetChildren = visit(targetExpr)
         if (targetVar != null && targetVar in lambdaParams) {

@@ -50,6 +50,20 @@ internal class SortForLastRuleJavaTest {
 
             findings.shouldBeEmpty()
         }
+
+        @Test
+        fun `should not flag sort followed by get with median index`() {
+            val findings = analyzeFixture("sort-for-last/negative/sort-then-median.java")
+
+            findings.shouldBeEmpty()
+        }
+
+        @Test
+        fun `should not flag sort followed by get with arbitrary variable index`() {
+            val findings = analyzeFixture("sort-for-last/negative/sort-then-arbitrary-index.java")
+
+            findings.shouldBeEmpty()
+        }
     }
 
     @Nested

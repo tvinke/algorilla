@@ -26,7 +26,6 @@ methods:
   last:      { semantics: access, kind: LAST }
   findFirst: { semantics: access, kind: FIND_FIRST }
   findAny:   { semantics: access, kind: FIND_ANY }
-  get:       { semantics: access, kind: INDEX_ZERO, note: "List.get(int); also Map.get" }
 
   # Blocking
   join: { semantics: blocking, note: "on Future types" }
