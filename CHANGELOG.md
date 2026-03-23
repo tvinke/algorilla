@@ -1,6 +1,49 @@
 # Changelog
 
-## [0.3.0](https://github.com/tvinke/algorilla/compare/v0.2.0...v0.3.0) (unreleased)
+## [0.3.0](https://github.com/tvinke/algorilla/compare/v0.2.0...v0.3.0) (2026-03-18)
+
+
+### Features
+
+* add framework-aware semantics overlays ([927e2dd](https://github.com/tvinke/algorilla/commit/927e2ddac7a81899b7fe4a5e3925ac0168d52080))
+* add language tags and dedicated language pages ([08bf1a9](https://github.com/tvinke/algorilla/commit/08bf1a9bbbf5c1b2d810c682669fd85e404b611f))
+* API stability prep — lenient parsing, version fields, fail-on default ([51fbae5](https://github.com/tvinke/algorilla/commit/51fbae579ef4599661fdc7dbc208e904e4bf18b7))
+* cross-method parameter-flow queries (HARD-3 Phases 3b-3d) ([8665000](https://github.com/tvinke/algorilla/commit/86650001f4f818ad10c5c5d570f13b94b29f3bc3))
+* extract TypeEnvironment from buildTypeMap, wire into rules ([cd0d66b](https://github.com/tvinke/algorilla/commit/cd0d66bb78639d3c8f37ed72f44bfed7fd34644d))
+* infer JS/TS variable types for nested-lookup suppression ([cab5575](https://github.com/tvinke/algorilla/commit/cab557535ed4aec4b74f0cc0bffb971a4c1be8fb))
+* io-in-loop rule, smarter suggestions, repeated-sort detection, FP fixes ([dfc034f](https://github.com/tvinke/algorilla/commit/dfc034f43540ae529e537d42e78abcd8c0ff1e26))
+* loop-invariant-hoisting and lazy-loading-in-loop rules (ME-2, ME-4) ([ecb5279](https://github.com/tvinke/algorilla/commit/ecb52791053230a0ffbf8d7a13bea4fa625a9d20))
+* parameter-flow annotation pass (HARD-3 Phase 3a) ([7aff3ce](https://github.com/tvinke/algorilla/commit/7aff3ce156fd2716a4b93b9c15cf1bc09f29ce6f))
+* skip implicit-regex findings for string literal args in JS/TS ([11a8132](https://github.com/tvinke/algorilla/commit/11a813207a4b27aecd4bb93fbaa03d795a8549b5))
+* tree-sitter Kotlin parser replacing ANTLR preprocessor hack ([6ffaf11](https://github.com/tvinke/algorilla/commit/6ffaf11eb478a341a23881348f429123aa803d87))
+* two-tier IO classification — candidates require target confirmation ([75264ad](https://github.com/tvinke/algorilla/commit/75264add9ad418e099426673377f4ecf0f1891b6))
+* typed Suggestion model replacing plain suggestion strings ([42097b0](https://github.com/tvinke/algorilla/commit/42097b04068a23d94279bc5c0a1547f07765c3f1))
+* unmemoized-recursion, cardinality-explosion, multi-pass-stream-fusion rules ([4d61df8](https://github.com/tvinke/algorilla/commit/4d61df8ad27bf9f0693a8cfbbe52fb7952402090))
+
+
+### Bug Fixes
+
+* apply minSeverity filter and fix file group ordering in output ([71d5b42](https://github.com/tvinke/algorilla/commit/71d5b42201f02bf37d3487553bb7216304fd12a7))
+* close detection gaps — find/search as IO candidates, map/flatMap as iteration context ([00c877b](https://github.com/tvinke/algorilla/commit/00c877b665b7c6f13679a293f7291a09cc3befa4))
+* color language tags via JS instead of CSS-only selectors ([7a5a97a](https://github.com/tvinke/algorilla/commit/7a5a97af0ca624acf211fdc21a4de0a74f5c2e29))
+* eliminate cross-language semantic leaking in registry ([90d5ac0](https://github.com/tvinke/algorilla/commit/90d5ac0e71a82338ec3a5989576559839e70d283))
+* enforce language filter in string-concat-in-loop evaluate() ([470cd1b](https://github.com/tvinke/algorilla/commit/470cd1b6ea918f55b483abc65a6929d46785ec19))
+* engine caps per-finding confidence at rule's defaultConfidence ([1fa8764](https://github.com/tvinke/algorilla/commit/1fa8764f6a7c10a6c87d63f33d1df5b9ccbac195))
+* hybrid suffix matching for io-target-patterns, exclude cross-language reflection leaks ([ece45ab](https://github.com/tvinke/algorilla/commit/ece45ab4fd5e8ed31c86611da1e60326166f4ba8))
+* nextToken IO false positive + argFingerprint for nested children ([8e428f3](https://github.com/tvinke/algorilla/commit/8e428f36822e98ff61b3898d2a5f14224e0cbe0f))
+* query YAML extras per-language instead of merging all languages ([55bad76](https://github.com/tvinke/algorilla/commit/55bad76b0bef6f1ce6864a741a80d8ac601e255b))
+* reduce false positives with type-aware lookup refinement and language-scoped methods ([994b965](https://github.com/tvinke/algorilla/commit/994b965cb9fc9ba117f26dba77bec678f2ac5fed))
+* reduce FPs — sequential-read args, pipeline collapse, scan-count demotion, subsumption ([ed054a9](https://github.com/tvinke/algorilla/commit/ed054a9a3a310e2e8617f0943e2b34633dcc37f2))
+* remove generic method names from Jakarta EE and Gson io-methods ([cc08c62](https://github.com/tvinke/algorilla/commit/cc08c623551d78e8b516544cee1efa8a6bf40284))
+* remove generic method names from JPA io-methods (next, get, first, last) ([b19d906](https://github.com/tvinke/algorilla/commit/b19d906f3f70d1adbb7329f6f95dbb035044090b))
+* skip equals/hashCode/toString in unmemoized-recursion rule ([76c141f](https://github.com/tvinke/algorilla/commit/76c141f4755c054adf443bc6e98491d885b52ede))
+* stop flagging close()/stream() and tighten io-candidate matching ([9107090](https://github.com/tvinke/algorilla/commit/910709015dbe8fc098b9f750710737fbb169de7f))
+* string-concat-in-loop skips non-String receivers (factory, builder, etc.) ([365aea3](https://github.com/tvinke/algorilla/commit/365aea3c46f6ce6f3b0407e3fea8a043b513341e))
+* suppress FPs on constant-size collection factories ([bb22913](https://github.com/tvinke/algorilla/commit/bb22913c750b5c91ac14714602d89e0502bc9ac5))
+* use signature key for TypeEnvironment to handle overloaded methods ([f07ed25](https://github.com/tvinke/algorilla/commit/f07ed251a3268fc6a8d9946bdfe9c17e76735d80))
+* use SymbolTable type check for string-concat-in-loop receivers ([0b64d57](https://github.com/tvinke/algorilla/commit/0b64d575c4ab7b0c17f1f3850254457efbb0bcb8))
+
+## [0.3.0](https://github.com/tvinke/algorilla/compare/v0.2.0...v0.3.0) (2026-03-18) — continued
 
 ### BREAKING CHANGES
 

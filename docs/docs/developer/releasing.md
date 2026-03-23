@@ -94,10 +94,27 @@ During the 0.x phase, minor versions may include breaking changes as the API sta
 
 ### Release Please creates tags that don't trigger workflows
 
-Tags created by Release Please using the default `GITHUB_TOKEN` don't trigger other workflows — this is a GitHub security restriction. Workarounds:
+This is the most common gotcha. Tags created by Release Please (or any GitHub Action) using the default `GITHUB_TOKEN` won't trigger other workflows — it's a GitHub security restriction to prevent infinite loops.
 
-- Use a Personal Access Token (PAT) for Release Please instead of `GITHUB_TOKEN`
-- Or manually delete and re-push the tag: `git tag -d v0.2.0 && git push --delete origin v0.2.0 && git tag v0.2.0 && git push origin v0.2.0`
+**After merging the release PR, check the Actions tab.** If you see the Release Please run completed but no Release workflow started, do this:
+
+```bash
+git fetch --tags origin
+git tag -d v0.3.0                        # delete local tag
+git push origin :refs/tags/v0.3.0        # delete remote tag
+git tag v0.3.0 origin/main               # recreate on same commit
+git push origin v0.3.0                   # push — this triggers the workflow
+```
+
+This works because tags pushed by a real user (not a GitHub Action bot) do trigger workflows.
+
+**Permanent fix:** use a PAT or GitHub App token for Release Please instead of `GITHUB_TOKEN`. Haven't set this up yet because releases are infrequent enough that the manual re-tag takes 10 seconds.
+
+### Gradle Plugin Portal publishes with SNAPSHOT version
+
+**Fixed in v0.3.0+.** The `publish-gradle-plugin` job checks out the repo fresh, so `gradle.properties` still has the `-SNAPSHOT` version. The `build` job strips it but that's a separate checkout. Fix: the plugin job now runs `sed` to set the release version before publishing, same as the build job does.
+
+If you see `-SNAPSHOT plugin versions not supported` in the logs, the `sed` step is missing from the gradle plugin job.
 
 ### Gradle Plugin Portal rejects `com.github` group ID
 

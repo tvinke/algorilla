@@ -123,6 +123,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   bump-snapshot:
+    if: always() && needs.build.result == 'success'
     needs: [build, publish-gradle-plugin, publish-npm, publish-docker]
     runs-on: ubuntu-latest
     steps:
