@@ -92,6 +92,7 @@ internal class YamlSchemaValidationTest {
             "sequential-read-prefixes",
             "string-types",
             "list-types",
+            "collection-view-accessors",
         )
 
     @ParameterizedTest(name = "language file {0} has no unknown sections")

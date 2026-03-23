@@ -178,11 +178,44 @@ public fun extractVariableName(
     cleaned = unwrapStaticCall(cleaned) ?: cleaned
     // Strip stream entry points
     cleaned = cleaned.replace(".stream()", "").replace(".parallelStream()", "")
+    // Strip collection-view accessors (values/keySet/entrySet) — these don't carry
+    // meaningful variable identity (map.values() → map). But preserve Enum.values()
+    // for the LoopBoundAnnotator to detect constant-bound enum iteration.
+    cleaned = stripCollectionViewAccessors(cleaned, language)
     // Strip chained stream intermediate operations (e.g. .map(...), .flatMap(...), .filter(...))
     cleaned = stripStreamChainOps(cleaned, language)
     // Return the full remaining expression — don't strip the last dotted segment,
     // as it may be a meaningful field access (e.g. "resource.currentLocationIds")
     return cleaned.ifBlank { null }
+}
+
+/**
+ * Strips collection-view accessors (e.g. `.values()`, `.keySet()`, `.entrySet()`)
+ * from the expression to recover the underlying variable name (`map.values()` → `map`).
+ *
+ * Accessor names are YAML-driven via the `collection-view-accessors` section.
+ *
+ * Preserves `Type.values()` where the prefix starts with an uppercase letter,
+ * as this indicates enum iteration (e.g. `Status.values()` stays intact for
+ * [LoopBoundAnnotator] to detect constant-bound loops).
+ */
+private fun stripCollectionViewAccessors(
+    input: String,
+    language: Language,
+): String {
+    val accessors = LanguageSemanticsRegistry.DEFAULT.extraSection(language, "collection-view-accessors")
+    if (accessors.isEmpty()) return input
+    var result = input
+    for (accessor in accessors) {
+        val suffix = ".$accessor()"
+        if (result.endsWith(suffix)) {
+            val prefix = result.substringBefore(suffix)
+            // Preserve Enum.values() — uppercase prefix indicates enum type
+            if (accessor == "values" && prefix.isNotEmpty() && prefix[0].isUpperCase()) continue
+            result = prefix
+        }
+    }
+    return result
 }
 
 /**

@@ -125,6 +125,13 @@ scope-ops:
   - of
   - ofNullable
 
+# Collection-view accessors stripped during variable name extraction.
+# These return views of an underlying collection (map.values() → map)
+# and don't carry meaningful variable identity for complexity analysis.
+# Note: Enum.values() is preserved separately when prefix is uppercase.
+collection-view-accessors:
+  - values
+
 # Methods that iterate the full collection — flagged when called repeatedly
 # on the same variable within a single function (repeated-linear-scan rule).
 full-scan-methods:

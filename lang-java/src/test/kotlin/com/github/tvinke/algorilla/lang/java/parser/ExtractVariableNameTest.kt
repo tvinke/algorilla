@@ -122,6 +122,29 @@ internal class ExtractVariableNameTest {
     }
 
     @Nested
+    inner class CollectionViewAccessors {
+        @Test
+        fun `should strip values() from lowercase map variable`() {
+            extractVariableName("subscriptionItemTree.values()") shouldBe "subscriptionItemTree"
+        }
+
+        @Test
+        fun `should preserve keySet() - used by cardinality-explosion rule`() {
+            extractVariableName("payments.keySet()") shouldBe "payments.keySet()"
+        }
+
+        @Test
+        fun `should preserve entrySet() - used by cardinality-explosion rule`() {
+            extractVariableName("payments.entrySet()") shouldBe "payments.entrySet()"
+        }
+
+        @Test
+        fun `should preserve Enum_values() - uppercase prefix`() {
+            extractVariableName("Shop.values()") shouldBe "Shop.values()"
+        }
+    }
+
+    @Nested
     inner class StaticWrappers {
         @Test
         fun `should unwrap Arrays_stream`() {
