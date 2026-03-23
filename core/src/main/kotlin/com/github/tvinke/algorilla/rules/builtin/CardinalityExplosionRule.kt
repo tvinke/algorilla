@@ -107,6 +107,9 @@ public class CardinalityExplosionRule : Rule {
         val outerVar = outerLoop.iteratedVariable ?: return
         val innerVar = innerLoop.iteratedVariable ?: return
 
+        // Constant-bound outer loop (enum, config list) → O(k*m) not O(n*m)
+        if (outerLoop.isConstantBound) return
+
         if (outerVar != innerVar) {
             if (isPartitionedIteration(outerVar, innerVar, language, registry)) return
         }
@@ -184,12 +187,6 @@ public class CardinalityExplosionRule : Rule {
             // If the outer collection is a method call like "getInterfaces()", the element is often
             // a shortened name like "ifc" — we can't match that. But if the inner is a getter
             // call on a single-word variable, demote to INFO instead of suppressing entirely.
-        }
-
-        // Case 3: Enum/constant iteration — outer is Type.values() (uppercase initial)
-        if (outerVar.endsWith(".values()")) {
-            val typePrefix = outerVar.substringBefore(".values()")
-            if (typePrefix.isNotEmpty() && typePrefix[0].isUpperCase()) return true
         }
 
         return false

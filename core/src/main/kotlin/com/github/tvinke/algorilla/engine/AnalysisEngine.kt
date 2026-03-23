@@ -8,6 +8,7 @@ import com.github.tvinke.algorilla.config.AnalysisConfig
 import com.github.tvinke.algorilla.graph.CallGraph
 import com.github.tvinke.algorilla.graph.CallGraphBuilder
 import com.github.tvinke.algorilla.graph.ComplexityAnnotator
+import com.github.tvinke.algorilla.graph.LoopBoundAnnotator
 import com.github.tvinke.algorilla.graph.ParameterFlowAnnotator
 import com.github.tvinke.algorilla.graph.SymbolTable
 import com.github.tvinke.algorilla.model.ClassNode
@@ -70,6 +71,7 @@ public class AnalysisEngine(
         val symbolTable = rebuildSymbolTable(irTrees)
         val callGraph = buildCallGraph(irTrees, symbolTable)
         val finalContexts = enrichFileContextsFromCallGraph(enrichedContexts, callGraph, irTrees)
+        annotateLoopBounds(irTrees)
         annotateRecursion(irTrees)
         annotateParameterFlows(irTrees, symbolTable)
         annotateComplexity(symbolTable, callGraph)
@@ -202,6 +204,10 @@ public class AnalysisEngine(
         irTrees: Map<String, FileRoot>,
         symbolTable: SymbolTable,
     ): CallGraph = CallGraphBuilder(symbolTable).build(irTrees)
+
+    private fun annotateLoopBounds(irTrees: Map<String, FileRoot>) {
+        LoopBoundAnnotator(registry).annotate(irTrees)
+    }
 
     private fun annotateParameterFlows(
         irTrees: Map<String, FileRoot>,

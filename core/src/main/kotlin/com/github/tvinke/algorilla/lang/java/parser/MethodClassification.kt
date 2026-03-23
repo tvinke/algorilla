@@ -168,33 +168,74 @@ public fun accessKindFor(
         else -> registryInstance.accessKindFor(methodName, language)
     }
 
-public fun extractVariableName(expr: String?): String? {
+public fun extractVariableName(
+    expr: String?,
+    language: Language = Language.JAVA,
+): String? {
     if (expr == null) return null
     var cleaned = expr
     // Strip static utility wrappers like Arrays.stream(...), Collections.unmodifiableList(...)
     cleaned = unwrapStaticCall(cleaned) ?: cleaned
     // Strip stream entry points
     cleaned = cleaned.replace(".stream()", "").replace(".parallelStream()", "")
+    // Strip collection-view accessors (values/keySet/entrySet) — these don't carry
+    // meaningful variable identity (map.values() → map). But preserve Enum.values()
+    // for the LoopBoundAnnotator to detect constant-bound enum iteration.
+    cleaned = stripCollectionViewAccessors(cleaned, language)
     // Strip chained stream intermediate operations (e.g. .map(...), .flatMap(...), .filter(...))
-    cleaned = stripStreamChainOps(cleaned)
+    cleaned = stripStreamChainOps(cleaned, language)
     // Return the full remaining expression — don't strip the last dotted segment,
     // as it may be a meaningful field access (e.g. "resource.currentLocationIds")
     return cleaned.ifBlank { null }
 }
 
 /**
+ * Strips collection-view accessors (e.g. `.values()`, `.keySet()`, `.entrySet()`)
+ * from the expression to recover the underlying variable name (`map.values()` → `map`).
+ *
+ * Accessor names are YAML-driven via the `collection-view-accessors` section.
+ *
+ * Preserves `Type.values()` where the prefix starts with an uppercase letter,
+ * as this indicates enum iteration (e.g. `Status.values()` stays intact for
+ * [LoopBoundAnnotator] to detect constant-bound loops).
+ */
+private fun stripCollectionViewAccessors(
+    input: String,
+    language: Language,
+): String {
+    val accessors = LanguageSemanticsRegistry.DEFAULT.extraSection(language, "collection-view-accessors")
+    if (accessors.isEmpty()) return input
+    var result = input
+    for (accessor in accessors) {
+        val suffix = ".$accessor()"
+        if (result.endsWith(suffix)) {
+            val prefix = result.substringBefore(suffix)
+            // Preserve Enum.values() — uppercase prefix indicates enum type
+            if (accessor == "values" && prefix.isNotEmpty() && prefix[0].isUpperCase()) continue
+            result = prefix
+        }
+    }
+    return result
+}
+
+/**
  * Strips chained stream operations with balanced parentheses from the expression.
  * Handles arbitrary nesting like `.map(x -> foo(bar(x)))`.
  *
- * Uses the union of all languages since extractVariableName is called from parsers
- * that may not have language context yet.
+ * Uses language-specific stream ops so that e.g. `.values()` is only stripped for
+ * JavaScript (where it's a stream/iteration op) but preserved for Java/Kotlin/Groovy
+ * (where it's enum iteration).
  */
-private fun stripStreamChainOps(input: String): String {
+private fun stripStreamChainOps(
+    input: String,
+    language: Language,
+): String {
+    val ops = LanguageSemanticsRegistry.DEFAULT.streamOps(language)
     var result = input
     var changed = true
     while (changed) {
         changed = false
-        for (op in STREAM_CHAIN_OPS) {
+        for (op in ops) {
             val stripped = stripSingleOp(result, op)
             if (stripped != null) {
                 result = stripped
@@ -203,20 +244,6 @@ private fun stripStreamChainOps(input: String): String {
         }
     }
     return result
-}
-
-/**
- * Set of method names that should be stripped from variable name expressions.
- * Since extractVariableName is called from parsers without guaranteed language context,
- * this collects stream ops from all base languages. This is the only cross-language union
- * remaining — all rule-level code uses language-specific versions.
- */
-private val STREAM_CHAIN_OPS: Set<String> by lazy {
-    val result = mutableSetOf<String>()
-    for (lang in listOf(Language.JAVA, Language.KOTLIN, Language.GROOVY, Language.JAVASCRIPT)) {
-        result.addAll(LanguageSemanticsRegistry.DEFAULT.streamOps(lang))
-    }
-    result
 }
 
 private fun stripSingleOp(
@@ -300,7 +327,7 @@ public fun isStringTarget(
     val registry = registryInstance
     return registry.stringIndicators(language).any { targetText.contains(it) } ||
         registry.stringNameSuffixes(language).any { targetText.endsWith(it) } ||
-        extractVariableName(targetText) in registry.stringExactNames(language)
+        extractVariableName(targetText, language) in registry.stringExactNames(language)
 }
 
 /** Returns true when the argument list is a single literal `0` (for `.get(0)` detection). */

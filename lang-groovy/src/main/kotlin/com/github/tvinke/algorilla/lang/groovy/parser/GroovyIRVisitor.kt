@@ -78,7 +78,7 @@ internal class GroovyIRVisitor(
 
     override fun visitInstanceOfOperatorExpression(ctx: JavaParser.InstanceOfOperatorExpressionContext): List<IRNode> {
         val expr = ctx.expression() ?: return visitChildren(ctx)
-        val varName = extractVariableName(expr.text) ?: return visitChildren(ctx)
+        val varName = extractVariableName(expr.text, Language.GROOVY) ?: return visitChildren(ctx)
         val typeCtx = ctx.typeType() ?: return visitChildren(ctx)
         val checkedType = typeCtx.text.simplifyGenericType()
         return visit(expr) + listOf(TypeCheck(varName, checkedType, locationOf(ctx)))
@@ -224,7 +224,8 @@ internal class GroovyIRVisitor(
                 } else {
                     emptyList()
                 }
-            listOf(LoopNode(LoopKind.FOR_EACH, extractVariableName(enhancedFor.expression()?.text), locationOf(ctx), loopVarDecl + body))
+            val iterVar = extractVariableName(enhancedFor.expression()?.text, Language.GROOVY)
+            listOf(LoopNode(LoopKind.FOR_EACH, iterVar, locationOf(ctx), loopVarDecl + body))
         } else {
             listOf(LoopNode(LoopKind.FOR, null, locationOf(ctx), body))
         }
@@ -244,12 +245,12 @@ internal class GroovyIRVisitor(
     ): List<IRNode> {
         val groovyLoop = groovyLoopKindFor(methodName)
         if (groovyLoop != null) {
-            val targetVar = extractVariableName(targetText)
+            val targetVar = extractVariableName(targetText, Language.GROOVY)
             val argNodes = visitArgNodes(methodCall)
             val targetChildren = visit(targetExpr)
             return targetChildren + listOf(LoopNode(groovyLoop, targetVar, loc, argNodes))
         }
-        val targetVar = extractVariableName(targetText)
+        val targetVar = extractVariableName(targetText, Language.GROOVY)
         val argNodes = visitArgNodes(methodCall)
         val targetChildren = visit(targetExpr)
         if (targetVar != null && targetVar in lambdaParams) {

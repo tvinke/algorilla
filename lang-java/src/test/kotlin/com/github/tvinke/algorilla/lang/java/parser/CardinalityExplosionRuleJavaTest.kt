@@ -2,6 +2,7 @@ package com.github.tvinke.algorilla.lang.java.parser
 
 import com.github.tvinke.algorilla.config.AnalysisConfig
 import com.github.tvinke.algorilla.graph.CallGraph
+import com.github.tvinke.algorilla.graph.LoopBoundAnnotator
 import com.github.tvinke.algorilla.graph.SymbolTable
 import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.Severity
@@ -95,6 +96,14 @@ internal class CardinalityExplosionRuleJavaTest {
             val warnings = findings.filter { it.severity == Severity.WARNING }
             warnings.shouldBeEmpty()
         }
+
+        @Test
+        fun `should not flag enum outer loop with collection mutation`() {
+            val findings = analyzeFixture("cardinality-explosion/negative/enum-outer-loop.java")
+
+            val warnings = findings.filter { it.severity == Severity.WARNING }
+            warnings.shouldBeEmpty()
+        }
     }
 
     @Nested
@@ -142,9 +151,14 @@ internal class CardinalityExplosionRuleJavaTest {
                 ?: error("Fixture not found: $fixturePath")
         val path = File(url.toURI()).absolutePath
         val fileRoot = parser.parse(path)
+        val irTrees = mapOf(path to fileRoot)
+
+        // Run LoopBoundAnnotator so isConstantBound flags are set
+        LoopBoundAnnotator().annotate(irTrees)
+
         val context =
             AnalysisContext(
-                irTrees = mapOf(path to fileRoot),
+                irTrees = irTrees,
                 symbolTable = SymbolTable(),
                 callGraph = CallGraph(),
                 config = AnalysisConfig(),

@@ -113,6 +113,9 @@ scope-ops:
   - of
   - ofNullable
 
+collection-view-accessors:
+  - values
+
 full-scan-methods:
   - groupBy
   - collectEntries

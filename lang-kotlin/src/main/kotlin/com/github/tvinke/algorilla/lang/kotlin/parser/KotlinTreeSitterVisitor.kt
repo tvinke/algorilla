@@ -131,7 +131,7 @@ internal class KotlinTreeSitterVisitor(
         // is_expression: expression ("is" | "!is") type
         val exprNode = node.getNamedChild(0)
         if (exprNode.isNull) return emptyList()
-        val varName = extractVariableName(nodeText(exprNode)) ?: return emptyList()
+        val varName = extractVariableName(nodeText(exprNode), Language.KOTLIN) ?: return emptyList()
         val typeNode =
             findChildByType(node, "user_type")
                 ?: findChildByType(node, "nullable_type")?.let { findChildByType(it, "user_type") }
@@ -153,7 +153,7 @@ internal class KotlinTreeSitterVisitor(
         // for (item in items) { ... }
         // Children: variable_declaration, simple_identifier (collection), control_structure_body
         val collectionName = findCollectionInFor(node)
-        val iterVar = extractVariableName(collectionName)
+        val iterVar = extractVariableName(collectionName, Language.KOTLIN)
         val body = findChildByType(node, "control_structure_body")
         val bodyChildren = if (body != null) visitChildren(body) else emptyList()
         return listOf(LoopNode(LoopKind.FOR_EACH, iterVar, locationOf(node), bodyChildren))
@@ -245,7 +245,7 @@ internal class KotlinTreeSitterVisitor(
         val methodName = extractMethodName(navExpr)
         val objectNode = findObjectInNavigation(navExpr)
         val targetText = if (objectNode != null) nodeText(objectNode) else ""
-        val targetVar = extractVariableName(targetText)
+        val targetVar = extractVariableName(targetText, Language.KOTLIN)
         val loc = locationOf(callNode)
 
         val callSuffix = findChildByType(callNode, "call_suffix")

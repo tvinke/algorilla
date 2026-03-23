@@ -1,5 +1,6 @@
 package com.github.tvinke.algorilla.lang.java.parser
 
+import com.github.tvinke.algorilla.model.Language
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Nested
@@ -88,12 +89,58 @@ internal class ExtractVariableNameTest {
 
         @Test
         fun `should strip sortedBy from Kotlin chain`() {
-            extractVariableName("items.sortedBy(it.name)") shouldBe "items"
+            extractVariableName("items.sortedBy(it.name)", Language.KOTLIN) shouldBe "items"
         }
 
         @Test
         fun `should strip filter from chain`() {
             extractVariableName("items.stream().filter(x->x.active)") shouldBe "items"
+        }
+    }
+
+    @Nested
+    inner class LanguageAwareStripping {
+        @Test
+        fun `should preserve values() for Java - enum iteration`() {
+            extractVariableName("Status.values()", Language.JAVA) shouldBe "Status.values()"
+        }
+
+        @Test
+        fun `should preserve values() for Kotlin`() {
+            extractVariableName("Status.values()", Language.KOTLIN) shouldBe "Status.values()"
+        }
+
+        @Test
+        fun `should preserve values() for Groovy`() {
+            extractVariableName("Status.values()", Language.GROOVY) shouldBe "Status.values()"
+        }
+
+        @Test
+        fun `should strip values() for JavaScript - stream op`() {
+            extractVariableName("arr.values()", Language.JAVASCRIPT) shouldBe "arr"
+        }
+    }
+
+    @Nested
+    inner class CollectionViewAccessors {
+        @Test
+        fun `should strip values() from lowercase map variable`() {
+            extractVariableName("subscriptionItemTree.values()") shouldBe "subscriptionItemTree"
+        }
+
+        @Test
+        fun `should preserve keySet() - used by cardinality-explosion rule`() {
+            extractVariableName("payments.keySet()") shouldBe "payments.keySet()"
+        }
+
+        @Test
+        fun `should preserve entrySet() - used by cardinality-explosion rule`() {
+            extractVariableName("payments.entrySet()") shouldBe "payments.entrySet()"
+        }
+
+        @Test
+        fun `should preserve Enum_values() - uppercase prefix`() {
+            extractVariableName("Shop.values()") shouldBe "Shop.values()"
         }
     }
 

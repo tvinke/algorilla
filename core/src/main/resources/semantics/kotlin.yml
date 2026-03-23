@@ -138,6 +138,9 @@ scope-ops:
   - takeUnless
   - with
 
+collection-view-accessors:
+  - values
+
 full-scan-methods:
   - groupBy
   - groupingBy
