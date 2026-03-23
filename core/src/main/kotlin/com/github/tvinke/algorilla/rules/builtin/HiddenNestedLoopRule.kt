@@ -93,9 +93,13 @@ public class HiddenNestedLoopRule : Rule {
         // Skip trivial methods (single-statement wrappers with no real loop body)
         if (isTrivialLoop(hiddenLoop, language, context.registry)) return
 
-        // Skip when the hidden loop iterates a likely constant-bound collection
-        // (e.g. getMappers(), getValidators()) — these are O(n*k) with small k
-        if (isConstantBoundLoop(hiddenLoop, call, language, context.registry)) return
+        // Skip when the hidden loop iterates a constant-bound collection
+        // (e.g. enum values, mappers, validators) — O(n*k) with small k
+        if (hiddenLoop.isConstantBound) return
+
+        // Skip when the outer loop itself is constant-bound (enum iteration) —
+        // the hidden nested loop is O(k*m) with constant k
+        if (loopStack.all { it.isConstantBound }) return
 
         // Flow-based confidence: if a parameter flows through this call into a loop
         // in the callee, we have proof the nested iteration is on caller data
@@ -189,24 +193,6 @@ private fun isTrivialLoop(
         if (child is FunctionCall && isStringOrCopyMethod(child.name, language, registry)) return true
     }
     return false
-}
-
-/**
- * Returns true if the hidden loop likely iterates a small constant-bound collection.
- * Checks whether the loop's iterated variable or the called method name contains
- * keywords suggesting config/registry iteration (mappers, validators, handlers, etc.).
- */
-private fun isConstantBoundLoop(
-    hiddenLoop: LoopNode,
-    @Suppress("UNUSED_PARAMETER") call: FunctionCall, // reserved for future target-based heuristics
-    language: Language,
-    registry: LanguageSemanticsRegistry,
-): Boolean {
-    val keywords = registry.extraSection(language, "constant-bound-keywords")
-    if (keywords.isEmpty()) return false
-    // Only check the iterated variable — the method name is too prone to false matches
-    val loopVar = hiddenLoop.iteratedVariable?.lowercase() ?: return false
-    return keywords.any { kw -> loopVar.contains(kw) }
 }
 
 /**

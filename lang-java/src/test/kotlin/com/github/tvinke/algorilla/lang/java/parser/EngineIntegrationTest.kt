@@ -95,6 +95,17 @@ internal class EngineIntegrationTest {
     }
 
     @Nested
+    inner class HiddenNestedLoopPipeline {
+        @Test
+        fun `enum outer loop should not produce hidden-nested-loop finding`() {
+            val findings = analyzeFixture("hidden-nested-loop/negative/loop-over-enum-calls-method-with-loop.java")
+
+            val hnl = findings.filter { it.ruleId == "hidden-nested-loop" }
+            hnl.shouldBeEmpty()
+        }
+    }
+
+    @Nested
     inner class NPlusOnePipeline {
         @Test
         fun `should detect repository fetch in loop through full pipeline`() {

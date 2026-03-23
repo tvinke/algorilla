@@ -30,7 +30,10 @@ public data class LoopNode(
     val iteratedVariable: String?,
     override val location: SourceLocation,
     override val children: List<IRNode>,
-) : IRNode
+) : IRNode {
+    /** Populated by LoopBoundAnnotator — true when the loop iterates a constant-size collection (enum, config list, literal). */
+    var isConstantBound: Boolean = false
+}
 
 /** The kind of lookup operation on a collection. */
 public enum class LookupKind(

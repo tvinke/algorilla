@@ -2,6 +2,7 @@ package com.github.tvinke.algorilla.lang.java.parser
 
 import com.github.tvinke.algorilla.config.AnalysisConfig
 import com.github.tvinke.algorilla.graph.CallGraph
+import com.github.tvinke.algorilla.graph.LoopBoundAnnotator
 import com.github.tvinke.algorilla.graph.SymbolTable
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.rules.AnalysisContext
@@ -171,6 +172,14 @@ internal class HiddenNestedLoopRuleJavaTest {
             // Inner loop over mappers is O(n*k) with small constant k — skip
             findings.shouldBeEmpty()
         }
+
+        @Test
+        fun `should not flag when outer loop iterates enum values`() {
+            val findings = analyzeFixture("hidden-nested-loop/negative/loop-over-enum-calls-method-with-loop.java")
+
+            // Outer loop over Status.values() is constant-size — O(k*n) not O(n*m)
+            findings.shouldBeEmpty()
+        }
     }
 
     @Nested
@@ -247,13 +256,17 @@ internal class HiddenNestedLoopRuleJavaTest {
 
         // Build symbol table so CrossMethodResolver can resolve calls
         val symbolTable = SymbolTable()
+        val irTrees = mapOf(path to fileRoot)
         fileRoot.findDescendants<FunctionDecl>().forEach { fn ->
             symbolTable.register(fn)
         }
 
+        // Run LoopBoundAnnotator so isConstantBound flags are set
+        LoopBoundAnnotator().annotate(irTrees)
+
         val context =
             AnalysisContext(
-                irTrees = mapOf(path to fileRoot),
+                irTrees = irTrees,
                 symbolTable = symbolTable,
                 callGraph = CallGraph(),
                 config = AnalysisConfig(),
