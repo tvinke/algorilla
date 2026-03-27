@@ -1534,6 +1534,10 @@ non-io-targets:
   - handler
   - job
   - interceptor
+  # Netty — pipeline propagation is in-memory, not IO
+  - ctx
+  - channelhandlercontext
+  - channelpipeline
 
 io-method-candidates:
   - save
