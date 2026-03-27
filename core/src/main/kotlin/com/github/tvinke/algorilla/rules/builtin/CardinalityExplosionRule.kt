@@ -49,11 +49,58 @@ public class CardinalityExplosionRule : Rule {
             val mutationGroups = mutableMapOf<LoopPairKey, MutationGroup>()
             scanNode(fileRoot, emptyList(), mutationMethods, langOrJava, context.registry, mutationGroups)
             for ((_, group) in mutationGroups) {
-                findings.add(buildGroupedCartesianFinding(group, langOrJava, context.registry))
+                val classified = group.calls.map { it to classifyMutation(it, langOrJava, context.registry) }
+                if (classified.any { it.second == MutationType.COLLECTION_EXPANSION }) {
+                    findings.add(buildGroupedCartesianFinding(group, langOrJava, context.registry, classified))
+                }
+                // All mutations are scalar/string/keyed → suppress entirely
             }
             scanFlatMap(fileRoot, context.registry.streamEntryMethods(langOrJava), findings)
         }
         return findings
+    }
+
+    /** Classifies whether a mutation grows a collection (Cartesian risk) or merely accumulates/aggregates. */
+    internal enum class MutationType(
+        val label: String,
+    ) {
+        COLLECTION_EXPANSION("collection expansion"),
+        SCALAR_ACCUMULATION("scalar"),
+        STRING_BUILDING("string building"),
+        KEYED_AGGREGATION("keyed aggregation"),
+    }
+
+    @Suppress("ReturnCount") // Guard-clause classification by method name and receiver context
+    private fun classifyMutation(
+        call: FunctionCall,
+        language: Language,
+        registry: LanguageSemanticsRegistry,
+    ): MutationType {
+        val methodName = call.name
+        val target = call.qualifiedTarget?.lowercase() ?: ""
+
+        // Unambiguous scalar methods (subtract, multiply, incrementAndGet, etc.)
+        if (methodName in registry.scalarAccumulationMethods(language)) return MutationType.SCALAR_ACCUMULATION
+
+        // Keyed aggregation (put, merge, compute, etc.) — always Map operations
+        if (methodName in registry.keyedAggregationMethods(language)) return MutationType.KEYED_AGGREGATION
+
+        // String building (append, concat) — these methods are inherently string operations
+        // in Java/Kotlin/Groovy/JS. No collection type has an `append` or `concat` method.
+        if (methodName in registry.stringBuildingMethods(language)) return MutationType.STRING_BUILDING
+
+        // Ambiguous `add` — check if receiver looks like a scalar accumulator.
+        // List.add() grows a collection, but BigDecimal.add() accumulates a scalar.
+        // Use receiver name heuristics: scalar hint words, single-char variables,
+        // and absence of collection-like naming patterns.
+        if (methodName == "add") {
+            val scalarHints = registry.scalarReceiverHints(language)
+            if (scalarHints.any { target.contains(it) }) return MutationType.SCALAR_ACCUMULATION
+            // Single-char variable names (w, x, n) are almost always scalars, never collections
+            if (target.length == 1 && target[0].isLetter()) return MutationType.SCALAR_ACCUMULATION
+        }
+
+        return MutationType.COLLECTION_EXPANSION
     }
 
     // ── Pattern A: nested-loop Cartesian product ────────────────
@@ -219,12 +266,19 @@ public class CardinalityExplosionRule : Rule {
         group: MutationGroup,
         language: Language,
         registry: LanguageSemanticsRegistry,
+        classified: List<Pair<FunctionCall, MutationType>> = emptyList(),
     ): Finding {
         val outerLoop = group.outerLoop
         val innerLoop = group.innerLoop
         val outerVar = outerLoop.iteratedVariable ?: ""
         val innerVar = innerLoop.iteratedVariable ?: ""
-        val firstCall = group.calls.minBy { it.location.line }
+        val expansionCalls =
+            if (classified.isNotEmpty()) {
+                classified.filter { it.second == MutationType.COLLECTION_EXPANSION }.map { it.first }
+            } else {
+                group.calls
+            }
+        val firstCall = expansionCalls.minByOrNull { it.location.line } ?: group.calls.minBy { it.location.line }
         val isSameCollection = outerVar == innerVar
 
         val confidence =
@@ -237,7 +291,7 @@ public class CardinalityExplosionRule : Rule {
             if (isSameCollection) Severity.INFO else determineEffectiveSeverity(outerVar, innerVar, language, registry)
 
         val estimate = ComplexityModel.cartesianProduct(outerVar, innerVar)
-        val mutationLabel = buildMutationLabel(group.calls)
+        val mutationLabel = buildMutationLabel(expansionCalls)
         val evidence =
             listOf(
                 Evidence(
@@ -264,19 +318,33 @@ public class CardinalityExplosionRule : Rule {
                         ),
                 ),
             )
-        val message =
-            if (group.calls.size == 1) {
+
+        val nonExpandingNames =
+            if (classified.isNotEmpty()) {
+                classified
+                    .filter { it.second != MutationType.COLLECTION_EXPANSION }
+                    .map { "${it.first.name} (${it.second.label})" }
+                    .distinct()
+            } else {
+                emptyList()
+            }
+
+        val baseMessage =
+            if (expansionCalls.size == 1) {
                 "Cartesian product: ${firstCall.name}() in nested loops " +
                     "over $outerVar \u00d7 $innerVar produces O(n \u00d7 m) results"
             } else {
-                val distinctNames =
-                    group.calls
-                        .map { it.name }
-                        .distinct()
-                        .sorted()
-                "Cartesian product: ${group.calls.size} mutations (${distinctNames.joinToString(", ")}) " +
+                val distinctNames = expansionCalls.map { it.name }.distinct().sorted()
+                "Cartesian product: ${expansionCalls.size} mutations (${distinctNames.joinToString(", ")}) " +
                     "in nested loops over $outerVar \u00d7 $innerVar produces O(n \u00d7 m) results"
             }
+        val message =
+            if (nonExpandingNames.isNotEmpty()) {
+                "$baseMessage (${nonExpandingNames.joinToString(", ")} excluded — not collection growth)"
+            } else {
+                baseMessage
+            }
+
         return Finding(
             ruleId = id,
             ruleName = name,

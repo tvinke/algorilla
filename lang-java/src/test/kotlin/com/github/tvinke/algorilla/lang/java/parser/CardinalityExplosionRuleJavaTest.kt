@@ -53,6 +53,15 @@ internal class CardinalityExplosionRuleJavaTest {
             findings.first().ruleId shouldBe "cardinality-explosion"
             findings.first().message shouldContain "flatMap"
         }
+
+        @Test
+        fun `should flag mixed mutations when at least one is collection expansion`() {
+            val findings = analyzeFixture("cardinality-explosion/positive/mixed-mutation-types.java")
+
+            findings shouldHaveSize 1
+            findings.first().message shouldContain "Cartesian product"
+            findings.first().message shouldContain "add"
+        }
     }
 
     @Nested
@@ -103,6 +112,27 @@ internal class CardinalityExplosionRuleJavaTest {
 
             val warnings = findings.filter { it.severity == Severity.WARNING }
             warnings.shouldBeEmpty()
+        }
+
+        @Test
+        fun `should not flag BigDecimal add in nested loop`() {
+            val findings = analyzeFixture("cardinality-explosion/negative/scalar-accumulation.java")
+
+            findings.shouldBeEmpty()
+        }
+
+        @Test
+        fun `should not flag StringBuilder append in nested loop`() {
+            val findings = analyzeFixture("cardinality-explosion/negative/string-building.java")
+
+            findings.shouldBeEmpty()
+        }
+
+        @Test
+        fun `should not flag Map put in nested loop`() {
+            val findings = analyzeFixture("cardinality-explosion/negative/keyed-aggregation.java")
+
+            findings.shouldBeEmpty()
         }
     }
 

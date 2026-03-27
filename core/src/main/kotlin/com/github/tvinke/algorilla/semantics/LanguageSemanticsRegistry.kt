@@ -471,6 +471,14 @@ public class LanguageSemanticsRegistry private constructor(
 
     public fun nonGrowthMutations(language: Language): Set<String> = extraSection(language, "non-growth-mutations")
 
+    public fun scalarAccumulationMethods(language: Language): Set<String> = extraSection(language, "scalar-accumulation-methods")
+
+    public fun stringBuildingMethods(language: Language): Set<String> = extraSection(language, "string-building-methods")
+
+    public fun keyedAggregationMethods(language: Language): Set<String> = extraSection(language, "keyed-aggregation-methods")
+
+    public fun scalarReceiverHints(language: Language): Set<String> = extraSection(language, "scalar-receiver-hints")
+
     public fun smallCollectionHints(language: Language): Set<String> = extraSection(language, "small-collection-hints")
 
     public fun mapValueAccessors(language: Language): Set<String> = extraSection(language, "map-value-accessors")

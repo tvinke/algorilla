@@ -1295,6 +1295,60 @@ bulk-removal-methods:
 
 # ── Cardinality explosion rule ──
 
+# Methods that are unambiguously scalar accumulation — never produce collection growth.
+# Used to suppress cardinality-explosion false positives on BigDecimal.add(), counter++, etc.
+scalar-accumulation-methods:
+  - subtract
+  - multiply
+  - divide
+  - remainder
+  - negate
+  - pow
+  - incrementAndGet
+  - decrementAndGet
+  - getAndIncrement
+  - getAndDecrement
+  - addAndGet
+  - getAndAdd
+  - getAndSet
+  - compareAndSet
+  - accumulateAndGet
+  - getAndAccumulate
+
+# Receiver type/variable name hints that indicate `add()` is scalar accumulation,
+# not collection growth. Matched case-insensitively against qualifiedTarget.
+scalar-receiver-hints:
+  - decimal
+  - biginteger
+  - total
+  - sum
+  - count
+  - amount
+  - balance
+  - price
+  - cost
+  - weight
+  - quantity
+  - accumulator
+  - counter
+  - atomic
+
+# Methods that build a string — linear output, not multiplicative.
+# `append` and `write` are only classified as string-building when the receiver
+# matches a string-related target (see string-types, non-io-targets).
+string-building-methods:
+  - append
+  - concat
+
+# Methods that aggregate by key — output bounded by distinct keys, not by loop product.
+keyed-aggregation-methods:
+  - put
+  - putIfAbsent
+  - merge
+  - compute
+  - computeIfAbsent
+  - computeIfPresent
+
 non-growth-mutations:
   - set
   - remove

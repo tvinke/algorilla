@@ -1007,6 +1007,53 @@ bulk-removal-methods:
 
 # ── Cardinality explosion rule ──
 
+scalar-accumulation-methods:
+  - subtract
+  - multiply
+  - divide
+  - remainder
+  - negate
+  - pow
+  - incrementAndGet
+  - decrementAndGet
+  - getAndIncrement
+  - getAndDecrement
+  - addAndGet
+  - getAndAdd
+  - getAndSet
+  - compareAndSet
+  - accumulateAndGet
+  - getAndAccumulate
+
+scalar-receiver-hints:
+  - decimal
+  - biginteger
+  - total
+  - sum
+  - count
+  - amount
+  - balance
+  - price
+  - cost
+  - weight
+  - quantity
+  - accumulator
+  - counter
+  - atomic
+
+string-building-methods:
+  - append
+  - concat
+  - leftShift
+
+keyed-aggregation-methods:
+  - put
+  - putIfAbsent
+  - merge
+  - compute
+  - computeIfAbsent
+  - computeIfPresent
+
 non-growth-mutations:
   - set
   - remove

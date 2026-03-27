@@ -1254,6 +1254,30 @@ bulk-removal-methods:
 
 # ── Cardinality explosion rule ──
 
+scalar-accumulation-methods:
+  - subtract
+  - multiply
+  - divide
+
+scalar-receiver-hints:
+  - total
+  - sum
+  - count
+  - amount
+  - balance
+  - price
+  - cost
+  - weight
+  - quantity
+  - accumulator
+  - counter
+
+string-building-methods:
+  - concat
+
+keyed-aggregation-methods:
+  - set       # Map.set(key, value)
+
 non-growth-mutations:
   - splice
   - pop
