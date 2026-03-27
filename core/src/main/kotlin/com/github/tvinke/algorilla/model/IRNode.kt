@@ -33,6 +33,9 @@ public data class LoopNode(
 ) : IRNode {
     /** Populated by LoopBoundAnnotator — true when the loop iterates a constant-size collection (enum, config list, literal). */
     var isConstantBound: Boolean = false
+
+    /** Populated by LoopBoundAnnotator — true when every code path through the loop body exits (throw/break/return). */
+    var isSingleIteration: Boolean = false
 }
 
 /** The kind of lookup operation on a collection. */
@@ -191,6 +194,25 @@ public data class BranchNode(
 ) : IRNode {
     override val children: List<IRNode> get() = branches.flatten()
 }
+
+/** The kind of control flow exit. */
+public enum class ExitKind {
+    THROW,
+    BREAK,
+    RETURN,
+    CONTINUE,
+}
+
+/**
+ * An abrupt control flow exit: `throw`, `break`, `return`, or `continue`.
+ * Used by [com.github.tvinke.algorilla.graph.LoopBoundAnnotator] to detect loops
+ * that exit after at most one iteration.
+ */
+public data class ControlFlowExit(
+    val kind: ExitKind,
+    override val location: SourceLocation,
+    override val children: List<IRNode> = emptyList(),
+) : IRNode
 
 /**
  * A generic statement or expression node that does not map to a specific IR category.

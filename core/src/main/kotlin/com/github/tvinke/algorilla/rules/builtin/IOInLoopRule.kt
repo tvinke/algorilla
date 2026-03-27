@@ -20,6 +20,7 @@ import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.ParameterFlowQuery
 import com.github.tvinke.algorilla.util.findDescendants
+import com.github.tvinke.algorilla.util.isFollowedByExit
 
 /**
  * Detects IO operations (HTTP calls, database queries, file operations) inside loops.
@@ -100,7 +101,7 @@ public class IOInLoopRule : Rule {
         }
     }
 
-    @Suppress("LongParameterList", "LongMethod")
+    @Suppress("LongParameterList", "LongMethod", "CyclomaticComplexMethod")
     private fun checkNodeInLoop(
         node: IRNode,
         fn: FunctionDecl?,
@@ -111,6 +112,11 @@ public class IOInLoopRule : Rule {
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
+        // Skip if the innermost enclosing loop exits after a single iteration (throw/break/return on every path)
+        if (loopStack.last().isSingleIteration) return
+        // Skip if this specific call is followed by throw/break/return in its block (log-then-abort pattern)
+        if (node is FunctionCall && isFollowedByExit(node, loopStack.last().children)) return
+
         if (node is FunctionCall) {
             val isDefiniteIO = node.name in ioMethods && !isInMemoryTarget(node, language, context.registry)
             val isCandidateIO =

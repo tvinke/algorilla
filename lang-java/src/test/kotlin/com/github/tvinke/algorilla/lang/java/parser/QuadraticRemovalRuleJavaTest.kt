@@ -53,6 +53,13 @@ internal class QuadraticRemovalRuleJavaTest {
 
             findings.shouldBeEmpty()
         }
+
+        @Test
+        fun `should not flag remove when followed by break`() {
+            val findings = analyzeFixture("quadratic-removal/negative/break-after-remove.java")
+
+            findings.shouldBeEmpty()
+        }
     }
 
     @Nested

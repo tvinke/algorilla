@@ -4,6 +4,8 @@ import com.github.tvinke.algorilla.engine.LanguageParser
 import com.github.tvinke.algorilla.engine.ParserRegistry
 import com.github.tvinke.algorilla.model.BranchNode
 import com.github.tvinke.algorilla.model.ClassNode
+import com.github.tvinke.algorilla.model.ControlFlowExit
+import com.github.tvinke.algorilla.model.ExitKind
 import com.github.tvinke.algorilla.model.FileRoot
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
@@ -197,6 +199,7 @@ internal class JavaIRVisitor(
         )
     }
 
+    @Suppress("ReturnCount") // One guard clause per statement type — clearer than a when/map
     override fun visitStatement(ctx: JavaParser.StatementContext): List<IRNode> {
         if (ctx.FOR() != null) {
             return handleForStatement(ctx)
@@ -209,6 +212,18 @@ internal class JavaIRVisitor(
         }
         if (ctx.TRY() != null) {
             return handleTryStatement(ctx)
+        }
+        if (ctx.THROW() != null) {
+            return visitChildren(ctx) + listOf(ControlFlowExit(ExitKind.THROW, locationOf(ctx)))
+        }
+        if (ctx.BREAK() != null) {
+            return listOf(ControlFlowExit(ExitKind.BREAK, locationOf(ctx)))
+        }
+        if (ctx.RETURN() != null) {
+            return visitChildren(ctx) + listOf(ControlFlowExit(ExitKind.RETURN, locationOf(ctx)))
+        }
+        if (ctx.CONTINUE() != null) {
+            return listOf(ControlFlowExit(ExitKind.CONTINUE, locationOf(ctx)))
         }
         return visitChildren(ctx)
     }

@@ -89,6 +89,13 @@ internal class IOInLoopRuleJavaTest {
         }
 
         @Test
+        fun `should not flag IO call when loop body always throws`() {
+            val findings = analyzeFixture("io-in-loop/negative/throw-after-io.java")
+
+            findings.shouldBeEmpty()
+        }
+
+        @Test
         fun `should not flag stream copy idiom with read and write`() {
             val findings = analyzeFixture("io-in-loop/regression/stream-copy-idiom-not-flagged.java")
 

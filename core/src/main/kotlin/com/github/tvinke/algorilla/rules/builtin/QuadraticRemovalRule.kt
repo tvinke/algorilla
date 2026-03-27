@@ -16,6 +16,7 @@ import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.util.hasO1Type
+import com.github.tvinke.algorilla.util.isFollowedByExit
 
 /**
  * Detects element-by-element removal from List/Array inside loops. Each remove() on an
@@ -61,7 +62,9 @@ public class QuadraticRemovalRule : Rule {
         }
 
         if (loopStack.isNotEmpty() && node is FunctionCall && isRemovalCall(node, fn, removalMethods, language, context)) {
-            findings.add(buildFinding(node, loopStack))
+            if (!loopStack.last().isSingleIteration && !isFollowedByExit(node, loopStack.last().children)) {
+                findings.add(buildFinding(node, loopStack))
+            }
         }
 
         for (child in node.children) {

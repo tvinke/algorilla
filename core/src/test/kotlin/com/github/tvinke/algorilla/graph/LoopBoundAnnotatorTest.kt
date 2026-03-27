@@ -1,6 +1,11 @@
 package com.github.tvinke.algorilla.graph
 
+import com.github.tvinke.algorilla.model.BranchNode
+import com.github.tvinke.algorilla.model.ControlFlowExit
+import com.github.tvinke.algorilla.model.ExitKind
 import com.github.tvinke.algorilla.model.FileRoot
+import com.github.tvinke.algorilla.model.FunctionCall
+import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LoopKind
 import com.github.tvinke.algorilla.model.LoopNode
@@ -156,6 +161,100 @@ internal class LoopBoundAnnotatorTest {
             annotator.annotate(mapOf("Test.java" to root))
 
             l.isConstantBound shouldBe false
+        }
+    }
+
+    @Nested
+    inner class SingleIteration {
+        private fun call(name: String): FunctionCall = FunctionCall(name, null, emptyList(), loc, emptyList())
+
+        private fun throwExit(): ControlFlowExit = ControlFlowExit(ExitKind.THROW, loc)
+
+        private fun breakExit(): ControlFlowExit = ControlFlowExit(ExitKind.BREAK, loc)
+
+        private fun returnExit(): ControlFlowExit = ControlFlowExit(ExitKind.RETURN, loc)
+
+        private fun loopWith(vararg children: IRNode) = LoopNode(LoopKind.FOR_EACH, "items", loc, children.toList())
+
+        @Test
+        fun `should mark loop that ends with throw`() {
+            val l = loopWith(call("save"), throwExit())
+            val root = fileRoot(Language.JAVA, l)
+            annotator.annotate(mapOf("Test.java" to root))
+
+            l.isSingleIteration shouldBe true
+        }
+
+        @Test
+        fun `should mark loop that ends with break`() {
+            val l = loopWith(call("remove"), breakExit())
+            val root = fileRoot(Language.JAVA, l)
+            annotator.annotate(mapOf("Test.java" to root))
+
+            l.isSingleIteration shouldBe true
+        }
+
+        @Test
+        fun `should mark loop that ends with return`() {
+            val l = loopWith(call("process"), returnExit())
+            val root = fileRoot(Language.JAVA, l)
+            annotator.annotate(mapOf("Test.java" to root))
+
+            l.isSingleIteration shouldBe true
+        }
+
+        @Test
+        fun `should mark loop with if-else where both branches exit`() {
+            val branch =
+                BranchNode(
+                    branches =
+                        listOf(
+                            listOf(call("save"), throwExit()),
+                            listOf(call("log"), returnExit()),
+                        ),
+                    location = loc,
+                )
+            val l = loopWith(call("validate"), branch)
+            val root = fileRoot(Language.JAVA, l)
+            annotator.annotate(mapOf("Test.java" to root))
+
+            l.isSingleIteration shouldBe true
+        }
+
+        @Test
+        fun `should not mark loop where only one branch exits`() {
+            val branch =
+                BranchNode(
+                    branches =
+                        listOf(
+                            listOf(call("save"), throwExit()),
+                            listOf(call("log")), // no exit — loop continues
+                        ),
+                    location = loc,
+                )
+            val l = loopWith(branch)
+            val root = fileRoot(Language.JAVA, l)
+            annotator.annotate(mapOf("Test.java" to root))
+
+            l.isSingleIteration shouldBe false
+        }
+
+        @Test
+        fun `should not mark loop without control flow exit`() {
+            val l = loopWith(call("process"), call("save"))
+            val root = fileRoot(Language.JAVA, l)
+            annotator.annotate(mapOf("Test.java" to root))
+
+            l.isSingleIteration shouldBe false
+        }
+
+        @Test
+        fun `should not mark empty loop`() {
+            val l = loopWith()
+            val root = fileRoot(Language.JAVA, l)
+            annotator.annotate(mapOf("Test.java" to root))
+
+            l.isSingleIteration shouldBe false
         }
     }
 }

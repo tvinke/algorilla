@@ -156,6 +156,8 @@ public class CardinalityExplosionRule : Rule {
 
         // Constant-bound outer loop (enum, config list) → O(k*m) not O(n*m)
         if (outerLoop.isConstantBound) return
+        // Inner loop exits after one iteration (break/throw/return) → output bounded by outer size
+        if (innerLoop.isSingleIteration) return
 
         if (outerVar != innerVar) {
             if (isPartitionedIteration(outerVar, innerVar, language, registry)) return

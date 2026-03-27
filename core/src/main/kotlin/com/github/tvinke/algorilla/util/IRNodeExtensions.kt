@@ -3,6 +3,8 @@ package com.github.tvinke.algorilla.util
 import com.github.tvinke.algorilla.model.BranchNode
 import com.github.tvinke.algorilla.model.ClassNode
 import com.github.tvinke.algorilla.model.CollectionAccess
+import com.github.tvinke.algorilla.model.ControlFlowExit
+import com.github.tvinke.algorilla.model.ExitKind
 import com.github.tvinke.algorilla.model.FileRoot
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
@@ -258,8 +260,43 @@ public fun IRNode.withChildren(newChildren: List<IRNode>): IRNode =
         is GenericNode -> copy(children = newChildren)
         is ClassNode -> copy(children = newChildren)
         is TypeCheck -> this // leaf node, no children to replace
+        is ControlFlowExit -> this // leaf node, no children to replace
         is FileRoot -> copy(children = newChildren)
     }
+
+private val LOOP_EXITS = setOf(ExitKind.THROW, ExitKind.BREAK, ExitKind.RETURN)
+
+/**
+ * Returns true if the given [FunctionCall] is followed by a [ControlFlowExit] (throw/break/return)
+ * within its parent node's children list. This detects "log-then-abort" and "find-first-then-break"
+ * patterns where the loop body exits immediately after the call.
+ *
+ * Searches the call's enclosing block (found by scanning the given IR tree for the call's location)
+ * and checks if any sibling after the call is a loop-terminating exit.
+ */
+public fun isFollowedByExit(
+    call: FunctionCall,
+    loopBody: List<IRNode>,
+): Boolean = searchForExitAfterCall(call, loopBody)
+
+@Suppress("NestedBlockDepth") // Recursive tree search with branch traversal
+private fun searchForExitAfterCall(
+    call: FunctionCall,
+    nodes: List<IRNode>,
+): Boolean {
+    var foundCall = false
+    for (node in nodes) {
+        if (foundCall && node is ControlFlowExit && node.kind in LOOP_EXITS) return true
+        if (node is FunctionCall && node.location == call.location) foundCall = true
+        // Recurse into branches — the call might be inside an if-block
+        if (node is BranchNode) {
+            for (branch in node.branches) {
+                if (searchForExitAfterCall(call, branch)) return true
+            }
+        }
+    }
+    return false
+}
 
 private val registryInstance: LanguageSemanticsRegistry by lazy {
     LanguageSemanticsRegistry.DEFAULT
