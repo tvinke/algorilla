@@ -1538,6 +1538,17 @@ non-io-targets:
   - ctx
   - channelhandlercontext
   - channelpipeline
+  # In-memory map/collection variables — put/get/remove on these are not IO
+  # even when the variable name contains "service" or "repository" substrings
+  - hashmap
+  - linkedhashmap
+  - treemap
+  - concurrenthashmap
+  - concurrentmap
+  - hashtable
+  - enummap
+  # Common local map variable patterns that accidentally match *service/*repository
+  - prevper
 
 io-method-candidates:
   - save
