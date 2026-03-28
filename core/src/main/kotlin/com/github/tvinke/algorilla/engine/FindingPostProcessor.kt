@@ -1,12 +1,9 @@
 package com.github.tvinke.algorilla.engine
 
 import com.github.tvinke.algorilla.model.Confidence
-import com.github.tvinke.algorilla.model.FileRoot
-import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
-import com.github.tvinke.algorilla.util.findDescendants
 
 /**
  * Demotes findings in vendored/generated code to LOW confidence.
@@ -40,36 +37,6 @@ private val VENDORED_PATH_PATTERNS =
     )
 
 private fun isVendoredCode(filePath: String): Boolean = VENDORED_PATH_PATTERNS.any { filePath.contains(it) }
-
-/**
- * Demotes findings inside cold-path methods (startup, initialization, configuration)
- * to LOW confidence. These findings are technically correct but rarely actionable.
- */
-internal fun demoteColdPathFindings(
-    findings: List<Finding>,
-    irTrees: Map<String, FileRoot>,
-): List<Finding> {
-    // Build an index of cold-path line ranges per file for efficient lookup
-    val coldRanges = mutableMapOf<String, MutableList<IntRange>>()
-    for ((_, fileRoot) in irTrees) {
-        for (fn in fileRoot.findDescendants<FunctionDecl>()) {
-            if (fn.isColdPath) {
-                val start = fn.location.line
-                val end = fn.children.maxOfOrNull { it.location.line } ?: start
-                coldRanges.getOrPut(fileRoot.filePath) { mutableListOf() }.add(start..end)
-            }
-        }
-    }
-    if (coldRanges.isEmpty()) return findings
-    return findings.map { finding ->
-        val ranges = coldRanges[finding.location.file]
-        if (ranges != null && ranges.any { finding.location.line in it }) {
-            finding.copy(confidence = Confidence.LOW)
-        } else {
-            finding
-        }
-    }
-}
 
 /**
  * Adjusts confidence per finding based on the rule's declared [Rule.defaultConfidence],

@@ -929,26 +929,6 @@ constant-bound-keywords:
   - pipes
   - chains
 
-cold-path-method-keywords:
-  - init
-  - setup
-  - configure
-  - bootstrap
-  - migrate
-  - seed
-  - populate
-  - loaddefault
-
-cold-path-class-patterns:
-  - configuration
-  - initializer
-  - bootstrap
-  - migration
-  - startup
-  - loader
-  - scanner
-  - factory
-
 # ── Static utility classes ──
 
 static-utility-classes:
