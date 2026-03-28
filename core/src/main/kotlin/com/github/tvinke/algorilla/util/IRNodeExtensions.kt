@@ -190,8 +190,11 @@ private fun LookupCall.hasO1TargetName(
     language: Language? = null,
 ): Boolean {
     val target = targetVariable?.lowercase() ?: return false
-    val suffixes = registry.nonListTargetsSuffixes(language ?: Language.JAVA)
-    return suffixes.any { target.endsWith(it) || target == it }
+    val lang = language ?: Language.JAVA
+    val suffixes = registry.nonListTargetsSuffixes(lang)
+    if (suffixes.any { target.endsWith(it) || target == it }) return true
+    val contains = registry.nonListTargetsContains(lang)
+    return contains.any { target.contains(it) }
 }
 
 /**

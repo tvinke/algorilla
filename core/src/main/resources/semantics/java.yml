@@ -1286,6 +1286,8 @@ non-list-targets-contains:
   - store
   - repository
   - dao
+  # Method-call targets returning Set — getSupportedXxx() typically returns a Set of capabilities
+  - getsupported
 
 bulk-removal-methods:
   - clear
