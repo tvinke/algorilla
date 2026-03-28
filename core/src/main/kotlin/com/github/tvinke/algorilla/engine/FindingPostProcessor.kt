@@ -1,9 +1,13 @@
 package com.github.tvinke.algorilla.engine
 
 import com.github.tvinke.algorilla.model.Confidence
+import com.github.tvinke.algorilla.model.FileRoot
+import com.github.tvinke.algorilla.model.FunctionDecl
+import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
+import com.github.tvinke.algorilla.util.findDescendants
 
 /**
  * Demotes findings in vendored/generated code to LOW confidence.
@@ -37,6 +41,46 @@ private val VENDORED_PATH_PATTERNS =
     )
 
 private fun isVendoredCode(filePath: String): Boolean = VENDORED_PATH_PATTERNS.any { filePath.contains(it) }
+
+/**
+ * Demotes findings inside constructors to LOW confidence.
+ * Constructors run once per object creation — findings there are technically correct
+ * but almost never actionable (catalog init, entity hydration, config building).
+ */
+internal fun demoteConstructorFindings(
+    findings: List<Finding>,
+    irTrees: Map<String, FileRoot>,
+): List<Finding> {
+    val constructorRanges = mutableMapOf<String, MutableList<IntRange>>()
+    for ((_, fileRoot) in irTrees) {
+        for (fn in fileRoot.findDescendants<FunctionDecl>()) {
+            if (fn.isConstructor) {
+                val start = fn.location.line
+                val end = maxLineOf(fn)
+                constructorRanges.getOrPut(fileRoot.filePath) { mutableListOf() }.add(start..end)
+            }
+        }
+    }
+    if (constructorRanges.isEmpty()) return findings
+    return findings.map { finding ->
+        val ranges = constructorRanges[finding.location.file]
+        if (ranges != null && ranges.any { finding.location.line in it }) {
+            finding.copy(confidence = Confidence.LOW)
+        } else {
+            finding
+        }
+    }
+}
+
+/** Recursively finds the maximum source line in an IR subtree. */
+private fun maxLineOf(node: IRNode): Int {
+    var max = node.location.line
+    for (child in node.children) {
+        val childMax = maxLineOf(child)
+        if (childMax > max) max = childMax
+    }
+    return max
+}
 
 /**
  * Adjusts confidence per finding based on the rule's declared [Rule.defaultConfidence],

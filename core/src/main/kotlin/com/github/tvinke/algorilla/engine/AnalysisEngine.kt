@@ -78,9 +78,10 @@ public class AnalysisEngine(
         val rawFindings = evaluateRules(irTrees, symbolTable, callGraph, typeEnvironments, finalContexts)
         val deduplicated = applySubsumption(rawFindings, rules)
         val vendoredDemoted = demoteVendoredCode(deduplicated)
+        val constructorDemoted = demoteConstructorFindings(vendoredDemoted, irTrees)
         val fileLanguages = irTrees.mapValues { (_, root) -> root.language }
         val ruleIndex = rules.associateBy { it.id }
-        val confidenceAdjusted = adjustConfidence(vendoredDemoted, fileLanguages, ruleIndex)
+        val confidenceAdjusted = adjustConfidence(constructorDemoted, fileLanguages, ruleIndex)
         val suppressed = SuppressionFilter().filter(confidenceAdjusted, irTrees, aliasIndex)
         val freshFindings = renderCodeSuggestions(suppressed, finalContexts, fileLanguages)
 
