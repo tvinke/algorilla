@@ -1213,6 +1213,45 @@ constant-bound-keywords:
   - pipes
   - chains
 
+# ── Cold-path detection (ColdPathAnnotator) ──
+
+# Method name keywords that indicate startup/initialization/migration code.
+cold-path-method-keywords:
+  - init
+  - setup
+  - configure
+  - bootstrap
+  - migrate
+  - seed
+  - populate
+  - loaddefault
+  - createschema
+  - initializeschema
+  - initializedb
+  - registerprovider
+  - registerbean
+  - ondeploy
+  - onundeploy
+  - afterpropertiesset
+  - postconstruct
+  - startserver
+  - stopserver
+
+# Declaring class name patterns that indicate cold-path context.
+cold-path-class-patterns:
+  - configuration
+  - initializer
+  - bootstrap
+  - migration
+  - schema
+  - startup
+  - installer
+  - deployer
+  - loader
+  - scanner
+  - registry
+  - factory
+
 # ── Static utility classes (not collections) ──
 
 static-utility-classes:

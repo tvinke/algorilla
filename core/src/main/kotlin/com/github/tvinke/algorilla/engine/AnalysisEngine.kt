@@ -7,6 +7,7 @@ import com.github.tvinke.algorilla.cache.CachedFinding
 import com.github.tvinke.algorilla.config.AnalysisConfig
 import com.github.tvinke.algorilla.graph.CallGraph
 import com.github.tvinke.algorilla.graph.CallGraphBuilder
+import com.github.tvinke.algorilla.graph.ColdPathAnnotator
 import com.github.tvinke.algorilla.graph.ComplexityAnnotator
 import com.github.tvinke.algorilla.graph.LoopBoundAnnotator
 import com.github.tvinke.algorilla.graph.ParameterFlowAnnotator
@@ -72,15 +73,17 @@ public class AnalysisEngine(
         val callGraph = buildCallGraph(irTrees, symbolTable)
         val finalContexts = enrichFileContextsFromCallGraph(enrichedContexts, callGraph, irTrees)
         annotateLoopBounds(irTrees)
+        annotateColdPaths(irTrees)
         annotateRecursion(irTrees)
         annotateParameterFlows(irTrees, symbolTable)
         annotateComplexity(symbolTable, callGraph)
         val rawFindings = evaluateRules(irTrees, symbolTable, callGraph, typeEnvironments, finalContexts)
         val deduplicated = applySubsumption(rawFindings, rules)
         val vendoredDemoted = demoteVendoredCode(deduplicated)
+        val coldPathDemoted = demoteColdPathFindings(vendoredDemoted, irTrees)
         val fileLanguages = irTrees.mapValues { (_, root) -> root.language }
         val ruleIndex = rules.associateBy { it.id }
-        val confidenceAdjusted = adjustConfidence(vendoredDemoted, fileLanguages, ruleIndex)
+        val confidenceAdjusted = adjustConfidence(coldPathDemoted, fileLanguages, ruleIndex)
         val suppressed = SuppressionFilter().filter(confidenceAdjusted, irTrees, aliasIndex)
         val freshFindings = renderCodeSuggestions(suppressed, finalContexts, fileLanguages)
 
@@ -207,6 +210,10 @@ public class AnalysisEngine(
 
     private fun annotateLoopBounds(irTrees: Map<String, FileRoot>) {
         LoopBoundAnnotator(registry).annotate(irTrees)
+    }
+
+    private fun annotateColdPaths(irTrees: Map<String, FileRoot>) {
+        ColdPathAnnotator(registry).annotate(irTrees)
     }
 
     private fun annotateParameterFlows(

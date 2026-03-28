@@ -150,6 +150,8 @@ public data class FunctionDecl(
     var executionContext: ExecutionContext = ExecutionContext.SINGLE,
     var parameterFlows: List<ParameterFlow> = emptyList(),
     var isRecursive: Boolean = false,
+    /** Populated by ColdPathAnnotator — true for startup, initialization, configuration, and migration methods. */
+    var isColdPath: Boolean = false,
     override val location: SourceLocation,
     override val children: List<IRNode>,
 ) : IRNode
