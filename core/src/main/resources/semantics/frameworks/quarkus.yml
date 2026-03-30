@@ -72,8 +72,7 @@ io-methods:
   - streamAll
   # Panache repository
   - persistAndFlush
-  # RESTEasy client — HTTP calls
-  - invoke
+  # RESTEasy client — HTTP calls (rx/submit are unambiguous HTTP triggers)
   - rx
   - submit
   # SmallRye Reactive Messaging
@@ -86,6 +85,8 @@ io-method-candidates:
   - count
   - delete
   - flush
+  # RESTEasy client — invoke() is gated by io-target-patterns to avoid flagging Method.invoke()
+  - invoke
 
 io-target-patterns:
   - "*repository"

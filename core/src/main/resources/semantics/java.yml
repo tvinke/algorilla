@@ -1334,6 +1334,17 @@ scalar-receiver-hints:
   - accumulator
   - counter
   - atomic
+  # Financial/accounting variable names (typical BigDecimal accumulators in ERP code)
+  - commission
+  - fee
+  - tax
+  - rate
+  - discount
+  - interest
+  - revenue
+  - profit
+  - subtotal
+  - rebate
 
 # Methods that build a string — linear output, not multiplicative.
 # `append` and `write` are only classified as string-building when the receiver

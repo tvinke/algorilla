@@ -134,6 +134,13 @@ internal class CardinalityExplosionRuleJavaTest {
 
             findings.shouldBeEmpty()
         }
+
+        @Test
+        fun `should not flag BigDecimal commission accumulation in nested loop`() {
+            val findings = analyzeFixture("cardinality-explosion/negative/bigdecimal-accumulation.java")
+
+            findings.shouldBeEmpty()
+        }
     }
 
     @Nested
