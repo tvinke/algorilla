@@ -337,7 +337,39 @@ private fun isMonadicTarget(
     registry: LanguageSemanticsRegistry,
 ): Boolean {
     val target = call.qualifiedTarget ?: return false
-    return registry.isMonadicTarget(language, target)
+    return registry.isMonadicTarget(language, target) ||
+        isReactiveChainTarget(target, language, registry)
+}
+
+/**
+ * Returns true if [target] is a method-call expression whose receiver is an IO target
+ * and whose method name is an IO candidate — indicating a reactive chain (e.g. client.fetch(…).flatMap(…))
+ * rather than iteration over a collection.
+ */
+private fun isReactiveChainTarget(
+    target: String,
+    language: Language,
+    registry: LanguageSemanticsRegistry,
+): Boolean {
+    if (!target.contains('(')) return false
+    val dotIdx = target.indexOf('.')
+    if (dotIdx < 0) return false
+    val receiver = target.substring(0, dotIdx).lowercase()
+    val afterDot = target.substring(dotIdx + 1)
+    val parenIdx = afterDot.indexOf('(')
+    if (parenIdx < 0) return false
+    val methodName = afterDot.substring(0, parenIdx)
+    val ioMethods = registry.ioMethods(language)
+    val ioCandidates = registry.ioMethodCandidates(language)
+    val ioPatterns = registry.ioTargetPatterns(language)
+    return (methodName in ioMethods || methodName in ioCandidates) &&
+        ioPatterns.any { pattern ->
+            if (pattern.startsWith("*")) {
+                receiver.contains(pattern.removePrefix("*"))
+            } else {
+                receiver.endsWith(pattern) || receiver == pattern
+            }
+        }
 }
 
 /** Returns true if the call target is a known in-memory buffer (not real IO). */

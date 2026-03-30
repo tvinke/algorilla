@@ -122,6 +122,20 @@ internal class IOInLoopRuleJavaTest {
 
             findings.shouldBeEmpty()
         }
+
+        @Test
+        fun `should not flag reactive chain flatMap on IO method result`() {
+            val findings = analyzeFixture("io-in-loop/negative/reactive-chain-flatmap.java")
+
+            findings.shouldBeEmpty()
+        }
+
+        @Test
+        fun `should not flag Java reflection Method invoke in loop`() {
+            val findings = analyzeFixture("io-in-loop/negative/reflection-invoke.java")
+
+            findings.shouldBeEmpty()
+        }
     }
 
     @Nested
