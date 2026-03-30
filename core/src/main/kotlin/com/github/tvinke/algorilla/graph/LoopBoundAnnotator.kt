@@ -4,10 +4,12 @@ import com.github.tvinke.algorilla.model.BranchNode
 import com.github.tvinke.algorilla.model.ControlFlowExit
 import com.github.tvinke.algorilla.model.ExitKind
 import com.github.tvinke.algorilla.model.FileRoot
+import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LoopKind
 import com.github.tvinke.algorilla.model.LoopNode
+import com.github.tvinke.algorilla.model.VariableDecl
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.findDescendants
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -30,8 +32,9 @@ public class LoopBoundAnnotator(
         var singleIteration = 0
         for ((_, fileRoot) in irTrees) {
             val language = fileRoot.language
+            val allVarDecls = fileRoot.findDescendants<VariableDecl>()
             for (loop in fileRoot.findDescendants<LoopNode>()) {
-                if (isConstantBound(loop, language)) {
+                if (isConstantBound(loop, language, allVarDecls)) {
                     loop.isConstantBound = true
                     constantBound++
                 }
@@ -47,10 +50,12 @@ public class LoopBoundAnnotator(
     internal fun isConstantBound(
         loop: LoopNode,
         language: Language,
+        varDecls: List<VariableDecl> = emptyList(),
     ): Boolean =
         isEnumIteration(loop, language) ||
             isConstantBoundKeyword(loop, language) ||
-            isLiteralNumericBound(loop)
+            isLiteralNumericBound(loop) ||
+            isSmallFactoryCollection(loop, varDecls)
 
     /**
      * Enum `.values()` / Kotlin `.entries` / `EnumSet.allOf(...)` / `EnumSet.of(...)`.
@@ -110,6 +115,36 @@ public class LoopBoundAnnotator(
     }
 
     /**
+     * Detects loops over small literal collections created by factory methods:
+     * `Arrays.asList(a, b)`, `List.of(a, b, c)`, `Collections.singletonList(x)`, etc.
+     *
+     * Works for both direct-in-for-each (`for (var x : List.of(a,b))`) where the
+     * iteratedVariable is already unwrapped by extractVariableName, and variable-assigned
+     * cases (`var sizes = Arrays.asList(a,b); for (var s : sizes)`) where we look up
+     * the VariableDecl's initializer.
+     */
+    @Suppress("ReturnCount")
+    private fun isSmallFactoryCollection(
+        loop: LoopNode,
+        varDecls: List<VariableDecl>,
+    ): Boolean {
+        val iterVar = loop.iteratedVariable ?: return false
+        // Case 1: direct factory call in for-each — extractVariableName unwrapped to args
+        // e.g. iterVar = "ScheduleManager.class,ServerManager.class,..." (after List.of unwrap)
+        if (iterVar.contains(",") && !iterVar.contains("(")) {
+            val argCount = iterVar.count { it == ',' } + 1
+            return argCount <= MAX_SMALL_COLLECTION
+        }
+        // Case 2: variable-assigned — look up VariableDecl with matching name
+        val decl = varDecls.firstOrNull { it.name == iterVar } ?: return false
+        val init = decl.initializer as? FunctionCall ?: return false
+        if (init.name in SMALL_FACTORY_METHODS) {
+            return init.arguments.size <= MAX_SMALL_COLLECTION
+        }
+        return false
+    }
+
+    /**
      * Detects loops where every top-level code path through the body exits via
      * throw, break, or return — meaning the loop runs at most one iteration.
      *
@@ -141,5 +176,7 @@ public class LoopBoundAnnotator(
 
     private companion object {
         val LOOP_TERMINATING_EXITS = setOf(ExitKind.THROW, ExitKind.BREAK, ExitKind.RETURN)
+        val SMALL_FACTORY_METHODS = setOf("asList", "of", "singletonList", "singleton", "copyOf", "unmodifiableList")
+        const val MAX_SMALL_COLLECTION = 5
     }
 }

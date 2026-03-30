@@ -307,10 +307,12 @@ internal class JavaIRVisitor(
         if (ctx.VAR() != null && ctx.identifier() != null && ctx.expression() != null) {
             val varName = ctx.identifier().text
             val initChildren = visit(ctx.expression())
+            val initExpr = initChildren.firstOrNull { it is FunctionCall } as? FunctionCall
             results.add(
                 VariableDecl(
                     name = varName,
                     typeName = null,
+                    initializer = initExpr,
                     location = locationOf(ctx),
                     children = initChildren,
                 ),
@@ -322,10 +324,12 @@ internal class JavaIRVisitor(
         for (declarator in ctx.variableDeclarators()?.variableDeclarator() ?: emptyList()) {
             val varName = declarator.variableDeclaratorId()?.text ?: continue
             val initChildren = declarator.variableInitializer()?.let { visitChildren(it) } ?: emptyList()
+            val initExpr = initChildren.firstOrNull { it is FunctionCall } as? FunctionCall
             results.add(
                 VariableDecl(
                     name = varName,
                     typeName = typeName,
+                    initializer = initExpr,
                     location = locationOf(ctx),
                     children = initChildren,
                 ),

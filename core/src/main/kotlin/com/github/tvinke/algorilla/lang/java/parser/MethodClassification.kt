@@ -276,7 +276,7 @@ private fun findBalancedClose(
     return -1
 }
 
-private val STATIC_WRAPPERS = setOf("Arrays", "Collections", "Stream", "Optional")
+private val STATIC_WRAPPERS = setOf("Arrays", "Collections", "Stream", "Optional", "List", "Set", "Map")
 
 /**
  * Unwraps static utility calls like `Arrays.stream(x)` → `x`.

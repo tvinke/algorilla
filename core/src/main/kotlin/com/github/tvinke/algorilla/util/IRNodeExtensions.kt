@@ -291,6 +291,8 @@ private fun searchForExitAfterCall(
     for (node in nodes) {
         if (foundCall && node is ControlFlowExit && node.kind in LOOP_EXITS) return true
         if (node is FunctionCall && node.location == call.location) foundCall = true
+        // The call might be inside a VariableDecl (assignment) or other container
+        if (!foundCall && containsCall(node, call)) foundCall = true
         // Recurse into branches — the call might be inside an if-block
         if (node is BranchNode) {
             for (branch in node.branches) {
@@ -299,6 +301,15 @@ private fun searchForExitAfterCall(
         }
     }
     return false
+}
+
+/** Checks if a node or any of its descendants is the given call (by location match). */
+private fun containsCall(
+    node: IRNode,
+    call: FunctionCall,
+): Boolean {
+    if (node is FunctionCall && node.location == call.location) return true
+    return node.children.any { containsCall(it, call) }
 }
 
 private val registryInstance: LanguageSemanticsRegistry by lazy {
