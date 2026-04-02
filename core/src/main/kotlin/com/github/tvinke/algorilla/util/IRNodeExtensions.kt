@@ -167,7 +167,7 @@ public fun LookupCall.isCollectionLookup(
     // TypeEnvironment has broader coverage (field types, factory inference, chain-end)
     // When available, trust it fully — it already includes everything hasO1Type checks.
     if (typeEnv != null && targetVariable != null) {
-        return !(typeEnv.isO1(targetVariable) || typeEnv.isString(targetVariable))
+        return !(typeEnv.isO1(targetVariable) || typeEnv.isString(targetVariable) || typeEnv.isBoundedSmallCollection(targetVariable))
     }
     // Name-based string heuristic: String.contains(substring) is O(n) on string length,
     // not O(n) on a collection — skip when the variable name suggests a String type.

@@ -20,6 +20,7 @@ import com.github.tvinke.algorilla.model.Parameter
 import com.github.tvinke.algorilla.model.SourceLocation
 import com.github.tvinke.algorilla.model.TypeCheck
 import com.github.tvinke.algorilla.model.VariableDecl
+import com.github.tvinke.algorilla.semantics.SmallFactoryCollectionSemantics
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
@@ -489,28 +490,13 @@ internal class JavaIRVisitor(
 /** Ternary expressions have exactly 3 sub-expressions: condition, then, else. */
 private const val TERNARY_CHILD_COUNT = 3
 
-private val JAVA_CONSTANT_SIZE_FACTORIES =
-    setOf(
-        "asList",
-        "of",
-        "singletonList",
-        "singletonMap",
-        "singleton",
-        "emptyList",
-        "emptySet",
-        "emptyMap",
-        "nCopies",
-    )
-
-private const val SMALL_COLLECTION_THRESHOLD = 8
-
 /**
  * Returns true when the target of a chained call is a known constant-size factory
  * like `Arrays.asList(a, b)`, `List.of(a, b)`, or `Collections.emptyList()`.
  */
 private fun isConstantSizeFactory(targetChildren: List<IRNode>): Boolean {
     val call = targetChildren.filterIsInstance<FunctionCall>().firstOrNull() ?: return false
-    return call.name in JAVA_CONSTANT_SIZE_FACTORIES && call.arguments.size <= SMALL_COLLECTION_THRESHOLD
+    return SmallFactoryCollectionSemantics.isConstantSizeFactory(call)
 }
 
 /** Strips generic type parameters: "List<Order>" → "List", "Map<String,Integer>" → "Map". */

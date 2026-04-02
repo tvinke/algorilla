@@ -772,6 +772,14 @@ internal class PrecisionRegressionTest : FullPipelineTestSupport() {
                 "nested-lookup",
                 "Arrays.asList() with constant elements is bounded, not a scalability issue",
             )
+
+        @Test
+        fun `Arrays asList assigned receiver contains on small bounded list`() =
+            assertNoFindings(
+                "nested-lookup/regression/arrays-aslist-assigned-contains.java",
+                "nested-lookup",
+                "Arrays.asList() assigned to a local variable is still bounded, not a scalability issue",
+            )
     }
 
     @Nested
