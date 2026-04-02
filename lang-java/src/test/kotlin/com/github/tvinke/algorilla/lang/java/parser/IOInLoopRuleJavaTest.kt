@@ -136,6 +136,20 @@ internal class IOInLoopRuleJavaTest {
 
             findings.shouldBeEmpty()
         }
+
+        @Test
+        fun `should not flag ConsumerRecords count inside loop`() {
+            val findings = analyzeFixture("io-in-loop/regression/consumer-records-count-not-io.java")
+
+            findings.shouldBeEmpty()
+        }
+
+        @Test
+        fun `should not flag Map get and put inside loop`() {
+            val findings = analyzeFixture("io-in-loop/regression/map-get-put-not-io.java")
+
+            findings.shouldBeEmpty()
+        }
     }
 
     @Nested
@@ -172,14 +186,15 @@ internal class IOInLoopRuleJavaTest {
         val path = File(url.toURI()).absolutePath
         val fileRoot = parser.parse(path)
         val registry = LanguageSemanticsRegistry.DEFAULT
-        val irTrees = markScalarLookups(mapOf(path to fileRoot), registry).irTrees
+        val result = markScalarLookups(mapOf(path to fileRoot), registry)
         val context =
             AnalysisContext(
-                irTrees = irTrees,
+                irTrees = result.irTrees,
                 symbolTable = SymbolTable(),
                 callGraph = CallGraph(),
                 config = AnalysisConfig(),
                 registry = registry,
+                typeEnvironments = result.typeEnvironments,
             )
         return rule.evaluate(context)
     }
