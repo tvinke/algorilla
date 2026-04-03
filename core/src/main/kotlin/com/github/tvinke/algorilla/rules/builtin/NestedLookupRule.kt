@@ -12,6 +12,7 @@ import com.github.tvinke.algorilla.model.LookupKind
 import com.github.tvinke.algorilla.model.LoopKind
 import com.github.tvinke.algorilla.model.LoopNode
 import com.github.tvinke.algorilla.model.Severity
+import com.github.tvinke.algorilla.model.VariableDecl
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.ComplexityModel
 import com.github.tvinke.algorilla.rules.Evidence
@@ -68,7 +69,10 @@ public class NestedLookupRule : Rule {
 
         if (node is LookupCall) {
             val typeEnv = fn?.let { context.typeEnvironmentFor(it) }
-            if (iterationStack.isNotEmpty() && node.isCollectionLookup(fn, typeEnv, language, context.registry)) {
+            if (iterationStack.isNotEmpty() &&
+                node.isCollectionLookup(fn, typeEnv, language, context.registry) &&
+                !isPerElementPropertyAccess(node, iterationStack)
+            ) {
                 findings.add(buildFinding(node, iterationStack, fn, isTypeConfirmedCollection(node, typeEnv)))
             }
             if (node.children.isNotEmpty() && isIteratingLookup(node.kind)) {
@@ -143,6 +147,25 @@ public class NestedLookupRule : Rule {
         }
 
         return Confidence.MEDIUM
+    }
+
+    // moveLine.getInvoiceTermList().stream().allMatch(...) is a per-element property access
+    // when "moveLine" is the loop variable — the inner collection differs per iteration,
+    // so this is O(Σ |list_i|), not O(n × m) on a shared collection.
+    private fun isPerElementPropertyAccess(
+        lookup: LookupCall,
+        iterationStack: List<IRNode>,
+    ): Boolean {
+        val target = lookup.targetVariable ?: return false
+        val receiver = target.substringBefore('.')
+        if (receiver == target) return false
+        return iterationStack.any { node ->
+            (node as? LoopNode)
+                ?.children
+                ?.filterIsInstance<VariableDecl>()
+                ?.firstOrNull()
+                ?.name == receiver
+        }
     }
 
     private fun iteratedVarOf(node: IRNode): String? =

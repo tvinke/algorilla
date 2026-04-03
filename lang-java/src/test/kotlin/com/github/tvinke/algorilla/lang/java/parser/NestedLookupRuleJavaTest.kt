@@ -132,6 +132,13 @@ internal class NestedLookupRuleJavaTest {
     }
 
     @Test
+    fun `should not flag per-element property access in loop`() {
+        val findings = analyzeFixture("nested-lookup/negative/per-element-property-access.java")
+
+        findings.shouldBeEmpty()
+    }
+
+    @Test
     fun `should suggest Map for indexOf lookup`() {
         val findings = analyzeFixture("nested-lookup/positive/foreach-indexOf.java")
 
