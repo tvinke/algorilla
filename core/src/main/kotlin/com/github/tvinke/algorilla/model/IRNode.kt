@@ -150,6 +150,8 @@ public data class FunctionDecl(
     var executionContext: ExecutionContext = ExecutionContext.SINGLE,
     var parameterFlows: List<ParameterFlow> = emptyList(),
     var isRecursive: Boolean = false,
+    /** Simple annotation names on this method, e.g. ["PostConstruct", "Bean"]. */
+    val annotations: List<String> = emptyList(),
     override val location: SourceLocation,
     override val children: List<IRNode>,
 ) : IRNode
@@ -231,6 +233,8 @@ public data class ClassNode(
     val name: String,
     /** Supertypes (implements/extends), generics stripped. */
     val supertypes: List<String> = emptyList(),
+    /** Simple annotation names on this class, e.g. ["Component", "ApplicationScoped"]. */
+    val annotations: List<String> = emptyList(),
     override val location: SourceLocation,
     override val children: List<IRNode>,
 ) : IRNode
