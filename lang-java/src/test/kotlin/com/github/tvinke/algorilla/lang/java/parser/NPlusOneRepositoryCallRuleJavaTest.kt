@@ -45,6 +45,16 @@ internal class NPlusOneRepositoryCallRuleJavaTest {
     }
 
     @Nested
+    inner class PaginatedBatch {
+        @Test
+        fun `should not flag Spring Data findFirst-N-By or findTop-N-By as N+1`() {
+            val findings = analyzeFixture("n-plus-one-query/negative/paginated-batch-excluded.java")
+
+            findings.shouldBeEmpty()
+        }
+    }
+
+    @Nested
     inner class CacheExclusion {
         @Test
         fun `should not flag cache or memo or pool targets`() {

@@ -9,6 +9,30 @@ import com.github.tvinke.algorilla.model.TypeSource
 import com.github.tvinke.algorilla.model.VariableDecl
 import com.github.tvinke.algorilla.util.findDescendants
 
+private val fallbackStringTypes = setOf("String", "StringBuilder", "StringBuffer", "CharSequence")
+
+private val fallbackListTypes = setOf("List", "ArrayList", "LinkedList", "Vector", "Stack", "CopyOnWriteArrayList", "MutableList", "Array")
+
+private val terminalOps =
+    setOf(
+        "collect",
+        "toList",
+        "toSet",
+        "toMap",
+        "toMutableList",
+        "toMutableSet",
+        "toMutableMap",
+        "toSortedSet",
+        "toSortedMap",
+        "toHashSet",
+        "toArray",
+        "toUnmodifiableList",
+        "toUnmodifiableSet",
+        "toUnmodifiableMap",
+    )
+
+private val listTerminals = setOf("toList", "toMutableList", "toUnmodifiableList")
+
 /**
  * Per-function type map that resolves variable names to their inferred types.
  * Built from field types, parameter types, local declarations, constructor calls,
@@ -22,6 +46,7 @@ public class TypeEnvironment private constructor(
     private val registry: LanguageSemanticsRegistry,
     private val language: Language,
     private val classHierarchy: Map<String, Set<String>> = emptyMap(),
+    private val boundedSmallCollections: Set<String> = emptySet(),
 ) {
     /** Returns the inferred type for [variableName], or null if unknown. */
     public fun typeOf(variableName: String): InferredType? = types[variableName.removePrefix("this.")]
@@ -50,6 +75,9 @@ public class TypeEnvironment private constructor(
         return resolvesViaHierarchy(type.simpleName) { registry.isCollectionType(language, it) }
     }
 
+    /** Returns true if [variableName] is initialized from a small constant-size collection factory. */
+    public fun isBoundedSmallCollection(variableName: String): Boolean = variableName.removePrefix("this.") in boundedSmallCollections
+
     /**
      * Walks the class hierarchy transitively to check if any supertype satisfies [predicate].
      * Protects against cycles with a visited set.
@@ -77,7 +105,7 @@ public class TypeEnvironment private constructor(
         return if (yamlStringTypes.isNotEmpty()) {
             type.simpleName in yamlStringTypes
         } else {
-            type.simpleName in FALLBACK_STRING_TYPES
+            type.simpleName in fallbackStringTypes
         }
     }
 
@@ -91,38 +119,12 @@ public class TypeEnvironment private constructor(
         return if (yamlListTypes.isNotEmpty()) {
             type.simpleName in yamlListTypes
         } else {
-            type.simpleName in FALLBACK_LIST_TYPES
+            type.simpleName in fallbackListTypes
         }
     }
 
     @Suppress("TooManyFunctions") // Type inference strategies: each handles a distinct source
     public companion object {
-        private val FALLBACK_STRING_TYPES =
-            setOf("String", "StringBuilder", "StringBuffer", "CharSequence")
-
-        private val FALLBACK_LIST_TYPES =
-            setOf("List", "ArrayList", "LinkedList", "Vector", "Stack", "CopyOnWriteArrayList", "MutableList", "Array")
-
-        private val TERMINAL_OPS =
-            setOf(
-                "collect",
-                "toList",
-                "toSet",
-                "toMap",
-                "toMutableList",
-                "toMutableSet",
-                "toMutableMap",
-                "toSortedSet",
-                "toSortedMap",
-                "toHashSet",
-                "toArray",
-                "toUnmodifiableList",
-                "toUnmodifiableSet",
-                "toUnmodifiableMap",
-            )
-
-        private val LIST_TERMINALS = setOf("toList", "toMutableList", "toUnmodifiableList")
-
         /**
          * Builds a [TypeEnvironment] for [fn] using the given [context] as the source of
          * external type knowledge. Variables assigned more than once get type UNKNOWN (reassignment guard).
@@ -134,41 +136,20 @@ public class TypeEnvironment private constructor(
             registry: LanguageSemanticsRegistry,
         ): TypeEnvironment {
             val typeMap = mutableMapOf<String, InferredType>()
-
-            // Layer 1: field types (lowest priority, overridden by params/locals/narrowings)
+            val boundedSmallCollectionVars = mutableSetOf<String>()
             for ((name, type) in context.fieldTypes) {
                 typeMap[name] = inferredTypeFromAnnotation(type)
             }
-
-            // Layer 2: parameter types
             for (param in fn.parameters) {
                 if (param.typeName != null) {
                     typeMap[param.name] = inferredTypeFromAnnotation(param.typeName)
                 }
             }
-
-            // Count variable assignments for reassignment guard
-            val assignmentCounts = mutableMapOf<String, Int>()
-            for (varDecl in fn.findDescendants<VariableDecl>()) {
-                assignmentCounts.merge(varDecl.name, 1, Int::plus)
-            }
-
-            // Layer 3: local variable types
-            // Skip reassigned variables — type is ambiguous when assigned more than once
-            fn
-                .findDescendants<VariableDecl>()
-                .filter { (assignmentCounts[it.name] ?: 0) <= 1 }
-                .forEach { varDecl ->
-                    val inferred = inferVariableType(varDecl, language, registry, context)
-                    if (inferred != null) typeMap[varDecl.name] = inferred
-                }
-
-            // Layer 4: branch narrowings (highest priority — instanceof/is checks within branch scope)
+            collectLocalVariableTypes(fn, context, language, registry, typeMap, boundedSmallCollectionVars)
             for ((name, type) in context.branchNarrowings) {
                 typeMap[name] = InferredType(stripGenerics(type), TypeSource.DECLARED, fullTypeName = type)
             }
-
-            return TypeEnvironment(typeMap, registry, language, context.classHierarchy)
+            return TypeEnvironment(typeMap, registry, language, context.classHierarchy, boundedSmallCollectionVars)
         }
 
         /**
@@ -229,6 +210,37 @@ public class TypeEnvironment private constructor(
             return inferFromMethodNameSuffix(varDecl)
         }
 
+        private fun isBoundedSmallCollection(varDecl: VariableDecl): Boolean {
+            val init = varDecl.initializer as? FunctionCall ?: return false
+            return SmallFactoryCollectionSemantics.isConstantSizeFactory(init)
+        }
+
+        private fun collectLocalVariableTypes(
+            fn: FunctionDecl,
+            context: TypeContext,
+            language: Language,
+            registry: LanguageSemanticsRegistry,
+            typeMap: MutableMap<String, InferredType>,
+            boundedSmallCollectionVars: MutableSet<String>,
+        ) {
+            val assignmentCounts = mutableMapOf<String, Int>()
+            for (varDecl in fn.findDescendants<VariableDecl>()) {
+                assignmentCounts.merge(varDecl.name, 1, Int::plus)
+            }
+            fn
+                .findDescendants<VariableDecl>()
+                .filter { (assignmentCounts[it.name] ?: 0) <= 1 }
+                .forEach { varDecl ->
+                    val inferred = inferVariableType(varDecl, language, registry, context)
+                    if (inferred != null) {
+                        typeMap[varDecl.name] = inferred
+                        if (registry.isCollectionType(language, inferred.simpleName) && isBoundedSmallCollection(varDecl)) {
+                            boundedSmallCollectionVars += varDecl.name
+                        }
+                    }
+                }
+        }
+
         private fun inferO1Factory(
             varDecl: VariableDecl,
             language: Language,
@@ -252,12 +264,12 @@ public class TypeEnvironment private constructor(
             registry: LanguageSemanticsRegistry,
         ): InferredType? {
             val allCalls = varDecl.findDescendants<FunctionCall>()
-            val terminal = allCalls.lastOrNull { it.name in TERMINAL_OPS } ?: return null
+            val terminal = allCalls.lastOrNull { it.name in terminalOps } ?: return null
 
             if (registry.isO1Factory(language, terminal.name)) {
                 return InferredType("Set", TypeSource.CHAIN_END)
             }
-            if (terminal.name in LIST_TERMINALS) {
+            if (terminal.name in listTerminals) {
                 return InferredType("List", TypeSource.CHAIN_END)
             }
             if (terminal.name == "toArray") {

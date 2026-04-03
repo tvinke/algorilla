@@ -18,6 +18,7 @@ import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
+import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import com.github.tvinke.algorilla.util.ParameterFlowQuery
 import com.github.tvinke.algorilla.util.findDescendants
 import com.github.tvinke.algorilla.util.isFollowedByExit
@@ -116,13 +117,14 @@ public class IOInLoopRule : Rule {
         if (loopStack.last().isSingleIteration) return
         // Skip if this specific call is followed by throw/break/return in its block (log-then-abort pattern)
         if (node is FunctionCall && isFollowedByExit(node, loopStack.last().children)) return
+        val typeEnv = fn?.let { context.typeEnvironmentFor(it) }
 
         if (node is FunctionCall) {
-            val isDefiniteIO = node.name in ioMethods && !isInMemoryTarget(node, language, context.registry)
+            val isDefiniteIO = node.name in ioMethods && !isInMemoryTarget(node, typeEnv, language, context.registry)
             val isCandidateIO =
                 !isDefiniteIO &&
                     node.name in ioCandidates &&
-                    !isInMemoryTarget(node, language, context.registry) &&
+                    !isInMemoryTarget(node, typeEnv, language, context.registry) &&
                     isIOTarget(node, language, context.registry)
 
             if (isDefiniteIO || isCandidateIO) {
@@ -375,11 +377,16 @@ private fun isReactiveChainTarget(
 /** Returns true if the call target is a known in-memory buffer (not real IO). */
 private fun isInMemoryTarget(
     call: FunctionCall,
+    typeEnv: TypeEnvironment?,
     language: Language,
     registry: LanguageSemanticsRegistry,
 ): Boolean {
-    val target = call.qualifiedTarget?.lowercase() ?: return false
-    return registry.nonIoTargets(language).any { target.contains(it) }
+    val target = call.qualifiedTarget ?: return false
+    val lowered = target.lowercase()
+    if (registry.nonIoTargets(language).any { lowered.contains(it) }) return true
+    return typeEnv?.let { env ->
+        env.isO1(target) || env.isCollection(target) || env.isString(target)
+    } == true
 }
 
 /**

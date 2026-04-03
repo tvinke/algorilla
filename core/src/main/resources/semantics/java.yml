@@ -327,6 +327,7 @@ collection-types:
   - IntStream
   - LongStream
   - DoubleStream
+  - ConsumerRecords
 
 o1-types:
   - Set

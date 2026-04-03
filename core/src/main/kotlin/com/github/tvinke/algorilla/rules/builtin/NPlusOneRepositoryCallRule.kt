@@ -209,6 +209,10 @@ private val SINGLE_FETCH_METHOD_REGEX =
         RegexOption.IGNORE_CASE,
     )
 
+/** Spring Data findFirst<N>By / findTop<N>By returns a List (paginated batch), not a single entity */
+private val PAGINATED_BATCH_REGEX =
+    Regex("""^(?:find|get)(?:First|Top)\d+By""", RegexOption.IGNORE_CASE)
+
 @Suppress("ReturnCount") // Guard clauses with early returns — clearer than nested if/else
 private fun isSingleRecordFetch(
     call: FunctionCall,
@@ -220,6 +224,8 @@ private fun isSingleRecordFetch(
 
     // Exclude cache/memo targets before applying repo patterns
     if (target != null && registry.nonRepositoryTargets(language).any { target.contains(it) }) return false
+    // Spring Data findFirst<N>By / findTop<N>By fetches a fixed-size batch, not a single record
+    if (PAGINATED_BATCH_REGEX.containsMatchIn(name)) return false
 
     val repoPatterns = registry.repositoryPatterns(language)
     // Exact prefix matches (highest confidence)

@@ -125,6 +125,13 @@ internal class NestedLookupRuleJavaTest {
     }
 
     @Test
+    fun `should not flag String contains on getter-chain receiver`() {
+        val findings = analyzeFixture("nested-lookup/regression/getter-chain-string-contains.java")
+
+        findings.shouldBeEmpty()
+    }
+
+    @Test
     fun `should suggest Map for indexOf lookup`() {
         val findings = analyzeFixture("nested-lookup/positive/foreach-indexOf.java")
 

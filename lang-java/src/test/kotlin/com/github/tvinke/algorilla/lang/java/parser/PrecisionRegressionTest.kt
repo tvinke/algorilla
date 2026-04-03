@@ -1,6 +1,5 @@
 package com.github.tvinke.algorilla.lang.java.parser
 
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 
@@ -758,7 +757,6 @@ internal class PrecisionRegressionTest : FullPipelineTestSupport() {
 
     @Nested
     inner class NestedLookupRegressions {
-        @Disabled("Known FP: loop variable String type not inferred by TypeEnvironment in for-each")
         @Test
         fun `String contains with wildcard is not collection lookup`() =
             assertNoFindings(
@@ -767,13 +765,20 @@ internal class PrecisionRegressionTest : FullPipelineTestSupport() {
                 "String.contains() is a string operation, not a collection lookup",
             )
 
-        @Disabled("Known FP: Arrays.asList() returns List — engine correctly flags contains() as O(n)")
         @Test
         fun `Arrays asList contains on small bounded list`() =
             assertNoFindings(
                 "nested-lookup/regression/arrays-aslist-contains.java",
                 "nested-lookup",
                 "Arrays.asList() with constant elements is bounded, not a scalability issue",
+            )
+
+        @Test
+        fun `Arrays asList assigned receiver contains on small bounded list`() =
+            assertNoFindings(
+                "nested-lookup/regression/arrays-aslist-assigned-contains.java",
+                "nested-lookup",
+                "Arrays.asList() assigned to a local variable is still bounded, not a scalability issue",
             )
     }
 
