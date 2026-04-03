@@ -88,7 +88,8 @@ public class NPlusOneRepositoryCallRule : Rule {
                     maxDepth = maxDepth,
                 ) { isSingleRecordFetch(it, language, context.registry) }
             if (hiddenFetch != null) {
-                findings.add(buildCrossMethodFinding(node, hiddenFetch, loopStack))
+                val hiddenTargetMatchesRepo = matchesRepoPattern(hiddenFetch.qualifiedTarget, language, context.registry)
+                findings.add(buildCrossMethodFinding(node, hiddenFetch, loopStack, hiddenTargetMatchesRepo))
             }
         }
     }
@@ -103,6 +104,7 @@ public class NPlusOneRepositoryCallRule : Rule {
         call: FunctionCall,
         hiddenFetch: FunctionCall,
         loopStack: List<LoopNode>,
+        targetMatchesRepo: Boolean = false,
     ): Finding {
         val outerLoop = loopStack.first()
         val loopVar = outerLoop.iteratedVariable ?: "items"
@@ -123,6 +125,7 @@ public class NPlusOneRepositoryCallRule : Rule {
             ruleId = id,
             ruleName = name,
             severity = severity,
+            confidence = if (targetMatchesRepo) Confidence.HIGH else Confidence.MEDIUM,
             location = call.location,
             message = "Single-record fetch $target.${hiddenFetch.name}() inside ${call.name}() called from ${outerLoop.kind.label()} (N+1)",
             suggestions =
