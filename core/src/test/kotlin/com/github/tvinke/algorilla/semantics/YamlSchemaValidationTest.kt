@@ -100,6 +100,8 @@ internal class YamlSchemaValidationTest {
             "monadic-factory-classes",
             "lifecycle-method-annotations",
             "lifecycle-interfaces",
+            "request-handler-annotations",
+            "controller-class-annotations",
         )
 
     @ParameterizedTest(name = "language file {0} has no unknown sections")

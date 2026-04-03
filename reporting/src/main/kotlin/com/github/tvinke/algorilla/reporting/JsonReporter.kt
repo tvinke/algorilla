@@ -54,6 +54,7 @@ public class JsonReporter : Reporter {
             suggestedCode = finding.suggestedCode?.code,
             suggestedCodeLanguage = finding.suggestedCode?.language,
             suggestedCodeFramework = finding.suggestedCode?.framework,
+            pathContext = finding.pathContext?.name,
         )
 
     private fun buildSummary(result: AnalysisResult): JsonSummary {
@@ -156,6 +157,7 @@ internal data class JsonFinding(
     val suggestedCode: String? = null,
     val suggestedCodeLanguage: String? = null,
     val suggestedCodeFramework: String? = null,
+    val pathContext: String? = null,
 )
 
 @Serializable

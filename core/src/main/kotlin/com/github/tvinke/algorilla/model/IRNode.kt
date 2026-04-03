@@ -150,6 +150,8 @@ public data class FunctionDecl(
     var executionContext: ExecutionContext = ExecutionContext.SINGLE,
     var parameterFlows: List<ParameterFlow> = emptyList(),
     var isRecursive: Boolean = false,
+    /** Architectural path context: REQUEST, LIFECYCLE, BATCH, MIXED, or null (unknown). */
+    var pathContext: PathContext? = null,
     /** Simple annotation names on this method, e.g. ["PostConstruct", "Bean"]. */
     val annotations: List<String> = emptyList(),
     override val location: SourceLocation,

@@ -226,3 +226,15 @@ lifecycle-interfaces:
   - SmartLifecycle
   - DisposableBean
   - SmartInitializingSingleton
+
+request-handler-annotations:
+  - RequestMapping
+  - GetMapping
+  - PostMapping
+  - PutMapping
+  - DeleteMapping
+  - PatchMapping
+
+controller-class-annotations:
+  - RestController
+  - Controller
