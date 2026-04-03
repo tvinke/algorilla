@@ -215,3 +215,14 @@ io-method-candidates:
   - deleteAllInBatch
   - deleteAllByIdInBatch
   - flush
+
+lifecycle-method-annotations:
+  - PostConstruct
+  - Bean
+  - EventListener
+
+lifecycle-interfaces:
+  - InitializingBean
+  - SmartLifecycle
+  - DisposableBean
+  - SmartInitializingSingleton

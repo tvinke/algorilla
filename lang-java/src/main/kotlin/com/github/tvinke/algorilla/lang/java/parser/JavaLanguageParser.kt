@@ -107,10 +107,12 @@ internal class JavaIRVisitor(
         enclosingClass = prev
         if (className == null) return result
         val supertypes = extractSupertypes(ctx)
+        val annotations = extractClassAnnotations(ctx)
         return listOf(
             ClassNode(
                 name = className,
                 supertypes = supertypes,
+                annotations = annotations,
                 location = locationOf(ctx),
                 children = result,
             ),
@@ -166,6 +168,7 @@ internal class JavaIRVisitor(
                 ?.typeType()
                 ?.text
                 ?.simplifyGenericType()
+        val annotations = extractMethodAnnotations(ctx)
 
         return listOf(
             FunctionDecl(
@@ -174,6 +177,7 @@ internal class JavaIRVisitor(
                 parameters = params,
                 declaringClass = enclosingClass,
                 returnType = returnType,
+                annotations = annotations,
                 location = loc,
                 children = body,
             ),
@@ -468,6 +472,31 @@ internal class JavaIRVisitor(
         }
 
         return params
+    }
+
+    /** Extracts simple annotation names from classBodyDeclaration modifiers (method-level). */
+    private fun extractMethodAnnotations(ctx: JavaParser.MethodDeclarationContext): List<String> {
+        val classBodyDecl = ctx.parent?.parent as? JavaParser.ClassBodyDeclarationContext ?: return emptyList()
+        return classBodyDecl.modifier().mapNotNull { mod ->
+            mod
+                .classOrInterfaceModifier()
+                ?.annotation()
+                ?.qualifiedName()
+                ?.text
+                ?.substringAfterLast('.')
+        }
+    }
+
+    /** Extracts simple annotation names from typeDeclaration modifiers (class-level). */
+    private fun extractClassAnnotations(ctx: JavaParser.ClassDeclarationContext): List<String> {
+        val typeDecl = ctx.parent as? JavaParser.TypeDeclarationContext ?: return emptyList()
+        return typeDecl.classOrInterfaceModifier().mapNotNull { mod ->
+            mod
+                .annotation()
+                ?.qualifiedName()
+                ?.text
+                ?.substringAfterLast('.')
+        }
     }
 
     private fun visitArgNodes(methodCall: JavaParser.MethodCallContext): List<IRNode> {

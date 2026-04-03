@@ -1653,6 +1653,16 @@ monadic-factory-classes:
   - ServerRequest
   - ServerResponse
 
+# Method annotations indicating lifecycle/startup methods — findings demoted to LOW.
+lifecycle-method-annotations:
+  - PostConstruct
+  - PreDestroy
+
+# Interfaces whose callback methods are lifecycle/startup — findings demoted to LOW.
+lifecycle-interfaces:
+  - InitializingBean
+  - DisposableBean
+
 # Stream pipeline methods that implicitly iterate — their lambda args run per-element.
 implicit-iteration-ops:
   - map

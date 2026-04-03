@@ -1,5 +1,6 @@
 package com.github.tvinke.algorilla.engine
 
+import com.github.tvinke.algorilla.model.ClassNode
 import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.FileRoot
 import com.github.tvinke.algorilla.model.FunctionDecl
@@ -7,6 +8,7 @@ import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
+import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.findDescendants
 
 /**
@@ -70,6 +72,72 @@ internal fun demoteConstructorFindings(
             finding
         }
     }
+}
+
+/**
+ * Demotes findings in lifecycle/init methods to LOW confidence.
+ * Lifecycle methods (@PostConstruct, @Bean, InitializingBean.afterPropertiesSet) run at
+ * startup or configuration time — findings there are technically correct but not actionable.
+ */
+internal fun demoteLifecycleFindings(
+    findings: List<Finding>,
+    irTrees: Map<String, FileRoot>,
+    registry: LanguageSemanticsRegistry,
+): List<Finding> {
+    val lifecycleRanges = mutableMapOf<String, MutableList<IntRange>>()
+    for ((_, fileRoot) in irTrees) {
+        val language = fileRoot.language
+        val methodAnnotations = registry.extraSection(language, "lifecycle-method-annotations")
+        val lifecycleInterfaces = registry.extraSection(language, "lifecycle-interfaces")
+        if (methodAnnotations.isEmpty() && lifecycleInterfaces.isEmpty()) continue
+
+        // Build a set of known lifecycle interface callback method names
+        val interfaceCallbacks = buildInterfaceCallbacks(lifecycleInterfaces)
+
+        for (fn in fileRoot.findDescendants<FunctionDecl>()) {
+            val isLifecycleAnnotated = fn.annotations.any { it in methodAnnotations }
+            val isInterfaceCallback = fn.name in interfaceCallbacks && isInLifecycleClass(fn, fileRoot, lifecycleInterfaces)
+            if (isLifecycleAnnotated || isInterfaceCallback) {
+                val start = fn.location.line
+                val end = maxLineOf(fn)
+                lifecycleRanges.getOrPut(fileRoot.filePath) { mutableListOf() }.add(start..end)
+            }
+        }
+    }
+    if (lifecycleRanges.isEmpty()) return findings
+    return findings.map { finding ->
+        val ranges = lifecycleRanges[finding.location.file]
+        if (ranges != null && ranges.any { finding.location.line in it }) {
+            finding.copy(confidence = Confidence.LOW)
+        } else {
+            finding
+        }
+    }
+}
+
+private val KNOWN_CALLBACKS =
+    mapOf(
+        "InitializingBean" to "afterPropertiesSet",
+        "DisposableBean" to "destroy",
+        "SmartLifecycle" to "start",
+        "SmartInitializingSingleton" to "afterSingletonsInstantiated",
+    )
+
+private fun buildInterfaceCallbacks(lifecycleInterfaces: Set<String>): Set<String> =
+    KNOWN_CALLBACKS.entries
+        .filter { it.key in lifecycleInterfaces }
+        .map { it.value }
+        .toSet()
+
+private fun isInLifecycleClass(
+    fn: FunctionDecl,
+    fileRoot: FileRoot,
+    lifecycleInterfaces: Set<String>,
+): Boolean {
+    val declaringClass = fn.declaringClass ?: return false
+    return fileRoot
+        .findDescendants<ClassNode>()
+        .any { it.name == declaringClass && it.supertypes.any { st -> st in lifecycleInterfaces } }
 }
 
 /** Recursively finds the maximum source line in an IR subtree. */
