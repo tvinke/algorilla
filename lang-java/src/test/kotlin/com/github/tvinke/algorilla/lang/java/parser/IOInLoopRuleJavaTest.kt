@@ -131,6 +131,27 @@ internal class IOInLoopRuleJavaTest {
         }
 
         @Test
+        fun `should not flag ReactiveSecurityContextHolder getContext flatMap`() {
+            val findings = analyzeFixture("io-in-loop/regression/reactive-security-context-flatmap.java")
+
+            findings.shouldBeEmpty()
+        }
+
+        @Test
+        fun `should not flag ReactiveSecurityContextHolder filter flatMap`() {
+            val findings = analyzeFixture("io-in-loop/regression/reactive-security-context-filter-flatmap.java")
+
+            findings.shouldBeEmpty()
+        }
+
+        @Test
+        fun `should not flag reactive factory class chain with map and flatMap`() {
+            val findings = analyzeFixture("io-in-loop/regression/reactive-factory-class-chain.java")
+
+            findings.shouldBeEmpty()
+        }
+
+        @Test
         fun `should not flag Java reflection Method invoke in loop`() {
             val findings = analyzeFixture("io-in-loop/negative/reflection-invoke.java")
 

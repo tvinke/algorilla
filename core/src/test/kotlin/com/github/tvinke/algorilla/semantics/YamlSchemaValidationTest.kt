@@ -97,6 +97,7 @@ internal class YamlSchemaValidationTest {
             "string-types",
             "list-types",
             "collection-view-accessors",
+            "monadic-factory-classes",
         )
 
     @ParameterizedTest(name = "language file {0} has no unknown sections")

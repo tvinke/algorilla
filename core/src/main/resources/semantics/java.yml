@@ -1646,6 +1646,13 @@ monadic-variable-names:
   - completion
   - either
 
+# Classes whose static methods return monadic types (Mono, Flux, etc.).
+# Used to detect reactive factory calls that should not be treated as iteration.
+monadic-factory-classes:
+  - ReactiveSecurityContextHolder
+  - ServerRequest
+  - ServerResponse
+
 # Stream pipeline methods that implicitly iterate — their lambda args run per-element.
 implicit-iteration-ops:
   - map

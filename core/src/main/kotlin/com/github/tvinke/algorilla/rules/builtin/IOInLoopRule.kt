@@ -340,7 +340,20 @@ private fun isMonadicTarget(
 ): Boolean {
     val target = call.qualifiedTarget ?: return false
     return registry.isMonadicTarget(language, target) ||
+        isReactiveFactoryTarget(target, language, registry) ||
         isReactiveChainTarget(target, language, registry)
+}
+
+// ReactiveSecurityContextHolder.getContext().map(...).flatMap(...) — the class is a
+// reactive factory whose methods return Mono/Flux, not a collection to iterate.
+private fun isReactiveFactoryTarget(
+    target: String,
+    language: Language,
+    registry: LanguageSemanticsRegistry,
+): Boolean {
+    val factories = registry.extraSection(language, "monadic-factory-classes")
+    if (factories.isEmpty()) return false
+    return factories.any { target.contains(it) }
 }
 
 /**
