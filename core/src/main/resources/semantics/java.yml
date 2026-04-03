@@ -1016,6 +1016,10 @@ string-name-suffixes:
   - spec
   - Tag
   - tag
+  - Version
+  - version
+  - Series
+  - series
 
 # String detection: exact variable names almost always referring to Strings.
 string-exact-names:

@@ -328,7 +328,8 @@ public fun isStringTarget(
     return registry.stringIndicators(language).any { targetText.contains(it) } ||
         registry.stringNameSuffixes(language).any { suffix ->
             val getterSuffix = suffix.replaceFirstChar { it.uppercaseChar() }
-            targetText.contains(".get$getterSuffix(")
+            targetText.contains(".get$getterSuffix(") ||
+                targetText.contains(".$suffix(") // record accessor: .version(, .name(
         } ||
         registry.stringNameSuffixes(language).any { targetText.endsWith(it) } ||
         extractVariableName(targetText, language) in registry.stringExactNames(language)
