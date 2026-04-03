@@ -170,12 +170,13 @@ internal fun adjustConfidence(
         val ceiling = rule?.defaultConfidence ?: Confidence.MEDIUM
 
         // Step 1: Set baseline from rule's defaultConfidence for MEDIUM findings.
-        //         Respect explicit rule-level HIGH promotion (rule has more context than engine default).
-        //         Only cap LOW-default rules that accidentally emit MEDIUM/HIGH.
+        //         Respect explicit rule-level HIGH promotion from MEDIUM-default rules
+        //         (these have reliable evidence criteria like repo-target-match, flow-confirmed).
+        //         LOW-default rules are heuristic-heavy — their HIGH promotions stay capped.
         val baselined =
             when {
                 finding.confidence == Confidence.MEDIUM -> ceiling
-                finding.confidence == Confidence.HIGH -> Confidence.HIGH // rule explicitly promoted
+                finding.confidence == Confidence.HIGH && ceiling >= Confidence.MEDIUM -> Confidence.HIGH
                 finding.confidence.ordinal > ceiling.ordinal -> ceiling
                 else -> finding.confidence
             }
