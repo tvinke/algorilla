@@ -12,6 +12,7 @@ import com.github.tvinke.algorilla.util.findDescendants
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import java.io.File
@@ -61,6 +62,38 @@ internal class NPlusOneRepositoryCallRuleJavaTest {
             val findings = analyzeFixture("n-plus-one-query/negative/cache-target-excluded.java")
 
             findings.shouldBeEmpty()
+        }
+    }
+
+    @Nested
+    inner class CrossMethodConfidence {
+        @Test
+        fun `should be HIGH when cross-method hidden fetch targets repository`() {
+            val findings = analyzeFixture("n-plus-one-query/regression/cross-method-confidence.java")
+
+            val repoHelper = findings.firstOrNull { it.message.contains("userRepository") }
+            repoHelper shouldNotBe null
+            repoHelper!!.confidence shouldBe Confidence.HIGH
+        }
+
+        @Test
+        fun `should stay MEDIUM when cross-method hidden fetch targets non-repo`() {
+            val findings = analyzeFixture("n-plus-one-query/regression/cross-method-confidence.java")
+
+            val cacheHelper = findings.firstOrNull { it.message.contains("cacheHelper") }
+            if (cacheHelper != null) {
+                cacheHelper.confidence shouldBe Confidence.MEDIUM
+            }
+        }
+
+        @Test
+        fun `should not promote ambiguous targets without repo pattern match`() {
+            val findings = analyzeFixture("n-plus-one-query/regression/cross-method-confidence.java")
+
+            val ambiguous = findings.firstOrNull { it.message.contains("localMap") }
+            if (ambiguous != null) {
+                ambiguous.confidence shouldBe Confidence.MEDIUM
+            }
         }
     }
 

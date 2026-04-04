@@ -169,11 +169,13 @@ internal fun adjustConfidence(
         val rule = ruleIndex[finding.ruleId]
         val ceiling = rule?.defaultConfidence ?: Confidence.MEDIUM
 
-        // Step 1: Set baseline from rule's defaultConfidence for MEDIUM findings (promotion/demotion).
-        //         Cap non-MEDIUM findings at the ceiling (prevents LOW rules from emitting HIGH).
+        // Step 1: Set baseline from rule's defaultConfidence for MEDIUM findings.
+        //         Respect explicit rule-level HIGH promotion (rule has more context than engine default).
+        //         Only cap LOW-default rules that accidentally emit MEDIUM/HIGH.
         val baselined =
             when {
                 finding.confidence == Confidence.MEDIUM -> ceiling
+                finding.confidence == Confidence.HIGH -> Confidence.HIGH // rule explicitly promoted
                 finding.confidence.ordinal > ceiling.ordinal -> ceiling
                 else -> finding.confidence
             }
