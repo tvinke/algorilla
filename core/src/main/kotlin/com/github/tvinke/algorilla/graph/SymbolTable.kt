@@ -56,6 +56,28 @@ public class SymbolTable {
      */
     public fun resolveType(variableName: String): String? = typeMap[variableName]
 
+    private val interfaceToImpl: MutableMap<String, MutableList<String>> = mutableMapOf()
+
+    /**
+     * Registers that [implClass] implements/extends [supertype].
+     * Used for interface→implementation resolution in call-graph construction.
+     */
+    public fun registerSupertype(
+        supertype: String,
+        implClass: String,
+    ) {
+        interfaceToImpl.getOrPut(supertype) { mutableListOf() }.add(implClass)
+    }
+
+    /**
+     * Returns implementation class names for the given interface/supertype.
+     * Returns empty list if no implementations are known, or if multiple exist (ambiguous).
+     */
+    public fun implementationsOf(typeName: String): List<String> {
+        val impls = interfaceToImpl[typeName] ?: return emptyList()
+        return if (impls.size == 1) impls else emptyList() // Only resolve unambiguous single-impl
+    }
+
     /**
      * Returns all registered function declarations.
      */
