@@ -41,7 +41,7 @@ public class CallGraphBuilder(
         val currentFn = if (node is FunctionDecl) node else enclosingFn
 
         if (node is FunctionCall && currentFn != null) {
-            resolveCallee(node)?.let { callee ->
+            resolveCallee(node, currentFn)?.let { callee ->
                 callGraph.addEdge(currentFn.qualifiedName, callee.qualifiedName)
             }
         }
@@ -51,5 +51,8 @@ public class CallGraphBuilder(
         }
     }
 
-    private fun resolveCallee(call: FunctionCall): FunctionDecl? = CrossMethodResolver.resolve(call, symbolTable)
+    private fun resolveCallee(
+        call: FunctionCall,
+        enclosingFn: FunctionDecl,
+    ): FunctionDecl? = CrossMethodResolver.resolve(call, symbolTable, enclosingClass = enclosingFn.declaringClass)
 }
