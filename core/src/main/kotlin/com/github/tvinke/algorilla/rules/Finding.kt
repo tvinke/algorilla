@@ -1,6 +1,7 @@
 package com.github.tvinke.algorilla.rules
 
 import com.github.tvinke.algorilla.model.Confidence
+import com.github.tvinke.algorilla.model.PathContext
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.model.SourceLocation
 
@@ -39,6 +40,7 @@ public data class Finding(
     val evidence: List<Evidence> = emptyList(),
     val category: RuleCategory? = null,
     val suggestedCode: CodeSuggestion? = null,
+    val pathContext: PathContext? = null,
 ) {
     /** Primary suggestion text for reporters that render a single string. */
     val suggestion: String get() = suggestions.firstOrNull()?.render() ?: ""

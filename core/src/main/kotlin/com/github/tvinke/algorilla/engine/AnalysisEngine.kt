@@ -10,6 +10,7 @@ import com.github.tvinke.algorilla.graph.CallGraphBuilder
 import com.github.tvinke.algorilla.graph.ComplexityAnnotator
 import com.github.tvinke.algorilla.graph.LoopBoundAnnotator
 import com.github.tvinke.algorilla.graph.ParameterFlowAnnotator
+import com.github.tvinke.algorilla.graph.PathContextAnnotator
 import com.github.tvinke.algorilla.graph.SymbolTable
 import com.github.tvinke.algorilla.model.ClassNode
 import com.github.tvinke.algorilla.model.Confidence
@@ -75,6 +76,7 @@ public class AnalysisEngine(
         annotateRecursion(irTrees)
         annotateParameterFlows(irTrees, symbolTable)
         annotateComplexity(symbolTable, callGraph)
+        annotatePathContext(irTrees, callGraph)
         val rawFindings = evaluateRules(irTrees, symbolTable, callGraph, typeEnvironments, finalContexts)
         val deduplicated = applySubsumption(rawFindings, rules)
         val vendoredDemoted = demoteVendoredCode(deduplicated)
@@ -84,7 +86,8 @@ public class AnalysisEngine(
         val ruleIndex = rules.associateBy { it.id }
         val confidenceAdjusted = adjustConfidence(lifecycleDemoted, fileLanguages, ruleIndex)
         val suppressed = SuppressionFilter().filter(confidenceAdjusted, irTrees, aliasIndex)
-        val freshFindings = renderCodeSuggestions(suppressed, finalContexts, fileLanguages)
+        val pathContextEnriched = enrichPathContext(suppressed, irTrees)
+        val freshFindings = renderCodeSuggestions(pathContextEnriched, finalContexts, fileLanguages)
 
         val allFindings =
             (freshFindings + cachedFindings).distinctBy { finding ->
@@ -231,6 +234,13 @@ public class AnalysisEngine(
         callGraph: CallGraph,
     ) {
         ComplexityAnnotator(symbolTable, callGraph, config.maxCallDepth).annotate()
+    }
+
+    private fun annotatePathContext(
+        irTrees: Map<String, FileRoot>,
+        callGraph: CallGraph,
+    ) {
+        PathContextAnnotator(registry, callGraph).annotate(irTrees)
     }
 
     private fun evaluateRules(

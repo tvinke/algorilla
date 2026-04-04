@@ -1667,6 +1667,21 @@ lifecycle-interfaces:
   - InitializingBean
   - DisposableBean
 
+# Annotations on methods that mark HTTP/REST request handlers (path context: REQUEST).
+request-handler-annotations:
+  - RequestMapping
+  - GetMapping
+  - PostMapping
+  - PutMapping
+  - DeleteMapping
+  - PatchMapping
+
+# Annotations on classes that mark HTTP/REST controller entry points (path context: REQUEST).
+controller-class-annotations:
+  - RestController
+  - Controller
+  - Path
+
 # Stream pipeline methods that implicitly iterate — their lambda args run per-element.
 implicit-iteration-ops:
   - map

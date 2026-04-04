@@ -140,6 +140,31 @@ private fun isInLifecycleClass(
         .any { it.name == declaringClass && it.supertypes.any { st -> st in lifecycleInterfaces } }
 }
 
+/**
+ * Copies [FunctionDecl.pathContext] to each [Finding] based on enclosing method line range.
+ * Does NOT affect confidence or detection — purely metadata enrichment.
+ */
+internal fun enrichPathContext(
+    findings: List<Finding>,
+    irTrees: Map<String, FileRoot>,
+): List<Finding> {
+    val contextRanges = mutableMapOf<String, MutableList<Pair<IntRange, com.github.tvinke.algorilla.model.PathContext>>>()
+    for ((_, fileRoot) in irTrees) {
+        for (fn in fileRoot.findDescendants<FunctionDecl>()) {
+            val ctx = fn.pathContext ?: continue
+            val start = fn.location.line
+            val end = maxLineOf(fn)
+            contextRanges.getOrPut(fileRoot.filePath) { mutableListOf() }.add((start..end) to ctx)
+        }
+    }
+    if (contextRanges.isEmpty()) return findings
+    return findings.map { finding ->
+        val ranges = contextRanges[finding.location.file]
+        val matchedContext = ranges?.firstOrNull { finding.location.line in it.first }?.second
+        if (matchedContext != null) finding.copy(pathContext = matchedContext) else finding
+    }
+}
+
 /** Recursively finds the maximum source line in an IR subtree. */
 private fun maxLineOf(node: IRNode): Int {
     var max = node.location.line
