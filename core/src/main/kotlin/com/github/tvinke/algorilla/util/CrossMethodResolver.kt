@@ -94,6 +94,7 @@ public object CrossMethodResolver {
         return bestMatch(byName, call)
     }
 
+    @Suppress("ReturnCount") // Guard clauses with early returns for each resolution strategy
     private fun resolveByTarget(
         call: FunctionCall,
         symbolTable: SymbolTable,
@@ -105,7 +106,13 @@ public object CrossMethodResolver {
         if (byClass.isNotEmpty()) return bestMatch(byClass, call)
         val targetType = symbolTable.resolveType(target) ?: return null
         val byType = symbolTable.lookupByClassAndName("$targetType.${call.name}")
-        return if (byType.isNotEmpty()) bestMatch(byType, call) else null
+        if (byType.isNotEmpty()) return bestMatch(byType, call)
+        // Interface→implementation: resolve via registered supertypes (single-impl only)
+        for (implClass in symbolTable.implementationsOf(targetType)) {
+            val byImpl = symbolTable.lookupByClassAndName("$implClass.${call.name}")
+            if (byImpl.isNotEmpty()) return bestMatch(byImpl, call)
+        }
+        return null
     }
 
     /**

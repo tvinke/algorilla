@@ -201,6 +201,12 @@ public class AnalysisEngine(
         val symbolTable = SymbolTable()
         for ((_, tree) in irTrees) {
             collectSymbols(tree.children, symbolTable)
+            // Register interface→implementation mappings for call resolution
+            for (classNode in tree.findDescendants<ClassNode>()) {
+                for (supertype in classNode.supertypes) {
+                    symbolTable.registerSupertype(supertype, classNode.name)
+                }
+            }
         }
         return symbolTable
     }
