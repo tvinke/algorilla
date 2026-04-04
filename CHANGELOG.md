@@ -1,5 +1,58 @@
 # Changelog
 
+## [0.4.0](https://github.com/tvinke/algorilla/compare/v0.3.1...v0.4.0) (2026-04-04)
+
+
+### Features
+
+* ColdPathAnnotator for startup/init/config code demotion ([0f20a4e](https://github.com/tvinke/algorilla/commit/0f20a4e929fa00bbecb743442c1597c98c2b1f6c))
+* demote findings inside constructors to LOW confidence ([acc7752](https://github.com/tvinke/algorilla/commit/acc77529e4892da81b0c7f2a8c0824b7af1bac22))
+* interface-to-implementation resolution in call graph ([a0a6b86](https://github.com/tvinke/algorilla/commit/a0a6b86be0cb533e960e5b7358988f4c7b6d3ef0))
+* interface-to-implementation resolution in call graph ([a0a6b86](https://github.com/tvinke/algorilla/commit/a0a6b86be0cb533e960e5b7358988f4c7b6d3ef0))
+* interface-to-implementation resolution in call graph ([68cf6c0](https://github.com/tvinke/algorilla/commit/68cf6c0785e0941643de8cea1a4a17b475d90a9b))
+* lifecycle annotation extraction and demotion ([a466310](https://github.com/tvinke/algorilla/commit/a466310bd05544a8620a32d1c21931aee5e71924))
+* lifecycle annotation extraction and demotion ([a466310](https://github.com/tvinke/algorilla/commit/a466310bd05544a8620a32d1c21931aee5e71924))
+* lifecycle annotation extraction and demotion ([bce02be](https://github.com/tvinke/algorilla/commit/bce02be7e5b86578c1d84be56fc592d81336341e))
+* loop execution guard — suppress findings when loop doesn't repeat ([3d70a60](https://github.com/tvinke/algorilla/commit/3d70a60d59b5ac8e36aa7d77abfb0541f9461b92))
+* mutation type classification for cardinality-explosion ([580e6ae](https://github.com/tvinke/algorilla/commit/580e6aef471dfbb5ef90f6ca7dfa249e6c23870a))
+* PathContext foundation ([30e22dc](https://github.com/tvinke/algorilla/commit/30e22dc1673d309572accee194872cf9338af1c6))
+* PathContext foundation — architectural path labeling on findings ([30e22dc](https://github.com/tvinke/algorilla/commit/30e22dc1673d309572accee194872cf9338af1c6))
+* PathContext foundation — architectural path labeling on findings ([955971c](https://github.com/tvinke/algorilla/commit/955971c0a0a314dc7e1f37d6f2bb51634a65e0b4))
+
+
+### Bug Fixes
+
+* add in-memory Map types to non-io-targets ([e39af81](https://github.com/tvinke/algorilla/commit/e39af819ebd86e7ab77c5f3ece34ad887a9e66c7))
+* exclude Netty ChannelHandlerContext from IO-in-loop detection ([ce8c406](https://github.com/tvinke/algorilla/commit/ce8c406cb0900905ace337defe4936dd7e385422))
+* exclude paginated Spring Data fetches from N+1 detection ([6a6dc0a](https://github.com/tvinke/algorilla/commit/6a6dc0aec2f9bd20cf2736e29aa37273380da18d))
+* harden getter-chain string target detection ([3523a98](https://github.com/tvinke/algorilla/commit/3523a98cc963bda06ea5ec98c10106d98a31d28b))
+* harden io-in-loop false-positive detection ([3adfb55](https://github.com/tvinke/algorilla/commit/3adfb55e517d2d9cf42b67ad5935e6ddd7070bcf))
+* isFollowedByExit searches inside VariableDecl for the IO call ([5bfe86f](https://github.com/tvinke/algorilla/commit/5bfe86f3b49dd220853ba0c9d1d57c75f3419596))
+* Java precision improvements (cycles 5-6) ([0bb119b](https://github.com/tvinke/algorilla/commit/0bb119b57961f6ee171b49c6a3092df40a263ff1))
+* Java precision improvements (cycles 5-6) ([0bb119b](https://github.com/tvinke/algorilla/commit/0bb119b57961f6ee171b49c6a3092df40a263ff1))
+* nested-lookup uses non-list-targets-contains for method-call targets ([0df490d](https://github.com/tvinke/algorilla/commit/0df490d280e3b6dfb49ae8cb302b47bf8390635b))
+* prefer same-class methods for unqualified intra-class calls ([faf4a27](https://github.com/tvinke/algorilla/commit/faf4a27b2375648eb5014ed5837d456db157e2e2))
+* prefer same-class methods for unqualified intra-class calls ([faf4a27](https://github.com/tvinke/algorilla/commit/faf4a27b2375648eb5014ed5837d456db157e2e2))
+* prefer same-class methods for unqualified intra-class calls ([bc99e2a](https://github.com/tvinke/algorilla/commit/bc99e2a87e0420bad8ba598950ddee58b2d6367a))
+* propagate bounded small-factory semantics to nested lookup ([acbac82](https://github.com/tvinke/algorilla/commit/acbac82750ccbee7c05a8439f7250b70fc23e610))
+* reactive chain flatMap detection, invoke reflection FP, BigDecimal scalar hints ([e0c1ed0](https://github.com/tvinke/algorilla/commit/e0c1ed0330ba6e10c7027dd553ca18faba78c8fe))
+* reactive chain flatMap detection, invoke reflection FP, BigDecimal scalar hints ([7e901bc](https://github.com/tvinke/algorilla/commit/7e901bcc38304de0bfca07f7cad894d72a7bdbb9))
+* recognize reactive factory classes in monadic target detection ([5a95a3b](https://github.com/tvinke/algorilla/commit/5a95a3b7b4f7d4c5d703bddc1a4bb2eba46a426c))
+* recognize reactive factory classes in monadic target detection ([5a95a3b](https://github.com/tvinke/algorilla/commit/5a95a3b7b4f7d4c5d703bddc1a4bb2eba46a426c))
+* recognize reactive factory classes in monadic target detection ([b93ee16](https://github.com/tvinke/algorilla/commit/b93ee1692a2eca3535af737d56f29e76786d2a69))
+* recognize record accessor in string target detection ([a872bbe](https://github.com/tvinke/algorilla/commit/a872bbe26a87ca57e5193c8b6d75ea7f4a0292fa))
+* recognize record accessor in string target detection ([a872bbe](https://github.com/tvinke/algorilla/commit/a872bbe26a87ca57e5193c8b6d75ea7f4a0292fa))
+* recognize record accessor in string target detection ([7cc71e8](https://github.com/tvinke/algorilla/commit/7cc71e868db96a0e75feedf7daa859ac9e8b89fc))
+* respect rule-level HIGH confidence promotion in engine pipeline ([c1642f4](https://github.com/tvinke/algorilla/commit/c1642f432f06dc41ee81a7ffc8d6ab8637f887e0))
+* respect rule-level HIGH confidence promotion in engine pipeline ([c1642f4](https://github.com/tvinke/algorilla/commit/c1642f432f06dc41ee81a7ffc8d6ab8637f887e0))
+* respect rule-level HIGH confidence promotion in engine pipeline ([df1ba64](https://github.com/tvinke/algorilla/commit/df1ba643d3dc85b4ac826193f4eece9637fa4c6d))
+* restrict HIGH promotion passthrough to MEDIUM-default rules ([1e6b2aa](https://github.com/tvinke/algorilla/commit/1e6b2aa40a91ee62c01fdf169c5e13f8df2b7633))
+* restrict HIGH promotion passthrough to MEDIUM-default rules ([1e6b2aa](https://github.com/tvinke/algorilla/commit/1e6b2aa40a91ee62c01fdf169c5e13f8df2b7633))
+* restrict HIGH promotion passthrough to MEDIUM-default rules ([40c1657](https://github.com/tvinke/algorilla/commit/40c1657d3b34ad78325117254d9b731dc2d04e7c))
+* suppress nested-lookup on per-element property access ([a603864](https://github.com/tvinke/algorilla/commit/a603864707a9655c0e453e2acd536ebd3e691067))
+* suppress nested-lookup on per-element property access ([a603864](https://github.com/tvinke/algorilla/commit/a603864707a9655c0e453e2acd536ebd3e691067))
+* suppress nested-lookup on per-element property access ([af2885c](https://github.com/tvinke/algorilla/commit/af2885c4c781ea16369f48d0b9f3bbd98507d329))
+
 ## [0.3.1](https://github.com/tvinke/algorilla/compare/v0.3.0...v0.3.1) (2026-03-23)
 
 
