@@ -78,6 +78,7 @@ public object CrossMethodResolver {
         call: FunctionCall,
         symbolTable: SymbolTable,
         language: Language = Language.JAVA,
+        enclosingClass: String? = null,
     ): FunctionDecl? {
         val skip = LanguageSemanticsRegistry.DEFAULT.unresolvableNames(language)
         if (call.name in skip) return null
@@ -91,6 +92,12 @@ public object CrossMethodResolver {
             return null
         }
         val byName = symbolTable.lookupBySimpleName(call.name)
+        // Prefer methods in the same declaring class to avoid name collisions
+        // (e.g. merge() in 39 Mapper classes — pick the one in the caller's own class)
+        if (enclosingClass != null) {
+            val sameClass = byName.filter { it.declaringClass == enclosingClass }
+            if (sameClass.isNotEmpty()) return bestMatch(sameClass, call)
+        }
         return bestMatch(byName, call)
     }
 
