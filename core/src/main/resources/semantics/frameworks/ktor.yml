@@ -104,3 +104,7 @@ io-methods:
   - submitFormWithBinaryData
   - bodyAsText
   - bodyAsChannel
+
+heavyweight-types:
+  # Client engine setup — connection pool, thread pool, TLS config
+  - HttpClient

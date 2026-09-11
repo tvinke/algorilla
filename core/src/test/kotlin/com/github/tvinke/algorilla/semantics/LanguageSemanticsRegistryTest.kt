@@ -147,6 +147,26 @@ internal class LanguageSemanticsRegistryTest {
     }
 
     @Test
+    fun `Spring overlay heavyweight-types should include JDBC batch and scheduling types`() {
+        registry.isHeavyweight(Language.JAVA, "SimpleJdbcInsert").shouldBeTrue()
+        registry.isHeavyweight(Language.JAVA, "SimpleJdbcCall").shouldBeTrue()
+        registry.isHeavyweight(Language.JAVA, "CacheManager").shouldBeTrue()
+        registry.isHeavyweight(Language.JAVA, "TaskScheduler").shouldBeTrue()
+    }
+
+    @Test
+    fun `Guava overlay should have a heavyweight-types section`() {
+        registry.isHeavyweight(Language.JAVA, "CacheBuilder").shouldBeTrue()
+        registry.isHeavyweight(Language.JAVA, "LoadingCache").shouldBeTrue()
+        registry.isHeavyweight(Language.JAVA, "RateLimiter").shouldBeTrue()
+    }
+
+    @Test
+    fun `Ktor overlay should mark HttpClient as heavyweight`() {
+        registry.isHeavyweight(Language.KOTLIN, "HttpClient").shouldBeTrue()
+    }
+
+    @Test
     fun `should detect stream ops from stream-ops section`() {
         registry.isStreamOp(Language.JAVA, "map").shouldBeTrue()
         registry.isStreamOp(Language.JAVA, "flatMap").shouldBeTrue()

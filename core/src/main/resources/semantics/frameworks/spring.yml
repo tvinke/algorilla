@@ -183,6 +183,10 @@ heavyweight-types:
   - KafkaTemplate
   - RedisTemplate
   - MongoTemplate
+  - SimpleJdbcInsert
+  - SimpleJdbcCall
+  - CacheManager
+  - TaskScheduler
 
 io-methods:
   # RestTemplate — each call is an HTTP round-trip
