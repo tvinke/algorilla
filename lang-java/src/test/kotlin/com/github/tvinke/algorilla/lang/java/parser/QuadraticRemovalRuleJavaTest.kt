@@ -60,6 +60,17 @@ internal class QuadraticRemovalRuleJavaTest {
 
             findings.shouldBeEmpty()
         }
+
+        @Test
+        fun `should not flag removeFirst on Deque-typed variable`() {
+            // Deque.removeFirst()/removeLast() are O(1) — unlike List.remove(0), which shifts.
+            // Regression for openmrs-core ORUR01Handler false positive: Deque<Obs> obsToUpdate
+            // was declared by interface type, and "Deque" was missing from java.yml's o1-types
+            // (only the concrete ArrayDeque was listed), so TypeEnvironment treated it as O(n).
+            val findings = analyzeFixture("quadratic-removal/negative/deque-remove-first.java")
+
+            findings.shouldBeEmpty()
+        }
     }
 
     @Nested

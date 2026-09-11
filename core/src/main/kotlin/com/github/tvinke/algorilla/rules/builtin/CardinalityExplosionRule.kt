@@ -37,7 +37,7 @@ import com.github.tvinke.algorilla.util.startsWithAtWordBoundary
  * location, because this rule provides a more specific diagnosis
  * (cross-product vs. generic in-loop mutation).
  */
-@Suppress("LargeClass") // Cohesive rule: scan + classify + build findings for one anti-pattern
+@Suppress("LargeClass", "TooManyFunctions") // Cohesive rule: scan + classify + build findings for one anti-pattern
 public class CardinalityExplosionRule : Rule {
     override val id: String = "cardinality-explosion"
     override val name: String = "Cardinality Explosion"
@@ -196,7 +196,10 @@ public class CardinalityExplosionRule : Rule {
         // Inner loop exits after one iteration (break/throw/return) → output bounded by outer size
         if (innerLoop.isSingleIteration) return
 
-        if (outerVar != innerVar && isPartitionedIteration(outerVar, innerVar, language, registry, scope)) return
+        if (outerVar != innerVar) {
+            if (isPartitionedIteration(outerVar, innerVar, language, registry, scope)) return
+            if (isRederivedPerOuterIteration(innerVar, outerLoop, innerLoop, scope)) return
+        }
 
         val key = LoopPairKey(outerLoop.location.line, innerLoop.location.line)
         mutationGroups
@@ -301,6 +304,28 @@ public class CardinalityExplosionRule : Rule {
 
         return false
     }
+
+    /**
+     * Detects the case where the inner loop's source collection is (re-)declared inside the
+     * outer loop's own body — i.e. before the inner loop starts, on every outer iteration.
+     * Such a collection cannot be the same instance across outer iterations, so growing it
+     * produces O(sum of per-iteration sizes) — a flatten/partition, not a Cartesian product.
+     *
+     * Covers cases `isPartitionedIteration` misses because the naming heuristic doesn't apply:
+     * a per-locale `Set` rebuilt each iteration (ConceptValidator), or a query result re-fetched
+     * fresh per outer element (DatabaseUpdater's `changeSets = getChangeSets()` per filename).
+     */
+    private fun isRederivedPerOuterIteration(
+        innerVar: String,
+        outerLoop: LoopNode,
+        innerLoop: LoopNode,
+        scope: List<VariableDecl>,
+    ): Boolean =
+        scope.any { decl ->
+            decl.name == innerVar &&
+                decl.location.line > outerLoop.location.line &&
+                decl.location.line < innerLoop.location.line
+        }
 
     private fun determineEffectiveSeverity(
         outerVar: String,

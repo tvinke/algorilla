@@ -38,6 +38,13 @@ internal class CardinalityExplosionRuleKotlinTest {
 
             findings.shouldBeEmpty()
         }
+
+        @Test
+        fun `should not flag a collection rebuilt fresh inside the outer loop as Cartesian`() {
+            val findings = analyzeFixture("cardinality-explosion/negative/rederived-per-outer-iteration.kt")
+
+            findings.shouldBeEmpty()
+        }
     }
 
     private fun analyzeFixture(fixturePath: String): List<Finding> {
