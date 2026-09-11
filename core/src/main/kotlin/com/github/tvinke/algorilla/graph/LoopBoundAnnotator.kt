@@ -1,6 +1,7 @@
 package com.github.tvinke.algorilla.graph
 
 import com.github.tvinke.algorilla.model.BranchNode
+import com.github.tvinke.algorilla.model.CardinalityBucket
 import com.github.tvinke.algorilla.model.ControlFlowExit
 import com.github.tvinke.algorilla.model.ExitKind
 import com.github.tvinke.algorilla.model.FileRoot
@@ -31,6 +32,7 @@ public class LoopBoundAnnotator(
     public fun annotate(irTrees: Map<String, FileRoot>) {
         var constantBound = 0
         var singleIteration = 0
+        var likelyLarge = 0
         for ((_, fileRoot) in irTrees) {
             val language = fileRoot.language
             val allVarDecls = fileRoot.findDescendants<VariableDecl>()
@@ -43,9 +45,11 @@ public class LoopBoundAnnotator(
                     loop.isSingleIteration = true
                     singleIteration++
                 }
+                loop.cardinalityBucket = classifyCardinality(loop, language, allVarDecls)
+                if (loop.cardinalityBucket == CardinalityBucket.LIKELY_LARGE) likelyLarge++
             }
         }
-        logger.info { "Pass 2.5 complete: $constantBound constant-bound, $singleIteration single-iteration" }
+        logger.info { "Pass 2.5 complete: $constantBound constant-bound, $singleIteration single-iteration, $likelyLarge likely-large" }
     }
 
     internal fun isConstantBound(
@@ -175,6 +179,44 @@ public class LoopBoundAnnotator(
                 }
         }
         return false
+    }
+
+    /**
+     * Classifies the iteration space as CONSTANT_SMALL, LIKELY_LARGE, or UNKNOWN.
+     * Reuses already-computed isConstantBound/isSingleIteration for the small side,
+     * and checks YAML `bulk-load-prefixes` for the large side.
+     */
+    internal fun classifyCardinality(
+        loop: LoopNode,
+        language: Language,
+        varDecls: List<VariableDecl> = emptyList(),
+    ): CardinalityBucket {
+        if (loop.isConstantBound || loop.isSingleIteration) return CardinalityBucket.CONSTANT_SMALL
+        if (isLikelyLargeSource(loop, language, varDecls)) return CardinalityBucket.LIKELY_LARGE
+        return CardinalityBucket.UNKNOWN
+    }
+
+    /**
+     * Checks whether the iterated variable was initialized from a bulk-load method
+     * (e.g. findAll, getAll, queryAll — sourced from YAML `bulk-load-prefixes`).
+     */
+    @Suppress("ReturnCount")
+    private fun isLikelyLargeSource(
+        loop: LoopNode,
+        language: Language,
+        varDecls: List<VariableDecl>,
+    ): Boolean {
+        val iterVar = loop.iteratedVariable ?: return false
+        val bulkPrefixes = registry.extraSection(language, "bulk-load-prefixes")
+        if (bulkPrefixes.isEmpty()) return false
+
+        // Direct method call in for-each: iteratedVariable contains the method name
+        if (bulkPrefixes.any { iterVar.contains(it, ignoreCase = true) }) return true
+
+        // Variable-assigned: look up initializer
+        val decl = varDecls.firstOrNull { it.name == iterVar } ?: return false
+        val init = decl.initializer as? FunctionCall ?: return false
+        return bulkPrefixes.any { init.name.startsWith(it, ignoreCase = true) }
     }
 
     private companion object {

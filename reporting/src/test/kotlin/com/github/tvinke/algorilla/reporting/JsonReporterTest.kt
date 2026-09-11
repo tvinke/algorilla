@@ -1,6 +1,9 @@
 package com.github.tvinke.algorilla.reporting
 
 import com.github.tvinke.algorilla.engine.AnalysisResult
+import com.github.tvinke.algorilla.model.GroupType
+import com.github.tvinke.algorilla.model.GroupVisibility
+import com.github.tvinke.algorilla.model.IssueGroup
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.model.SourceLocation
 import com.github.tvinke.algorilla.rules.Finding
@@ -32,18 +35,36 @@ internal class JsonReporterTest {
         suggestions = listOf(Suggestion.Freeform("Use a HashSet")),
     )
 
-    private fun report(findings: List<Finding> = listOf(finding())): String {
+    private fun report(
+        findings: List<Finding> = listOf(finding()),
+        issueGroups: List<IssueGroup> = emptyList(),
+    ): String {
         val result =
             AnalysisResult(
                 findings = findings,
                 filesAnalyzed = 1,
                 errors = emptyList(),
                 elapsedMs = 100,
+                issueGroups = issueGroups,
             )
         val sb = StringBuilder()
         reporter.report(result, sb)
         return sb.toString()
     }
+
+    private fun issueGroup(
+        anchor: String = "OrderService.process",
+        findings: List<Finding> = listOf(finding()),
+    ) = IssueGroup(
+        id = "$anchor:same_method",
+        anchor = anchor,
+        groupType = GroupType.SAME_METHOD,
+        visibility = GroupVisibility.UNKNOWN,
+        pathContext = null,
+        maxCardinality = null,
+        representativeFinding = findings.first(),
+        contributingFindings = findings,
+    )
 
     @Nested
     inner class SchemaVersion {
@@ -139,6 +160,56 @@ internal class JsonReporterTest {
             val json = report()
             val root = lenientJson.parseToJsonElement(json).jsonObject
             root.containsKey("schemaVersion") shouldBe true
+        }
+    }
+
+    @Nested
+    inner class IssueGroups {
+        @Test
+        fun `output includes issueGroups array when groups present`() {
+            val f = finding()
+            val json = report(listOf(f), listOf(issueGroup(findings = listOf(f))))
+            json shouldContain "\"issueGroups\""
+            val root = Json.parseToJsonElement(json).jsonObject
+            root["issueGroups"]!!.jsonArray.size shouldBe 1
+        }
+
+        @Test
+        fun `issueGroups is empty array when no groups`() {
+            val json = report()
+            val root = Json.parseToJsonElement(json).jsonObject
+            root["issueGroups"]!!.jsonArray.size shouldBe 0
+        }
+
+        @Test
+        fun `issue group contains anchor and groupType`() {
+            val f = finding()
+            val json = report(listOf(f), listOf(issueGroup(findings = listOf(f))))
+            val root = Json.parseToJsonElement(json).jsonObject
+            val group = root["issueGroups"]!!.jsonArray[0].jsonObject
+            group["anchor"]!!.jsonPrimitive.content shouldBe "OrderService.process"
+            group["groupType"]!!.jsonPrimitive.content shouldBe "SAME_METHOD"
+        }
+
+        @Test
+        fun `issue group contains findingCount`() {
+            val findings = listOf(finding(ruleId = "io-in-loop"), finding(ruleId = "nested-lookup"))
+            val json = report(findings, listOf(issueGroup(findings = findings)))
+            val root = Json.parseToJsonElement(json).jsonObject
+            val group = root["issueGroups"]!!.jsonArray[0].jsonObject
+            group["findingCount"]!!.jsonPrimitive.int shouldBe 2
+        }
+
+        @Test
+        fun `issue group references findings by fingerprint`() {
+            val f = finding()
+            val json = report(listOf(f), listOf(issueGroup(findings = listOf(f))))
+            val root = Json.parseToJsonElement(json).jsonObject
+            val group = root["issueGroups"]!!.jsonArray[0].jsonObject
+            val contributingFingerprints = group["contributingFindings"]!!.jsonArray
+            contributingFingerprints.size shouldBe 1
+            val fingerprint = contributingFingerprints[0].jsonPrimitive.content
+            fingerprint.length shouldBe 16
         }
     }
 }

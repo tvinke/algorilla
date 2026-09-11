@@ -4,7 +4,9 @@ import com.github.tvinke.algorilla.baseline.Baseline
 import com.github.tvinke.algorilla.engine.AnalysisError
 import com.github.tvinke.algorilla.engine.AnalysisResult
 import com.github.tvinke.algorilla.engine.Reporter
+import com.github.tvinke.algorilla.model.CardinalityBucket
 import com.github.tvinke.algorilla.model.Confidence
+import com.github.tvinke.algorilla.model.PathContext
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.rules.Finding
 import java.util.Locale
@@ -13,12 +15,13 @@ import java.util.Locale
  * Formats analysis results for console display, grouped by file with evidence chains,
  * code snippets, and a summary line showing file/language breakdown.
  */
-@Suppress("LargeClass") // Console output logic — each section is a method
+@Suppress("LargeClass", "TooManyFunctions") // Console output — leaf view + grouped view
 public class ConsoleReporter(
     private val color: Boolean = false,
     private val baseDir: String? = null,
     private val sourceRoots: List<String> = emptyList(),
     private val limit: Int = 0,
+    private val grouped: Boolean = false,
 ) : Reporter {
     private var firstFindingShown = false
     private var projectRoot: java.io.File? = null
@@ -36,6 +39,17 @@ public class ConsoleReporter(
         firstFindingShown = false
         projectRoot = result.projectRoot
 
+        if (grouped && result.issueGroups.isNotEmpty()) {
+            reportGrouped(result, output)
+        } else {
+            reportLeaf(result, output)
+        }
+    }
+
+    private fun reportLeaf(
+        result: AnalysisResult,
+        output: Appendable,
+    ) {
         val totalFindings = result.findings.size
         val isLimited = limit > 0 && limit < totalFindings
 
@@ -44,10 +58,21 @@ public class ConsoleReporter(
         }
 
         val displayFindings = if (isLimited) result.findings.take(limit) else result.findings
+        formatFindingsByFile(displayFindings, output)
 
+        if (isLimited) {
+            output.appendLine("Showing $limit of $totalFindings findings. Run without --limit to see all.")
+        }
+        formatSummary(result, output, isLimited)
+    }
+
+    private fun formatFindingsByFile(
+        findings: List<Finding>,
+        output: Appendable,
+    ) {
         val snippetRenderer = SnippetRenderer(color)
-        val grouped =
-            displayFindings
+        val byFile =
+            findings
                 .groupBy { it.location.file }
                 .entries
                 .sortedWith(
@@ -55,22 +80,125 @@ public class ConsoleReporter(
                         entry.value.maxOf { it.severity.ordinal }
                     }.thenBy { it.key },
                 )
-        for ((file, findings) in grouped) {
+        for ((file, fileFindings) in byFile) {
             val displayFile = relativize(file)
             val header =
                 "\u23fa " + Ansi.underline(Ansi.boldWhite(displayFile, color), color) +
-                    " " + Ansi.dim("(${findings.size} ${pluralize("finding", findings.size)})", color)
+                    " " + Ansi.dim("(${fileFindings.size} ${pluralize("finding", fileFindings.size)})", color)
             output.appendLine(header)
-            for (finding in findings) {
+            for (finding in fileFindings) {
                 formatFinding(finding, snippetRenderer, output)
             }
             output.appendLine()
         }
+    }
+
+    @Suppress("LongMethod")
+    private fun reportGrouped(
+        result: AnalysisResult,
+        output: Appendable,
+    ) {
+        val groups = result.issueGroups
+        val totalGroups = groups.size
+        val isLimited = limit > 0 && limit < totalGroups
+        val displayGroups = if (isLimited) groups.take(limit) else groups
+
+        val snippetRenderer = SnippetRenderer(color)
+        for (group in displayGroups) {
+            formatGroupHeader(group, output)
+            formatFinding(group.representativeFinding, snippetRenderer, output)
+            formatContributing(group, output)
+            output.appendLine()
+        }
 
         if (isLimited) {
-            output.appendLine("Showing $limit of $totalFindings findings. Run without --limit to see all.")
+            output.appendLine("Showing $limit of $totalGroups issue groups. Run without --limit to see all.")
         }
-        formatSummary(result, output, isLimited)
+        formatGroupedSummary(result, output)
+    }
+
+    private fun formatGroupHeader(
+        group: com.github.tvinke.algorilla.model.IssueGroup,
+        output: Appendable,
+    ) {
+        val anchor =
+            group.anchor
+                .substringAfterLast('.')
+                .let { if (group.anchor.contains('.')) group.anchor.substringBeforeLast('.').substringAfterLast('.') + ".$it" else it }
+        val count = group.contributingFindings.size
+        val tags = buildGroupTags(group)
+        val tagSuffix = if (tags.isNotEmpty()) " \u00b7 ${tags.joinToString(" \u00b7 ")}" else ""
+        val loc =
+            formatLocation(
+                group.representativeFinding.location.file,
+                group.representativeFinding.location.line,
+            )
+
+        val header =
+            "\u25b6 " + Ansi.boldWhite(anchor, color) +
+                "  " + Ansi.dim("$count ${pluralize("finding", count)}$tagSuffix", color)
+        output.appendLine(header)
+        output.appendLine("    " + Ansi.cyan(loc, color))
+    }
+
+    private fun buildGroupTags(group: com.github.tvinke.algorilla.model.IssueGroup): List<String> {
+        val tags = mutableListOf<String>()
+        when (group.pathContext) {
+            PathContext.REQUEST -> tags.add("request handler")
+            PathContext.BATCH -> tags.add("scheduled")
+            PathContext.LIFECYCLE -> tags.add("startup")
+            else -> {}
+        }
+        if (group.maxCardinality == CardinalityBucket.LIKELY_LARGE) {
+            tags.add("large collection")
+        }
+        return tags
+    }
+
+    private fun formatContributing(
+        group: com.github.tvinke.algorilla.model.IssueGroup,
+        output: Appendable,
+    ) {
+        val others = group.contributingFindings.filter { it !== group.representativeFinding }
+        if (others.isEmpty()) return
+        output.appendLine()
+        output.appendLine("      " + Ansi.dim("also in this group:", color))
+        for (finding in others) {
+            val confTag =
+                when (finding.confidence) {
+                    com.github.tvinke.algorilla.model.Confidence.HIGH -> " [high]"
+                    com.github.tvinke.algorilla.model.Confidence.LOW -> " [low]"
+                    com.github.tvinke.algorilla.model.Confidence.MEDIUM -> ""
+                }
+            val label = "${finding.ruleId}$confTag".padEnd(CONTRIBUTING_LABEL_WIDTH)
+            val line = ":${finding.location.line}"
+            val hint = compactMessage(finding.message)
+            output.appendLine("        " + Ansi.dim("- $label $line  $hint", color))
+        }
+    }
+
+    private fun compactMessage(message: String): String =
+        if (message.length > COMPACT_MESSAGE_LENGTH) message.take(COMPACT_MESSAGE_LENGTH - 1) + "\u2026" else message
+
+    private fun formatGroupedSummary(
+        result: AnalysisResult,
+        output: Appendable,
+    ) {
+        val groupCount = result.issueGroups.size
+        val findingCount = result.findings.size
+        val requestCount = result.issueGroups.count { it.pathContext in setOf(PathContext.REQUEST, PathContext.BATCH) }
+        val startupCount = result.issueGroups.count { it.pathContext == PathContext.LIFECYCLE }
+
+        val parts = mutableListOf<String>()
+        if (requestCount > 0) parts.add("$requestCount in request handlers")
+        if (startupCount > 0) parts.add("$startupCount in startup code")
+        val contextInfo = if (parts.isNotEmpty()) ". ${parts.joinToString(", ")}" else ""
+
+        output.appendLine(
+            "Found $findingCount ${pluralize("finding", findingCount)} in $groupCount issue " +
+                "${pluralize("group", groupCount)}$contextInfo.",
+        )
+        output.appendLine(Ansi.dim("Tip: --view findings for the detailed leaf view", color))
     }
 
     @Suppress("LongMethod")
@@ -383,6 +511,8 @@ public class ConsoleReporter(
         private const val DOMINANT_RULE_THRESHOLD = 0.3
         private const val MAX_SEGMENT_LENGTH = 25
         private const val TRUNCATED_LENGTH = 22
+        private const val COMPACT_MESSAGE_LENGTH = 60
+        private const val CONTRIBUTING_LABEL_WIDTH = 30
         val JVM_EXTENSIONS = setOf("java", "kt", "kts", "groovy")
 
         private val OPERATOR_PATTERN = Regex("""(\s*[×+^]\s*|\s+log\s+)""")

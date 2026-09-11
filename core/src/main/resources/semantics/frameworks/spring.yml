@@ -242,3 +242,8 @@ request-handler-annotations:
 controller-class-annotations:
   - RestController
   - Controller
+
+batch-method-annotations:
+  - Scheduled
+  - Schedules
+  - EnableScheduling

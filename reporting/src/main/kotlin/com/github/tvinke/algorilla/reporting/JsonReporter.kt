@@ -27,6 +27,26 @@ public class JsonReporter : Reporter {
         JsonReport(
             summary = buildSummary(result),
             findings = result.findings.map { toJsonFinding(it, result.projectRoot) },
+            issueGroups = result.issueGroups.map { toJsonIssueGroup(it, result.projectRoot) },
+        )
+
+    private fun toJsonIssueGroup(
+        group: com.github.tvinke.algorilla.model.IssueGroup,
+        projectRoot: java.io.File?,
+    ): JsonIssueGroup =
+        JsonIssueGroup(
+            id = group.id,
+            anchor = group.anchor,
+            groupType = group.groupType.name,
+            visibility = group.visibility.name,
+            pathContext = group.pathContext?.name,
+            maxCardinality = group.maxCardinality?.name,
+            representativeFinding = Baseline.fingerprintOf(group.representativeFinding, projectRoot).contentHash,
+            contributingFindings =
+                group.contributingFindings.map {
+                    Baseline.fingerprintOf(it, projectRoot).contentHash
+                },
+            findingCount = group.contributingFindings.size,
         )
 
     private fun toJsonFinding(
@@ -55,6 +75,7 @@ public class JsonReporter : Reporter {
             suggestedCodeLanguage = finding.suggestedCode?.language,
             suggestedCodeFramework = finding.suggestedCode?.framework,
             pathContext = finding.pathContext?.name,
+            cardinalityBucket = finding.cardinalityBucket?.name,
         )
 
     private fun buildSummary(result: AnalysisResult): JsonSummary {
@@ -100,6 +121,7 @@ internal data class JsonReport(
     val algorillaVersion: String = toolVersion(),
     val summary: JsonSummary,
     val findings: List<JsonFinding>,
+    val issueGroups: List<JsonIssueGroup> = emptyList(),
 )
 
 private const val SCHEMA_VERSION = 2
@@ -158,6 +180,7 @@ internal data class JsonFinding(
     val suggestedCodeLanguage: String? = null,
     val suggestedCodeFramework: String? = null,
     val pathContext: String? = null,
+    val cardinalityBucket: String? = null,
 )
 
 @Serializable
@@ -195,4 +218,29 @@ internal data class JsonEvidence(
 internal data class JsonSuggestion(
     val type: String,
     val text: String,
+)
+
+/**
+ * JSON representation of an issue group — related findings bundled by anchor method.
+ *
+ * @property id Stable group identifier derived from anchor and type.
+ * @property anchor The anchor method or class that defines this group.
+ * @property groupType How findings are related: SAME_METHOD, SAFE_CALL_EDGE, SHARED_EVIDENCE_CHAIN.
+ * @property visibility How reliably the grouping was resolved: RESOLVED_SAFE, AMBIGUOUS, UNKNOWN.
+ * @property pathContext Architectural context if consistent across group, else null.
+ * @property representativeFinding Fingerprint of the most representative finding in the group.
+ * @property contributingFindings Fingerprints of all findings in the group.
+ * @property findingCount Number of findings in the group.
+ */
+@Serializable
+internal data class JsonIssueGroup(
+    val id: String,
+    val anchor: String,
+    val groupType: String,
+    val visibility: String,
+    val pathContext: String? = null,
+    val maxCardinality: String? = null,
+    val representativeFinding: String?,
+    val contributingFindings: List<String?>,
+    val findingCount: Int,
 )

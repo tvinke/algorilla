@@ -32,6 +32,7 @@ public class PathContextAnnotator(
             val lifecycleAnnotations = registry.extraSection(language, "lifecycle-method-annotations")
             val lifecycleInterfaces = registry.extraSection(language, "lifecycle-interfaces")
             val lifecycleCallbacks = buildLifecycleCallbacks(lifecycleInterfaces)
+            val batchAnnotations = registry.extraSection(language, "batch-method-annotations")
 
             for (classNode in fileRoot.findDescendants<ClassNode>()) {
                 val isControllerClass = classNode.annotations.any { it in controllerAnnotations }
@@ -43,6 +44,7 @@ public class PathContextAnnotator(
                     requestAnnotations,
                     lifecycleAnnotations,
                     lifecycleCallbacks,
+                    batchAnnotations,
                 )
             }
         }
@@ -55,6 +57,7 @@ public class PathContextAnnotator(
         requestAnnotations: Set<String>,
         lifecycleAnnotations: Set<String>,
         lifecycleCallbacks: Set<String>,
+        batchAnnotations: Set<String>,
     ) {
         for (fn in classNode.findDescendants<FunctionDecl>()) {
             fn.pathContext =
@@ -65,6 +68,7 @@ public class PathContextAnnotator(
                     requestAnnotations,
                     lifecycleAnnotations,
                     lifecycleCallbacks,
+                    batchAnnotations,
                 )
         }
     }
@@ -77,8 +81,10 @@ public class PathContextAnnotator(
         requestAnnotations: Set<String>,
         lifecycleAnnotations: Set<String>,
         lifecycleCallbacks: Set<String>,
+        batchAnnotations: Set<String>,
     ): PathContext? {
         if (fn.annotations.any { it in requestAnnotations } || isControllerClass) return PathContext.REQUEST
+        if (fn.annotations.any { it in batchAnnotations }) return PathContext.BATCH
         if (fn.annotations.any { it in lifecycleAnnotations }) return PathContext.LIFECYCLE
         if (isLifecycleClass && fn.name in lifecycleCallbacks) return PathContext.LIFECYCLE
         return null
@@ -144,6 +150,7 @@ public class PathContextAnnotator(
                 "DisposableBean" to "destroy",
                 "SmartLifecycle" to "start",
                 "SmartInitializingSingleton" to "afterSingletonsInstantiated",
+                "CustomTaskChange" to "execute",
             )
     }
 }

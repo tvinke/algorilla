@@ -36,6 +36,9 @@ public data class LoopNode(
 
     /** Populated by LoopBoundAnnotator — true when every code path through the loop body exits (throw/break/return). */
     var isSingleIteration: Boolean = false
+
+    /** Populated by LoopBoundAnnotator — coarse classification of the iteration space size. */
+    var cardinalityBucket: CardinalityBucket = CardinalityBucket.UNKNOWN
 }
 
 /** The kind of lookup operation on a collection. */

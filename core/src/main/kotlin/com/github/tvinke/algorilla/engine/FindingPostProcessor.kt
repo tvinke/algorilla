@@ -1,11 +1,13 @@
 package com.github.tvinke.algorilla.engine
 
+import com.github.tvinke.algorilla.model.CardinalityBucket
 import com.github.tvinke.algorilla.model.ClassNode
 import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.FileRoot
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
+import com.github.tvinke.algorilla.model.LoopNode
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
@@ -121,6 +123,7 @@ private val KNOWN_CALLBACKS =
         "DisposableBean" to "destroy",
         "SmartLifecycle" to "start",
         "SmartInitializingSingleton" to "afterSingletonsInstantiated",
+        "CustomTaskChange" to "execute",
     )
 
 private fun buildInterfaceCallbacks(lifecycleInterfaces: Set<String>): Set<String> =
@@ -162,6 +165,32 @@ internal fun enrichPathContext(
         val ranges = contextRanges[finding.location.file]
         val matchedContext = ranges?.firstOrNull { finding.location.line in it.first }?.second
         if (matchedContext != null) finding.copy(pathContext = matchedContext) else finding
+    }
+}
+
+/**
+ * Copies the [LoopNode.cardinalityBucket] to each [Finding] based on enclosing loop line range.
+ * For findings inside nested loops, takes the worst-case (maximum) cardinality.
+ */
+internal fun enrichCardinality(
+    findings: List<Finding>,
+    irTrees: Map<String, FileRoot>,
+): List<Finding> {
+    val loopRanges = mutableMapOf<String, MutableList<Pair<IntRange, CardinalityBucket>>>()
+    for ((_, fileRoot) in irTrees) {
+        for (loop in fileRoot.findDescendants<LoopNode>()) {
+            val start = loop.location.line
+            val end = maxLineOf(loop)
+            loopRanges.getOrPut(fileRoot.filePath) { mutableListOf() }.add((start..end) to loop.cardinalityBucket)
+        }
+    }
+    if (loopRanges.isEmpty()) return findings
+    return findings.map { finding ->
+        val ranges = loopRanges[finding.location.file] ?: return@map finding
+        val enclosing = ranges.filter { finding.location.line in it.first }
+        if (enclosing.isEmpty()) return@map finding
+        val worst = enclosing.maxBy { it.second.ordinal }.second
+        if (worst != CardinalityBucket.UNKNOWN) finding.copy(cardinalityBucket = worst) else finding
     }
 }
 
