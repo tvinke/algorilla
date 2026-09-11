@@ -176,12 +176,7 @@ internal class AlgorillaCommand :
         val useColor = resolveColor(color, outputFile)
 
         if (listRules) {
-            // Resolve the same project root a real scan would use, so --list-rules shows the
-            // custom rules that would actually run — not whatever's under the cwd if that differs.
-            val customRulesRoot =
-                (inputPaths + positionalPaths).firstOrNull()?.let { ProjectStructureDetector().resolveProjectRoot(it) }
-                    ?: File(".")
-            printRuleList(builtinRules() + CustomRuleLoader.loadRules(customRulesRoot), useColor)
+            printRuleList(builtinRules() + CustomRuleLoader.loadRules(resolveCustomRulesRootForListing()), useColor)
             return EXIT_OK
         }
 
@@ -206,6 +201,15 @@ internal class AlgorillaCommand :
         }
         return merged
     }
+
+    /**
+     * Resolves the project root for `--list-rules` the same way a real scan would, so the
+     * custom rules shown match what would actually run — not whatever's under the cwd if
+     * that differs. Falls back to the cwd when `--list-rules` is used with no path argument.
+     */
+    private fun resolveCustomRulesRootForListing(): File =
+        (inputPaths + positionalPaths).firstOrNull()?.let { ProjectStructureDetector().resolveProjectRoot(it) }
+            ?: File(".")
 
     private fun processAcceptHashes(result: AnalysisResult) {
         if (acceptHashes.isEmpty()) return
