@@ -58,7 +58,7 @@ internal class InitCommand : Callable<Int> {
         val detector = ProjectStructureDetector()
         val scanRoots =
             listOf(projectDir).flatMap { detector.resolveSourceRoots(projectDir, it) }
-        val cache = AnalysisCache(projectDir)
+        val cache = AnalysisCache(projectDir, config)
         val collector = SourceFileCollector(detector)
         val sourceFiles = collector.collect(scanRoots, config.excludePatterns, false, null)
 

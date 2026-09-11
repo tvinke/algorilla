@@ -219,7 +219,7 @@ internal class AlgorillaCommand :
         val parsers = ParserRegistry.all()
         val languageFilter = resolveLanguageFilter(languages, spec)
         val allRules = resolveRules(projectRoot, languageFilter, ruleFilter)
-        val cache = if (noCache) null else AnalysisCache(projectRoot)
+        val cache = if (noCache) null else AnalysisCache(projectRoot, config)
         val collector = SourceFileCollector(detector)
         val sourceFiles = collector.collect(scanRoots, config.excludePatterns, includeTests, languageFilter)
         return AnalysisEngine(parsers = parsers, rules = allRules, config = config, cache = cache, verbose = verbose)
