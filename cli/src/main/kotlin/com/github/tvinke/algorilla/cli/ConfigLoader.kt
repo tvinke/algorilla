@@ -63,17 +63,13 @@ private fun mapToAnalysisConfig(config: AlgorillaConfig): AnalysisConfig {
                 severity = ruleConfig.severity?.let { parseSeverity(it) },
             )
         }
-    val heavyweightTypes =
-        if (config.heavyweightTypes.isNotEmpty()) {
-            config.heavyweightTypes.toSet()
-        } else {
-            AnalysisConfig.DEFAULT_HEAVYWEIGHT_TYPES
-        }
     return AnalysisConfig(
         excludePatterns = config.exclude,
         ruleOverrides = ruleOverrides,
         typeHints = config.typeHints,
-        heavyweightTypes = heavyweightTypes,
+        // Additive on top of each language's YAML-defined heavyweight-types —
+        // LanguageSemanticsRegistry.withOverrides() merges these in, it doesn't replace.
+        heavyweightTypes = config.heavyweightTypes.toSet(),
         minSeverity = config.minSeverity?.let { parseSeverity(it) } ?: Severity.WARNING,
         minConfidence = config.minConfidence?.let { parseConfidence(it) } ?: Confidence.MEDIUM,
         maxCallDepth = config.maxCallDepth ?: AnalysisConfig.DEFAULT_MAX_CALL_DEPTH,

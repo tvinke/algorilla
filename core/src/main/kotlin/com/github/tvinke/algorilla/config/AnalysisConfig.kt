@@ -16,20 +16,11 @@ public data class AnalysisConfig(
     val maxCallDepth: Int = DEFAULT_MAX_CALL_DEPTH,
     val minSeverity: Severity = Severity.WARNING,
     val minConfidence: Confidence = Confidence.MEDIUM,
-    val heavyweightTypes: Set<String> = DEFAULT_HEAVYWEIGHT_TYPES,
+    val heavyweightTypes: Set<String> = emptySet(),
     val includeTests: Boolean = false,
 ) {
     public companion object {
         public const val DEFAULT_MAX_CALL_DEPTH: Int = 5
-
-        public val DEFAULT_HEAVYWEIGHT_TYPES: Set<String> =
-            setOf(
-                "ObjectMapper",
-                "Gson",
-                "XmlMapper",
-                "DocumentBuilderFactory",
-                "TransformerFactory",
-            )
     }
 }
 

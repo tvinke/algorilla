@@ -117,6 +117,16 @@ internal class LanguageSemanticsRegistryTest {
     }
 
     @Test
+    fun `Java heavyweight-types YAML covers the formerly-hardcoded default set`() {
+        // These 5 used to be a Kotlin-code fallback (AnalysisConfig.DEFAULT_HEAVYWEIGHT_TYPES).
+        // Now that the fallback is gone, java.yml is the only source — lock it in.
+        val formerlyHardcoded = setOf("ObjectMapper", "Gson", "XmlMapper", "DocumentBuilderFactory", "TransformerFactory")
+        formerlyHardcoded.forEach { type ->
+            registry.isHeavyweight(Language.JAVA, type).shouldBeTrue()
+        }
+    }
+
+    @Test
     fun `should merge user heavyweight types`() {
         val merged = LanguageSemanticsRegistry.withOverrides(registry, setOf("CustomMapper"))
         merged.isHeavyweight(Language.JAVA, "CustomMapper").shouldBeTrue()

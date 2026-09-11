@@ -232,6 +232,7 @@ builder-methods:
 
 heavyweight-types:
   - ObjectMapper
+  - Gson
   - XmlMapper
   - Pattern
   - SimpleDateFormat

@@ -183,6 +183,7 @@ builder-methods:
 
 heavyweight-types:
   - ObjectMapper
+  - Gson
   - XmlMapper
   - DocumentBuilderFactory
   - TransformerFactory
