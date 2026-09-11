@@ -55,6 +55,27 @@ internal class RepeatedLinearScanRuleJavaTest {
     }
 
     @Nested
+    inner class SortCases {
+        @Test
+        fun `should detect repeated sort on same collection`() {
+            val findings = analyzeFixture("repeated-linear-scan/positive/repeated-sort.java")
+
+            findings shouldHaveSize 1
+            findings.first().ruleId shouldBe "repeated-linear-scan"
+            findings.first().message shouldContain "items"
+            findings.first().message shouldContain "2 times"
+            findings.first().message shouldContain "sort"
+        }
+
+        @Test
+        fun `should not flag single sort`() {
+            val findings = analyzeFixture("repeated-linear-scan/negative/single-sort.java")
+
+            findings.shouldBeEmpty()
+        }
+    }
+
+    @Nested
     inner class NegativeCases {
         @Test
         fun `should not flag single lookup`() {
