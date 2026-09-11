@@ -391,6 +391,9 @@ heavyweight-types:
   - WebSocket
   - XMLHttpRequest
   - WebAssembly
+  - DOMParser
+  - XSLTProcessor
+  - EventSource
   - Intl.Collator
   - Intl.DateTimeFormat
   - Intl.NumberFormat

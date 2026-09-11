@@ -182,14 +182,53 @@ builder-methods:
   - contentType
 
 heavyweight-types:
+  # Groovy-specific
+  - JsonSlurper
+  - XmlSlurper
+  - GroovyShell
+  - GroovyClassLoader
+  - GroovyScriptEngine
+  - StreamingMarkupBuilder
+  - MarkupBuilder
+  - SimpleTemplateEngine
+  - GStringTemplateEngine
+  - MarkupTemplateEngine
+  # Inherited from the JVM/Java stdlib — same classes available via interop
   - ObjectMapper
   - Gson
   - XmlMapper
   - DocumentBuilderFactory
   - TransformerFactory
-  - JsonSlurper
-  - XmlSlurper
   - Pattern
+  - SimpleDateFormat
+  - Collator
+  - RuleBasedCollator
+  - MessageDigest
+  - SAXParserFactory
+  - SAXParser
+  - Cipher
+  - KeyGenerator
+  - KeyPairGenerator
+  - SecretKeyFactory
+  - KeyFactory
+  - Signature
+  - Mac
+  - SSLContext
+  - SSLSocketFactory
+  - HttpClient
+  - HttpURLConnection
+  - ScheduledExecutorService
+  - ThreadPoolExecutor
+  - ForkJoinPool
+  - DateTimeFormatter
+  - XMLInputFactory
+  - XMLOutputFactory
+  - XPathFactory
+  - SchemaFactory
+  - Validator
+  - JAXBContext
+  - MBeanServer
+  - ScriptEngine
 
 string-types:
   - String
