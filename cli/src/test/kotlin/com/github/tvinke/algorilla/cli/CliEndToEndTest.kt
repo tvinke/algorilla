@@ -267,6 +267,33 @@ internal class CliEndToEndTest {
         result.stdout shouldNotContain "Showing"
     }
 
+    // -- Custom rules --
+
+    @Tag("contract")
+    @Test
+    fun `custom rule script in dotAlgorilla rules directory produces a finding`() {
+        val project = writeSource("Clean.java", "package com.example;\npublic class Clean {}\n")
+        val rulesDir = project.resolve(".algorilla/rules")
+        rulesDir.mkdirs()
+        rulesDir.resolve("flag-all-classes.kts").writeText(
+            """
+            import com.github.tvinke.algorilla.rules.custom.rule
+            import com.github.tvinke.algorilla.model.FileRoot
+
+            rule("custom-flag-all-files") {
+                name = "Custom: flag every file"
+                onNode<FileRoot> { node, file ->
+                    report(node.location, "custom rule fired for ${'$'}file")
+                }
+            }
+            """.trimIndent(),
+        )
+
+        val result = run("--no-cache", "--fail-on", "error", project.absolutePath)
+        result.stdout shouldContain "custom-flag-all-files"
+        result.stdout shouldContain "custom rule fired"
+    }
+
     companion object {
         private val NESTED_LOOKUP_SOURCE =
             """
