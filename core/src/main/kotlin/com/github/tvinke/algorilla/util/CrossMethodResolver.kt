@@ -145,8 +145,18 @@ public object CrossMethodResolver {
         maxDepth: Int = 1,
         language: Language = Language.JAVA,
         noinline predicate: (T) -> Boolean = { true },
-    ): ResolvedMatch<T>? = resolveAndFindWithConfidenceInternal(call, symbolTable, maxDepth, language, T::class.java, predicate)
+    ): ResolvedMatch<T>? =
+        resolveAndFindWithConfidenceInternal(call, symbolTable, maxDepth, language, T::class.java, predicate, enclosingClass = null)
 
+    /**
+     * Follows a resolved call one level deeper into its body to look for [predicate]-matching
+     * descendants, threading [enclosingClass] through the recursion so an unqualified inner call
+     * (`this.foo()` or implicit-this `foo()`) is disambiguated against the class whose body is
+     * currently being inspected - not the caller's own class. Without this, an ambiguous
+     * same-name/same-arity method shared by many unrelated implementers of the same interface
+     * (e.g. 30+ `Mapper.merge()` overrides) resolves to an arbitrary, likely wrong, class once
+     * the walk is two or more hops deep.
+     */
     @PublishedApi
     internal fun <T : IRNode> resolveAndFindWithConfidenceInternal(
         call: FunctionCall,
@@ -155,9 +165,10 @@ public object CrossMethodResolver {
         language: Language,
         targetClass: Class<T>,
         predicate: (T) -> Boolean,
+        enclosingClass: String? = null,
     ): ResolvedMatch<T>? {
         if (maxDepth <= 0) return null
-        val (resolved, confidence) = resolve(call, symbolTable, language).declAndConfidenceOrNull() ?: return null
+        val (resolved, confidence) = resolve(call, symbolTable, language, enclosingClass).declAndConfidenceOrNull() ?: return null
 
         // Search direct descendants
         val allDescendants = collectDescendants(resolved)
@@ -166,10 +177,20 @@ public object CrossMethodResolver {
         val direct = allDescendants.filter { targetClass.isInstance(it) }.map { it as T }.firstOrNull(predicate)
         if (direct != null) return ResolvedMatch(direct, confidence)
 
-        // Follow one more level
+        // Follow one more level, resolving inner calls within the class whose body we're now
+        // inside (see kdoc above).
         if (maxDepth > 1) {
             for (innerCall in allDescendants.filterIsInstance<FunctionCall>()) {
-                val result = resolveAndFindWithConfidenceInternal(innerCall, symbolTable, maxDepth - 1, language, targetClass, predicate)
+                val result =
+                    resolveAndFindWithConfidenceInternal(
+                        innerCall,
+                        symbolTable,
+                        maxDepth - 1,
+                        language,
+                        targetClass,
+                        predicate,
+                        enclosingClass = resolved.declaringClass,
+                    )
                 if (result != null) return ResolvedMatch(result.value, worstOf(confidence, result.confidence))
             }
         }
