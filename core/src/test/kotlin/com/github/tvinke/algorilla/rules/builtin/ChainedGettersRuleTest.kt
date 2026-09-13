@@ -70,6 +70,17 @@ internal class ChainedGettersRuleTest {
         finding.evidence[1].depth shouldBe 1
     }
 
+    @Test
+    fun `still chains when the same producer variable is referenced twice in one call`() {
+        // order = getOrder(id); fetchMergedOrder(order, order) — a repeated reference to the
+        // same producer is still exactly one producer, not a fan-in of two independent lookups.
+        val orderDecl = varDecl("order", call("getOrder", ref("id")))
+        val mergeCall = call("fetchMergedOrder", ref("order"), ref("order"))
+        val fn = functionDecl("lookup", orderDecl, mergeCall)
+
+        rule.evaluate(context(fn, resolvableLookupFn("fetchMergedOrder"))) shouldHaveSize 1
+    }
+
     /** A resolvable [FunctionDecl] with a [LookupCall] body, so `hasLinear` finds it via the symbol table. */
     private fun resolvableLookupFn(name: String) =
         FunctionDecl(

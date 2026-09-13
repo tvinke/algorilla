@@ -93,14 +93,16 @@ public class ChainedGettersRule : Rule {
         visited: Set<String> = emptySet(),
     ): List<FunctionCall> {
         // Walk backward through the arg -> produced-by chain, but only when exactly one
-        // argument has a producer: two or more is a merge of independent lookups (a
-        // fan-in), not a sequential chain, and should not be treated as one more link.
+        // *distinct* argument has a producer: two or more is a merge of independent lookups
+        // (a fan-in), not a sequential chain, and should not be treated as one more link.
+        // Distinct by name so a call that references the same producer variable twice
+        // (e.g. merge(order, order)) still counts as a single producer, not a fan-in.
         val producerArgs =
-            call.arguments.mapNotNull { arg ->
-                simpleVarName(arg)?.takeIf { it !in visited }?.let { name -> producedBy[name]?.let { name to it } }
-            }
-        if (producerArgs.size != 1) return listOf(call)
-        val (argName, producer) = producerArgs.single()
+            call.arguments
+                .mapNotNull { arg ->
+                    simpleVarName(arg)?.takeIf { it !in visited }?.let { name -> producedBy[name]?.let { name to it } }
+                }.distinctBy { (name, _) -> name }
+        val (argName, producer) = producerArgs.singleOrNull() ?: return listOf(call)
         return buildChain(producer, producedBy, visited + argName) + call
     }
 
