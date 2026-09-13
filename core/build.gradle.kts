@@ -4,12 +4,18 @@ plugins {
     id("info.solidsoft.pitest") version "1.19.0"
 }
 
+// Only present once Ted drops a licence file at the repo root - see https://www.arcmutate.com.
+// Without it, PIT just runs plain (no Kotlin-inline-generics improvement, no licence error either).
+val arcmutateLicence = rootProject.file("arcmutate-licence.txt")
+
 dependencies {
     api(libs.kotlin.logging)
     implementation(libs.logback)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.antlr.runtime)
-    pitest("com.arcmutate:pitest-kotlin-plugin:1.5.1")
+    if (arcmutateLicence.exists()) {
+        pitest("com.arcmutate:pitest-kotlin-plugin:1.5.1")
+    }
 }
 
 // Scoped mutation testing for the cc #64/#71 name-vs-type recursion fix: only the
