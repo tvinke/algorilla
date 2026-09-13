@@ -369,7 +369,6 @@ private fun isReactiveChainTarget(
     if (!target.contains('(')) return false
     val dotIdx = target.indexOf('.')
     if (dotIdx < 0) return false
-    val receiver = target.substring(0, dotIdx).lowercase()
     val afterDot = target.substring(dotIdx + 1)
     val parenIdx = afterDot.indexOf('(')
     if (parenIdx < 0) return false
@@ -378,13 +377,7 @@ private fun isReactiveChainTarget(
     val ioCandidates = registry.ioMethodCandidates(language)
     val ioPatterns = registry.ioTargetPatterns(language)
     return (methodName in ioMethods || methodName in ioCandidates) &&
-        ioPatterns.any { pattern ->
-            if (pattern.startsWith("*")) {
-                receiver.contains(pattern.removePrefix("*"))
-            } else {
-                receiver.endsWith(pattern) || receiver == pattern
-            }
-        }
+        matchesIOTargetPatterns(target.substring(0, dotIdx), ioPatterns)
 }
 
 /** Returns true if the call target is a known in-memory buffer (not real IO). */
@@ -425,12 +418,45 @@ private fun matchesIOPattern(
     language: Language,
     registry: LanguageSemanticsRegistry,
 ): Boolean {
-    val t = target?.lowercase() ?: return false
-    return registry.ioTargetPatterns(language).any { pattern ->
+    if (target == null) return false
+    return matchesIOTargetPatterns(target, registry.ioTargetPatterns(language))
+}
+
+/**
+ * Matches [target] (original case preserved) against [patterns]. A `*`-prefixed pattern
+ * matches anywhere (contains). A bare pattern matches only as a whole suffix — the
+ * character right before the match, if any, must not be a lowercase letter — so "writer"
+ * matches "hibernateSession"-style camelCase compounds and "writer" itself, but not
+ * "screenwriter"/"underwriter" where the match is buried inside an unrelated lowercase
+ * word. Matching is done on the lowercased text; the boundary check reads the original
+ * text at that position, since case info is gone once everything is lowercased first.
+ */
+private fun matchesIOTargetPatterns(
+    target: String,
+    patterns: Set<String>,
+): Boolean {
+    val lowered = target.lowercase()
+    return patterns.any { pattern ->
         if (pattern.startsWith("*")) {
-            t.contains(pattern.removePrefix("*"))
+            lowered.contains(pattern.removePrefix("*"))
         } else {
-            t.endsWith(pattern) || t == pattern
+            lowered.endsWith(pattern) && matchesWordBoundary(target, lowered.length - pattern.length)
         }
     }
+}
+
+/**
+ * Returns true if [matchStart] in [original] is a real word boundary: the match covers
+ * the whole string, the matched suffix itself starts with an uppercase letter (a camelCase
+ * transition, e.g. "hibernateSession"), or the character right before it isn't a letter at
+ * all (a separator, e.g. "order_writer"). A plain lowercase run into the match
+ * ("screenwriter") is none of those.
+ */
+private fun matchesWordBoundary(
+    original: String,
+    matchStart: Int,
+): Boolean {
+    if (matchStart <= 0) return true
+    if (original[matchStart].isUpperCase()) return true
+    return !original[matchStart - 1].isLetter()
 }
