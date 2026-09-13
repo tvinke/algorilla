@@ -26,6 +26,7 @@ pitest {
     targetTests.set(
         setOf(
             "com.github.tvinke.algorilla.util.NameVsTypeRecursionPropertyTest",
+            "com.github.tvinke.algorilla.util.RecursionDetectorTest",
             "com.github.tvinke.algorilla.rules.builtin.ChainedGettersRuleTest",
         ),
     )
