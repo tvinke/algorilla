@@ -14,6 +14,7 @@ import com.github.tvinke.algorilla.model.Parameter
 import com.github.tvinke.algorilla.model.SourceLocation
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import io.kotest.matchers.collections.shouldBeEmpty
+import io.kotest.matchers.shouldBe
 import io.kotest.property.Arb
 import io.kotest.property.arbitrary.of
 import io.kotest.property.forAll
@@ -74,6 +75,15 @@ internal class RegexRecompilationInLoopRuleNameVsTypePropertyTest {
     fun `a real Map still gets excluded regardless of its variable name`() {
         val findings = evaluateReplaceAllInLoop("orders", "HashMap")
         findings.shouldBeEmpty()
+    }
+
+    @Test
+    fun `an untyped variable that merely ends in a Map suffix without a word boundary still gets flagged`() {
+        // "vegetable" ends in "table" (a non-list-target suffix) but is not "a table" in
+        // any collection sense - the endsWith check inside the name heuristic itself
+        // needs the same word-boundary guard as the declared-type-vs-heuristic fix above.
+        val findings = evaluateReplaceAllInLoop("vegetable", declaredType = null)
+        findings.size shouldBe 1
     }
 
     private data class MatchesNameCase(

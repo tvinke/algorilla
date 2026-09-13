@@ -17,6 +17,8 @@ import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.CrossMethodResolver
+import com.github.tvinke.algorilla.util.endsWithAtWordBoundary
+import com.github.tvinke.algorilla.util.startsWithAtWordBoundary
 
 /**
  * Detects repository/DAO single-record fetch calls inside loops (N+1 problem).
@@ -195,12 +197,12 @@ private fun matchesRepoPattern(
     language: Language,
     registry: LanguageSemanticsRegistry,
 ): Boolean {
-    val t = target?.lowercase() ?: return false
+    if (target == null) return false
     return registry.ioTargetPatterns(language).any { pattern ->
         if (pattern.startsWith("*")) {
-            t.contains(pattern.removePrefix("*"))
+            target.contains(pattern.removePrefix("*"), ignoreCase = true)
         } else {
-            t.endsWith(pattern) || t == pattern
+            endsWithAtWordBoundary(target, pattern)
         }
     }
 }
@@ -240,10 +242,10 @@ private fun isSingleRecordFetch(
     if (SINGLE_FETCH_METHOD_REGEX.matches(name)) {
         // Exclude batch patterns
         val batchSuffixes = registry.batchMethodSuffixes(language)
-        if (batchSuffixes.any { name.endsWith(it, ignoreCase = true) }) return false
+        if (batchSuffixes.any { endsWithAtWordBoundary(name, it) }) return false
         val batchPrefixes = registry.batchMethodPrefixes(language)
         if (batchPrefixes.any {
-                name.startsWith(it, ignoreCase = true) && name.contains("By", ignoreCase = true)
+                startsWithAtWordBoundary(name, it) && name.contains("By", ignoreCase = true)
             }
         ) {
             return false

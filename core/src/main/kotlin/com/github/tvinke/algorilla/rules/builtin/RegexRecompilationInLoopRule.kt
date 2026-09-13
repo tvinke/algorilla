@@ -17,6 +17,7 @@ import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
+import com.github.tvinke.algorilla.util.endsWithAtWordBoundary
 import com.github.tvinke.algorilla.util.findDescendants
 
 /**
@@ -165,9 +166,8 @@ private fun isMapTarget(
     // O(1) — only fall through to the name heuristic when the type is genuinely unresolved.
     val declaredType = enclosingFn?.declaredTypeOf(target)
     if (declaredType != null) return registry.isO1Type(declaredType)
-    val lower = target.lowercase()
     val mapNames = registry.nonListTargetsSuffixes(language)
-    return mapNames.any { lower.endsWith(it) || lower == it }
+    return mapNames.any { endsWithAtWordBoundary(target, it) }
 }
 
 /** Returns true if the call target is a Predicate/Pattern/Matcher type whose matches() is not regex. */

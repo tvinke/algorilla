@@ -20,6 +20,7 @@ import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import com.github.tvinke.algorilla.util.ParameterFlowQuery
+import com.github.tvinke.algorilla.util.endsWithAtWordBoundary
 import com.github.tvinke.algorilla.util.findDescendants
 import com.github.tvinke.algorilla.util.isFollowedByExit
 
@@ -434,29 +435,11 @@ private fun matchesIOPattern(
 private fun matchesIOTargetPatterns(
     target: String,
     patterns: Set<String>,
-): Boolean {
-    val lowered = target.lowercase()
-    return patterns.any { pattern ->
+): Boolean =
+    patterns.any { pattern ->
         if (pattern.startsWith("*")) {
-            lowered.contains(pattern.removePrefix("*"))
+            target.contains(pattern.removePrefix("*"), ignoreCase = true)
         } else {
-            lowered.endsWith(pattern) && matchesWordBoundary(target, lowered.length - pattern.length)
+            endsWithAtWordBoundary(target, pattern)
         }
     }
-}
-
-/**
- * Returns true if [matchStart] in [original] is a real word boundary: the match covers
- * the whole string, the matched suffix itself starts with an uppercase letter (a camelCase
- * transition, e.g. "hibernateSession"), or the character right before it isn't a letter at
- * all (a separator, e.g. "order_writer"). A plain lowercase run into the match
- * ("screenwriter") is none of those.
- */
-private fun matchesWordBoundary(
-    original: String,
-    matchStart: Int,
-): Boolean {
-    if (matchStart <= 0) return true
-    if (original[matchStart].isUpperCase()) return true
-    return !original[matchStart - 1].isLetter()
-}
