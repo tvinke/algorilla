@@ -16,6 +16,7 @@ import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.util.findDescendants
+import com.github.tvinke.algorilla.util.startsWithAtWordBoundary
 
 /**
  * Detects potential JPA/Hibernate lazy-loading N+1 patterns: entity getter calls
@@ -110,7 +111,7 @@ public class LazyLoadingInLoopRule : Rule {
         val target = call.qualifiedTarget?.lowercase() ?: return false
         val isRepoTarget = repoPatterns.any { target.contains(it) }
         if (!isRepoTarget) return false
-        return fetchPrefixes.any { call.name.startsWith(it, ignoreCase = true) }
+        return fetchPrefixes.any { startsWithAtWordBoundary(call.name, it) }
     }
 
     private fun isIteratingEntityCollection(
@@ -129,7 +130,7 @@ public class LazyLoadingInLoopRule : Rule {
     ): Boolean {
         val name = call.name
         // Must be a getter-style call
-        if (!name.startsWith("get") || name.length <= MIN_GETTER_LENGTH) return false
+        if (!startsWithAtWordBoundary(name, "get") || name.length <= MIN_GETTER_LENGTH) return false
         val property = name.removePrefix("get")
         val lower = property.lowercase()
         // Strong signals: plural property names that suggest collections
