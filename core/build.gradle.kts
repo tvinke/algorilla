@@ -15,6 +15,7 @@ dependencies {
     implementation(libs.antlr.runtime)
     if (arcmutateLicence.exists()) {
         pitest("com.arcmutate:pitest-kotlin-plugin:1.5.1")
+        pitest("com.arcmutate:base:1.7.2")
     }
 }
 
@@ -24,6 +25,12 @@ dependencies {
 pitest {
     pitestVersion.set("1.30.0")
     junit5PluginVersion.set("1.2.1")
+    // STRONGER: PIT's own extended mutator set. EXTENDED: arcmutate's Java/reactive/stream
+    // mutators (relevant for IOInLoopRule's monadic-target detection). EXTREME: coarse
+    // "replace the whole method body" mutants - cheap here because arcmutate:base's
+    // subsumption analysis (on automatically once the base plugin is present, no separate
+    // config) collapses the redundant ones against the finer-grained mutators.
+    mutators.set(setOf("STRONGER", "EXTENDED", "EXTREME"))
     targetClasses.set(
         setOf(
             "com.github.tvinke.algorilla.util.RecursionDetectorKt",
