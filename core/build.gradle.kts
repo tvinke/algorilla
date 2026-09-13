@@ -1,7 +1,7 @@
 plugins {
     id("algorilla.kotlin-library")
     alias(libs.plugins.kotlin.serialization)
-    id("info.solidsoft.pitest") version "1.15.0"
+    id("info.solidsoft.pitest") version "1.19.0"
 }
 
 dependencies {
@@ -9,13 +9,14 @@ dependencies {
     implementation(libs.logback)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.antlr.runtime)
+    pitest("com.arcmutate:pitest-kotlin-plugin:1.5.1")
 }
 
 // Scoped mutation testing for the cc #64/#71 name-vs-type recursion fix: only the
 // classification methods that fix touched, not the whole module — a whole-module PIT
 // run is both slow and not interpretable as a single score (see cc plan-unit-vs-systeem.md).
 pitest {
-    pitestVersion.set("1.17.4")
+    pitestVersion.set("1.30.0")
     junit5PluginVersion.set("1.2.1")
     targetClasses.set(
         setOf(
