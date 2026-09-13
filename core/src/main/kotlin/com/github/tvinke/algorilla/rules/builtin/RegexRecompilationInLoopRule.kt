@@ -18,7 +18,6 @@ import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.findDescendants
-import com.github.tvinke.algorilla.util.hasO1Type
 
 /**
  * Detects String methods that recompile a regex on every call when used inside loops.
@@ -144,6 +143,16 @@ private fun isRegexRecompilationCall(
     return true
 }
 
+/**
+ * Returns the declared type of [target] as a parameter or local variable of this function,
+ * or null when it can't be resolved at all. A caller that finds a non-null result here has
+ * an authoritative answer and must not fall back to a name heuristic afterwards — a `String
+ * queryCache` is a String even though its name ends in "cache".
+ */
+private fun FunctionDecl.declaredTypeOf(target: String): String? =
+    parameters.find { it.name == target }?.typeName
+        ?: findDescendants<VariableDecl>().find { it.name == target }?.typeName
+
 /** Returns true if the call target is a Map type (by declared type or name heuristic). */
 private fun isMapTarget(
     call: FunctionCall,
@@ -152,9 +161,10 @@ private fun isMapTarget(
     registry: LanguageSemanticsRegistry,
 ): Boolean {
     val target = call.qualifiedTarget ?: return false
-    // Type-aware: check if the target variable is declared as a Map/Set type
-    if (enclosingFn != null && enclosingFn.hasO1Type(target)) return true
-    // Name heuristic fallback for cases without type info
+    // Type-aware: a known declared type is authoritative, whether or not it turns out to be
+    // O(1) — only fall through to the name heuristic when the type is genuinely unresolved.
+    val declaredType = enclosingFn?.declaredTypeOf(target)
+    if (declaredType != null) return registry.isO1Type(declaredType)
     val lower = target.lowercase()
     val mapNames = registry.nonListTargetsSuffixes(language)
     return mapNames.any { lower.endsWith(it) || lower == it }
@@ -168,14 +178,11 @@ private fun isNonRegexMatchesTarget(
     registry: LanguageSemanticsRegistry,
 ): Boolean {
     val target = call.qualifiedTarget ?: return false
-    // Type-aware: check parameter/variable type declarations
+    // Type-aware: a known declared type is authoritative — see isMapTarget above for why
+    // we must not fall through to the name heuristic once the type is actually known.
     val nonRegexTypes = registry.nonRegexMatchesTargets(language)
-    if (enclosingFn != null) {
-        val paramType = enclosingFn.parameters.find { it.name == target }?.typeName
-        if (paramType != null && nonRegexTypes.any { paramType.contains(it) }) return true
-        val varType = enclosingFn.findDescendants<VariableDecl>().find { it.name == target }?.typeName
-        if (varType != null && nonRegexTypes.any { varType.contains(it) }) return true
-    }
+    val declaredType = enclosingFn?.declaredTypeOf(target)
+    if (declaredType != null) return nonRegexTypes.any { declaredType.contains(it) }
     // Name heuristic: variable names like "predicate", "matcher", "pattern"
     val lower = target.lowercase()
     return NON_REGEX_MATCHES_NAME_HINTS.any { lower.contains(it) }
