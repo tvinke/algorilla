@@ -51,4 +51,35 @@ internal class LanguageSemanticsRegistryNameVsTypePropertyTest {
         registry.isMonadicTarget("result.map") shouldBe true
         registry.isMonadicTarget("orders.stream()") shouldBe false
     }
+
+    // -- matchesCamelCasePrefix (used by isMonadicTarget's variable-name path) --
+    // Already correctly boundary-guarded, unlike the bugs found elsewhere this campaign -
+    // confirmed here rather than assumed, per the "every flagged function gets a property
+    // test" rule. Also surfaces a real, but data-level (not code-level) risk: "result" as a
+    // monadic-name prefix genuinely collides with "resultSet"/"resultList" — both start
+    // with "result" at a real camelCase boundary, so a ResultSet-style collection variable
+    // reads as monadic too. That's a YAML calibration question for the fitness/veto loop,
+    // not a code defect - the boundary check itself is doing exactly what it should.
+
+    @Test
+    fun `a variable name at a real camelCase boundary after a monadic prefix is still monadic`() {
+        registry.isMonadicTarget("resultValue") shouldBe true
+        registry.isMonadicTarget("futureResponse") shouldBe true
+    }
+
+    @Test
+    fun `a variable name that merely starts with a monadic prefix without a boundary is not monadic`() {
+        // "resultado" (Spanish for result) starts with nothing meaningful in English, but
+        // "resultative"/"resultant" would collide via bare startsWith - the boundary check
+        // correctly rejects those; "results" itself is plural, not a boundary-following word.
+        registry.isMonadicTarget("resultant") shouldBe false
+    }
+
+    @Test
+    fun `resultSet still reads as monadic under the current YAML - a calibration note, not a code bug`() {
+        // Documents the collision rather than hiding it: "result" + capital "S" is a real
+        // camelCase boundary by the code's own (correct) rule, so this returns true even
+        // though a ResultSet-style variable is a genuine collection, not a monadic value.
+        registry.isMonadicTarget("resultSet") shouldBe true
+    }
 }
