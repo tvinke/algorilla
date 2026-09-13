@@ -75,6 +75,15 @@ internal class PrecisionRegressionTest : FullPipelineTestSupport() {
                 "chained-getters",
                 "single getter is not a chain",
             )
+
+        @Test
+        fun `two independent lookups merged into one call is not a chain`() =
+            assertNoFindings(
+                "chained-getters/negative/independent-lookups-merged-not-a-chain.java",
+                "chained-getters",
+                "mapEntry.getValue() and product.getPrincipalVariationsForBorrowerCycle() are independent, " +
+                    "not a sequential chain, even though both feed fetchLoanCycleDefaultValue() (cc #64)",
+            )
     }
 
     @Nested
@@ -715,6 +724,41 @@ internal class PrecisionRegressionTest : FullPipelineTestSupport() {
                 "unmemoized-recursion/negative/tree-traversal.java",
                 "unmemoized-recursion",
                 "tree traversal visits different nodes, not unmemoized recursion",
+            )
+
+        @Test
+        fun `super call delegation`() =
+            assertNoFindings(
+                "unmemoized-recursion/negative/super-call-delegation.java",
+                "unmemoized-recursion",
+                "super.resolveKey() dispatches to the superclass, it does not repeat this method's call (cc #64)",
+            )
+
+        @Test
+        fun `sibling overload with the same arity`() =
+            assertNoFindings(
+                "unmemoized-recursion/negative/sibling-overload-same-arity.java",
+                "unmemoized-recursion",
+                "the call resolves ambiguously between two same-arity overloads, not provably a self-call (cc #64/#71)",
+            )
+
+        @Test
+        fun `delegate to a differently named object`() =
+            assertNoFindings(
+                "unmemoized-recursion/negative/delegate-to-other-object.java",
+                "unmemoized-recursion",
+                "the call is on a field, not on this — same name, different receiver",
+            )
+    }
+
+    @Nested
+    inner class UnmemoizedRecursionAritySafeguard {
+        @Test
+        fun `unrelated different-arity overload does not suppress real recursion`() =
+            assertHasFindings(
+                "unmemoized-recursion/positive/different-arity-overload-still-recursive.java",
+                "unmemoized-recursion",
+                "sum(int) recurses into itself; an unrelated sum(int,int) overload must not suppress that",
             )
     }
 
