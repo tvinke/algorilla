@@ -231,7 +231,7 @@ public class CardinalityExplosionRule : Rule {
             val outerBase = outerVar.substringBefore(".")
             val outerClean = outerBase.trimEnd('s', 'S')
             // Match: outer="departments" → outerClean="department", inner starts with "department"
-            if (outerClean.isNotEmpty() && innerBase.startsWith(outerClean, ignoreCase = true)) return true
+            if (outerClean.isNotEmpty() && matchesElementName(innerBase, outerClean)) return true
             // Match: outer collection has no plural suffix but inner base is a plausible element name.
             // If the outer collection is a method call like "getInterfaces()", the element is often
             // a shortened name like "ifc" — we can't match that. But if the inner is a getter
@@ -467,4 +467,21 @@ public class CardinalityExplosionRule : Rule {
         val nonGrowth = context.registry.nonGrowthMutations(langOrJava)
         return (copyOnModify + context.registry.mutationMethods(langOrJava)) - nonGrowth
     }
+}
+
+/**
+ * Returns true if [innerBase] is exactly [outerClean] (ignoring case), or extends it at
+ * a real camelCase word boundary — "departmentHead" for "department" — but not a bare
+ * text prefix like "career"/"cargo" for "car". Plain `startsWith` had no such boundary:
+ * de-pluralizing "cars" to "car" then matched any inner name starting with "car",
+ * silently suppressing a genuine Cartesian product over unrelated collections.
+ */
+private fun matchesElementName(
+    innerBase: String,
+    outerClean: String,
+): Boolean {
+    if (innerBase.equals(outerClean, ignoreCase = true)) return true
+    if (!innerBase.startsWith(outerClean, ignoreCase = true)) return false
+    val boundaryChar = innerBase.getOrNull(outerClean.length) ?: return true
+    return boundaryChar.isUpperCase() || boundaryChar.isDigit()
 }
