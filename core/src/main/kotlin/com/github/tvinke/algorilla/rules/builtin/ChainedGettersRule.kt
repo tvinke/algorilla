@@ -20,6 +20,7 @@ import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.util.CrossMethodResolver
 import com.github.tvinke.algorilla.util.findDescendants
+import com.github.tvinke.algorilla.util.startsWithAtWordBoundary
 
 /**
  * Detects cascading getter patterns where the result of one lookup feeds into another:
@@ -138,7 +139,7 @@ public class ChainedGettersRule : Rule {
 private fun isGetterPattern(
     call: FunctionCall,
     getterPrefixes: List<String>,
-): Boolean = getterPrefixes.any { call.name.startsWith(it, ignoreCase = true) }
+): Boolean = getterPrefixes.any { startsWithAtWordBoundary(call.name, it) }
 
 private const val MAX_VAR_NAME_LENGTH = 60
 
