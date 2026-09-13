@@ -86,7 +86,7 @@ public class HiddenNestedLoopRule : Rule {
 
         // Skip recursive methods — their internal loop iterates child nodes
         // of the same data structure, not an independent collection
-        if (resolved.isRecursive()) return
+        if (resolved.isRecursive(context.symbolTable)) return
 
         val hiddenLoop = resolved.findDescendants<LoopNode>().firstOrNull() ?: return
 

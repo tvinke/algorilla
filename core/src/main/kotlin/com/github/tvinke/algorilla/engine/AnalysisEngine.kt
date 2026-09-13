@@ -27,6 +27,7 @@ import com.github.tvinke.algorilla.rules.SuggestionContext
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import com.github.tvinke.algorilla.util.findDescendants
+import com.github.tvinke.algorilla.util.isRecursive
 import io.github.oshai.kotlinlogging.KotlinLogging
 
 private val logger = KotlinLogging.logger {}
@@ -73,7 +74,7 @@ public class AnalysisEngine(
         val callGraph = buildCallGraph(irTrees, symbolTable)
         val finalContexts = enrichFileContextsFromCallGraph(enrichedContexts, callGraph, irTrees)
         annotateLoopBounds(irTrees)
-        annotateRecursion(irTrees)
+        annotateRecursion(irTrees, symbolTable)
         annotateParameterFlows(irTrees, symbolTable)
         annotateComplexity(symbolTable, callGraph)
         annotatePathContext(irTrees, callGraph)
@@ -227,10 +228,13 @@ public class AnalysisEngine(
         ParameterFlowAnnotator(symbolTable).annotate(irTrees)
     }
 
-    private fun annotateRecursion(irTrees: Map<String, FileRoot>) {
+    private fun annotateRecursion(
+        irTrees: Map<String, FileRoot>,
+        symbolTable: SymbolTable,
+    ) {
         for ((_, root) in irTrees) {
             root.findDescendants<FunctionDecl>().forEach { fn ->
-                fn.isRecursive = fn.findDescendants<com.github.tvinke.algorilla.model.FunctionCall>().any { it.name == fn.name }
+                fn.isRecursive = fn.isRecursive(symbolTable)
             }
         }
     }

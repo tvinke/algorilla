@@ -25,6 +25,7 @@ import com.github.tvinke.algorilla.util.CrossMethodResolver
 import com.github.tvinke.algorilla.util.findDescendants
 import com.github.tvinke.algorilla.util.isCollectionLookup
 import com.github.tvinke.algorilla.util.isRecursive
+import com.github.tvinke.algorilla.util.isSelfCallOf
 
 /**
  * Detects linear lookup operations (contains, indexOf, find, filter, etc.) inside loop bodies
@@ -137,7 +138,7 @@ public class NestedLookupRule : Rule {
         // Call on an external object (not this/super, not a loop variable) — the hidden lookup
         // operates on the callee's own data, not the loop's collection
         val target = call.qualifiedTarget
-        if (target != null && target !in SELF_REFERENCES && target !in loopVars) {
+        if (target != null && target !in CrossMethodResolver.SELF_OR_SUPER_REFERENCES && target !in loopVars) {
             return Confidence.LOW
         }
 
@@ -175,10 +176,6 @@ public class NestedLookupRule : Rule {
             else -> null
         }
 
-    private companion object {
-        private val SELF_REFERENCES = setOf("this", "super")
-    }
-
     /**
      * Detects tree-walk/transform patterns that should not be flagged as nested lookups.
      * A call is a tree-walk when it's inside a higher-order iteration (.map/.forEach) and:
@@ -199,15 +196,15 @@ public class NestedLookupRule : Rule {
         if (outerLoop !is LoopNode || outerLoop.kind != LoopKind.HIGHER_ORDER) return false
 
         // Case 1: direct self-recursion (processModule calls processModule)
-        if (enclosingFn != null && call.name == enclosingFn.name) return true
+        if (enclosingFn != null && call.isSelfCallOf(enclosingFn, symbolTable)) return true
 
         // Case 2: resolved function is itself recursive (processPackage calls processPackage)
         val resolved = CrossMethodResolver.resolve(call, symbolTable, language) ?: return false
-        if (resolved.isRecursive()) return true
+        if (resolved.isRecursive(symbolTable)) return true
 
         // Case 3: mutual recursion — resolved function calls back to enclosing function
         if (enclosingFn != null) {
-            val callsBack = resolved.findDescendants<FunctionCall>().any { it.name == enclosingFn.name }
+            val callsBack = resolved.findDescendants<FunctionCall>().any { it.isSelfCallOf(enclosingFn, symbolTable) }
             if (callsBack) return true
         }
 

@@ -139,6 +139,22 @@ internal class PrecisionRegressionTest : FullPipelineTestSupport() {
                 "unmemoized-recursion",
                 "tree traversal visits different nodes, not unmemoized",
             )
+
+        @Test
+        fun `super call delegation`() =
+            assertNoFindings(
+                "unmemoized-recursion/negative/super-call-delegation.groovy",
+                "unmemoized-recursion",
+                "super.resolveKey() dispatches to the superclass, it does not repeat this method's call (cc #64)",
+            )
+
+        @Test
+        fun `delegate to a differently named object`() =
+            assertNoFindings(
+                "unmemoized-recursion/negative/delegate-to-other-object.groovy",
+                "unmemoized-recursion",
+                "the call is on a field, not on this — same name, different receiver",
+            )
     }
 
     // ── Regression fixtures: specific FP patterns from benchmark repos ────────

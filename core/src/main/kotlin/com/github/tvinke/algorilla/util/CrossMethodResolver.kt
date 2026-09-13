@@ -88,7 +88,7 @@ public object CrossMethodResolver {
         }
         // Only fall back to simple name when there's no explicit receiver,
         // or receiver is this/super (which refers to the current class)
-        if (call.qualifiedTarget != null && call.qualifiedTarget !in SELF_REFERENCES) {
+        if (call.qualifiedTarget != null && call.qualifiedTarget !in SELF_OR_SUPER_REFERENCES) {
             return null
         }
         val byName = symbolTable.lookupBySimpleName(call.name)
@@ -137,7 +137,17 @@ public object CrossMethodResolver {
         return candidates.first()
     }
 
-    private val SELF_REFERENCES = setOf("this", "super")
+    /**
+     * Receivers that refer to the current class hierarchy rather than to some other
+     * object — an explicit `this` or `super`. Used wherever a call target needs to be
+     * recognized as "within this class" for resolution or confidence purposes.
+     *
+     * Not the same concept as [com.github.tvinke.algorilla.util.isSelfCallOf]'s notion of a
+     * self-call: that one deliberately excludes `super`, because `super.foo()` dispatches to
+     * the superclass's implementation rather than repeating this method's own logic — see
+     * its kdoc for the Broadleaf `super.getSectionKey()` case this distinction fixes.
+     */
+    public val SELF_OR_SUPER_REFERENCES: Set<String> = setOf("this", "super")
 
     private fun collectDescendants(node: IRNode): List<IRNode> {
         val results = mutableListOf<IRNode>()
