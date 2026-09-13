@@ -67,10 +67,13 @@ public class TypeEnvironment private constructor(
 
     /**
      * Returns true if [variableName] is known to be a collection type (List, Set, Map, etc.).
-     * Also resolves through the class hierarchy (L3).
+     * Also resolves through the class hierarchy (L3). Like [isO1], excludes
+     * [TypeSource.NAME_HEURISTIC] — a variable whose only evidence is a method name ending
+     * in e.g. "Map" (`getWorkflowStateMap()`) is not proof it actually is one.
      */
     public fun isCollection(variableName: String): Boolean {
         val type = typeOf(variableName) ?: return false
+        if (type.source == TypeSource.NAME_HEURISTIC) return false
         if (registry.isCollectionType(language, type.simpleName)) return true
         return resolvesViaHierarchy(type.simpleName) { registry.isCollectionType(language, it) }
     }
@@ -112,9 +115,12 @@ public class TypeEnvironment private constructor(
     /**
      * Returns true if [variableName] is known to be a List type (not Set/Map).
      * Useful for rules that only apply to ordered, shift-on-remove collections.
+     * Like [isO1], excludes [TypeSource.NAME_HEURISTIC] — a method name ending in "List"
+     * is not proof the value is actually one.
      */
     public fun isList(variableName: String): Boolean {
         val type = typeOf(variableName) ?: return false
+        if (type.source == TypeSource.NAME_HEURISTIC) return false
         val yamlListTypes = registry.extraSection(language, "list-types")
         return if (yamlListTypes.isNotEmpty()) {
             type.simpleName in yamlListTypes
