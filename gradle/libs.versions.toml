@@ -29,6 +29,7 @@ junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
 kotest-assertions = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest" }
+kotest-property = { module = "io.kotest:kotest-property", version.ref = "kotest" }
 antlr-runtime = { module = "org.antlr:antlr4-runtime", version.ref = "antlr" }
 antlr-tool = { module = "org.antlr:antlr4", version.ref = "antlr" }
 treesitter = { module = "io.github.bonede:tree-sitter", version.ref = "treesitter-core" }
