@@ -1,12 +1,10 @@
 package com.github.tvinke.algorilla.util
 
 import com.github.tvinke.algorilla.graph.SymbolTable
-import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.GenericNode
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Parameter
-import com.github.tvinke.algorilla.model.SourceLocation
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 
@@ -24,8 +22,6 @@ import org.junit.jupiter.api.Test
  * gap by nesting the call a level deep in the body, the way a real `if`/block would.
  */
 internal class RecursionDetectorTest {
-    private val loc = SourceLocation("Fixture.java", 1, 1)
-
     @Test
     fun `recognizes a genuine self-call nested inside the body`() {
         // fun walk(node: Node) { if (...) { walk(child) } } — the self-call sits inside a
@@ -113,8 +109,7 @@ internal class RecursionDetectorTest {
         fn.isRecursive() shouldBe false
     }
 
-    private fun walkFunction(body: IRNode) =
-        decl("walk", "TreeWalker", parameters = listOf(Parameter("node", "Node"))).withBody(body)
+    private fun walkFunction(body: IRNode) = decl("walk", "TreeWalker", parameters = listOf(Parameter("node", "Node"))).withBody(body)
 
     private fun loanFunction(sameArityParams: Boolean) =
         decl(
@@ -128,19 +123,6 @@ internal class RecursionDetectorTest {
                 ),
         )
 
-    private fun decl(
-        name: String,
-        declaringClass: String,
-        parameters: List<Parameter>,
-    ) = FunctionDecl(
-        name = name,
-        qualifiedName = "$declaringClass.$name",
-        parameters = parameters,
-        declaringClass = declaringClass,
-        location = loc,
-        children = emptyList(),
-    )
-
     private fun FunctionDecl.withBody(body: IRNode) = copy(children = listOf(body))
 
     /** Wraps children in a nested, non-call node — the way a real `if`/block statement would. */
@@ -150,18 +132,4 @@ internal class RecursionDetectorTest {
         name: String,
         argCount: Int,
     ) = call(name, null, argCount)
-
-    private fun call(
-        name: String,
-        qualifiedTarget: String?,
-        argCount: Int,
-    ) = FunctionCall(
-        name = name,
-        qualifiedTarget = qualifiedTarget,
-        arguments = List(argCount) { genericNodeArg() },
-        location = loc,
-        children = emptyList(),
-    )
-
-    private fun genericNodeArg() = GenericNode("arg", loc, emptyList())
 }

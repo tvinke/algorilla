@@ -4,7 +4,6 @@ import com.github.tvinke.algorilla.graph.SymbolTable
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.Parameter
-import com.github.tvinke.algorilla.model.SourceLocation
 import io.kotest.matchers.shouldBe
 import io.kotest.property.Arb
 import io.kotest.property.arbitrary.of
@@ -21,8 +20,6 @@ import org.junit.jupiter.api.Test
  * against [isSelfCallOf]'s predecessor, the bare `it.name == fn.name` check.
  */
 internal class NameVsTypeRecursionPropertyTest {
-    private val loc = SourceLocation("Fixture.java", 1, 1)
-
     /** One half of a pair: a call, the target it's being checked against, and the symbol table available. */
     private data class ClassifiedCall(
         val call: FunctionCall,
@@ -115,34 +112,4 @@ internal class NameVsTypeRecursionPropertyTest {
             sameNameNotASelfCall = ClassifiedCall(callNode, fn, withSibling),
         )
     }
-
-    private fun decl(
-        name: String,
-        declaringClass: String,
-        parameters: List<Parameter>,
-    ) = FunctionDecl(
-        name = name,
-        qualifiedName = "$declaringClass.$name",
-        parameters = parameters,
-        declaringClass = declaringClass,
-        location = loc,
-        children = emptyList(),
-    )
-
-    private fun call(
-        name: String,
-        qualifiedTarget: String?,
-        argCount: Int,
-    ) = FunctionCall(
-        name = name,
-        qualifiedTarget = qualifiedTarget,
-        arguments = List(argCount) { genericNodeArg() },
-        location = loc,
-        children = emptyList(),
-    )
-
-    // A placeholder argument node — isSelfCallOf only ever looks at arguments.size.
-    private fun genericNodeArg() =
-        com.github.tvinke.algorilla.model
-            .GenericNode("arg", loc, emptyList())
 }

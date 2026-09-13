@@ -85,7 +85,10 @@ public class HiddenNestedLoopRule : Rule {
         val resolved = CrossMethodResolver.resolve(call, context.symbolTable, language) ?: return
 
         // Skip recursive methods — their internal loop iterates child nodes
-        // of the same data structure, not an independent collection
+        // of the same data structure, not an independent collection.
+        // Recomputed here rather than reading the cached FunctionDecl.isRecursive property:
+        // rule-level tests build an AnalysisContext directly without running
+        // AnalysisEngine.annotateRecursion first, so the cached value can't be trusted.
         if (resolved.isRecursive(context.symbolTable)) return
 
         val hiddenLoop = resolved.findDescendants<LoopNode>().firstOrNull() ?: return

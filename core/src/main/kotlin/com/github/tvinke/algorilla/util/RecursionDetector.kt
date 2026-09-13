@@ -37,10 +37,20 @@ public fun FunctionCall.isSelfCallOf(
     if (qualifiedTarget !in SELF_CALL_RECEIVERS) return false
     if (arguments.size != target.parameters.size) return false
     if (symbolTable != null) {
+        // Same-class overloads are already indexed by declaring class — narrower and
+        // cheaper than filtering the whole same-simple-name bucket by hand. Falls back to
+        // the simple-name index for top-level functions, which lookupByClassAndName can't
+        // key on (it only registers declarations that have a declaringClass).
         val sameArityOverloads =
-            symbolTable
-                .lookupBySimpleName(name)
-                .filter { it.declaringClass == target.declaringClass && it.parameters.size == arguments.size }
+            if (target.declaringClass != null) {
+                symbolTable
+                    .lookupByClassAndName("${target.declaringClass}.${target.name}")
+                    .filter { it.parameters.size == arguments.size }
+            } else {
+                symbolTable
+                    .lookupBySimpleName(name)
+                    .filter { it.declaringClass == null && it.parameters.size == arguments.size }
+            }
         if (sameArityOverloads.size > 1) return false
     }
     return true
