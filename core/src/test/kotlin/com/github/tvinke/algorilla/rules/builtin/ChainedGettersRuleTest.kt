@@ -16,6 +16,7 @@ import com.github.tvinke.algorilla.model.VariableDecl
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 
 /**
@@ -54,6 +55,19 @@ internal class ChainedGettersRuleTest {
         val findings = rule.evaluate(context(fn, resolvableLookupFn("getCustomer")))
 
         findings shouldHaveSize 1
+        // Pins the exact chain description and per-step evidence down — a regression net
+        // for PIT survivors on ChainedGettersRule.buildFinding: the idx == 0 label branch
+        // (would otherwise swap "starts the chain" / "uses result of previous"), the
+        // chainDesc join over `it.name` (would otherwise render as "null → null"), and
+        // buildFinding's own return value (a mutated null return only surfaces once
+        // something downstream actually reads a field off the finding).
+        val finding = findings.single()
+        finding.message shouldBe "Chained getter cascade in lookup(): getOrder → getCustomer"
+        finding.evidence shouldHaveSize 2
+        finding.evidence[0].label shouldBe "getOrder() starts the chain"
+        finding.evidence[0].depth shouldBe 0
+        finding.evidence[1].label shouldBe "getCustomer() uses result of previous"
+        finding.evidence[1].depth shouldBe 1
     }
 
     /** A resolvable [FunctionDecl] with a [LookupCall] body, so `hasLinear` finds it via the symbol table. */
