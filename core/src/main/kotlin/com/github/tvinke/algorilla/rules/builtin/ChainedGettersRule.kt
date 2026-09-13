@@ -92,16 +92,16 @@ public class ChainedGettersRule : Rule {
         producedBy: Map<String, FunctionCall>,
         visited: Set<String> = emptySet(),
     ): List<FunctionCall> {
-        val chain = mutableListOf(call)
-        // Walk backward through the arg -> produced-by chain
-        @Suppress("LoopWithTooManyJumpStatements")
-        for (arg in call.arguments) {
-            val argName = simpleVarName(arg) ?: continue
-            if (argName in visited) continue
-            val producer = producedBy[argName] ?: continue
-            chain.addAll(0, buildChain(producer, producedBy, visited + argName))
-        }
-        return chain
+        // Walk backward through the arg -> produced-by chain, but only when exactly one
+        // argument has a producer: two or more is a merge of independent lookups (a
+        // fan-in), not a sequential chain, and should not be treated as one more link.
+        val producerArgs =
+            call.arguments.mapNotNull { arg ->
+                simpleVarName(arg)?.takeIf { it !in visited }?.let { name -> producedBy[name]?.let { name to it } }
+            }
+        if (producerArgs.size != 1) return listOf(call)
+        val (argName, producer) = producerArgs.single()
+        return buildChain(producer, producedBy, visited + argName) + call
     }
 
     private fun buildFinding(
