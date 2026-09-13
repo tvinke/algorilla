@@ -9,7 +9,6 @@ import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LoopNode
 import com.github.tvinke.algorilla.model.Severity
-import com.github.tvinke.algorilla.model.VariableDecl
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
@@ -17,8 +16,8 @@ import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
+import com.github.tvinke.algorilla.util.declaredTypeOf
 import com.github.tvinke.algorilla.util.endsWithAtWordBoundary
-import com.github.tvinke.algorilla.util.findDescendants
 
 /**
  * Detects String methods that recompile a regex on every call when used inside loops.
@@ -143,16 +142,6 @@ private fun isRegexRecompilationCall(
     }
     return true
 }
-
-/**
- * Returns the declared type of [target] as a parameter or local variable of this function,
- * or null when it can't be resolved at all. A caller that finds a non-null result here has
- * an authoritative answer and must not fall back to a name heuristic afterwards — a `String
- * queryCache` is a String even though its name ends in "cache".
- */
-private fun FunctionDecl.declaredTypeOf(target: String): String? =
-    parameters.find { it.name == target }?.typeName
-        ?: findDescendants<VariableDecl>().find { it.name == target }?.typeName
 
 /** Returns true if the call target is a Map type (by declared type or name heuristic). */
 private fun isMapTarget(
