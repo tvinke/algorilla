@@ -240,11 +240,28 @@ private fun parseBraceProps(value: String): Map<String, String> {
 private fun parseListItem(line: String): String? {
     val trimmed = line.trim()
     if (!trimmed.startsWith("- ")) return null
-    val value = trimmed.removePrefix("- ").trim()
-    // Strip YAML-style quotes (single or double)
-    if (value.length >= 2 && value.first() == '"' && value.last() == '"') return value.substring(1, value.length - 1)
-    if (value.length >= 2 && value.first() == '\'' && value.last() == '\'') return value.substring(1, value.length - 1)
-    return value
+    val raw = trimmed.removePrefix("- ").trim()
+    // Strip YAML-style quotes (single or double) — a quoted value's content is never a
+    // comment, even if it contains a literal '#' or is itself followed by one.
+    if (raw.length >= 2 && (raw.first() == '"' || raw.first() == '\'')) {
+        val closeIdx = raw.indexOf(raw.first(), startIndex = 1)
+        if (closeIdx > 0) return raw.substring(1, closeIdx)
+    }
+    return stripTrailingComment(raw)
+}
+
+/**
+ * Strips a trailing "# ..." inline comment (e.g. `set       # Map.set(key, value)` ->
+ * `set`) — used throughout the real semantics YAML files (java.yml's `Stream`, kotlin.yml's
+ * `Flow`/`Sequence`, javascript.yml's `set`, all annotated inline) and previously not
+ * stripped at all, so those four entries were silently registered with the comment glued
+ * onto the value instead of the clean name. Left alone when the '#' isn't preceded by
+ * whitespace — not a real comment split, just part of the token.
+ */
+private fun stripTrailingComment(value: String): String {
+    val hashIdx = value.indexOf('#')
+    if (hashIdx <= 0 || !value[hashIdx - 1].isWhitespace()) return value
+    return value.substring(0, hashIdx).trim()
 }
 
 private fun parseCategory(value: String): SemanticCategory? =

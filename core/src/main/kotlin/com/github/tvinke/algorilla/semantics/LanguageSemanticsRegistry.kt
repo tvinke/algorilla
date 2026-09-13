@@ -401,7 +401,7 @@ public class LanguageSemanticsRegistry private constructor(
             maps.monadicVarNames.values
                 .flatten()
                 .toSet()
-        return allTypes.any { targetText.contains(it) } ||
+        return allTypes.any { containsTypeReference(targetText, it) } ||
             matchesCamelCasePrefix(extractBaseVarName(targetText), allVarNames) ||
             extractBaseVarName(targetText) in allVarNames
     }
@@ -417,7 +417,7 @@ public class LanguageSemanticsRegistry private constructor(
         val resolved = resolveLanguage(language)
         val types = maps.monadicTypes[resolved] ?: emptySet()
         val varNames = maps.monadicVarNames[resolved] ?: emptySet()
-        return types.any { targetText.contains(it) } ||
+        return types.any { containsTypeReference(targetText, it) } ||
             matchesCamelCasePrefix(extractBaseVarName(targetText), varNames) ||
             extractBaseVarName(targetText) in varNames
     }
@@ -687,6 +687,28 @@ private fun matchesCamelCasePrefix(
             varName.startsWith(prefix) &&
             (varName[prefix.length].isUpperCase() || varName[prefix.length].isDigit())
     }
+
+/**
+ * Returns true if [targetText] contains [type] as a whole identifier segment — the
+ * character right before the match, if any, must not be a letter or digit. Plain
+ * `contains` would let a monadic type name like "Stream" match inside "parallelStream()"
+ * too, treating every `.parallelStream()`/`.someStream()` call as monadic and silently
+ * skipping it from loop classification. Same failure shape as the camelCase-prefix bugs
+ * elsewhere in this campaign (a name matches textually without the boundary that would
+ * prove it's actually that identifier), just checked from the preceding side instead of
+ * the following one.
+ */
+private fun containsTypeReference(
+    targetText: String,
+    type: String,
+): Boolean {
+    var idx = targetText.indexOf(type)
+    while (idx >= 0) {
+        if (idx == 0 || !targetText[idx - 1].isLetterOrDigit()) return true
+        idx = targetText.indexOf(type, idx + 1)
+    }
+    return false
+}
 
 private fun extractBaseVarName(targetText: String): String {
     val cleaned = targetText.trim()
