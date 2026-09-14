@@ -3,6 +3,7 @@ package com.github.tvinke.algorilla.rules.builtin
 import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.FunctionCall
+import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.GenericNode
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
@@ -15,6 +16,8 @@ import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
+import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
+import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import com.github.tvinke.algorilla.util.endsWithAtWordBoundary
 
 /**
@@ -32,21 +35,28 @@ public class RepeatedRegexInLoopRule : Rule {
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
-            val regexTypes = context.registry.regexTypes(fileRoot.language)
-            scanNode(fileRoot, emptyList(), regexTypes, findings)
+            val language = fileRoot.language
+            val regexTypes = context.registry.regexTypes(language)
+            scanNode(fileRoot, null, emptyList(), regexTypes, language, context, findings)
         }
         return findings
     }
 
+    @Suppress("LongParameterList") // Threading the enclosing function through for TypeEnvironment lookups
     private fun scanNode(
         node: IRNode,
+        enclosingFn: FunctionDecl?,
         loopStack: List<LoopNode>,
         regexTypes: Set<String>,
+        language: Language,
+        context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
+        val fn = if (node is FunctionDecl) node else enclosingFn
+
         if (node is LoopNode) {
             for (child in node.children) {
-                scanNode(child, loopStack + node, regexTypes, findings)
+                scanNode(child, fn, loopStack + node, regexTypes, language, context, findings)
             }
             return
         }
@@ -55,13 +65,14 @@ public class RepeatedRegexInLoopRule : Rule {
             if (node is ObjectCreation && node.typeName in regexTypes) {
                 findings.add(buildFinding(node, loopStack, "new ${node.typeName}()"))
             }
-            if (node is FunctionCall && isCompileCall(node) && hasConstantArgument(node)) {
+            val typeEnv = fn?.let { context.typeEnvironmentFor(it) }
+            if (node is FunctionCall && isCompileCall(node, typeEnv, context.registry, language) && hasConstantArgument(node)) {
                 findings.add(buildFinding(node, loopStack, "${node.qualifiedTarget ?: "Pattern"}.${node.name}()"))
             }
         }
 
         for (child in node.children) {
-            scanNode(child, loopStack, regexTypes, findings)
+            scanNode(child, fn, loopStack, regexTypes, language, context, findings)
         }
     }
 
@@ -99,13 +110,22 @@ public class RepeatedRegexInLoopRule : Rule {
 
 // "Pattern"/"Regex" must be the receiver's own (qualified) name, not merely a substring
 // somewhere in it — a class like DateTimePatternValidator.compile() has nothing to do
-// with java.util.regex.Pattern, even though its name contains "Pattern".
-private fun isCompileCall(call: FunctionCall): Boolean =
-    call.name == "compile" &&
-        (
-            call.qualifiedTarget?.let { endsWithAtWordBoundary(it, "Pattern") } == true ||
-                call.qualifiedTarget?.let { endsWithAtWordBoundary(it, "Regex") } == true
-        )
+// with java.util.regex.Pattern, even though its name contains "Pattern". When the receiver's
+// declared type is known, trust that over the name instead: a "userPattern" field typed as
+// a domain class with its own compile() method isn't a regex compile just because the name
+// ends in "Pattern".
+private fun isCompileCall(
+    call: FunctionCall,
+    typeEnv: TypeEnvironment?,
+    registry: LanguageSemanticsRegistry,
+    language: Language,
+): Boolean {
+    if (call.name != "compile") return false
+    val target = call.qualifiedTarget ?: return false
+    val declaredType = typeEnv?.typeOf(target)?.simpleName
+    if (declaredType != null) return declaredType in registry.regexTypes(language)
+    return endsWithAtWordBoundary(target, "Pattern") || endsWithAtWordBoundary(target, "Regex")
+}
 
 /**
  * Returns true if the compile() call's first argument appears to be a constant (string literal).
