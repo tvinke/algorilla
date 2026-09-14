@@ -43,9 +43,9 @@ internal class UtilSharedFunctionCallSiteTest {
     private val targetFunctionsByOwnerClass = SharedCrossMethodFunctions.namesByOwnerClass
 
     // A caller in the function's own owner class is always allowed - that's the function's
-    // own file calling itself or a same-file sibling (resolveAndFindInternal calling
-    // resolve(), isCollectionLookup's 2-arg overload delegating to the 4-arg one, isRecursive
-    // calling isSelfCallOf), not a new external use.
+    // own file calling itself or a same-file sibling (resolveAndFindWithConfidenceInternal
+    // calling resolve(), isCollectionLookup's 2-arg overload delegating to the 4-arg one,
+    // isRecursive calling isSelfCallOf), not a new external use.
     private val alwaysAllowedCallerClasses = targetFunctionsByOwnerClass.keys
 
     private val allowedCallerClasses =

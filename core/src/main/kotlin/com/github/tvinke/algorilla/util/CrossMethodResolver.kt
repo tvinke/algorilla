@@ -70,6 +70,33 @@ public fun ResolutionConfidence.demoteIfAmbiguous(computed: Confidence): Confide
     if (this == ResolutionConfidence.AMBIGUOUS_OVERLOAD_BEST_GUESS) Confidence.LOW else computed
 
 /**
+ * The more pessimistic of two [ResolutionConfidence] values - [ResolutionConfidence.AMBIGUOUS_OVERLOAD_BEST_GUESS]
+ * wins over [ResolutionConfidence.EXACT]. A multi-hop resolution chain (one call resolves to a
+ * function whose body calls another function, which is itself resolved, and so on) is only as
+ * trustworthy as its least certain hop - an exact outermost resolution doesn't redeem an
+ * ambiguous one two calls deeper. Used to fold hop-by-hop confidence into a single value for
+ * the whole chain rather than reporting only the first or last hop's confidence.
+ */
+public fun worstOf(
+    a: ResolutionConfidence,
+    b: ResolutionConfidence,
+): ResolutionConfidence =
+    if (a == ResolutionConfidence.AMBIGUOUS_OVERLOAD_BEST_GUESS || b == ResolutionConfidence.AMBIGUOUS_OVERLOAD_BEST_GUESS) {
+        ResolutionConfidence.AMBIGUOUS_OVERLOAD_BEST_GUESS
+    } else {
+        ResolutionConfidence.EXACT
+    }
+
+/**
+ * A [value] found via [CrossMethodResolver.resolveAndFindWithConfidence], paired with the worst
+ * (most ambiguous) [ResolutionConfidence] seen at any hop of the resolution chain that found it.
+ */
+public data class ResolvedMatch<T>(
+    val value: T,
+    val confidence: ResolutionConfidence,
+)
+
+/**
  * Resolves a [FunctionCall] to its [FunctionDecl] using the symbol table, then checks
  * whether the resolved function body contains nodes matching a predicate.
  *
@@ -81,6 +108,11 @@ public object CrossMethodResolver {
      * Checks if the given function call resolves to a function whose body
      * contains any descendant matching [predicate].
      *
+     * Edge case: when the match is found several hops deep (via [maxDepth] > 1), the
+     * confidence of every intermediate hop is discarded - only the found node itself is
+     * returned. Callers that need to know whether any hop along the way was an ambiguous
+     * overload guess should use [resolveAndFindWithConfidence] instead.
+     *
      * @param maxDepth how many levels of indirection to follow (default 1)
      * @return the first matching descendant node, or null
      */
@@ -90,32 +122,50 @@ public object CrossMethodResolver {
         maxDepth: Int = 1,
         language: Language = Language.JAVA,
         noinline predicate: (T) -> Boolean = { true },
-    ): T? = resolveAndFindInternal(call, symbolTable, maxDepth, language, T::class.java, predicate)
+    ): T? = resolveAndFindWithConfidence(call, symbolTable, maxDepth, language, predicate)?.value
+
+    /**
+     * Same as [resolveAndFind], but also reports the worst (most ambiguous)
+     * [ResolutionConfidence] seen at any hop of the chain that led to the match - not just the
+     * outermost call's own resolution. A caller that only re-resolves [call] itself to read
+     * confidence would miss ambiguity introduced two or more hops deep; this doesn't.
+     */
+    public inline fun <reified T : IRNode> resolveAndFindWithConfidence(
+        call: FunctionCall,
+        symbolTable: SymbolTable,
+        maxDepth: Int = 1,
+        language: Language = Language.JAVA,
+        noinline predicate: (T) -> Boolean = { true },
+    ): ResolvedMatch<T>? = resolveAndFindWithConfidenceInternal(call, symbolTable, maxDepth, language, T::class.java, predicate)
 
     @PublishedApi
-    internal fun <T : IRNode> resolveAndFindInternal(
+    internal fun <T : IRNode> resolveAndFindWithConfidenceInternal(
         call: FunctionCall,
         symbolTable: SymbolTable,
         maxDepth: Int,
         language: Language,
         targetClass: Class<T>,
         predicate: (T) -> Boolean,
-    ): T? {
+    ): ResolvedMatch<T>? {
         if (maxDepth <= 0) return null
-        val resolved = resolve(call, symbolTable, language).declOrNull() ?: return null
+        val (resolved, confidence) =
+            when (val result = resolve(call, symbolTable, language)) {
+                is ResolutionResult.Unresolved -> return null
+                is ResolutionResult.Resolved -> result.decl to result.confidence
+            }
 
         // Search direct descendants
         val allDescendants = collectDescendants(resolved)
 
         @Suppress("UNCHECKED_CAST")
         val direct = allDescendants.filter { targetClass.isInstance(it) }.map { it as T }.firstOrNull(predicate)
-        if (direct != null) return direct
+        if (direct != null) return ResolvedMatch(direct, confidence)
 
         // Follow one more level
         if (maxDepth > 1) {
             for (innerCall in allDescendants.filterIsInstance<FunctionCall>()) {
-                val result = resolveAndFindInternal(innerCall, symbolTable, maxDepth - 1, language, targetClass, predicate)
-                if (result != null) return result
+                val result = resolveAndFindWithConfidenceInternal(innerCall, symbolTable, maxDepth - 1, language, targetClass, predicate)
+                if (result != null) return ResolvedMatch(result.value, worstOf(confidence, result.confidence))
             }
         }
         return null
