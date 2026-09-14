@@ -458,6 +458,25 @@ o1-types:
   - WeakMap
   - Object
 
+# Real types whose name happens to contain a collection-types entry at a camelCase
+# boundary without actually being that kind of collection. Empty for now - no known
+# common collision for JS's collection-types list.
+non-collection-type-names:
+
+# Real types whose name happens to contain an o1-types entry at a camelCase boundary
+# without actually being that kind of O(1) type. Empty for now: "Object" is too generic
+# a suffix to build a reliable exclusion list for without real corpus data - left as a
+# documented gap rather than a guess (see the boundary check itself in
+# LanguageSemanticsRegistry.isO1Type for the discussion).
+non-o1-type-names:
+  # Not JS-relevant types themselves, but isO1Type(typeName) (no language arg) unions
+  # across every language's o1-types list, so a JVM-only false positive left unguarded
+  # here would still leak through for a Java/Kotlin/Groovy caller going through that path.
+  - ResultSet
+  - resultSet
+  - Bitmap
+  - bitmap
+
 # Method name prefixes for getter-pattern detection
 getter-prefixes:
   - get

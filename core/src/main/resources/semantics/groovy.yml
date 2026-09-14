@@ -225,6 +225,22 @@ o1-types:
   - LinkedHashMap
   - ConcurrentHashMap
 
+# Real types whose name happens to contain a collection-types entry at a camelCase
+# boundary without actually being that kind of collection. Empty for Groovy: its
+# collection-types list has no "Stream" entry, so the java.io.*Stream collision that
+# affects Java doesn't apply here.
+non-collection-type-names:
+
+# Real types whose name happens to contain an o1-types entry at a camelCase boundary
+# without actually being that kind of O(1) type (java.sql.ResultSet contains "Set" but
+# is a cursor, not a java.util.Set; android.graphics.Bitmap contains "Map" but is an
+# image buffer, not a java.util.Map) - applies to Groovy too via JVM interop.
+non-o1-type-names:
+  - ResultSet
+  - resultSet
+  - Bitmap
+  - bitmap
+
 getter-prefixes:
   - get
   - find

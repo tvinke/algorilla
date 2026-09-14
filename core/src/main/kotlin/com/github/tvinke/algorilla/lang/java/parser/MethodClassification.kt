@@ -14,6 +14,7 @@ import com.github.tvinke.algorilla.model.SortCall
 import com.github.tvinke.algorilla.model.SortKind
 import com.github.tvinke.algorilla.model.SourceLocation
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
+import com.github.tvinke.algorilla.util.endsWithAtWordBoundary
 
 // Exhaustive method-name dispatch — each branch is a distinct IR classification
 @Suppress("CyclomaticComplexMethod", "ReturnCount", "LongMethod")
@@ -331,7 +332,14 @@ public fun isStringTarget(
             targetText.contains(".get$getterSuffix(") ||
                 targetText.contains(".$suffix(") // record accessor: .version(, .name(
         } ||
-        registry.stringNameSuffixes(language).any { targetText.endsWith(it) } ||
+        // Bare endsWith had no word boundary: "id"/"key"/"path"/"line"/"value"/"field" are
+        // all real string-name-suffixes entries, so "grid", "monkey", "classpath", "pipeline",
+        // "eigenvalue" and "minefield" all satisfied it too - misreading a genuine collection
+        // variable as a String target and suppressing its real O(n) lookup findings.
+        // ignoreCase = false: string-name-suffixes already lists both cases explicitly
+        // ("Name"/"name", "Id"/"id", ...) - the original endsWith was case-sensitive too,
+        // no need to widen it while fixing the boundary.
+        registry.stringNameSuffixes(language).any { endsWithAtWordBoundary(targetText, it, ignoreCase = false) } ||
         extractVariableName(targetText, language) in registry.stringExactNames(language)
 }
 
