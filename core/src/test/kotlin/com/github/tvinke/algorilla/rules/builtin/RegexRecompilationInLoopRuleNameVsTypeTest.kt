@@ -112,9 +112,9 @@ internal class RegexRecompilationInLoopRuleNameVsTypeTest {
     }
 
     // isNonRegexMatchesTarget's name-heuristic fallback (NON_REGEX_MATCHES_NAME_HINTS) had
-    // the same missing boundary, found during the cc#105 bare-.contains() sweep - the target
-    // was lowercased first, then bare-contains against "predicate"/"matcher". "predicated"
-    // (past participle, unrelated to a Predicate-typed variable) satisfied it too.
+    // the same missing boundary - the target was lowercased first, then bare-contains
+    // against "predicate"/"matcher". "predicated" (past participle, unrelated to a
+    // Predicate-typed variable) satisfied it too.
     @Test
     fun `an untyped variable merely containing predicate without a boundary still gets flagged`() {
         val findings = evaluateMatchesInLoop("predicated", declaredType = null)

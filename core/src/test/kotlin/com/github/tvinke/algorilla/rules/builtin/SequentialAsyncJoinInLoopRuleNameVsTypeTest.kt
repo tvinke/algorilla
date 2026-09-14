@@ -16,7 +16,7 @@ import io.kotest.matchers.collections.shouldHaveSize
 import org.junit.jupiter.api.Test
 
 /**
- * Canary property for looksLikeFutureCall - found during the cc#105 bare-.contains() sweep.
+ * Canary property for looksLikeFutureCall.
  * The target was lowercased before a bare contains() against future-indicators (future,
  * promise, async, completable, deferred, task), no boundary either side. "task" is a common
  * enough word that "subtask" (a generic subtask concept, not necessarily async) satisfied it

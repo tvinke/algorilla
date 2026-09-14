@@ -106,11 +106,10 @@ internal class CardinalityExplosionRuleNameVsTypeTest {
         rule.evaluate(fixtureContext(listOf(flatMapCall))) shouldHaveSize 1
     }
 
-    // classifyMutation's scalarHints check (found during the cc#105 bare-.contains() sweep)
-    // had the identical missing-boundary bug, on a receiver name instead of an element name:
-    // "consumerList" contains "sum" with no boundary at all, misreading a genuine
-    // List.add() as a BigDecimal-style scalar accumulation and suppressing the real
-    // Cartesian-product finding entirely.
+    // classifyMutation's scalarHints check had the identical missing-boundary bug, on a
+    // receiver name instead of an element name: "consumerList" contains "sum" with no
+    // boundary at all, misreading a genuine List.add() as a BigDecimal-style scalar
+    // accumulation and suppressing the real Cartesian-product finding entirely.
     @Test
     fun `a genuine collection receiver merely containing a scalar hint without a boundary is still flagged`() {
         nestedLoopFindings("orders", "products", mutationTarget = "consumerList") shouldHaveSize 1
@@ -137,9 +136,9 @@ internal class CardinalityExplosionRuleNameVsTypeTest {
     }
 
     // determineEffectiveSeverity's smallCollectionHints check had the same missing-boundary
-    // bug, found during the cc#105 bare-.contains() sweep - "type" is short enough that
-    // "prototypes"/"genotype"/"stereotype" all satisfied it with no boundary at all, demoting
-    // a real Cartesian-product finding to INFO between two otherwise unrelated variables.
+    // bug - "type" is short enough that "prototypes"/"genotype"/"stereotype" all satisfied
+    // it with no boundary at all, demoting a real Cartesian-product finding to INFO between
+    // two otherwise unrelated variables.
     @Test
     fun `a variable merely containing 'type' without a boundary does not demote severity to INFO`() {
         val findings = nestedLoopFindings("prototypes", "products")

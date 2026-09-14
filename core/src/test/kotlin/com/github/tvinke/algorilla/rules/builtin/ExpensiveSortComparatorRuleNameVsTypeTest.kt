@@ -8,9 +8,10 @@ import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 
 /**
- * Canary property for isDateType/isDateParseCall - found during the cc#105 bare-.contains()
- * sweep. Both did a plain typeName.contains(it)/target.contains(it) against date-type-names
- * (Date, LocalDate, Instant, ...), no boundary check either side. Case-sensitivity already
+ * Canary property for isDateType/isDateParseCall - a later sweep for the same
+ * bare-.contains() pattern. Both did a plain typeName.contains(it)/target.contains(it)
+ * against date-type-names (Date, LocalDate, Instant, ...), no boundary check either
+ * side. Case-sensitivity already
  * protected most of the obvious false positives ("update"/"candidate" have a lowercase "date",
  * not the capitalized type name), but a class like "Dateline" - a real, unrelated concept,
  * not a date value - has a genuinely capitalized "Date" with no boundary at all on the far

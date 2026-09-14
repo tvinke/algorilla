@@ -58,10 +58,10 @@ internal class IOInLoopRuleNameVsTypeTest {
         findingsFor("writer", "write") shouldHaveSize 1
     }
 
-    // isInMemoryTarget's non-io-targets check (found during the cc#105 bare-.contains()
-    // sweep) lowercased the target first, then did a bare contains() with no boundary -
-    // "sb"/"buf" are short enough that "crossbow" ("sb") and "rebuffed" ("buf") both
-    // satisfied it, silently suppressing a genuine IO call on an unrelated receiver.
+    // isInMemoryTarget's non-io-targets check lowercased the target first, then did a bare
+    // contains() with no boundary - "sb"/"buf" are short enough that "crossbow" ("sb") and
+    // "rebuffed" ("buf") both satisfied it, silently suppressing a genuine IO call on an
+    // unrelated receiver.
     @Test
     fun `a repository target merely containing a non-io abbreviation without a boundary is still flagged`() {
         findingsFor("crossbowRepository", "save") shouldHaveSize 1

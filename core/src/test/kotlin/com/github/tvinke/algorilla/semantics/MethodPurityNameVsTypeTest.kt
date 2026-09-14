@@ -50,11 +50,10 @@ internal class MethodPurityNameVsTypeTest {
     }
 
     // -- classify(methodName, qualifiedTarget): a separate code path from the prefix checks
-    // above, found during the cc#105 bare-.contains() sweep. "log" is a real
-    // side-effect-targets entry short enough that "catalog"/"dialog"/"analog" all satisfy a
-    // bare contains with no boundary check - unlike the println/printf case, there's no
-    // legitimate word where "log" is an informal continuation of itself, so the standard
-    // boundary fix applies cleanly here.
+    // above. "log" is a real side-effect-targets entry short enough that "catalog"/"dialog"/
+    // "analog" all satisfy a bare contains with no boundary check - unlike the println/printf
+    // case, there's no legitimate word where "log" is an informal continuation of itself, so
+    // the standard boundary fix applies cleanly here.
 
     @Test
     fun `a call on a genuine logger target is still side-effectful`() {

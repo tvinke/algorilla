@@ -112,9 +112,9 @@ internal class NPlusOneRepositoryCallRuleNameVsTypeTest {
     }
 
     // isSingleRecordFetch's earlier nonRepositoryTargets exclusion (cache/memo/buffer/pool/
-    // lru/caffeine) had the identical missing-boundary bug, found during the cc#105
-    // bare-.contains() sweep - a spot the earlier repoPatterns fix in this same function
-    // didn't reach. "carpool"/"whirlpool" contain "pool" with no boundary at all.
+    // lru/caffeine) had the identical missing-boundary bug - a spot the earlier repoPatterns
+    // fix in this same function didn't reach. "carpool"/"whirlpool" contain "pool" with no
+    // boundary at all.
     @Test
     fun `carpoolRepository is not misread as a cache target just because it contains 'pool'`() {
         findingsFor("findById", "carpoolRepository") shouldHaveSize 1
