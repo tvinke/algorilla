@@ -15,6 +15,7 @@ import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.semantics.SemanticCategory
+import com.github.tvinke.algorilla.util.containsAtWordBoundary
 
 /**
  * Detects blocking calls (.join(), .get()) on futures inside loops.
@@ -108,6 +109,8 @@ private fun looksLikeFutureCall(
     language: Language,
     registry: LanguageSemanticsRegistry,
 ): Boolean {
-    val target = call.qualifiedTarget?.lowercase() ?: return false
-    return registry.futureIndicators(language).any { target.contains(it) }
+    // Original case for the boundary check - lowercasing first would destroy the camelCase
+    // signal, e.g. "subtask" would falsely satisfy a bare "task" contains with no boundary.
+    val target = call.qualifiedTarget ?: return false
+    return registry.futureIndicators(language).any { containsAtWordBoundary(target, it) }
 }
