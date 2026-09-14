@@ -26,7 +26,7 @@ import org.junit.jupiter.api.Test
  * getter itself) start with "load"/"resolve" with no real boundary and get misread as
  * getter calls, feeding a false chained-getter-cascade finding.
  */
-internal class ChainedGettersRuleNameVsTypePropertyTest {
+internal class ChainedGettersRuleNameVsTypeTest {
     private val loc = SourceLocation("Fixture.java", 1, 1)
     private val rule = ChainedGettersRule()
 

@@ -25,7 +25,7 @@ import org.junit.jupiter.api.Test
  * merely contains "Pattern"/"Regex" — `DateTimePatternValidator`, `NamingRegexResolver` —
  * gets its own, unrelated `compile()` method misread as `java.util.regex.Pattern.compile()`.
  */
-internal class RepeatedRegexInLoopRuleNameVsTypePropertyTest {
+internal class RepeatedRegexInLoopRuleNameVsTypeTest {
     private val loc = SourceLocation("Fixture.java", 1, 1)
     private val rule = RepeatedRegexInLoopRule()
 

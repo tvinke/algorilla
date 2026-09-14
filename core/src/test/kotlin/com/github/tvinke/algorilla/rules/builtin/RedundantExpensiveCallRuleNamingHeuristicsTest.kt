@@ -31,7 +31,7 @@ import org.junit.jupiter.api.Test
  * Jackson's overlay lists it as a genuine cheap builder method (`ObjectMapper.reader()`),
  * so it is correctly excluded for an unrelated reason regardless of this fix.)
  */
-internal class RedundantExpensiveCallRuleNamingHeuristicsPropertyTest {
+internal class RedundantExpensiveCallRuleNamingHeuristicsTest {
     private val rule = RedundantExpensiveCallRule()
 
     private val readNextBoundaryCollisions = listOf("readable", "nextdoor", "nextgen", "readworthy")

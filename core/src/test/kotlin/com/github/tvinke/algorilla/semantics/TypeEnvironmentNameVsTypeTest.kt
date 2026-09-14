@@ -20,7 +20,7 @@ import org.junit.jupiter.api.Test
  * matched, not because the thing actually resolved to what the name suggests) showing up
  * again, in a different helper.
  */
-internal class TypeEnvironmentNameVsTypePropertyTest {
+internal class TypeEnvironmentNameVsTypeTest {
     private val registry = LanguageSemanticsRegistry.loadDefaults()
     private val loc = SourceLocation("Test.java", 1, 1)
 

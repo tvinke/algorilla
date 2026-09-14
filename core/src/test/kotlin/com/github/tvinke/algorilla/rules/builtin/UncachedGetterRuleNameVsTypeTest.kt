@@ -23,7 +23,7 @@ import org.junit.jupiter.api.Test
  * calls, producing a false uncached-getter finding when called twice with the same
  * argument.
  */
-internal class UncachedGetterRuleNameVsTypePropertyTest {
+internal class UncachedGetterRuleNameVsTypeTest {
     private val loc = SourceLocation("Fixture.java", 1, 1)
     private val rule = UncachedGetterRule()
     private val registry = LanguageSemanticsRegistry.loadDefaults()

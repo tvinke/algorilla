@@ -23,7 +23,7 @@ import org.junit.jupiter.api.Test
  * allow/deny list for which prefixes tolerate a lowercase continuation - a new
  * calibration decision, not a restoration of an existing invariant.
  */
-internal class MethodPurityNameVsTypePropertyTest {
+internal class MethodPurityNameVsTypeTest {
     @Test
     fun `a method name that merely starts with a side-effect prefix without a boundary is misread as side-effectful (documented gap)`() {
         MethodPurity.classify("settings") shouldBe Purity.SIDE_EFFECT

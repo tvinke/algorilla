@@ -28,7 +28,7 @@ import org.junit.jupiter.api.Test
  * same root cause, two call sites in one file — the #64/#66/#70/#71 pattern this
  * campaign is hunting for.
  */
-internal class RegexRecompilationInLoopRuleNameVsTypePropertyTest {
+internal class RegexRecompilationInLoopRuleNameVsTypeTest {
     private val loc = SourceLocation("Fixture.java", 1, 1)
     private val rule = RegexRecompilationInLoopRule()
 

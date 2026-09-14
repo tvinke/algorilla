@@ -25,7 +25,7 @@ import org.junit.jupiter.api.Test
  * callback invocation" finding here AND (line 134) wrongly suppressing whatever the
  * generic-expensive-callback check would otherwise have said about that same call.
  */
-internal class ExpensiveCallbackRuleNameVsTypePropertyTest {
+internal class ExpensiveCallbackRuleNameVsTypeTest {
     private val loc = SourceLocation("Fixture.java", 1, 1)
     private val rule = ExpensiveCallbackRule()
 

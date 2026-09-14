@@ -20,7 +20,7 @@ import org.junit.jupiter.api.Test
  * text that *looks* like the right shape but doesn't survive being turned into the value
  * a caller actually reads back.
  */
-internal class SemanticsYamlParserNamingHeuristicsPropertyTest {
+internal class SemanticsYamlParserNamingHeuristicsTest {
     // -- parseListItem / collectListItems: inline trailing comments must not leak into the value --
 
     private val realWorldInlineCommentLines =

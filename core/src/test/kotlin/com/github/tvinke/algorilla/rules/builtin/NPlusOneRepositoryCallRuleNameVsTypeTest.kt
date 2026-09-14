@@ -37,7 +37,7 @@ import org.junit.jupiter.api.Test
  * All three are fixed with the same startsWithAtWordBoundary/endsWithAtWordBoundary
  * helpers introduced for IOInLoopRule and RegexRecompilationInLoopRule.
  */
-internal class NPlusOneRepositoryCallRuleNameVsTypePropertyTest {
+internal class NPlusOneRepositoryCallRuleNameVsTypeTest {
     private val loc = SourceLocation("Fixture.java", 1, 1)
     private val rule = NPlusOneRepositoryCallRule()
     private val registry = LanguageSemanticsRegistry.loadDefaults()

@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test
  * single-entity fetch) starts with "findAll" with no real boundary and gets misread as a
  * bulk-load call.
  */
-internal class FullScanForSingleLookupRuleNameVsTypePropertyTest {
+internal class FullScanForSingleLookupRuleNameVsTypeTest {
     private val loc = SourceLocation("Fixture.java", 1, 1)
     private val registry = LanguageSemanticsRegistry.loadDefaults()
     private val bulkLoadPrefixes = registry.bulkLoadPrefixes(Language.JAVA)

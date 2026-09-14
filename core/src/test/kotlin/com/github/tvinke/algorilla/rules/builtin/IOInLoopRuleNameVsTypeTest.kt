@@ -28,7 +28,7 @@ import org.junit.jupiter.api.Test
  * Same shape as the prefix-boundary bugs elsewhere in this campaign, on the suffix side,
  * and duplicated verbatim between matchesIOPattern and isReactiveChainTarget in this file.
  */
-internal class IOInLoopRuleNameVsTypePropertyTest {
+internal class IOInLoopRuleNameVsTypeTest {
     private val loc = SourceLocation("Fixture.java", 1, 1)
     private val rule = IOInLoopRule()
     private val registry = LanguageSemanticsRegistry.loadDefaults()

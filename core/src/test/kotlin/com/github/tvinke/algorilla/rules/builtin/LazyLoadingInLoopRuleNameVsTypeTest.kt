@@ -30,7 +30,7 @@ import org.junit.jupiter.api.Test
  *   (a domain method, e.g. Trip.getaways()) is read as a getter on property "aways", which
  *   passes the plural-name heuristic and gets misclassified as a lazy collection getter.
  */
-internal class LazyLoadingInLoopRuleNameVsTypePropertyTest {
+internal class LazyLoadingInLoopRuleNameVsTypeTest {
     private val loc = SourceLocation("Fixture.java", 1, 1)
     private val rule = LazyLoadingInLoopRule()
 

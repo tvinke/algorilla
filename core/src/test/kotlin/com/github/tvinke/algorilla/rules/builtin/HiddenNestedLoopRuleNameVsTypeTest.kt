@@ -25,7 +25,7 @@ import org.junit.jupiter.api.Test
  * even trying to resolve it - a genuine hidden-nested-loop bug inside that method would be
  * silently invisible.
  */
-internal class HiddenNestedLoopRuleNameVsTypePropertyTest {
+internal class HiddenNestedLoopRuleNameVsTypeTest {
     private val loc = SourceLocation("Fixture.java", 1, 1)
     private val rule = HiddenNestedLoopRule()
 

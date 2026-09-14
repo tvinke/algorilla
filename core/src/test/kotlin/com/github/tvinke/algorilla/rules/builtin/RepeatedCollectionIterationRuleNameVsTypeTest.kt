@@ -34,7 +34,7 @@ import org.junit.jupiter.api.Test
  * equivalents) needs research into each language's real idiom, not a mechanical fix, so
  * this is pinned as a finding rather than changed.
  */
-internal class RepeatedCollectionIterationRuleNameVsTypePropertyTest {
+internal class RepeatedCollectionIterationRuleNameVsTypeTest {
     private val loc = SourceLocation("Fixture.java", 1, 1)
     private val rule = RepeatedCollectionIterationRule()
 

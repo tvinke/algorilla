@@ -24,7 +24,7 @@ import org.junit.jupiter.api.Test
  * isCollectionLookup bug found elsewhere this campaign. No bug found; these lock in the
  * documented behavior (declared non-String type excluded, unknown type still flagged).
  */
-internal class StringConcatInLoopRuleNameVsTypePropertyTest {
+internal class StringConcatInLoopRuleNameVsTypeTest {
     private val loc = SourceLocation("Fixture.java", 1, 1)
     private val rule = StringConcatInLoopRule()
 

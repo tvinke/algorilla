@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test
  * UnmemoizedRecursionRule would false-positive on code that already guards against
  * unbounded recursion.
  */
-internal class MemoizationDetectorNameVsTypePropertyTest {
+internal class MemoizationDetectorNameVsTypeTest {
     private val loc = SourceLocation("Fixture.ts", 1, 1)
     private val registry = LanguageSemanticsRegistry.loadDefaults()
 

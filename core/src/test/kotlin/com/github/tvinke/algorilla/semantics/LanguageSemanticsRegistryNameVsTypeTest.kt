@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test
  * exactly the text-match-instead-of-a-real-boundary failure this campaign keeps finding,
  * just checked on the preceding side of the match instead of the following one.
  */
-internal class LanguageSemanticsRegistryNameVsTypePropertyTest {
+internal class LanguageSemanticsRegistryNameVsTypeTest {
     private val registry = LanguageSemanticsRegistry.loadDefaults()
 
     private val streamSuffixCollisions =

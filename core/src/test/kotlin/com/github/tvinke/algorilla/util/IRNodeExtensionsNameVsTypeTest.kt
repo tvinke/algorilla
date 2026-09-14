@@ -22,7 +22,7 @@ import org.junit.jupiter.api.Test
  * suppressed real O(n) lookup findings on any collection whose name happened to look like
  * a Map/cache.
  */
-internal class IRNodeExtensionsNameVsTypePropertyTest {
+internal class IRNodeExtensionsNameVsTypeTest {
     private val loc = SourceLocation("Fixture.java", 1, 1)
     private val registry = LanguageSemanticsRegistry.loadDefaults()
 

@@ -24,7 +24,7 @@ import org.junit.jupiter.api.Test
  * like a variable) was found worth pinning as a bug. Property tests below lock in the
  * intended behavior instead.
  */
-internal class RepeatedLinearScanRuleNameVsTypePropertyTest {
+internal class RepeatedLinearScanRuleNameVsTypeTest {
     private val loc = SourceLocation("Fixture.java", 1, 1)
     private val rule = RepeatedLinearScanRule()
 

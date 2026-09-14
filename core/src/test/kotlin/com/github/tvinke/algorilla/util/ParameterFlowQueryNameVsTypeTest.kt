@@ -25,7 +25,7 @@ import org.junit.jupiter.api.Test
  * refers to - silently following the wrong call chain (missing real evidence, or worse,
  * reporting evidence from a call the parameter never actually reached).
  */
-internal class ParameterFlowQueryNameVsTypePropertyTest {
+internal class ParameterFlowQueryNameVsTypeTest {
     private val loc = SourceLocation("Fixture.java", 1, 1)
     private val locationA = SourceLocation("Fixture.java", 10, 1)
     private val locationB = SourceLocation("Fixture.java", 20, 1)

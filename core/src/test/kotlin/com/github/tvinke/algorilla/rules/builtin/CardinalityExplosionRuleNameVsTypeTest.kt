@@ -28,7 +28,7 @@ import org.junit.jupiter.api.Test
  * silently suppressed. Same shape as the camelCase-prefix bugs elsewhere in this campaign,
  * just applied to a de-pluralized element name instead of a method name.
  */
-internal class CardinalityExplosionRuleNameVsTypePropertyTest {
+internal class CardinalityExplosionRuleNameVsTypeTest {
     private val loc = SourceLocation("Fixture.java", 1, 1)
     private val rule = CardinalityExplosionRule()
     private val registry = LanguageSemanticsRegistry.loadDefaults()

@@ -20,7 +20,7 @@ import org.junit.jupiter.api.Test
  * Suggestion.kt), never a finding's fire/no-fire decision — so it's pinned as a cosmetic
  * quirk, not fixed.
  */
-internal class VariableNameGeneratorNameVsTypePropertyTest {
+internal class VariableNameGeneratorNameVsTypeTest {
     private val genuineGetters =
         listOf(
             "getImages()" to "images",

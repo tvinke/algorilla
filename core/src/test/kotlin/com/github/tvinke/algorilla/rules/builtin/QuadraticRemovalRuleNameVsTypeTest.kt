@@ -23,7 +23,7 @@ import org.junit.jupiter.api.Test
  * (a non-list-target suffix) with no real boundary and isn't a Map/O(1) type in any sense,
  * so a genuine List.remove() call on it should still be flagged as O(n) removal-in-loop.
  */
-internal class QuadraticRemovalRuleNameVsTypePropertyTest {
+internal class QuadraticRemovalRuleNameVsTypeTest {
     private val loc = SourceLocation("Fixture.java", 1, 1)
     private val rule = QuadraticRemovalRule()
 
