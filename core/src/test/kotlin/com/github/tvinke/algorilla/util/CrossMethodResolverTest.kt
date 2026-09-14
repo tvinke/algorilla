@@ -57,6 +57,21 @@ internal class CrossMethodResolverTest {
     // an open input domain a generator would explore - a property test would need an
     // independently computed oracle for "is this resolution exact," which doesn't exist
     // separately from the classification logic under test here.
+    // Pins worstOf's behavior directly - it's implemented as maxOf() over the enum's
+    // declaration order (EXACT before AMBIGUOUS_OVERLOAD_BEST_GUESS specifically so "worse"
+    // sorts higher), which nothing else exercises directly; every other test only observes it
+    // indirectly through a rule's finding confidence.
+    @Test
+    fun `worstOf is symmetric and AMBIGUOUS always wins over EXACT`() {
+        val exact = ResolutionConfidence.EXACT
+        val ambiguous = ResolutionConfidence.AMBIGUOUS_OVERLOAD_BEST_GUESS
+
+        worstOf(exact, exact) shouldBe exact
+        worstOf(ambiguous, ambiguous) shouldBe ambiguous
+        worstOf(exact, ambiguous) shouldBe ambiguous
+        worstOf(ambiguous, exact) shouldBe ambiguous
+    }
+
     @Test
     fun `classifies resolution confidence by candidate and param-count uniqueness`() {
         confidenceScenarios().forEach { scenario ->

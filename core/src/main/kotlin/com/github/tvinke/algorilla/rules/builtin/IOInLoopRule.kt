@@ -20,7 +20,9 @@ import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import com.github.tvinke.algorilla.util.ParameterFlowQuery
+import com.github.tvinke.algorilla.util.ResolutionConfidence
 import com.github.tvinke.algorilla.util.containsAnyAtWordBoundary
+import com.github.tvinke.algorilla.util.demoteIfAmbiguous
 import com.github.tvinke.algorilla.util.findDescendants
 import com.github.tvinke.algorilla.util.isFollowedByExit
 import com.github.tvinke.algorilla.util.matchesAnyTargetPattern
@@ -173,7 +175,7 @@ public class IOInLoopRule : Rule {
                     target.methodName in languageIoMethods
             }
         if (evidence != null) {
-            findings.add(buildCrossMethodFinding(call, evidence.paramName, loopStack))
+            findings.add(buildCrossMethodFinding(call, evidence.paramName, loopStack, evidence.resolutionConfidence))
         }
     }
 
@@ -215,6 +217,7 @@ public class IOInLoopRule : Rule {
         call: FunctionCall,
         paramName: String,
         loopStack: List<LoopNode>,
+        resolutionConfidence: ResolutionConfidence,
     ): Finding {
         val outerLoop = loopStack.first()
         val loopVar = outerLoop.iteratedVariable ?: "items"
@@ -222,6 +225,10 @@ public class IOInLoopRule : Rule {
             ruleId = id,
             ruleName = name,
             severity = severity,
+            // The flow chain that found this IO call may have crossed an ambiguous overload
+            // guess at some hop - never report higher than LOW on a guess, same discipline as
+            // HiddenNestedLoopRule/NestedLookupRule.
+            confidence = resolutionConfidence.demoteIfAmbiguous(Confidence.MEDIUM),
             location = call.location,
             message =
                 "Parameter '$paramName' flows through ${call.name}() into IO " +

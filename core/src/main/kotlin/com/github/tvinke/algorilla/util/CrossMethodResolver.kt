@@ -47,15 +47,33 @@ public enum class ResolutionConfidence {
 }
 
 /**
+ * A [value] found via [CrossMethodResolver.resolveAndFindWithConfidence], paired with the worst
+ * (most ambiguous) [ResolutionConfidence] seen at any hop of the resolution chain that found it.
+ * Also the return shape of [ResolutionResult.declAndConfidenceOrNull] - one "value with a
+ * confidence attached" concept, not a bespoke [Pair] for one use and a named type for the other.
+ */
+public data class ResolvedMatch<T>(
+    val value: T,
+    val confidence: ResolutionConfidence,
+)
+
+/**
  * Unwraps to the resolved [FunctionDecl], or null on [ResolutionResult.Unresolved] - for the
  * common case of callers that only need the declaration and don't care about
  * [ResolutionConfidence]. Callers that need the confidence too (e.g. for finding-confidence
- * scoring) should match on [ResolutionResult] directly instead.
+ * scoring) should use [declAndConfidenceOrNull] instead.
  */
-public fun ResolutionResult.declOrNull(): FunctionDecl? =
+public fun ResolutionResult.declOrNull(): FunctionDecl? = declAndConfidenceOrNull()?.value
+
+/**
+ * Unwraps to the resolved [FunctionDecl] paired with its [ResolutionConfidence] as a
+ * [ResolvedMatch], or null on [ResolutionResult.Unresolved] - for callers that need both, so
+ * they don't each hand-roll the same `when` over [ResolutionResult] to get at them.
+ */
+public fun ResolutionResult.declAndConfidenceOrNull(): ResolvedMatch<FunctionDecl>? =
     when (this) {
         is ResolutionResult.Unresolved -> null
-        is ResolutionResult.Resolved -> decl
+        is ResolutionResult.Resolved -> ResolvedMatch(decl, confidence)
     }
 
 /**
@@ -76,25 +94,16 @@ public fun ResolutionConfidence.demoteIfAmbiguous(computed: Confidence): Confide
  * trustworthy as its least certain hop - an exact outermost resolution doesn't redeem an
  * ambiguous one two calls deeper. Used to fold hop-by-hop confidence into a single value for
  * the whole chain rather than reporting only the first or last hop's confidence.
+ *
+ * Implemented as [maxOf] over the enum's declaration order - [ResolutionConfidence.EXACT] is
+ * declared before [ResolutionConfidence.AMBIGUOUS_OVERLOAD_BEST_GUESS] specifically so "worse"
+ * sorts higher. If a third confidence level is ever added, slot it in at the point on that
+ * scale where it belongs, not just appended, or this stops meaning "worst".
  */
 public fun worstOf(
     a: ResolutionConfidence,
     b: ResolutionConfidence,
-): ResolutionConfidence =
-    if (a == ResolutionConfidence.AMBIGUOUS_OVERLOAD_BEST_GUESS || b == ResolutionConfidence.AMBIGUOUS_OVERLOAD_BEST_GUESS) {
-        ResolutionConfidence.AMBIGUOUS_OVERLOAD_BEST_GUESS
-    } else {
-        ResolutionConfidence.EXACT
-    }
-
-/**
- * A [value] found via [CrossMethodResolver.resolveAndFindWithConfidence], paired with the worst
- * (most ambiguous) [ResolutionConfidence] seen at any hop of the resolution chain that found it.
- */
-public data class ResolvedMatch<T>(
-    val value: T,
-    val confidence: ResolutionConfidence,
-)
+): ResolutionConfidence = maxOf(a, b)
 
 /**
  * Resolves a [FunctionCall] to its [FunctionDecl] using the symbol table, then checks
@@ -148,11 +157,7 @@ public object CrossMethodResolver {
         predicate: (T) -> Boolean,
     ): ResolvedMatch<T>? {
         if (maxDepth <= 0) return null
-        val (resolved, confidence) =
-            when (val result = resolve(call, symbolTable, language)) {
-                is ResolutionResult.Unresolved -> return null
-                is ResolutionResult.Resolved -> result.decl to result.confidence
-            }
+        val (resolved, confidence) = resolve(call, symbolTable, language).declAndConfidenceOrNull() ?: return null
 
         // Search direct descendants
         val allDescendants = collectDescendants(resolved)

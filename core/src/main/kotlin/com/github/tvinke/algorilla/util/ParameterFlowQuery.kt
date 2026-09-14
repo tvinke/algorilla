@@ -72,11 +72,7 @@ public object ParameterFlowQuery {
         val paramsPassed = paramsFlowingInto(callerFn.parameterFlows, call.name)
         if (paramsPassed.isEmpty()) return null
 
-        val (resolved, confidence) =
-            when (val result = CrossMethodResolver.resolve(call, symbolTable)) {
-                is ResolutionResult.Unresolved -> return null
-                is ResolutionResult.Resolved -> result.decl to result.confidence
-            }
+        val (resolved, confidence) = CrossMethodResolver.resolve(call, symbolTable).declAndConfidenceOrNull() ?: return null
 
         return paramsPassed.firstNotNullOfOrNull { callerFlow ->
             checkCalleeFlows(
@@ -181,10 +177,7 @@ public object ParameterFlowQuery {
     ): FlowEvidence? {
         val innerCall = findCallByNameAndLocation(callee, target.calledFunction, target.location) ?: return null
         val (innerResolved, innerConfidence) =
-            when (val result = CrossMethodResolver.resolve(innerCall, symbolTable)) {
-                is ResolutionResult.Unresolved -> return null
-                is ResolutionResult.Resolved -> result.decl to result.confidence
-            }
+            CrossMethodResolver.resolve(innerCall, symbolTable).declAndConfidenceOrNull() ?: return null
         return checkCalleeFlows(
             paramName,
             innerResolved,
