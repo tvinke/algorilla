@@ -2,10 +2,6 @@ package com.github.tvinke.algorilla.semantics
 
 import com.github.tvinke.algorilla.model.Language
 import io.kotest.matchers.shouldBe
-import io.kotest.property.Arb
-import io.kotest.property.arbitrary.of
-import io.kotest.property.forAll
-import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 
 /**
@@ -32,10 +28,30 @@ internal class LanguageSemanticsRegistryNameVsTypePropertyTest {
 
     @Test
     fun `a call ending in Stream as part of a longer identifier is not a monadic target`() {
-        runBlocking {
-            forAll(Arb.of(streamSuffixCollisions)) { targetText ->
-                !registry.isMonadicTarget(Language.JAVA, targetText) && !registry.isMonadicTarget(targetText)
-            }
+        streamSuffixCollisions.forEach { targetText ->
+            registry.isMonadicTarget(Language.JAVA, targetText) shouldBe false
+            registry.isMonadicTarget(targetText) shouldBe false
+        }
+    }
+
+    // -- containsTypeReference's trailing boundary (cc #73 /simplify follow-up) --
+    // The leading-boundary fix above only ever checked the character *before* the match.
+    // "StreamlinedOrder"/"Streamable" start with "Stream" at idx 0 (a real leading
+    // boundary - start of string), so the original fix still matched them as a raw type
+    // reference even though "Stream" here is just the first syllable of an unrelated word,
+    // not a real `Stream.of(...)`-style reference. Same failure shape, just found on the
+    // trailing side by the /simplify altitude review instead of the leading one.
+    private val streamPrefixCollisions =
+        listOf(
+            "StreamlinedOrder.process()",
+            "Streamable.of(x)",
+        )
+
+    @Test
+    fun `an identifier merely starting with a type name is not a monadic target`() {
+        streamPrefixCollisions.forEach { targetText ->
+            registry.isMonadicTarget(Language.JAVA, targetText) shouldBe false
+            registry.isMonadicTarget(targetText) shouldBe false
         }
     }
 

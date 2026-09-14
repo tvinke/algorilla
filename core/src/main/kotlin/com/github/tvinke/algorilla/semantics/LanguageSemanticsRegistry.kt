@@ -690,13 +690,22 @@ private fun matchesCamelCasePrefix(
 
 /**
  * Returns true if [targetText] contains [type] as a whole identifier segment — the
- * character right before the match, if any, must not be a letter or digit. Plain
- * `contains` would let a monadic type name like "Stream" match inside "parallelStream()"
- * too, treating every `.parallelStream()`/`.someStream()` call as monadic and silently
- * skipping it from loop classification. Same failure shape as the camelCase-prefix bugs
- * elsewhere in this campaign (a name matches textually without the boundary that would
- * prove it's actually that identifier), just checked from the preceding side instead of
- * the following one.
+ * character right before the match, if any, must not be a letter or digit, AND the match
+ * must not run straight into a lowercase continuation of the same word on the far side
+ * either. Plain `contains` would let a monadic type name like "Stream" match inside
+ * "parallelStream()" too, treating every `.parallelStream()`/`.someStream()` call as
+ * monadic and silently skipping it from loop classification. Same failure shape as the
+ * camelCase-prefix bugs elsewhere in this campaign (a name matches textually without the
+ * boundary that would prove it's actually that identifier).
+ *
+ * Deliberately NOT the same check as [com.github.tvinke.algorilla.util.containsAtWordBoundary]:
+ * that helper also accepts an uppercase *matched* character as leading-boundary proof on its
+ * own (so `"hibernateSession"` counts "Session" as a real word even though the preceding "e"
+ * is a letter) — exactly the shape that would make "Stream" match again inside
+ * "parallelStream()", since the "S" there is capitalized too. A type-literal reference like
+ * `Stream.of(...)` has to be a standalone token, not a capitalized tail of a longer camelCase
+ * name, so the leading side here only accepts start-of-string or a genuinely non-letter-or-
+ * digit separator before the match.
  */
 private fun containsTypeReference(
     targetText: String,
@@ -704,7 +713,11 @@ private fun containsTypeReference(
 ): Boolean {
     var idx = targetText.indexOf(type)
     while (idx >= 0) {
-        if (idx == 0 || !targetText[idx - 1].isLetterOrDigit()) return true
+        val leadingOk = idx == 0 || !targetText[idx - 1].isLetterOrDigit()
+        val afterIdx = idx + type.length
+        val trailingOk =
+            afterIdx >= targetText.length || !targetText[afterIdx].isLetterOrDigit() || targetText[afterIdx].isUpperCase()
+        if (leadingOk && trailingOk) return true
         idx = targetText.indexOf(type, idx + 1)
     }
     return false
