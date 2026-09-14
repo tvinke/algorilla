@@ -20,8 +20,8 @@ import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.CrossMethodResolver
 import com.github.tvinke.algorilla.util.ParameterFlowQuery
 import com.github.tvinke.algorilla.util.ResolutionConfidence
-import com.github.tvinke.algorilla.util.ResolutionResult
 import com.github.tvinke.algorilla.util.containsAnyAtWordBoundary
+import com.github.tvinke.algorilla.util.declAndConfidenceOrNull
 import com.github.tvinke.algorilla.util.demoteIfAmbiguous
 import com.github.tvinke.algorilla.util.findDescendants
 import com.github.tvinke.algorilla.util.isRecursive
@@ -89,10 +89,7 @@ public class HiddenNestedLoopRule : Rule {
         if (isStringOrCopyMethod(call.name, language, context.registry)) return
 
         val (resolved, resolutionConfidence) =
-            when (val result = CrossMethodResolver.resolve(call, context.symbolTable, language)) {
-                is ResolutionResult.Unresolved -> return
-                is ResolutionResult.Resolved -> result.decl to result.confidence
-            }
+            CrossMethodResolver.resolve(call, context.symbolTable, language).declAndConfidenceOrNull() ?: return
 
         // Skip recursive methods — their internal loop iterates child nodes
         // of the same data structure, not an independent collection.
@@ -114,23 +111,33 @@ public class HiddenNestedLoopRule : Rule {
         // the hidden nested loop is O(k*m) with constant k
         if (loopStack.all { it.isConstantBound }) return
 
-        // Flow-based confidence: if a parameter flows through this call into a loop
-        // in the callee, we have proof the nested iteration is on caller data. The flow
-        // chain can itself cross an ambiguous overload guess at a hop deeper than `call`
-        // (parameterFlowsThrough follows further calls up to its own maxDepth) - folding its
-        // resolutionConfidence in via worstOf means a guess two hops into the flow still
-        // gets caught, not just an ambiguous `call` itself.
+        val (flowConfirmed, overallConfidence) = flowConfirmedConfidence(call, callerFn, resolutionConfidence, context)
+
+        findings.add(buildFinding(call, resolved, hiddenLoop, loopStack, flowConfirmed, overallConfidence))
+    }
+
+    /**
+     * Flow-based confidence: if a parameter flows through [call] into a loop in the callee, we
+     * have proof the nested iteration is on caller data. The flow chain can itself cross an
+     * ambiguous overload guess at a hop deeper than [call] (parameterFlowsThrough follows
+     * further calls up to its own maxDepth) - folding its resolutionConfidence in via
+     * [worstOf] means a guess two hops into the flow still gets caught, not just an ambiguous
+     * [call] itself.
+     */
+    private fun flowConfirmedConfidence(
+        call: FunctionCall,
+        callerFn: FunctionDecl?,
+        resolutionConfidence: ResolutionConfidence,
+        context: AnalysisContext,
+    ): Pair<Boolean, ResolutionConfidence> {
         val flowEvidence =
             callerFn?.let {
                 ParameterFlowQuery.parameterFlowsThrough(call, it, context.symbolTable) { target ->
                     target is FlowTarget.LoopIteration
                 }
             }
-        val flowConfirmed = flowEvidence != null
-        val overallConfidence =
-            flowEvidence?.let { worstOf(resolutionConfidence, it.resolutionConfidence) } ?: resolutionConfidence
-
-        findings.add(buildFinding(call, resolved, hiddenLoop, loopStack, flowConfirmed, overallConfidence))
+        val overallConfidence = flowEvidence?.let { worstOf(resolutionConfidence, it.resolutionConfidence) } ?: resolutionConfidence
+        return (flowEvidence != null) to overallConfidence
     }
 
     private fun buildFinding(
