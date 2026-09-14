@@ -34,13 +34,13 @@ internal class LanguageSemanticsRegistryNameVsTypeTest {
         }
     }
 
-    // -- containsTypeReference's trailing boundary (cc #73 /simplify follow-up) --
+    // -- containsTypeReference's trailing boundary --
     // The leading-boundary fix above only ever checked the character *before* the match.
     // "StreamlinedOrder"/"Streamable" start with "Stream" at idx 0 (a real leading
     // boundary - start of string), so the original fix still matched them as a raw type
     // reference even though "Stream" here is just the first syllable of an unrelated word,
     // not a real `Stream.of(...)`-style reference. Same failure shape, just found on the
-    // trailing side by the /simplify altitude review instead of the leading one.
+    // trailing side this time instead of the leading one.
     private val streamPrefixCollisions =
         listOf(
             "StreamlinedOrder.process()",

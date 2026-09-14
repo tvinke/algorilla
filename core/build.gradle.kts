@@ -53,17 +53,17 @@ pitest {
     outputFormats.set(setOf("HTML", "XML"))
 }
 
-// cc #73 testharnas-campagne follow-up: a file named *PropertyTest.kt promises a generator
-// exploring an effectively open domain (Arb.string/Arb.int/Arb.list/.../checkAll), not a
-// hand-picked Arb.of(fixedList) wrapped in forAll - that's a parameterized example test and
-// should say so in its name. See CODING_GUIDELINES.md for the full distinction and
-// WordBoundaryMatchingPropertyTest.kt for the canonical real property test.
+// A file named *PropertyTest.kt promises a generator exploring an effectively open domain
+// (Arb.string/Arb.int/Arb.list/.../checkAll), not a hand-picked Arb.of(fixedList) wrapped in
+// forAll - that's a parameterized example test and should say so in its name. See
+// CODING_GUIDELINES.md for the full distinction and WordBoundaryMatchingPropertyTest.kt for
+// the canonical real property test.
 val propertyTestNamingAllowlist =
     setOf(
         // Deliberately tests a small, curated set of NAMED real-world scenarios (Broadleaf's
         // super.getSectionKey(), Fineract's modifyLoanApprovedAmount) rather than exploring
-        // an open domain - a legitimate design choice for the cc #64/#71 recursion family,
-        // not an oversight. Kept as *PropertyTest.kt rather than renamed because the pitest
+        // an open domain - a legitimate design choice for the recursion-family fix, not an
+        // oversight. Kept as *PropertyTest.kt rather than renamed because the pitest
         // targetTests block above already references it by this class name.
         "NameVsTypeRecursionPropertyTest",
     )
