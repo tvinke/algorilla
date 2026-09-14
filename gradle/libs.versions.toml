@@ -8,6 +8,8 @@ kotlin-logging = "7.0.3"
 logback = "1.5.15"
 junit = "5.11.4"
 kotest = "5.9.1"
+konsist = "0.17.3"
+archunit = "1.5.0"
 detekt = "1.23.7"
 ktlint-plugin = "12.1.2"
 shadow = "8.1.1"
@@ -30,6 +32,8 @@ junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
 kotest-assertions = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest" }
 kotest-property = { module = "io.kotest:kotest-property", version.ref = "kotest" }
+konsist = { module = "com.lemonappdev:konsist", version.ref = "konsist" }
+archunit-junit5 = { module = "com.tngtech.archunit:archunit-junit5", version.ref = "archunit" }
 antlr-runtime = { module = "org.antlr:antlr4-runtime", version.ref = "antlr" }
 antlr-tool = { module = "org.antlr:antlr4", version.ref = "antlr" }
 treesitter = { module = "io.github.bonede:tree-sitter", version.ref = "treesitter-core" }

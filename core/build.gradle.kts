@@ -13,6 +13,8 @@ dependencies {
     implementation(libs.logback)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.antlr.runtime)
+    testImplementation(libs.konsist)
+    testImplementation(libs.archunit.junit5)
     if (arcmutateLicence.exists()) {
         pitest("com.arcmutate:pitest-kotlin-plugin:1.5.1")
         pitest("com.arcmutate:base:1.7.2")
