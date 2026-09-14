@@ -32,4 +32,21 @@ internal class FullScanForSingleLookupRuleNameVsTypeTest {
         val call = FunctionCall("findAllOrders", "orderRepository", emptyList(), loc, emptyList())
         isBulkLoadCall(call, bulkLoadPrefixes, domTargets) shouldBe true
     }
+
+    // dom-target-names' "dom"/"el" entries had no word boundary at all - found during the
+    // cc#105 bare-.contains() sweep. "random"/"freedom" contain "dom", "model"/"channel"
+    // contain "el", none of them DOM/test-framework targets.
+    @Test
+    fun `a target merely containing dom or el without a boundary is still a genuine bulk-load call`() {
+        val randomCall = FunctionCall("findAllOrders", "randomOrderRepository", emptyList(), loc, emptyList())
+        isBulkLoadCall(randomCall, bulkLoadPrefixes, domTargets) shouldBe true
+        val modelCall = FunctionCall("findAllOrders", "modelOrderRepository", emptyList(), loc, emptyList())
+        isBulkLoadCall(modelCall, bulkLoadPrefixes, domTargets) shouldBe true
+    }
+
+    @Test
+    fun `a genuine DOM wrapper target is still excluded`() {
+        val call = FunctionCall("findAllOrders", "wrapper", emptyList(), loc, emptyList())
+        isBulkLoadCall(call, bulkLoadPrefixes, domTargets) shouldBe false
+    }
 }

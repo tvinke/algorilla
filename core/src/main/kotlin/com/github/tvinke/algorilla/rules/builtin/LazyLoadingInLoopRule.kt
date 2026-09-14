@@ -134,10 +134,12 @@ public class LazyLoadingInLoopRule : Rule {
         if (!startsWithAtWordBoundary(name, "get") || name.length <= MIN_GETTER_LENGTH) return false
         val property = name.removePrefix("get")
         val lower = property.lowercase()
-        // Strong signals: plural property names that suggest collections
+        // Strong signals: plural property names that suggest collections. containsAtWordBoundary
+        // reads the original-case property - lowercasing first would destroy the camelCase
+        // signal the boundary check needs.
         return lower.endsWith("s") &&
             !scalarSuffs.any { lower.endsWith(it) } ||
-            collGetterNames.any { lower.contains(it) }
+            collGetterNames.any { containsAtWordBoundary(property, it) }
     }
 
     private fun isCalledOnLoopEntity(

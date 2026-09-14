@@ -16,6 +16,7 @@ import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
+import com.github.tvinke.algorilla.util.containsAtWordBoundary
 import com.github.tvinke.algorilla.util.startsWithAtWordBoundary
 
 /**
@@ -78,7 +79,9 @@ public class CardinalityExplosionRule : Rule {
         registry: LanguageSemanticsRegistry,
     ): MutationType {
         val methodName = call.name
-        val target = call.qualifiedTarget?.lowercase() ?: ""
+        // Original case - lowercasing first would destroy the camelCase signal the
+        // scalarHints boundary check below needs.
+        val target = call.qualifiedTarget ?: ""
 
         // Unambiguous scalar methods (subtract, multiply, incrementAndGet, etc.)
         if (methodName in registry.scalarAccumulationMethods(language)) return MutationType.SCALAR_ACCUMULATION
@@ -96,7 +99,9 @@ public class CardinalityExplosionRule : Rule {
         // and absence of collection-like naming patterns.
         if (methodName == "add") {
             val scalarHints = registry.scalarReceiverHints(language)
-            if (scalarHints.any { target.contains(it) }) return MutationType.SCALAR_ACCUMULATION
+            // "sum"/"count"/"cost"/"amount" are short enough that "consumer"/"discount"/
+            // "costume"/"paramount" all satisfied a bare contains with no boundary at all.
+            if (scalarHints.any { containsAtWordBoundary(target, it) }) return MutationType.SCALAR_ACCUMULATION
             // Single-char variable names (w, x, n) are almost always scalars, never collections
             if (target.length == 1 && target[0].isLetter()) return MutationType.SCALAR_ACCUMULATION
         }
