@@ -1,0 +1,8 @@
+com.github.tvinke.algorilla.rules.builtin.CardinalityExplosionRule calls a word-boundary matcher but never calls TypeEnvironment in the same file
+com.github.tvinke.algorilla.rules.builtin.ExpensiveCallbackRule calls a word-boundary matcher but never calls TypeEnvironment in the same file
+com.github.tvinke.algorilla.rules.builtin.ExpensiveSortComparatorRule calls a word-boundary matcher but never calls TypeEnvironment in the same file
+com.github.tvinke.algorilla.rules.builtin.FullScanForSingleLookupRule calls a word-boundary matcher but never calls TypeEnvironment in the same file
+com.github.tvinke.algorilla.rules.builtin.LazyLoadingInLoopRule calls a word-boundary matcher but never calls TypeEnvironment in the same file
+com.github.tvinke.algorilla.rules.builtin.NPlusOneRepositoryCallRule calls a word-boundary matcher but never calls TypeEnvironment in the same file
+com.github.tvinke.algorilla.rules.builtin.RepeatedRegexInLoopRule calls a word-boundary matcher but never calls TypeEnvironment in the same file
+com.github.tvinke.algorilla.rules.builtin.SequentialAsyncJoinInLoopRule calls a word-boundary matcher but never calls TypeEnvironment in the same file

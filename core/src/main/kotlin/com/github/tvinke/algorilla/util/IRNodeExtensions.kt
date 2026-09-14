@@ -145,6 +145,18 @@ public fun FunctionDecl.declaredTypeOf(variableName: String?): String? {
 /**
  * Checks if a variable name corresponds to an O(1) lookup type based on parameter or variable declarations.
  * Delegates to the semantics registry for O(1) type detection.
+ *
+ * Precondition: this is a fallback — callers should prefer a [TypeEnvironment] lookup (field
+ * types, factory inference, chain-end resolution) when one is available, and only reach for
+ * this narrower parameter/local-declaration check when no `TypeEnvironment` exists yet (see
+ * `QuadraticRemovalRule.isRemovalCall`, which calls this only after its own `typeEnv` check
+ * comes back null).
+ *
+ * Edge case: [variableName] null (no declared type could be determined by the caller) or a
+ * name that resolves to no parameter/local declaration on this function both return false —
+ * the caller cannot distinguish "confirmed not O(1)" from "unknown", so callers that need the
+ * conservative direction (treat unknown as "still might be a collection") check
+ * `enclosingFn == null` separately rather than trusting a bare `false` here.
  */
 public fun FunctionDecl.hasO1Type(variableName: String?): Boolean {
     val type = declaredTypeOf(variableName) ?: return false
@@ -154,6 +166,13 @@ public fun FunctionDecl.hasO1Type(variableName: String?): Boolean {
 /**
  * Enhanced version that uses [TypeEnvironment] for full type resolution.
  * Falls back to the basic version when no type environment is available.
+ *
+ * Guarantee: delegates to the language-aware overload with [Language] unset and the merged
+ * default registry — equivalent to that overload's `language = null` behavior, not a
+ * separate code path.
+ *
+ * Precondition: prefer the other overload (with an explicit [Language] and [LanguageSemanticsRegistry])
+ * when a specific language is known — this one merges all languages' extras, which is coarser.
  */
 @Suppress("ReturnCount")
 public fun LookupCall.isCollectionLookup(
@@ -163,6 +182,23 @@ public fun LookupCall.isCollectionLookup(
 
 /**
  * Language-aware version that queries per-language extras instead of merging all languages.
+ *
+ * Guarantee: an O(1)-typed or scalar-typed lookup target ([isO1] / [isScalar]) always returns
+ * false before any heuristic runs — those are never treated as a linear collection lookup.
+ *
+ * Guarantee: a call on a known static-utility class target (e.g. `Collections`, `Arrays`)
+ * always returns false — those aren't lookups on a caller-owned collection.
+ *
+ * Precondition: once a [typeEnv] is available and [LookupCall.targetVariable] resolves through
+ * it, that answer is trusted completely and no name-based heuristic runs afterward — a real
+ * `List` named like a cache/map by convention (e.g. `userCache`) must not be second-guessed by
+ * its name once the type is actually known. The same precedence applies to a plain declared
+ * parameter/variable type from [fn] when no [TypeEnvironment] is available.
+ *
+ * Edge case: with no type information at all (no [typeEnv] match, no declared type on [fn]),
+ * this falls back to name heuristics — a target name suggesting a non-list type (registry
+ * suffix/contains lists) or a String-like name returns false; everything else defaults to true,
+ * i.e. an unclassifiable target is assumed to be a collection lookup rather than skipped.
  */
 @Suppress("ReturnCount")
 public fun LookupCall.isCollectionLookup(
@@ -288,6 +324,20 @@ private val LOOP_EXITS = setOf(ExitKind.THROW, ExitKind.BREAK, ExitKind.RETURN)
  *
  * Searches the call's enclosing block (found by scanning the given IR tree for the call's location)
  * and checks if any sibling after the call is a loop-terminating exit.
+ *
+ * Precondition: [loopBody] must be the list of IR nodes the call's location is actually
+ * findable within — [call] is matched by [com.github.tvinke.algorilla.model.SourceLocation]
+ * equality, not by identity, so passing a body that doesn't contain a node at that location
+ * (e.g. the wrong loop's body) makes this always return false rather than throwing.
+ *
+ * Guarantee: only [ExitKind] values in [LOOP_EXITS] (`THROW`, `BREAK`, `RETURN`) count as a
+ * qualifying exit — a `CONTINUE` immediately after the call does not, since it doesn't stop
+ * the loop from running again.
+ *
+ * Edge case: the call may sit inside a nested [BranchNode] (an if/else) rather than directly
+ * in [loopBody] — the search recurses into each branch and treats an exit found there as
+ * following the call too, so `if (x) { call(); return; }` counts even though `return` isn't a
+ * direct sibling of `call()` at the top level.
  */
 public fun isFollowedByExit(
     call: FunctionCall,

@@ -19,7 +19,10 @@ import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.CrossMethodResolver
 import com.github.tvinke.algorilla.util.ParameterFlowQuery
+import com.github.tvinke.algorilla.util.ResolutionConfidence
+import com.github.tvinke.algorilla.util.ResolutionResult
 import com.github.tvinke.algorilla.util.containsAnyAtWordBoundary
+import com.github.tvinke.algorilla.util.demoteIfAmbiguous
 import com.github.tvinke.algorilla.util.findDescendants
 import com.github.tvinke.algorilla.util.isRecursive
 import com.github.tvinke.algorilla.util.startsWithAtWordBoundary
@@ -84,7 +87,11 @@ public class HiddenNestedLoopRule : Rule {
     ) {
         if (isStringOrCopyMethod(call.name, language, context.registry)) return
 
-        val resolved = CrossMethodResolver.resolve(call, context.symbolTable, language) ?: return
+        val (resolved, resolutionConfidence) =
+            when (val result = CrossMethodResolver.resolve(call, context.symbolTable, language)) {
+                is ResolutionResult.Unresolved -> return
+                is ResolutionResult.Resolved -> result.decl to result.confidence
+            }
 
         // Skip recursive methods — their internal loop iterates child nodes
         // of the same data structure, not an independent collection.
@@ -116,7 +123,7 @@ public class HiddenNestedLoopRule : Rule {
                     context.symbolTable,
                 ) { it is FlowTarget.LoopIteration } != null
 
-        findings.add(buildFinding(call, resolved, hiddenLoop, loopStack, flowConfirmed))
+        findings.add(buildFinding(call, resolved, hiddenLoop, loopStack, flowConfirmed, resolutionConfidence))
     }
 
     private fun buildFinding(
@@ -125,15 +132,20 @@ public class HiddenNestedLoopRule : Rule {
         hiddenLoop: LoopNode,
         loopStack: List<LoopNode>,
         flowConfirmed: Boolean = false,
+        resolutionConfidence: ResolutionConfidence = ResolutionConfidence.EXACT,
     ): Finding {
         val outerVar = (loopStack.first().iteratedVariable ?: "items")
         val innerVar = hiddenLoop.iteratedVariable ?: "elements"
         val cx = ComplexityModel.loopTimesLookup(outerVar, innerVar)
+        // An ambiguous overload guess means "resolved" might not be the function the call
+        // actually targets - the hidden loop we're reporting could belong to the wrong
+        // overload entirely, so never report higher than LOW on a guess, flow-confirmed or not.
+        val confidence = resolutionConfidence.demoteIfAmbiguous(if (flowConfirmed) Confidence.HIGH else Confidence.MEDIUM)
         return Finding(
             ruleId = id,
             ruleName = name,
             severity = severity,
-            confidence = if (flowConfirmed) Confidence.HIGH else Confidence.MEDIUM,
+            confidence = confidence,
             location = call.location,
             message =
                 "${call.name}() contains a ${hiddenLoop.kind.label()} \u2014 " +

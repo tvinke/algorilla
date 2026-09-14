@@ -1,11 +1,73 @@
 package com.github.tvinke.algorilla.util
 
 import com.github.tvinke.algorilla.graph.SymbolTable
+import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
+
+/**
+ * The outcome of [CrossMethodResolver.resolve]: either a resolved [FunctionDecl] with a
+ * [ResolutionConfidence] saying how sure that resolution is, or [Unresolved] when the symbol
+ * table has nothing to offer at all. Replaces a plain nullable `FunctionDecl?` return, which
+ * couldn't distinguish "resolved with confidence" from "resolved by an arbitrary pick among
+ * equally-plausible overloads" - callers that care about that distinction (e.g. for confidence
+ * scoring on a finding) previously had no way to see it.
+ */
+public sealed interface ResolutionResult {
+    /**
+     * A [FunctionDecl] was found for the call, with [confidence] saying whether that pick was
+     * unambiguous ([ResolutionConfidence.EXACT]) or an arbitrary choice among several
+     * equally-plausible overloads ([ResolutionConfidence.AMBIGUOUS_OVERLOAD_BEST_GUESS]).
+     */
+    public data class Resolved(
+        val decl: FunctionDecl,
+        val confidence: ResolutionConfidence,
+    ) : ResolutionResult
+
+    /** No candidate at all - the call was skipped, had no matching receiver, or no candidates existed. */
+    public data object Unresolved : ResolutionResult
+}
+
+/**
+ * How confident a [ResolutionResult.Resolved] pick is.
+ */
+public enum class ResolutionConfidence {
+    /** Exactly one candidate existed, either from the start or after filtering by parameter count. */
+    EXACT,
+
+    /**
+     * More than one equally-plausible candidate remained (same name, and either no candidate
+     * matched the call's argument count, or several did) - the pick is [List.first] among
+     * them, not a resolution backed by real disambiguation.
+     */
+    AMBIGUOUS_OVERLOAD_BEST_GUESS,
+}
+
+/**
+ * Unwraps to the resolved [FunctionDecl], or null on [ResolutionResult.Unresolved] - for the
+ * common case of callers that only need the declaration and don't care about
+ * [ResolutionConfidence]. Callers that need the confidence too (e.g. for finding-confidence
+ * scoring) should match on [ResolutionResult] directly instead.
+ */
+public fun ResolutionResult.declOrNull(): FunctionDecl? =
+    when (this) {
+        is ResolutionResult.Unresolved -> null
+        is ResolutionResult.Resolved -> decl
+    }
+
+/**
+ * Floors [computed] to [Confidence.LOW] when this is
+ * [ResolutionConfidence.AMBIGUOUS_OVERLOAD_BEST_GUESS] - an ambiguous overload guess means the
+ * resolved declaration might not be the one the call actually targets, so no rule built on top
+ * of it should report higher than LOW, whatever its own signals say. Shared by the rules that
+ * weigh resolution confidence into a finding's confidence, so the floor isn't re-implemented
+ * per rule.
+ */
+public fun ResolutionConfidence.demoteIfAmbiguous(computed: Confidence): Confidence =
+    if (this == ResolutionConfidence.AMBIGUOUS_OVERLOAD_BEST_GUESS) Confidence.LOW else computed
 
 /**
  * Resolves a [FunctionCall] to its [FunctionDecl] using the symbol table, then checks
@@ -40,7 +102,7 @@ public object CrossMethodResolver {
         predicate: (T) -> Boolean,
     ): T? {
         if (maxDepth <= 0) return null
-        val resolved = resolve(call, symbolTable, language) ?: return null
+        val resolved = resolve(call, symbolTable, language).declOrNull() ?: return null
 
         // Search direct descendants
         val allDescendants = collectDescendants(resolved)
@@ -62,38 +124,46 @@ public object CrossMethodResolver {
     /**
      * Resolves a [FunctionCall] to its [FunctionDecl] via the symbol table.
      * Tries qualified target first, then falls back to simple name lookup.
-     * Skips built-in stream/collection operations that are never user-defined methods.
      *
-     * When the call has an explicit receiver (qualifiedTarget like "repository" or "service"),
-     * we only resolve via qualified lookup — falling back to simple name would incorrectly
-     * match local methods (e.g. `dataPointRepository.persist()` resolving to local `persist()`).
+     * Precondition: [call] must not be a built-in stream/collection operation that's never a
+     * user-defined method (`map`, `filter`, ...) - those are skipped up front, via the
+     * unresolvable-names set from the semantics registry, before any lookup runs.
      *
-     * When multiple overloads exist, prefers the one whose parameter count matches
-     * the call's argument count.
+     * Guarantee: when [call] has an explicit receiver (`qualifiedTarget` like "repository" or
+     * "service"), resolution only ever goes through the qualified lookup path - it never falls
+     * back to simple-name lookup, which would incorrectly match an unrelated local method of the
+     * same name (e.g. `dataPointRepository.persist()` resolving to a local `persist()`).
      *
-     * The set of unresolvable names is derived from the semantics registry (YAML),
-     * ensuring it stays in sync with the method classification.
+     * Edge case: when multiple overloads share the resolved name, the one whose parameter count
+     * matches the call's argument count is preferred (see [bestMatch]); when even that leaves
+     * more than one equally-plausible candidate, the pick among them is arbitrary rather than a
+     * genuine resolution - reflected in the returned [ResolutionResult]'s
+     * [ResolutionConfidence.AMBIGUOUS_OVERLOAD_BEST_GUESS], not silently hidden behind a
+     * successful-looking [ResolutionResult.Resolved].
+     *
+     * Guarantee: the set of unresolvable names is derived from the semantics registry (YAML)
+     * rather than hardcoded here, so it stays in sync with the method classification.
      */
     public fun resolve(
         call: FunctionCall,
         symbolTable: SymbolTable,
         language: Language = Language.JAVA,
         enclosingClass: String? = null,
-    ): FunctionDecl? {
+    ): ResolutionResult {
         val skip = LanguageSemanticsRegistry.DEFAULT.unresolvableNames(language)
-        if (call.name in skip) return null
+        if (call.name in skip) return ResolutionResult.Unresolved
         if (call.qualifiedTarget != null) {
             val byTarget = resolveByTarget(call, symbolTable)
-            if (byTarget != null) return byTarget
+            if (byTarget is ResolutionResult.Resolved) return byTarget
         }
         // Only fall back to simple name when there's no explicit receiver,
         // or receiver is this/super (which refers to the current class)
         if (call.qualifiedTarget != null && call.qualifiedTarget !in SELF_OR_SUPER_REFERENCES) {
-            return null
+            return ResolutionResult.Unresolved
         }
         val byName = symbolTable.lookupBySimpleName(call.name)
         // Prefer methods in the same declaring class to avoid name collisions
-        // (e.g. merge() in 39 Mapper classes — pick the one in the caller's own class)
+        // (e.g. merge() in 39 Mapper classes - pick the one in the caller's own class)
         if (enclosingClass != null) {
             val sameClass = byName.filter { it.declaringClass == enclosingClass }
             if (sameClass.isNotEmpty()) return bestMatch(sameClass, call)
@@ -105,13 +175,13 @@ public object CrossMethodResolver {
     private fun resolveByTarget(
         call: FunctionCall,
         symbolTable: SymbolTable,
-    ): FunctionDecl? {
-        val target = call.qualifiedTarget ?: return null
+    ): ResolutionResult {
+        val target = call.qualifiedTarget ?: return ResolutionResult.Unresolved
         val qualified = symbolTable.lookup("$target.${call.name}")
         if (qualified.isNotEmpty()) return bestMatch(qualified, call)
         val byClass = symbolTable.lookupByClassAndName("$target.${call.name}")
         if (byClass.isNotEmpty()) return bestMatch(byClass, call)
-        val targetType = symbolTable.resolveType(target) ?: return null
+        val targetType = symbolTable.resolveType(target) ?: return ResolutionResult.Unresolved
         val byType = symbolTable.lookupByClassAndName("$targetType.${call.name}")
         if (byType.isNotEmpty()) return bestMatch(byType, call)
         // Interface→implementation: resolve via registered supertypes (single-impl only)
@@ -119,22 +189,32 @@ public object CrossMethodResolver {
             val byImpl = symbolTable.lookupByClassAndName("$implClass.${call.name}")
             if (byImpl.isNotEmpty()) return bestMatch(byImpl, call)
         }
-        return null
+        return ResolutionResult.Unresolved
     }
 
     /**
-     * When multiple candidates match, prefer the one whose parameter count
-     * matches the call's argument count.
+     * When multiple candidates match, prefer the one whose parameter count matches the call's
+     * argument count. Determines [ResolutionConfidence]: a single candidate - either from the
+     * start or after filtering by parameter count - is [ResolutionConfidence.EXACT]; falling
+     * back to an arbitrary [List.first] pick, either among several same-arity candidates or
+     * among the original candidates when none matched arity, is
+     * [ResolutionConfidence.AMBIGUOUS_OVERLOAD_BEST_GUESS].
      */
     private fun bestMatch(
         candidates: List<FunctionDecl>,
         call: FunctionCall,
-    ): FunctionDecl? {
-        if (candidates.isEmpty()) return null
-        if (candidates.size == 1) return candidates.first()
+    ): ResolutionResult {
+        if (candidates.isEmpty()) return ResolutionResult.Unresolved
+        if (candidates.size == 1) {
+            return ResolutionResult.Resolved(candidates.first(), ResolutionConfidence.EXACT)
+        }
         val byParamCount = candidates.filter { it.parameters.size == call.arguments.size }
-        if (byParamCount.isNotEmpty()) return byParamCount.first()
-        return candidates.first()
+        val exactMatch = byParamCount.singleOrNull()
+        if (exactMatch != null) return ResolutionResult.Resolved(exactMatch, ResolutionConfidence.EXACT)
+        // Either no candidate matched the call's arity, or several equally-plausible ones did -
+        // either way this is an arbitrary pick, not a genuine disambiguation.
+        val guess = byParamCount.firstOrNull() ?: candidates.first()
+        return ResolutionResult.Resolved(guess, ResolutionConfidence.AMBIGUOUS_OVERLOAD_BEST_GUESS)
     }
 
     /**
