@@ -82,6 +82,21 @@ public class TypeEnvironment private constructor(
     public fun isBoundedSmallCollection(variableName: String): Boolean = variableName.removePrefix("this.") in boundedSmallCollections
 
     /**
+     * Returns [variableName]'s declared type's simple name, or null when unresolved or only
+     * backed by a [TypeSource.NAME_HEURISTIC] guess - the same trust bar [isO1]/[isCollection]/
+     * [isList] already apply. For callers that need the type name itself (to check it against
+     * their own domain-specific pattern set - repository/regex/date/future naming, say) rather
+     * than one of the built-in yes/no classifications: `typeOf(x)?.simpleName` alone would let
+     * a low-confidence name-derived guess (`getOrderList()` inferring "List" from the method
+     * name suffix, nothing more) masquerade as a real declared type.
+     */
+    public fun declaredTypeName(variableName: String): String? {
+        val type = typeOf(variableName) ?: return null
+        if (type.source == TypeSource.NAME_HEURISTIC) return null
+        return type.simpleName
+    }
+
+    /**
      * Walks the class hierarchy transitively to check if any supertype satisfies [predicate].
      * Protects against cycles with a visited set.
      */

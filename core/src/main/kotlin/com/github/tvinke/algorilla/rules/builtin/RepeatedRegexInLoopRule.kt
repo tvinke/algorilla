@@ -122,7 +122,7 @@ private fun isCompileCall(
 ): Boolean {
     if (call.name != "compile") return false
     val target = call.qualifiedTarget ?: return false
-    val declaredType = typeEnv?.typeOf(target)?.simpleName
+    val declaredType = typeEnv?.declaredTypeName(target)
     if (declaredType != null) return declaredType in regexTypes
     return endsWithAtWordBoundary(target, "Pattern") || endsWithAtWordBoundary(target, "Regex")
 }

@@ -14,6 +14,7 @@ import com.github.tvinke.algorilla.model.LoopNode
 import com.github.tvinke.algorilla.model.Parameter
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.model.SourceLocation
+import com.github.tvinke.algorilla.model.VariableDecl
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.signatureKey
@@ -104,6 +105,18 @@ internal class CardinalityExplosionRuleNameVsTypeTest {
             mutationTarget = "sum",
             declaredType = "BigDecimal",
         ).shouldBeEmpty()
+    }
+
+    /**
+     * "results" gets an inferred type here purely from its initializer's method-name suffix
+     * (`repository.getOrderList()` ends in "List") - the lowest-trust inference strategy
+     * TypeEnvironment has, the same one isCollection/isO1 already refuse to act on. A receiver
+     * with only this weak evidence must still fall through to the name-based heuristic below,
+     * not get short-circuited into SCALAR_ACCUMULATION just because *some* type was inferred.
+     */
+    @Test
+    fun `a receiver whose only type evidence is a method-name-suffix guess still falls back to the name heuristic`() {
+        nestedLoopFindingsWithNameHeuristicType("orders", "products", mutationTarget = "results") shouldHaveSize 1
     }
 
     /**
@@ -212,6 +225,46 @@ internal class CardinalityExplosionRuleNameVsTypeTest {
                 declaringClass = "Fixture",
                 location = loc,
                 children = listOf(outerLoop),
+            )
+        val typeEnv = TypeEnvironment.build(fn, emptyMap(), Language.JAVA, registry)
+        val fileRoot = FileRoot(filePath = "Fixture.java", language = Language.JAVA, location = loc, children = listOf(fn))
+        return rule.evaluate(
+            AnalysisContext(
+                irTrees = mapOf("Fixture.java" to fileRoot),
+                symbolTable = SymbolTable(),
+                callGraph = CallGraph(),
+                config = AnalysisConfig(),
+                registry = registry,
+                typeEnvironments = mapOf(signatureKey(fn) to typeEnv),
+            ),
+        )
+    }
+
+    /**
+     * Same nested-loop-plus-mutation shape, but [mutationTarget] gets no declared parameter
+     * type at all - its only type evidence comes from a `VariableDecl` initialized by a call
+     * named to end in "List" (`getOrderList()`), which TypeEnvironment infers as a
+     * NAME_HEURISTIC-sourced "List" guess, not a real declared type.
+     */
+    private fun nestedLoopFindingsWithNameHeuristicType(
+        outerVar: String,
+        innerVar: String,
+        mutationTarget: String,
+    ): List<Finding> {
+        val fetchCall = FunctionCall("getOrderList", "repository", emptyList(), loc, emptyList())
+        val varDecl = VariableDecl(mutationTarget, null, initializer = fetchCall, location = loc, children = listOf(fetchCall))
+        val mutationCall =
+            FunctionCall("add", mutationTarget, listOf(GenericNode("x", loc, emptyList())), loc, emptyList())
+        val innerLoop = LoopNode(kind = LoopKind.FOR_EACH, iteratedVariable = innerVar, location = loc, children = listOf(mutationCall))
+        val outerLoop = LoopNode(kind = LoopKind.FOR_EACH, iteratedVariable = outerVar, location = loc, children = listOf(innerLoop))
+        val fn =
+            FunctionDecl(
+                name = "process",
+                qualifiedName = "Fixture.process",
+                parameters = emptyList(),
+                declaringClass = "Fixture",
+                location = loc,
+                children = listOf(varDecl, outerLoop),
             )
         val typeEnv = TypeEnvironment.build(fn, emptyMap(), Language.JAVA, registry)
         val fileRoot = FileRoot(filePath = "Fixture.java", language = Language.JAVA, location = loc, children = listOf(fn))

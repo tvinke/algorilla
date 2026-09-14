@@ -92,7 +92,7 @@ public class ExpensiveCallbackRule : Rule {
         for (creation in creations.filter { isDateType(it.typeName, language, context.registry) }) {
             findings.add(buildDateCreationFinding(container, creation))
         }
-        for (call in calls.filter { isDateParseCall(it, language, context.registry) }) {
+        for (call in calls.filter { isDateParseCall(it, language, context.registry, typeEnv) }) {
             findings.add(buildDateParseFinding(container, call))
         }
         val regexTypes = context.registry.regexTypes(language)
@@ -141,7 +141,7 @@ public class ExpensiveCallbackRule : Rule {
         val maxDepth = context.config.maxCallDepth.coerceAtMost(2)
         val candidates =
             calls.filter {
-                !isDateParseCall(it, language, context.registry) && !isCompileCall(it, typeEnv, regexTypes)
+                !isDateParseCall(it, language, context.registry, typeEnv) && !isCompileCall(it, typeEnv, regexTypes)
             }
         for (call in candidates) {
             checkCrossMethodForCall(container, call, language, context, maxDepth, findings)
@@ -444,7 +444,7 @@ private fun isCompileCall(
 ): Boolean {
     if (call.name != "compile") return false
     val target = call.qualifiedTarget ?: return false
-    val declaredType = typeEnv?.typeOf(target)?.simpleName
+    val declaredType = typeEnv?.declaredTypeName(target)
     if (declaredType != null) return declaredType in regexTypes
     return endsWithAtWordBoundary(target, "Pattern") || endsWithAtWordBoundary(target, "Regex")
 }

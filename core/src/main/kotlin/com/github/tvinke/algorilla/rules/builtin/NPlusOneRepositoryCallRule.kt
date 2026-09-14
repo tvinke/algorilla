@@ -209,7 +209,7 @@ private fun matchesRepoPattern(
     typeEnv: TypeEnvironment? = null,
 ): Boolean {
     if (target == null) return false
-    val declaredType = typeEnv?.typeOf(target)?.simpleName
+    val declaredType = typeEnv?.declaredTypeName(target)
     return matchesAnyTargetPattern(declaredType ?: target, registry.ioTargetPatterns(language))
 }
 
@@ -243,7 +243,7 @@ private fun isSingleRecordFetch(
     // either way: a field merely CALLED "userRepository" but declared as something unrelated
     // shouldn't pass the repo-pattern gate, and a field named like a cache but genuinely
     // declared as a repository type shouldn't be excluded by the cache/memo check either.
-    val effectiveTarget = target?.let { typeEnv?.typeOf(it)?.simpleName } ?: target
+    val effectiveTarget = target?.let { typeEnv?.declaredTypeName(it) } ?: target
 
     // Exclude cache/memo targets before applying repo patterns
     if (effectiveTarget != null && containsAnyAtWordBoundary(effectiveTarget, registry.nonRepositoryTargets(language))) {

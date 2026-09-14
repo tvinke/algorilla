@@ -127,7 +127,7 @@ internal fun isBulkLoadCall(
     // field someone happened to call "wrapper" would be wrongly excluded here. When the
     // declared type is known, check that instead of the bare variable name.
     val target = call.qualifiedTarget ?: return true
-    val declaredType = typeEnv?.typeOf(target)?.simpleName
+    val declaredType = typeEnv?.declaredTypeName(target)
     if (containsAnyAtWordBoundary(declaredType ?: target, domTargets)) return false
     return true
 }

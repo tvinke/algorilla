@@ -512,7 +512,12 @@ private fun classifyByDeclaredType(
     typeEnv: TypeEnvironment?,
     target: String,
 ): CardinalityExplosionRule.MutationType? {
-    if (typeEnv?.typeOf(target) == null) return null
+    // declaredTypeName (not the raw typeOf) - a NAME_HEURISTIC-sourced guess (e.g. "results"
+    // inferred as "List" purely from an initializer call named getOrderList()) is exactly
+    // the kind of weak evidence this whole check exists to NOT trust; falling through to the
+    // name heuristics below is the correct behavior for that case, not isCollection's
+    // filtered-to-false verdict on it.
+    if (typeEnv?.declaredTypeName(target) == null) return null
     return if (typeEnv.isCollection(target)) {
         CardinalityExplosionRule.MutationType.COLLECTION_EXPANSION
     } else {

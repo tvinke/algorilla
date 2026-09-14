@@ -70,6 +70,19 @@ internal class ExpensiveCallbackRuleNameVsTypeTest {
         findingsForWithDeclaredType("compiler", "Pattern") shouldHaveSize 1
     }
 
+    /**
+     * Same declared-type-wins fix, applied to this rule's date-parse detection (isDateParseCall,
+     * shared with ExpensiveSortComparatorRule) rather than its regex-compile detection above -
+     * "myDateTimeFormatterHelper" boundary-matches "DateTimeFormatter" by name, but its declared
+     * type here is an unrelated formatter class.
+     */
+    @Test
+    fun `a variable named like a date-parse target but declared as something else is not flagged as date parsing`() {
+        val call = FunctionCall("parse", "myDateTimeFormatterHelper", emptyList(), loc, emptyList())
+        val callback = LoopNode(kind = LoopKind.HIGHER_ORDER, iteratedVariable = "items", location = loc, children = listOf(call))
+        findingsForCallbackWithDeclaredType(callback, "myDateTimeFormatterHelper", "CustomFormatter").shouldBeEmpty()
+    }
+
     private fun findingsForWithDeclaredType(
         varName: String,
         declaredType: String,
@@ -77,6 +90,14 @@ internal class ExpensiveCallbackRuleNameVsTypeTest {
         val arg = GenericNode("\"[0-9]+\"", loc, emptyList())
         val call = FunctionCall("compile", varName, listOf(arg), loc, emptyList())
         val callback = LoopNode(kind = LoopKind.HIGHER_ORDER, iteratedVariable = "items", location = loc, children = listOf(call))
+        return findingsForCallbackWithDeclaredType(callback, varName, declaredType)
+    }
+
+    private fun findingsForCallbackWithDeclaredType(
+        callback: LoopNode,
+        varName: String,
+        declaredType: String,
+    ): List<Finding> {
         val fn =
             FunctionDecl(
                 name = "process",

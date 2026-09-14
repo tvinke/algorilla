@@ -125,6 +125,6 @@ private fun looksLikeFutureCall(
     // Original case for the boundary check - lowercasing first would destroy the camelCase
     // signal, e.g. "subtask" would falsely satisfy a bare "task" contains with no boundary.
     val target = call.qualifiedTarget ?: return false
-    val declaredType = typeEnv?.typeOf(target)?.simpleName
+    val declaredType = typeEnv?.declaredTypeName(target)
     return containsAnyAtWordBoundary(declaredType ?: target, registry.futureIndicators(language))
 }

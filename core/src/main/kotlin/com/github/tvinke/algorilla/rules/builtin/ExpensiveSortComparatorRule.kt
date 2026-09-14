@@ -312,6 +312,6 @@ internal fun isDateParseCall(
 ): Boolean {
     if (call.name !in registry.dateParseMethods(language)) return false
     val target = call.qualifiedTarget ?: return false
-    val declaredType = typeEnv?.typeOf(target)?.simpleName
+    val declaredType = typeEnv?.declaredTypeName(target)
     return containsAnyAtWordBoundary(declaredType ?: target, registry.dateParseTargets(language), ignoreCase = false)
 }
