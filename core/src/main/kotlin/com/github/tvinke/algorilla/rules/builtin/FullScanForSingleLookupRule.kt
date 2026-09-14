@@ -16,6 +16,7 @@ import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
+import com.github.tvinke.algorilla.util.containsAnyAtWordBoundary
 import com.github.tvinke.algorilla.util.findDescendants
 import com.github.tvinke.algorilla.util.startsWithAtWordBoundary
 
@@ -113,8 +114,10 @@ internal fun isBulkLoadCall(
     domTargets: Set<String>,
 ): Boolean {
     if (!bulkLoadPrefixes.any { startsWithAtWordBoundary(call.name, it) }) return false
-    // Exclude DOM/test framework targets (e.g., wrapper.findAll in Vue test utils)
-    val target = call.qualifiedTarget?.lowercase()
-    if (target != null && domTargets.any { target.contains(it) }) return false
+    // Exclude DOM/test framework targets (e.g., wrapper.findAll in Vue test utils). Original
+    // case for the boundary check - "dom"/"el" are short enough that "random"/"freedom"/
+    // "model"/"channel" all satisfied a bare contains with no boundary at all.
+    val target = call.qualifiedTarget
+    if (target != null && containsAnyAtWordBoundary(target, domTargets)) return false
     return true
 }

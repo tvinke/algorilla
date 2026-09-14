@@ -14,6 +14,7 @@ import com.github.tvinke.algorilla.model.SortCall
 import com.github.tvinke.algorilla.model.SortKind
 import com.github.tvinke.algorilla.model.SourceLocation
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
+import com.github.tvinke.algorilla.util.endsWithAtWordBoundary
 
 // Exhaustive method-name dispatch — each branch is a distinct IR classification
 @Suppress("CyclomaticComplexMethod", "ReturnCount", "LongMethod")
@@ -325,13 +326,32 @@ public fun isStringTarget(
     language: Language = Language.JAVA,
 ): Boolean {
     val registry = registryInstance
+    // Documented gap, not fixed here: stringIndicators is a bare contains() over the full
+    // targetText, which for a chained call is the literal source text of the whole receiver
+    // chain (e.g. "map.replace(k, v)" for `map.replace(k, v).contains(x)`), not just the
+    // final segment. Most entries ("toString()", "trim()", ...) always correctly indicate a
+    // String wherever they occur in the chain, since those methods only exist on String. But
+    // "replace(" is also a real Map.replace(K, V) method returning V, and "concat(" is also
+    // Stream.concat(a, b) - if V or the concat result is itself a List, the *next* hop's real
+    // O(n) lookup gets misread as string indexOf/contains and suppressed. Fixing this needs
+    // chain-aware parsing (checking only the last segment, reusing this file's own
+    // findBalancedClose/stripStreamChainOps machinery) rather than a word-boundary check, and
+    // the realistic trigger shape (Map.replace()/Stream.concat() immediately followed by a
+    // lookup call on the returned value) is narrow enough that it's pinned here instead.
     return registry.stringIndicators(language).any { targetText.contains(it) } ||
         registry.stringNameSuffixes(language).any { suffix ->
             val getterSuffix = suffix.replaceFirstChar { it.uppercaseChar() }
             targetText.contains(".get$getterSuffix(") ||
                 targetText.contains(".$suffix(") // record accessor: .version(, .name(
         } ||
-        registry.stringNameSuffixes(language).any { targetText.endsWith(it) } ||
+        // Bare endsWith had no word boundary: "id"/"key"/"path"/"line"/"value"/"field" are
+        // all real string-name-suffixes entries, so "grid", "monkey", "classpath", "pipeline",
+        // "eigenvalue" and "minefield" all satisfied it too - misreading a genuine collection
+        // variable as a String target and suppressing its real O(n) lookup findings.
+        // ignoreCase = false: string-name-suffixes already lists both cases explicitly
+        // ("Name"/"name", "Id"/"id", ...) - the original endsWith was case-sensitive too,
+        // no need to widen it while fixing the boundary.
+        registry.stringNameSuffixes(language).any { endsWithAtWordBoundary(targetText, it, ignoreCase = false) } ||
         extractVariableName(targetText, language) in registry.stringExactNames(language)
 }
 

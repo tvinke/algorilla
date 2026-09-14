@@ -41,6 +41,20 @@ internal class HiddenNestedLoopRuleNameVsTypeTest {
         findingsFor("writeLine").shouldBeEmpty()
     }
 
+    // isStringOrCopyMethod's other bare-contains check (hidden-loop-skip-keywords: "char",
+    // "uri", "pattern", ...) had the same missing boundary on both sides, confirmed by the
+    // #103 spike review - "processCharge" contains "char" with no boundary at all, so a
+    // genuine hidden-nested-loop bug inside a billing method was silently invisible.
+    @Test
+    fun `a call merely containing a skip-keyword without a boundary is not skipped`() {
+        findingsFor("processCharge") shouldHaveSize 1
+    }
+
+    @Test
+    fun `a genuine char-iteration call is still skipped`() {
+        findingsFor("toCharArray").shouldBeEmpty()
+    }
+
     private fun resolvableMethodWithHiddenLoop(name: String): FunctionDecl {
         val innerCall1 = FunctionCall("process", "element", emptyList(), loc, emptyList())
         val innerCall2 = FunctionCall("validate", "element", emptyList(), loc, emptyList())

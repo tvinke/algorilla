@@ -9,12 +9,14 @@ import com.github.tvinke.algorilla.model.GenericNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LoopKind
 import com.github.tvinke.algorilla.model.LoopNode
+import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.model.SourceLocation
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 
 /**
@@ -102,6 +104,53 @@ internal class CardinalityExplosionRuleNameVsTypeTest {
                 listOf(GenericNode("lambda", loc, listOf(innerCall))),
             )
         rule.evaluate(fixtureContext(listOf(flatMapCall))) shouldHaveSize 1
+    }
+
+    // classifyMutation's scalarHints check had the identical missing-boundary bug, on a
+    // receiver name instead of an element name: "consumerList" contains "sum" with no
+    // boundary at all, misreading a genuine List.add() as a BigDecimal-style scalar
+    // accumulation and suppressing the real Cartesian-product finding entirely.
+    @Test
+    fun `a genuine collection receiver merely containing a scalar hint without a boundary is still flagged`() {
+        nestedLoopFindings("orders", "products", mutationTarget = "consumerList") shouldHaveSize 1
+    }
+
+    @Test
+    fun `a genuine scalar accumulator receiver is still excluded`() {
+        nestedLoopFindings("orders", "products", mutationTarget = "runningSum").shouldBeEmpty()
+    }
+
+    // isPartitionedIteration's map-entry-unpacking check (Case 1) had a bare `contains`
+    // on the unanchored "values" entry - "entry.getMetaValues()" contains "values" with no
+    // boundary of its own (the dot only anchors the start of "getMetaValues" as a whole, not
+    // the "Values" tail inside it), so an unrelated getter was silently read as map-entry-
+    // value access and the real Cartesian-product finding got suppressed.
+    @Test
+    fun `a call merely containing 'values' inside a longer method name is still flagged, not misread as map-entry-value access`() {
+        nestedLoopFindings("grouped.entrySet()", "entry.getMetaValues()") shouldHaveSize 1
+    }
+
+    @Test
+    fun `a genuine entry-value access still suppresses the map-entry-unpacking finding`() {
+        nestedLoopFindings("grouped.entrySet()", "entry.getValue()").shouldBeEmpty()
+    }
+
+    // determineEffectiveSeverity's smallCollectionHints check had the same missing-boundary
+    // bug - "type" is short enough that "prototypes"/"genotype"/"stereotype" all satisfied
+    // it with no boundary at all, demoting a real Cartesian-product finding to INFO between
+    // two otherwise unrelated variables.
+    @Test
+    fun `a variable merely containing 'type' without a boundary does not demote severity to INFO`() {
+        val findings = nestedLoopFindings("prototypes", "products")
+        findings shouldHaveSize 1
+        findings.first().severity shouldBe Severity.WARNING
+    }
+
+    @Test
+    fun `a genuine type-named variable still demotes severity to INFO`() {
+        val findings = nestedLoopFindings("orderType", "products")
+        findings shouldHaveSize 1
+        findings.first().severity shouldBe Severity.INFO
     }
 
     private fun nestedLoopFindings(

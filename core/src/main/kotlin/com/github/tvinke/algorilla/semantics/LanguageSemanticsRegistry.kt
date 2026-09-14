@@ -4,6 +4,8 @@ import com.github.tvinke.algorilla.model.AccessKind
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LookupKind
 import com.github.tvinke.algorilla.model.SortKind
+import com.github.tvinke.algorilla.util.containsAnyAtWordBoundary
+import com.github.tvinke.algorilla.util.containsAtWordBoundary
 import io.github.oshai.kotlinlogging.KotlinLogging
 
 private val logger = KotlinLogging.logger {}
@@ -39,7 +41,11 @@ public class LanguageSemanticsRegistry private constructor(
         typeName: String,
     ): Boolean {
         val resolved = resolveLanguage(language)
-        return maps.heavyweight[resolved]?.any { typeName.contains(it) } == true
+        // ignoreCase = false: type names are case-sensitive identifiers (PascalCase by
+        // convention), and some callers pass a receiver variable name here too - keeping
+        // case-sensitive avoids matching a lowercase variable like "pattern" against a real
+        // "Pattern" type name.
+        return containsAnyAtWordBoundary(typeName, maps.heavyweight[resolved] ?: emptySet(), ignoreCase = false)
     }
 
     /**
@@ -59,14 +65,19 @@ public class LanguageSemanticsRegistry private constructor(
         typeName: String,
     ): Boolean {
         val resolved = resolveLanguage(language)
-        return maps.collectionTypes[resolved]?.any { typeName.contains(it) } == true ||
-            maps.o1[resolved]?.any { typeName.contains(it) } == true
+        return matchesTypeName(typeName, maps.collectionTypes[resolved], extraSection(language, "non-collection-type-names")) ||
+            matchesTypeName(typeName, maps.o1[resolved], extraSection(language, "non-o1-type-names"))
     }
 
     /**
-     * Returns true if the given type name indicates an O(1) lookup type.
+     * Returns true if the given type name indicates an O(1) lookup type, in any language.
+     * Iterates `maps.o1.keys` (the languages actually loaded) rather than [Language.entries]:
+     * this is on the hot path (once per lookup-shaped call site during parsing), and
+     * [Language.entries] includes `TYPESCRIPT`, which [resolveLanguage] aliases to
+     * `JAVASCRIPT` - iterating the full enum would re-scan the same candidate/exclusion
+     * sets for that alias a second time.
      */
-    public fun isO1Type(typeName: String): Boolean = maps.o1.values.any { types -> types.any { typeName.contains(it) } }
+    public fun isO1Type(typeName: String): Boolean = maps.o1.keys.any { isO1Type(it, typeName) }
 
     /**
      * Returns true if the given type name indicates an O(1) lookup type for the language.
@@ -76,7 +87,7 @@ public class LanguageSemanticsRegistry private constructor(
         typeName: String,
     ): Boolean {
         val resolved = resolveLanguage(language)
-        return maps.o1[resolved]?.any { typeName.contains(it) } == true
+        return matchesTypeName(typeName, maps.o1[resolved], extraSection(language, "non-o1-type-names"))
     }
 
     /**
@@ -687,6 +698,33 @@ private fun matchesCamelCasePrefix(
             varName.startsWith(prefix) &&
             (varName[prefix.length].isUpperCase() || varName[prefix.length].isDigit())
     }
+
+/**
+ * Returns true if [typeName] matches one of [candidates] at a word boundary, unless it also
+ * matches one of [exclusions] - real types whose name happens to contain a candidate as a
+ * camelCase-capitalized tail without actually being that kind of type (`java.sql.ResultSet`
+ * contains "Set" but isn't a `java.util.Set`; `java.io.InputStream`/`OutputStream` contain
+ * "Stream" but aren't a collection `Stream`). A plain boundary check alone can't tell these
+ * apart from a genuine subclass-style name like `UserHashMap` - both have a capitalized
+ * candidate substring at the end of the string - so known collisions are excluded explicitly
+ * via YAML (`non-collection-type-names`/`non-o1-type-names`) instead.
+ */
+private fun matchesTypeName(
+    typeName: String,
+    candidates: Set<String>?,
+    exclusions: Set<String>,
+): Boolean {
+    if (candidates.isNullOrEmpty()) return false
+    // ignoreCase = false: type names are case-sensitive identifiers (PascalCase by
+    // convention), and some callers pass a receiver variable name here too - keeping
+    // case-sensitive avoids matching a lowercase variable like "map" against a real "Map"
+    // type name (see inferO1Factory in TypeEnvironment.kt, which relies on exactly this).
+    // Candidates checked first: exclusions can only change the outcome once a candidate
+    // already matched, so this short-circuits the (dominant, in a real codebase) no-match
+    // case without ever scanning the exclusion list.
+    if (!containsAnyAtWordBoundary(typeName, candidates, ignoreCase = false)) return false
+    return !containsAnyAtWordBoundary(typeName, exclusions, ignoreCase = false)
+}
 
 /**
  * Returns true if [targetText] contains [type] as a whole identifier segment — the

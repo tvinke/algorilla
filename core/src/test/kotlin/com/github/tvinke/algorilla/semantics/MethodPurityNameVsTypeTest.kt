@@ -48,4 +48,24 @@ internal class MethodPurityNameVsTypeTest {
         MethodPurity.classify("setName") shouldBe Purity.SIDE_EFFECT
         MethodPurity.classify("isValid") shouldBe Purity.PURE
     }
+
+    // -- classify(methodName, qualifiedTarget): a separate code path from the prefix checks
+    // above. "log" is a real side-effect-targets entry short enough that "catalog"/"dialog"/
+    // "analog" all satisfy a bare contains with no boundary check - unlike the println/printf
+    // case, there's no legitimate word where "log" is an informal continuation of itself, so
+    // the standard boundary fix applies cleanly here.
+
+    @Test
+    fun `a call on a genuine logger target is still side-effectful`() {
+        MethodPurity.classify("info", "logger") shouldBe Purity.SIDE_EFFECT
+        MethodPurity.classify("debug", "log") shouldBe Purity.SIDE_EFFECT
+    }
+
+    @Test
+    fun `a call on a target merely containing log without a boundary is not misread as a logger call`() {
+        // "load" is neither a side-effect- nor pure-prefix, so this isolates the
+        // qualifiedTarget check from classify(methodName)'s own prefix checks.
+        MethodPurity.classify("load", "catalog") shouldBe Purity.UNKNOWN
+        MethodPurity.classify("load", "dialog") shouldBe Purity.UNKNOWN
+    }
 }

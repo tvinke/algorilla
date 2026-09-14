@@ -62,6 +62,14 @@ internal class IRNodeExtensionsNameVsTypeTest {
         lookup.isCollectionLookup(null, null, Language.JAVA, registry) shouldBe true
     }
 
+    @Test
+    fun `hasO1TargetName's contains match also needs a word boundary, even with no type info at all`() {
+        // "restoreList" contains "store" (a non-list-target-contains entry) with no boundary
+        // at all - same list QuadraticRemovalRule's isRemovalCall had the identical bug for.
+        val lookup = lookupFor("restoreList")
+        lookup.isCollectionLookup(null, null, Language.JAVA, registry) shouldBe true
+    }
+
     private fun lookupFor(varName: String) =
         LookupCall(kind = LookupKind.FIND, targetVariable = varName, isO1 = false, location = loc, children = emptyList())
 

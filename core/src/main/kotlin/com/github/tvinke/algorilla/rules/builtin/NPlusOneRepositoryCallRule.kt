@@ -17,7 +17,7 @@ import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.CrossMethodResolver
-import com.github.tvinke.algorilla.util.containsAtWordBoundary
+import com.github.tvinke.algorilla.util.containsAnyAtWordBoundary
 import com.github.tvinke.algorilla.util.endsWithAtWordBoundary
 import com.github.tvinke.algorilla.util.matchesAnyTargetPattern
 import com.github.tvinke.algorilla.util.startsWithAtWordBoundary
@@ -223,22 +223,25 @@ private fun isSingleRecordFetch(
     registry: LanguageSemanticsRegistry,
 ): Boolean {
     val name = call.name
-    val target = call.qualifiedTarget?.lowercase()
+    // Original-case target for every boundary-aware check below - lowercasing first would
+    // destroy the camelCase signal (userRepository) that tells a real boundary apart from a
+    // coincidental substring (reportGenerator, storefront). The cache/memo exclusion just
+    // below used to lowercase first too - "carpool"/"whirlpool" satisfied "pool" with no
+    // boundary at all.
+    val target = call.qualifiedTarget
 
     // Exclude cache/memo targets before applying repo patterns
-    if (target != null && registry.nonRepositoryTargets(language).any { target.contains(it) }) return false
+    if (target != null && containsAnyAtWordBoundary(target, registry.nonRepositoryTargets(language))) {
+        return false
+    }
     // Spring Data findFirst<N>By / findTop<N>By fetches a fixed-size batch, not a single record
     if (PAGINATED_BATCH_REGEX.containsMatchIn(name)) return false
 
-    // Original-case target for the boundary-aware checks below - lowercasing first would
-    // destroy the camelCase signal (userRepository) that tells a real boundary apart from
-    // a coincidental substring (reportGenerator, storefront).
-    val originalTarget = call.qualifiedTarget
     val repoPatterns = registry.repositoryPatterns(language)
     // Exact prefix matches (highest confidence)
     val matchesPrefixes = registry.singleFetchPrefixes(language).any { name.startsWith(it, ignoreCase = true) }
     if (matchesPrefixes) {
-        if (originalTarget == null || repoPatterns.any { containsAtWordBoundary(originalTarget, it) }) return true
+        if (target == null || containsAnyAtWordBoundary(target, repoPatterns)) return true
     }
     // Widened pattern: any findByX/getByX on a repository-like target
     if (SINGLE_FETCH_METHOD_REGEX.matches(name)) {
@@ -253,7 +256,7 @@ private fun isSingleRecordFetch(
             return false
         }
         // For widened pattern, require a repository-like target to reduce FPs
-        if (originalTarget != null && repoPatterns.any { containsAtWordBoundary(originalTarget, it) }) return true
+        if (target != null && containsAnyAtWordBoundary(target, repoPatterns)) return true
     }
     return false
 }

@@ -19,6 +19,7 @@ import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.CrossMethodResolver
 import com.github.tvinke.algorilla.util.ParameterFlowQuery
+import com.github.tvinke.algorilla.util.containsAnyAtWordBoundary
 import com.github.tvinke.algorilla.util.findDescendants
 import com.github.tvinke.algorilla.util.isRecursive
 import com.github.tvinke.algorilla.util.startsWithAtWordBoundary
@@ -210,6 +211,10 @@ private fun isStringOrCopyMethod(
 ): Boolean {
     if (name in registry.hiddenLoopSkipMethods(language)) return true
     if (registry.hiddenLoopSkipPrefixes(language).any { startsWithAtWordBoundary(name, it) }) return true
-    val lower = name.lowercase()
-    return registry.hiddenLoopSkipKeywords(language).any { lower.contains(it) }
+    // Original-case name for the boundary check - lowercasing first would destroy the
+    // camelCase signal a boundary check needs. "processCharge" contains "char" but isn't a
+    // char-iteration method - the trailing boundary catches it (the "ge" after "Char" is a
+    // lowercase continuation, not a new word), the same way "screenwriter" doesn't match
+    // "writer" elsewhere in this campaign.
+    return containsAnyAtWordBoundary(name, registry.hiddenLoopSkipKeywords(language))
 }

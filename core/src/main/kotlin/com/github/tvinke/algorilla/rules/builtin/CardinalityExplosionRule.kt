@@ -16,6 +16,7 @@ import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
+import com.github.tvinke.algorilla.util.containsAnyAtWordBoundary
 import com.github.tvinke.algorilla.util.startsWithAtWordBoundary
 
 /**
@@ -78,7 +79,9 @@ public class CardinalityExplosionRule : Rule {
         registry: LanguageSemanticsRegistry,
     ): MutationType {
         val methodName = call.name
-        val target = call.qualifiedTarget?.lowercase() ?: ""
+        // Original case - lowercasing first would destroy the camelCase signal the
+        // scalarHints boundary check below needs.
+        val target = call.qualifiedTarget ?: ""
 
         // Unambiguous scalar methods (subtract, multiply, incrementAndGet, etc.)
         if (methodName in registry.scalarAccumulationMethods(language)) return MutationType.SCALAR_ACCUMULATION
@@ -96,7 +99,9 @@ public class CardinalityExplosionRule : Rule {
         // and absence of collection-like naming patterns.
         if (methodName == "add") {
             val scalarHints = registry.scalarReceiverHints(language)
-            if (scalarHints.any { target.contains(it) }) return MutationType.SCALAR_ACCUMULATION
+            // "sum"/"count"/"cost"/"amount" are short enough that "consumer"/"discount"/
+            // "costume"/"paramount" all satisfied a bare contains with no boundary at all.
+            if (containsAnyAtWordBoundary(target, scalarHints)) return MutationType.SCALAR_ACCUMULATION
             // Single-char variable names (w, x, n) are almost always scalars, never collections
             if (target.length == 1 && target[0].isLetter()) return MutationType.SCALAR_ACCUMULATION
         }
@@ -215,9 +220,18 @@ public class CardinalityExplosionRule : Rule {
         language: Language,
         registry: LanguageSemanticsRegistry,
     ): Boolean {
-        // Case 1: Map entry unpacking — outer is entrySet()/keySet(), inner accesses values
+        // Case 1: Map entry unpacking — outer is entrySet()/keySet(), inner accesses values.
+        // endsWith, not contains: a bare `contains` on the unanchored "values" entry matched
+        // "values" buried mid-identifier ("entry.getMetaValues()", "row.valuesCache" both
+        // contain "values" with no boundary at all - the same shape this whole batch fixes
+        // elsewhere), silently treating an unrelated getter as map-entry-value access. Every
+        // entry (".getValue()"/".values"/".value"/"values") already reads naturally as "the
+        // call/property this string names, in full" - endsWith enforces exactly that,
+        // without needing containsAtWordBoundary (which would still match "getMetaValues()"
+        // too, since its capitalized "Values" satisfies a real camelCase boundary the same
+        // way "ResultSet" does elsewhere in this campaign).
         val outerIsEntrySet = outerVar.endsWith(".entrySet()") || outerVar.endsWith(".keySet()")
-        if (outerIsEntrySet && registry.mapValueAccessors(language).any { innerVar.contains(it) }) return true
+        if (outerIsEntrySet && registry.mapValueAccessors(language).any { innerVar.endsWith(it) }) return true
 
         // Case 2: Inner iterates a property/method of the outer loop element.
         // The inner variable has a dotted path (method call on an element), suggesting it
@@ -248,9 +262,12 @@ public class CardinalityExplosionRule : Rule {
         language: Language,
         registry: LanguageSemanticsRegistry,
     ): Severity {
-        val outerLower = outerVar.lowercase()
-        val innerLower = innerVar.lowercase()
-        if (registry.smallCollectionHints(language).any { it in outerLower || it in innerLower }) {
+        // Original case for the boundary check - lowercasing first would destroy the
+        // camelCase signal. "type" is short enough that "prototype"/"genotype"/"stereotype"/
+        // "phenotype"/"archetype" all satisfied it with no boundary at all, demoting a real
+        // Cartesian-product finding to INFO on an unrelated pair of variables.
+        val hints = registry.smallCollectionHints(language)
+        if (containsAnyAtWordBoundary(outerVar, hints) || containsAnyAtWordBoundary(innerVar, hints)) {
             return Severity.INFO
         }
         // Inner is a method call on an element variable (e.g., "ifc.getMethods()", "node.getChildren()").

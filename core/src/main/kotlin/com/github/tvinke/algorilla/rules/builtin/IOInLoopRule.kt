@@ -20,6 +20,7 @@ import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import com.github.tvinke.algorilla.util.ParameterFlowQuery
+import com.github.tvinke.algorilla.util.containsAnyAtWordBoundary
 import com.github.tvinke.algorilla.util.findDescendants
 import com.github.tvinke.algorilla.util.isFollowedByExit
 import com.github.tvinke.algorilla.util.matchesAnyTargetPattern
@@ -346,7 +347,12 @@ private fun isMonadicTarget(
 }
 
 // ReactiveSecurityContextHolder.getContext().map(...).flatMap(...) — the class is a
-// reactive factory whose methods return Mono/Flux, not a collection to iterate.
+// reactive factory whose methods return Mono/Flux, not a collection to iterate. Boundary-
+// checked, not just a bare contains(), so an unrelated class merely containing one of these
+// names doesn't false-match - though a wrapper/adapter class like "LegacyServerRequestAdapter"
+// still would (its capitalized "Adapter" tail satisfies the trailing boundary the same way
+// "ResultSet"/"DateUtils" do elsewhere in this campaign); narrow enough that it's left as a
+// documented gap rather than a YAML exclusion list, same call as ExpensiveSortComparatorRule.
 private fun isReactiveFactoryTarget(
     target: String,
     language: Language,
@@ -354,7 +360,7 @@ private fun isReactiveFactoryTarget(
 ): Boolean {
     val factories = registry.extraSection(language, "monadic-factory-classes")
     if (factories.isEmpty()) return false
-    return factories.any { target.contains(it) }
+    return containsAnyAtWordBoundary(target, factories)
 }
 
 /**
@@ -389,8 +395,10 @@ private fun isInMemoryTarget(
     registry: LanguageSemanticsRegistry,
 ): Boolean {
     val target = call.qualifiedTarget ?: return false
-    val lowered = target.lowercase()
-    if (registry.nonIoTargets(language).any { lowered.contains(it) }) return true
+    // Original case for the boundary check - lowercasing first would destroy the camelCase
+    // signal. "sb"/"buf" are short enough that "husband"/"crossbow"/"rebuffed" all contained
+    // them with no boundary at all.
+    if (containsAnyAtWordBoundary(target, registry.nonIoTargets(language))) return true
     return typeEnv?.let { env ->
         env.isO1(target) || env.isCollection(target) || env.isString(target)
     } == true

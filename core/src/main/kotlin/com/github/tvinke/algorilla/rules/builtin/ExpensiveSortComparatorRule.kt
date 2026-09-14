@@ -18,6 +18,7 @@ import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.CrossMethodResolver
+import com.github.tvinke.algorilla.util.containsAnyAtWordBoundary
 import com.github.tvinke.algorilla.util.findDescendants
 
 /**
@@ -273,11 +274,19 @@ public class ExpensiveSortComparatorRule : Rule {
     )
 }
 
+// ignoreCase = false: type names are case-sensitive. Same boundary-ambiguity as
+// LanguageSemanticsRegistry.matchesTypeName ("DateUtils"/"InstantSource" still match, see
+// its doc). Also used by ExpensiveCallbackRule (heavyweight-object-in-callback detection),
+// not just this rule's own comparator cost estimation - not given a YAML exclusion list
+// here regardless, since "DateUtils"-style collisions are less certain to occur in a real
+// codebase than the JDK-standard ResultSet/InputStream ones that justified the list on
+// LanguageSemanticsRegistry; see ExpensiveSortComparatorRuleNameVsTypeTest for the
+// documented gap.
 internal fun isDateType(
     typeName: String,
     language: Language,
     registry: LanguageSemanticsRegistry,
-): Boolean = registry.dateTypeNames(language).any { typeName.contains(it) }
+): Boolean = containsAnyAtWordBoundary(typeName, registry.dateTypeNames(language), ignoreCase = false)
 
 internal fun isDateParseCall(
     call: FunctionCall,
@@ -286,5 +295,5 @@ internal fun isDateParseCall(
 ): Boolean {
     if (call.name !in registry.dateParseMethods(language)) return false
     val target = call.qualifiedTarget ?: return false
-    return registry.dateParseTargets(language).any { target.contains(it) }
+    return containsAnyAtWordBoundary(target, registry.dateParseTargets(language), ignoreCase = false)
 }

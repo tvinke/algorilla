@@ -58,6 +58,20 @@ internal class IOInLoopRuleNameVsTypeTest {
         findingsFor("writer", "write") shouldHaveSize 1
     }
 
+    // isInMemoryTarget's non-io-targets check lowercased the target first, then did a bare
+    // contains() with no boundary - "sb"/"buf" are short enough that "crossbow" ("sb") and
+    // "rebuffed" ("buf") both satisfied it, silently suppressing a genuine IO call on an
+    // unrelated receiver.
+    @Test
+    fun `a repository target merely containing a non-io abbreviation without a boundary is still flagged`() {
+        findingsFor("crossbowRepository", "save") shouldHaveSize 1
+    }
+
+    @Test
+    fun `a genuine in-memory buffer target is still excluded`() {
+        findingsFor("sb", "write").shouldBeEmpty()
+    }
+
     /**
      * Documented finding, not fixed here: isStreamCopyLoop matches the bare method
      * names "read"/"write" with no receiver-type confirmation, same category as

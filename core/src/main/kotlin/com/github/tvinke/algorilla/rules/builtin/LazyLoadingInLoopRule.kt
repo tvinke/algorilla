@@ -15,7 +15,7 @@ import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
-import com.github.tvinke.algorilla.util.containsAtWordBoundary
+import com.github.tvinke.algorilla.util.containsAnyAtWordBoundary
 import com.github.tvinke.algorilla.util.findDescendants
 import com.github.tvinke.algorilla.util.startsWithAtWordBoundary
 
@@ -110,7 +110,7 @@ public class LazyLoadingInLoopRule : Rule {
         fetchPrefixes: List<String>,
     ): Boolean {
         val target = call.qualifiedTarget ?: return false
-        val isRepoTarget = repoPatterns.any { containsAtWordBoundary(target, it) }
+        val isRepoTarget = containsAnyAtWordBoundary(target, repoPatterns)
         if (!isRepoTarget) return false
         return fetchPrefixes.any { startsWithAtWordBoundary(call.name, it) }
     }
@@ -134,10 +134,12 @@ public class LazyLoadingInLoopRule : Rule {
         if (!startsWithAtWordBoundary(name, "get") || name.length <= MIN_GETTER_LENGTH) return false
         val property = name.removePrefix("get")
         val lower = property.lowercase()
-        // Strong signals: plural property names that suggest collections
+        // Strong signals: plural property names that suggest collections. containsAtWordBoundary
+        // reads the original-case property - lowercasing first would destroy the camelCase
+        // signal the boundary check needs.
         return lower.endsWith("s") &&
             !scalarSuffs.any { lower.endsWith(it) } ||
-            collGetterNames.any { lower.contains(it) }
+            containsAnyAtWordBoundary(property, collGetterNames)
     }
 
     private fun isCalledOnLoopEntity(

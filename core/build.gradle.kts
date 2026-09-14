@@ -19,9 +19,9 @@ dependencies {
     }
 }
 
-// Scoped mutation testing for the cc #64/#71 name-vs-type recursion fix: only the
-// classification methods that fix touched, not the whole module — a whole-module PIT
-// run is both slow and not interpretable as a single score (see cc plan-unit-vs-systeem.md).
+// Scoped mutation testing for the name-vs-type recursion fix: only the classification
+// methods that fix touched, not the whole module - a whole-module PIT run is both slow
+// and not interpretable as a single score.
 pitest {
     pitestVersion.set("1.30.0")
     junit5PluginVersion.set("1.2.1")
@@ -44,8 +44,8 @@ pitest {
             "com.github.tvinke.algorilla.rules.builtin.ChainedGettersRuleTest",
         ),
     )
-    // Rule-interface boilerplate (id/name/languages/subsumes/requiresTypeContext/aliases) —
-    // untouched by the cc #64 buildChain fix, excluded so the score reflects the changed
+    // Rule-interface boilerplate (id/name/languages/subsumes/requiresTypeContext/aliases) -
+    // untouched by the buildChain fix, excluded so the score reflects the changed
     // classification logic (buildChain/checkFunction/buildFinding), not unrelated getters.
     excludedMethods.set(
         setOf("getId", "getName", "getAliases", "getLanguages", "getSubsumes", "getRequiresTypeContext"),
