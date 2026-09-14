@@ -220,7 +220,15 @@ public class CardinalityExplosionRule : Rule {
         language: Language,
         registry: LanguageSemanticsRegistry,
     ): Boolean {
-        // Case 1: Map entry unpacking — outer is entrySet()/keySet(), inner accesses values
+        // Case 1: Map entry unpacking — outer is entrySet()/keySet(), inner accesses values.
+        // Reviewed, not changed: 3 of 4 map-value-accessors entries (".getValue()", ".values",
+        // ".value") are already self-anchored by their leading dot - containsAtWordBoundary
+        // would actually break them, since its leading-boundary check assumes the match
+        // starts with a letter (same reasoning as MethodClassification's ".stream()" checks,
+        // deliberately left as bare contains()). Only the bare "values" entry lacks that
+        // anchor, but innerVar here is always a dotted method-call/field-access chain from an
+        // entrySet()/keySet() iteration - the practical collision risk is low enough that
+        // special-casing just that one entry isn't worth the added complexity.
         val outerIsEntrySet = outerVar.endsWith(".entrySet()") || outerVar.endsWith(".keySet()")
         if (outerIsEntrySet && registry.mapValueAccessors(language).any { innerVar.contains(it) }) return true
 
@@ -253,9 +261,14 @@ public class CardinalityExplosionRule : Rule {
         language: Language,
         registry: LanguageSemanticsRegistry,
     ): Severity {
-        val outerLower = outerVar.lowercase()
-        val innerLower = innerVar.lowercase()
-        if (registry.smallCollectionHints(language).any { it in outerLower || it in innerLower }) {
+        // Original case for the boundary check - lowercasing first would destroy the
+        // camelCase signal. "type" is short enough that "prototype"/"genotype"/"stereotype"/
+        // "phenotype"/"archetype" all satisfied it with no boundary at all, demoting a real
+        // Cartesian-product finding to INFO on an unrelated pair of variables.
+        if (registry.smallCollectionHints(language).any {
+                containsAtWordBoundary(outerVar, it) || containsAtWordBoundary(innerVar, it)
+            }
+        ) {
             return Severity.INFO
         }
         // Inner is a method call on an element variable (e.g., "ifc.getMethods()", "node.getChildren()").

@@ -9,12 +9,14 @@ import com.github.tvinke.algorilla.model.GenericNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LoopKind
 import com.github.tvinke.algorilla.model.LoopNode
+import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.model.SourceLocation
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 
 /**
@@ -117,6 +119,24 @@ internal class CardinalityExplosionRuleNameVsTypeTest {
     @Test
     fun `a genuine scalar accumulator receiver is still excluded`() {
         nestedLoopFindings("orders", "products", mutationTarget = "runningSum").shouldBeEmpty()
+    }
+
+    // determineEffectiveSeverity's smallCollectionHints check had the same missing-boundary
+    // bug, found during the cc#105 bare-.contains() sweep - "type" is short enough that
+    // "prototypes"/"genotype"/"stereotype" all satisfied it with no boundary at all, demoting
+    // a real Cartesian-product finding to INFO between two otherwise unrelated variables.
+    @Test
+    fun `a variable merely containing 'type' without a boundary does not demote severity to INFO`() {
+        val findings = nestedLoopFindings("prototypes", "products")
+        findings shouldHaveSize 1
+        findings.first().severity shouldBe Severity.WARNING
+    }
+
+    @Test
+    fun `a genuine type-named variable still demotes severity to INFO`() {
+        val findings = nestedLoopFindings("orderType", "products")
+        findings shouldHaveSize 1
+        findings.first().severity shouldBe Severity.INFO
     }
 
     private fun nestedLoopFindings(
