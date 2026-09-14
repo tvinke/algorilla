@@ -37,6 +37,21 @@ internal class QuadraticRemovalRuleNameVsTypeTest {
         findingsFor("lookupTable").shouldBeEmpty()
     }
 
+    // isRemovalCall's other bare-contains check (non-list-targets-contains: "store",
+    // "repository", "dao", ...) had the same missing boundary, confirmed by the #103 spike
+    // review - "restoreList" contains "store" with no boundary at all, so a genuine
+    // ArrayList.remove() in a loop over a restore-related list was silently excluded.
+    @Test
+    fun `remove on a variable merely containing a non-list-target word without a boundary is still flagged`() {
+        findingsFor("restoreList") shouldHaveSize 1
+    }
+
+    @Test
+    fun `remove on a genuine repository-style target is still excluded`() {
+        findingsFor("userRepository").shouldBeEmpty()
+        findingsFor("orderStore").shouldBeEmpty()
+    }
+
     private fun findingsFor(target: String): List<Finding> {
         val arg = GenericNode("x", loc, emptyList())
         val call = FunctionCall("remove", target, listOf(arg), loc, emptyList())

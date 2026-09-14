@@ -15,6 +15,7 @@ import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
+import com.github.tvinke.algorilla.util.containsAtWordBoundary
 import com.github.tvinke.algorilla.util.endsWithAtWordBoundary
 import com.github.tvinke.algorilla.util.hasO1Type
 import com.github.tvinke.algorilla.util.isFollowedByExit
@@ -128,7 +129,10 @@ private fun isRemovalCall(
     val lower = target.lowercase()
     if (lower in registry.nonListTargetsExact(lang).map { it.lowercase() }.toSet()) return false
     if (lower in registry.staticUtilityClasses(lang).map { it.lowercase() }.toSet()) return false
-    if (registry.nonListTargetsContains(lang).any { lower.contains(it) }) return false
+    // Original-case target for the boundary check - lower was already lowercased for the
+    // exact-match checks above, but that destroys the camelCase signal a boundary check needs
+    // (same "restoreList" contains "store" false positive the repository-pattern checks had).
+    if (registry.nonListTargetsContains(lang).any { containsAtWordBoundary(target, it) }) return false
     if (registry.nonListTargetsSuffixes(lang).any { suffix -> endsWithAtWordBoundary(target, suffix) }) return false
     // Use TypeEnvironment for full type resolution (field types, factory inference, chain-end)
     val typeEnv = enclosingFn?.let { context.typeEnvironmentFor(it) }
