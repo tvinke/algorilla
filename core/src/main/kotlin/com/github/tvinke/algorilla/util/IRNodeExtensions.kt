@@ -130,16 +130,25 @@ public fun <T> maxCoExecutableSubset(items: List<Pair<T, BranchContext>>): List<
 }
 
 /**
+ * Returns the declared type of [variableName] as a parameter or local variable of this
+ * function, or null when it can't be resolved at all. A caller that finds a non-null
+ * result here has an authoritative answer and must not fall back to a name heuristic
+ * afterwards — a `List<User> userCache` parameter is a List even though its name ends in
+ * "cache".
+ */
+public fun FunctionDecl.declaredTypeOf(variableName: String?): String? {
+    if (variableName == null) return null
+    return parameters.find { it.name == variableName }?.typeName
+        ?: findDescendants<VariableDecl>().find { it.name == variableName }?.typeName
+}
+
+/**
  * Checks if a variable name corresponds to an O(1) lookup type based on parameter or variable declarations.
  * Delegates to the semantics registry for O(1) type detection.
  */
 public fun FunctionDecl.hasO1Type(variableName: String?): Boolean {
-    if (variableName == null) return false
-    val registry = registryInstance
-    val paramType = parameters.find { it.name == variableName }?.typeName
-    if (paramType != null && registry.isO1Type(paramType)) return true
-    val varType = findDescendants<VariableDecl>().find { it.name == variableName }?.typeName
-    return varType != null && registry.isO1Type(varType)
+    val type = declaredTypeOf(variableName) ?: return false
+    return registryInstance.isO1Type(type)
 }
 
 /**
@@ -163,16 +172,24 @@ public fun LookupCall.isCollectionLookup(
     registry: LanguageSemanticsRegistry,
 ): Boolean {
     if (isO1 || isScalar) return false
-    if (isStaticUtilityTarget(registry, language) || hasO1TargetName(registry, language)) return false
-    // TypeEnvironment has broader coverage (field types, factory inference, chain-end)
-    // When available, trust it fully — it already includes everything hasO1Type checks.
+    if (isStaticUtilityTarget(registry, language)) return false
+    // TypeEnvironment has broader coverage (field types, factory inference, chain-end).
+    // When available, trust it fully — it already includes everything hasO1Type checks —
+    // and skip the name heuristics below entirely: a real List named like a Map/cache by
+    // convention must not be second-guessed by its name once the type is actually known.
     if (typeEnv != null && targetVariable != null) {
         return !(typeEnv.isO1(targetVariable) || typeEnv.isString(targetVariable) || typeEnv.isBoundedSmallCollection(targetVariable))
     }
+    // Same reasoning for a plain declared parameter/variable type, when there's no
+    // TypeEnvironment to consult.
+    val declaredType = fn?.declaredTypeOf(targetVariable)
+    if (declaredType != null) return !registryInstance.isO1Type(declaredType)
+    // No type info at all — fall back to name heuristics.
+    if (hasO1TargetName(registry, language)) return false
     // Name-based string heuristic: String.contains(substring) is O(n) on string length,
     // not O(n) on a collection — skip when the variable name suggests a String type.
     if (targetVariable != null && hasStringTargetName(targetVariable, registry, language)) return false
-    return fn == null || !fn.hasO1Type(targetVariable)
+    return true
 }
 
 private fun LookupCall.isStaticUtilityTarget(
@@ -189,12 +206,12 @@ private fun LookupCall.hasO1TargetName(
     registry: LanguageSemanticsRegistry,
     language: Language? = null,
 ): Boolean {
-    val target = targetVariable?.lowercase() ?: return false
+    val target = targetVariable ?: return false
     val lang = language ?: Language.JAVA
     val suffixes = registry.nonListTargetsSuffixes(lang)
-    if (suffixes.any { target.endsWith(it) || target == it }) return true
+    if (suffixes.any { endsWithAtWordBoundary(target, it) }) return true
     val contains = registry.nonListTargetsContains(lang)
-    return contains.any { target.contains(it) }
+    return contains.any { target.contains(it, ignoreCase = true) }
 }
 
 /**
@@ -208,7 +225,7 @@ private fun hasStringTargetName(
 ): Boolean {
     val lang = language ?: Language.JAVA
     if (varName in registry.stringExactNames(lang)) return true
-    return registry.stringNameSuffixes(lang).any { varName.endsWith(it) }
+    return registry.stringNameSuffixes(lang).any { endsWithAtWordBoundary(varName, it, ignoreCase = false) }
 }
 
 /**

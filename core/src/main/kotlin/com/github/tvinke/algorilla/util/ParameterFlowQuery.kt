@@ -133,7 +133,7 @@ public object ParameterFlowQuery {
 
                 // Follow one more level: if the callee passes the param to yet another function
                 if (maxDepth > 1 && target is FlowTarget.FunctionArgument) {
-                    val innerCall = findCallByName(callee, target.calledFunction) ?: continue
+                    val innerCall = findCallByNameAndLocation(callee, target.calledFunction, target.location) ?: continue
                     val innerResolved = CrossMethodResolver.resolve(innerCall, symbolTable) ?: continue
                     val deeper =
                         checkCalleeFlows(
@@ -156,10 +156,20 @@ public object ParameterFlowQuery {
             flow.flowsInto.any { it is FlowTarget.LoopIteration }
         }
 
-    private fun findCallByName(
+    /**
+     * Re-finds the exact call the [FlowTarget.FunctionArgument] was recorded from.
+     * [ParameterFlowAnnotator][com.github.tvinke.algorilla.graph.ParameterFlowAnnotator]
+     * constructs that FlowTarget directly from the call node's own name and location, so
+     * matching on both here re-finds that same node deterministically - matching by name
+     * alone (the previous behavior) picks the textually-first same-named call in the
+     * callee body regardless of which one the flow was actually recorded from, the same
+     * "name looks right, isn't proof" shape as the #64/#71 recursion-family bug.
+     */
+    private fun findCallByNameAndLocation(
         fn: FunctionDecl,
         name: String,
-    ): FunctionCall? = fn.findDescendants<FunctionCall>().firstOrNull { it.name == name }
+        location: SourceLocation,
+    ): FunctionCall? = fn.findDescendants<FunctionCall>().firstOrNull { it.name == name && it.location == location }
 }
 
 /**

@@ -4,7 +4,7 @@ import com.github.tvinke.algorilla.graph.SymbolTable
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
 
-// Receiver/arity-aware recursion detection (cc #64/#71). Split out from IRNodeExtensions.kt
+// Receiver/arity-aware recursion detection. Split out from IRNodeExtensions.kt
 // on purpose — this is the one place that decides whether a call is a genuine self-reference,
 // replacing what used to be seven separate name-only `it.name == fn.name` checks scattered
 // across UnmemoizedRecursionRule, NestedLookupRule and HiddenNestedLoopRule, all of which
@@ -14,7 +14,7 @@ import com.github.tvinke.algorilla.model.FunctionDecl
  * Receivers that, combined with a matching name, prove a [FunctionCall] refers back to the
  * *same* method: no receiver at all (implicit `this`) or an explicit `this`. Deliberately
  * excludes `super` — `super.foo()` dispatches to the superclass's implementation, not this
- * one, so it is a delegation, not a repeat of the same call (cc #64: the Broadleaf
+ * one, so it is a delegation, not a repeat of the same call (the Broadleaf
  * `super.getSectionKey()` false positive).
  */
 private val SELF_CALL_RECEIVERS: Set<String?> = setOf(null, "this")
@@ -26,7 +26,7 @@ private val SELF_CALL_RECEIVERS: Set<String?> = setOf(null, "this")
  * guards against sibling overloads: if another method with the same name and the same
  * parameter count exists in [target]'s declaring class, which one the call actually
  * targets is ambiguous without full argument-type resolution, and this conservatively
- * returns false rather than guessing (cc #64/#71: the Fineract `modifyLoanApprovedAmount`
+ * returns false rather than guessing (the Fineract `modifyLoanApprovedAmount`
  * sibling-overload false positive).
  */
 public fun FunctionCall.isSelfCallOf(

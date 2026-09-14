@@ -22,6 +22,7 @@ import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import com.github.tvinke.algorilla.util.ParameterFlowQuery
 import com.github.tvinke.algorilla.util.findDescendants
 import com.github.tvinke.algorilla.util.isFollowedByExit
+import com.github.tvinke.algorilla.util.matchesAnyTargetPattern
 
 /**
  * Detects IO operations (HTTP calls, database queries, file operations) inside loops.
@@ -369,7 +370,6 @@ private fun isReactiveChainTarget(
     if (!target.contains('(')) return false
     val dotIdx = target.indexOf('.')
     if (dotIdx < 0) return false
-    val receiver = target.substring(0, dotIdx).lowercase()
     val afterDot = target.substring(dotIdx + 1)
     val parenIdx = afterDot.indexOf('(')
     if (parenIdx < 0) return false
@@ -378,13 +378,7 @@ private fun isReactiveChainTarget(
     val ioCandidates = registry.ioMethodCandidates(language)
     val ioPatterns = registry.ioTargetPatterns(language)
     return (methodName in ioMethods || methodName in ioCandidates) &&
-        ioPatterns.any { pattern ->
-            if (pattern.startsWith("*")) {
-                receiver.contains(pattern.removePrefix("*"))
-            } else {
-                receiver.endsWith(pattern) || receiver == pattern
-            }
-        }
+        matchesIOTargetPatterns(target.substring(0, dotIdx), ioPatterns)
 }
 
 /** Returns true if the call target is a known in-memory buffer (not real IO). */
@@ -425,12 +419,20 @@ private fun matchesIOPattern(
     language: Language,
     registry: LanguageSemanticsRegistry,
 ): Boolean {
-    val t = target?.lowercase() ?: return false
-    return registry.ioTargetPatterns(language).any { pattern ->
-        if (pattern.startsWith("*")) {
-            t.contains(pattern.removePrefix("*"))
-        } else {
-            t.endsWith(pattern) || t == pattern
-        }
-    }
+    if (target == null) return false
+    return matchesIOTargetPatterns(target, registry.ioTargetPatterns(language))
 }
+
+/**
+ * Matches [target] (original case preserved) against [patterns]. A `*`-prefixed pattern
+ * matches anywhere (contains). A bare pattern matches only as a whole suffix — the
+ * character right before the match, if any, must not be a lowercase letter — so "writer"
+ * matches "hibernateSession"-style camelCase compounds and "writer" itself, but not
+ * "screenwriter"/"underwriter" where the match is buried inside an unrelated lowercase
+ * word. See [matchesAnyTargetPattern] (shared with NPlusOneRepositoryCallRule, which had
+ * this exact same pattern-matching logic duplicated verbatim).
+ */
+private fun matchesIOTargetPatterns(
+    target: String,
+    patterns: Set<String>,
+): Boolean = matchesAnyTargetPattern(target, patterns)

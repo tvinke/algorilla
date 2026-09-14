@@ -17,6 +17,10 @@ import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.CrossMethodResolver
+import com.github.tvinke.algorilla.util.containsAtWordBoundary
+import com.github.tvinke.algorilla.util.endsWithAtWordBoundary
+import com.github.tvinke.algorilla.util.matchesAnyTargetPattern
+import com.github.tvinke.algorilla.util.startsWithAtWordBoundary
 
 /**
  * Detects repository/DAO single-record fetch calls inside loops (N+1 problem).
@@ -188,21 +192,17 @@ public class NPlusOneRepositoryCallRule : Rule {
 
 /**
  * Returns true if the target variable matches a repository/DAO naming pattern from the
- * YAML io-target-patterns section (repository, dao, entityManager, mapper, etc.).
+ * YAML io-target-patterns section (repository, dao, entityManager, mapper, etc.). See
+ * [matchesAnyTargetPattern] (shared with IOInLoopRule, which had this exact same
+ * pattern-matching logic duplicated verbatim).
  */
 private fun matchesRepoPattern(
     target: String?,
     language: Language,
     registry: LanguageSemanticsRegistry,
 ): Boolean {
-    val t = target?.lowercase() ?: return false
-    return registry.ioTargetPatterns(language).any { pattern ->
-        if (pattern.startsWith("*")) {
-            t.contains(pattern.removePrefix("*"))
-        } else {
-            t.endsWith(pattern) || t == pattern
-        }
-    }
+    if (target == null) return false
+    return matchesAnyTargetPattern(target, registry.ioTargetPatterns(language))
 }
 
 /** Widened pattern: any verb+By+field pattern (e.g. findByEmail, getOrderByStatus, getBySku) */
@@ -230,26 +230,30 @@ private fun isSingleRecordFetch(
     // Spring Data findFirst<N>By / findTop<N>By fetches a fixed-size batch, not a single record
     if (PAGINATED_BATCH_REGEX.containsMatchIn(name)) return false
 
+    // Original-case target for the boundary-aware checks below - lowercasing first would
+    // destroy the camelCase signal (userRepository) that tells a real boundary apart from
+    // a coincidental substring (reportGenerator, storefront).
+    val originalTarget = call.qualifiedTarget
     val repoPatterns = registry.repositoryPatterns(language)
     // Exact prefix matches (highest confidence)
     val matchesPrefixes = registry.singleFetchPrefixes(language).any { name.startsWith(it, ignoreCase = true) }
     if (matchesPrefixes) {
-        if (target == null || repoPatterns.any { target.contains(it) }) return true
+        if (originalTarget == null || repoPatterns.any { containsAtWordBoundary(originalTarget, it) }) return true
     }
     // Widened pattern: any findByX/getByX on a repository-like target
     if (SINGLE_FETCH_METHOD_REGEX.matches(name)) {
         // Exclude batch patterns
         val batchSuffixes = registry.batchMethodSuffixes(language)
-        if (batchSuffixes.any { name.endsWith(it, ignoreCase = true) }) return false
+        if (batchSuffixes.any { endsWithAtWordBoundary(name, it) }) return false
         val batchPrefixes = registry.batchMethodPrefixes(language)
         if (batchPrefixes.any {
-                name.startsWith(it, ignoreCase = true) && name.contains("By", ignoreCase = true)
+                startsWithAtWordBoundary(name, it) && name.contains("By", ignoreCase = true)
             }
         ) {
             return false
         }
         // For widened pattern, require a repository-like target to reduce FPs
-        if (target != null && repoPatterns.any { target.contains(it) }) return true
+        if (originalTarget != null && repoPatterns.any { containsAtWordBoundary(originalTarget, it) }) return true
     }
     return false
 }

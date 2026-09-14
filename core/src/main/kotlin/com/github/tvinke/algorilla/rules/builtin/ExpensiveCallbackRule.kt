@@ -21,6 +21,7 @@ import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.util.CrossMethodResolver
+import com.github.tvinke.algorilla.util.endsWithAtWordBoundary
 import com.github.tvinke.algorilla.util.findDescendants
 
 /**
@@ -419,9 +420,11 @@ private fun asCallbackContainer(
         else -> null
     }
 
+// "Pattern"/"Regex" must be the receiver's own (qualified) name, not merely a substring
+// somewhere in it — see RepeatedRegexInLoopRule.isCompileCall, the same check.
 private fun isCompileCall(call: FunctionCall): Boolean =
     call.name == "compile" &&
         (
-            call.qualifiedTarget?.contains("Pattern") == true ||
-                call.qualifiedTarget?.contains("Regex") == true
+            call.qualifiedTarget?.let { endsWithAtWordBoundary(it, "Pattern") } == true ||
+                call.qualifiedTarget?.let { endsWithAtWordBoundary(it, "Regex") } == true
         )

@@ -15,6 +15,7 @@ import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
+import com.github.tvinke.algorilla.util.endsWithAtWordBoundary
 
 /**
  * Detects regex pattern compilation inside loops. Compiling a regex is expensive;
@@ -96,11 +97,14 @@ public class RepeatedRegexInLoopRule : Rule {
     }
 }
 
+// "Pattern"/"Regex" must be the receiver's own (qualified) name, not merely a substring
+// somewhere in it — a class like DateTimePatternValidator.compile() has nothing to do
+// with java.util.regex.Pattern, even though its name contains "Pattern".
 private fun isCompileCall(call: FunctionCall): Boolean =
     call.name == "compile" &&
         (
-            call.qualifiedTarget?.contains("Pattern") == true ||
-                call.qualifiedTarget?.contains("Regex") == true
+            call.qualifiedTarget?.let { endsWithAtWordBoundary(it, "Pattern") } == true ||
+                call.qualifiedTarget?.let { endsWithAtWordBoundary(it, "Regex") } == true
         )
 
 /**

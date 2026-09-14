@@ -3,6 +3,7 @@ package com.github.tvinke.algorilla.util
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.Language
+import com.github.tvinke.algorilla.model.LookupKind
 import com.github.tvinke.algorilla.model.VariableDecl
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 
@@ -61,7 +62,14 @@ public object MemoizationDetector {
         if (setVarNames.isNotEmpty()) {
             val calls = fn.findDescendants<FunctionCall>()
             val hasAdd = calls.any { it.name == "add" && it.qualifiedTarget in setVarNames }
-            val hasContains = calls.any { it.name == "contains" && it.qualifiedTarget in setVarNames }
+            // "contains" is Java/Kotlin/Groovy's Set method; JS/TS's real Set has() instead
+            // (already classified with the same LookupKind.CONTAINS in javascript.yml) - this
+            // rule runs on every language, so the check has to be language-aware too, not a
+            // single hardcoded name.
+            val hasContains =
+                calls.any {
+                    registry.lookupKindFor(it.name, language) == LookupKind.CONTAINS && it.qualifiedTarget in setVarNames
+                }
             if (hasAdd && hasContains) return true
         }
 

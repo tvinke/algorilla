@@ -16,6 +16,7 @@ import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
+import com.github.tvinke.algorilla.util.startsWithAtWordBoundary
 
 /**
  * Detects cardinality explosion patterns where the output grows as the
@@ -231,7 +232,7 @@ public class CardinalityExplosionRule : Rule {
             val outerBase = outerVar.substringBefore(".")
             val outerClean = outerBase.trimEnd('s', 'S')
             // Match: outer="departments" → outerClean="department", inner starts with "department"
-            if (outerClean.isNotEmpty() && innerBase.startsWith(outerClean, ignoreCase = true)) return true
+            if (outerClean.isNotEmpty() && matchesElementName(innerBase, outerClean)) return true
             // Match: outer collection has no plural suffix but inner base is a plausible element name.
             // If the outer collection is a method call like "getInterfaces()", the element is often
             // a shortened name like "ifc" — we can't match that. But if the inner is a getter
@@ -468,3 +469,17 @@ public class CardinalityExplosionRule : Rule {
         return (copyOnModify + context.registry.mutationMethods(langOrJava)) - nonGrowth
     }
 }
+
+/**
+ * Returns true if [innerBase] is exactly [outerClean] (ignoring case), or extends it at
+ * a real camelCase word boundary — "departmentHead" for "department" — but not a bare
+ * text prefix like "career"/"cargo" for "car". Plain `startsWith` had no such boundary:
+ * de-pluralizing "cars" to "car" then matched any inner name starting with "car",
+ * silently suppressing a genuine Cartesian product over unrelated collections. Delegates
+ * to the shared [startsWithAtWordBoundary] rather than reimplementing the same boundary
+ * check locally.
+ */
+private fun matchesElementName(
+    innerBase: String,
+    outerClean: String,
+): Boolean = startsWithAtWordBoundary(innerBase, outerClean)

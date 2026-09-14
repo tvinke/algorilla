@@ -21,6 +21,7 @@ import com.github.tvinke.algorilla.util.CrossMethodResolver
 import com.github.tvinke.algorilla.util.ParameterFlowQuery
 import com.github.tvinke.algorilla.util.findDescendants
 import com.github.tvinke.algorilla.util.isRecursive
+import com.github.tvinke.algorilla.util.startsWithAtWordBoundary
 
 /**
  * Detects loops hidden behind method calls: when a loop calls a method that internally
@@ -208,7 +209,7 @@ private fun isStringOrCopyMethod(
     registry: LanguageSemanticsRegistry,
 ): Boolean {
     if (name in registry.hiddenLoopSkipMethods(language)) return true
+    if (registry.hiddenLoopSkipPrefixes(language).any { startsWithAtWordBoundary(name, it) }) return true
     val lower = name.lowercase()
-    if (registry.hiddenLoopSkipPrefixes(language).any { lower.startsWith(it) }) return true
     return registry.hiddenLoopSkipKeywords(language).any { lower.contains(it) }
 }

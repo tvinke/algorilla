@@ -12,7 +12,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 
 /**
- * Canary property for cc #64/#71: a classification helper that matches on method name must
+ * Canary property: a classification helper that matches on method name must
  * not change its verdict just because the name matched — it has to keep telling apart a
  * genuine self-call from a same-name call that isn't one, whether the difference is the
  * receiver (Broadleaf's `super.getSectionKey()`) or an unresolved sibling overload
@@ -59,7 +59,7 @@ internal class NameVsTypeRecursionPropertyTest {
     private val scenarios: List<Scenario> =
         listOf(broadleafSuperDelegation(), delegateToOtherObject(), fineractSiblingOverload())
 
-    // cc #64: super.getSectionKey() is not recursion — super dispatches to the superclass's
+    // super.getSectionKey() is not recursion - super dispatches to the superclass's
     // own implementation, it does not repeat this method's call.
     private fun broadleafSuperDelegation(): Scenario {
         val fn = decl("getSectionKey", "AdminUserManagementController", listOf(Parameter("pathVars", "Map")))
@@ -83,7 +83,7 @@ internal class NameVsTypeRecursionPropertyTest {
         )
     }
 
-    // cc #64/#71 (Fineract): the exact same call and target classify differently depending
+    // Fineract: the exact same call and target classify differently depending
     // on whether the symbol table reveals a same-arity sibling overload — proof that arity
     // alone (like name alone) is not enough, and resolving the overload set matters.
     private fun fineractSiblingOverload(): Scenario {

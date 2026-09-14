@@ -15,6 +15,7 @@ import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
+import com.github.tvinke.algorilla.util.endsWithAtWordBoundary
 import com.github.tvinke.algorilla.util.hasO1Type
 import com.github.tvinke.algorilla.util.isFollowedByExit
 
@@ -128,7 +129,7 @@ private fun isRemovalCall(
     if (lower in registry.nonListTargetsExact(lang).map { it.lowercase() }.toSet()) return false
     if (lower in registry.staticUtilityClasses(lang).map { it.lowercase() }.toSet()) return false
     if (registry.nonListTargetsContains(lang).any { lower.contains(it) }) return false
-    if (registry.nonListTargetsSuffixes(lang).any { suffix -> lower.endsWith(suffix) }) return false
+    if (registry.nonListTargetsSuffixes(lang).any { suffix -> endsWithAtWordBoundary(target, suffix) }) return false
     // Use TypeEnvironment for full type resolution (field types, factory inference, chain-end)
     val typeEnv = enclosingFn?.let { context.typeEnvironmentFor(it) }
     if (typeEnv != null) return !typeEnv.isO1(target)
