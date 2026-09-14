@@ -19,6 +19,7 @@ import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.CrossMethodResolver
 import com.github.tvinke.algorilla.util.containsAtWordBoundary
 import com.github.tvinke.algorilla.util.endsWithAtWordBoundary
+import com.github.tvinke.algorilla.util.matchesAnyTargetPattern
 import com.github.tvinke.algorilla.util.startsWithAtWordBoundary
 
 /**
@@ -191,7 +192,9 @@ public class NPlusOneRepositoryCallRule : Rule {
 
 /**
  * Returns true if the target variable matches a repository/DAO naming pattern from the
- * YAML io-target-patterns section (repository, dao, entityManager, mapper, etc.).
+ * YAML io-target-patterns section (repository, dao, entityManager, mapper, etc.). See
+ * [matchesAnyTargetPattern] (shared with IOInLoopRule, which had this exact same
+ * pattern-matching logic duplicated verbatim).
  */
 private fun matchesRepoPattern(
     target: String?,
@@ -199,13 +202,7 @@ private fun matchesRepoPattern(
     registry: LanguageSemanticsRegistry,
 ): Boolean {
     if (target == null) return false
-    return registry.ioTargetPatterns(language).any { pattern ->
-        if (pattern.startsWith("*")) {
-            target.contains(pattern.removePrefix("*"), ignoreCase = true)
-        } else {
-            endsWithAtWordBoundary(target, pattern)
-        }
-    }
+    return matchesAnyTargetPattern(target, registry.ioTargetPatterns(language))
 }
 
 /** Widened pattern: any verb+By+field pattern (e.g. findByEmail, getOrderByStatus, getBySku) */

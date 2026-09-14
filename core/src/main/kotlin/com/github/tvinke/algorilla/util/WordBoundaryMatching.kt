@@ -61,9 +61,15 @@ public fun containsAtWordBoundary(
     ignoreCase: Boolean = true,
 ): Boolean {
     if (word.isEmpty()) return false
+    // Case-insensitive String.indexOf falls onto Kotlin's manual char-by-char scan instead
+    // of the JVM's native indexOf. Lowering both sides once and searching case-sensitively
+    // finds the same positions (identifiers are effectively ASCII) at native speed - useful
+    // here since callers commonly run this in a loop over a whole pattern set per call.
+    val searchText = if (ignoreCase) text.lowercase() else text
+    val searchWord = if (ignoreCase) word.lowercase() else word
     var fromIndex = 0
     while (true) {
-        val idx = text.indexOf(word, fromIndex, ignoreCase = ignoreCase)
+        val idx = searchText.indexOf(searchWord, fromIndex)
         if (idx < 0) return false
         val leadingOk = idx == 0 || text[idx].isUpperCase() || !text[idx - 1].isLetter()
         val trailingIdx = idx + word.length
@@ -72,3 +78,23 @@ public fun containsAtWordBoundary(
         fromIndex = idx + 1
     }
 }
+
+/**
+ * Matches [target] against a set of [patterns] loaded from a YAML `*-patterns`/`*-target-
+ * patterns` section, where a `*`-prefixed pattern matches anywhere in [target] (contains)
+ * and a bare pattern matches only as a whole suffix via [endsWithAtWordBoundary]. Shared by
+ * the rules that classify a call target against such a configured pattern set (repository/
+ * DAO naming, IO-capable receivers) - both had the exact same wildcard-or-boundary-suffix
+ * logic duplicated verbatim before this was hoisted out.
+ */
+public fun matchesAnyTargetPattern(
+    target: String,
+    patterns: Set<String>,
+): Boolean =
+    patterns.any { pattern ->
+        if (pattern.startsWith("*")) {
+            target.contains(pattern.removePrefix("*"), ignoreCase = true)
+        } else {
+            endsWithAtWordBoundary(target, pattern)
+        }
+    }

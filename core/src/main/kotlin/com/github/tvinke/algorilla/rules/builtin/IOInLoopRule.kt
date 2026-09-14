@@ -20,9 +20,9 @@ import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import com.github.tvinke.algorilla.util.ParameterFlowQuery
-import com.github.tvinke.algorilla.util.endsWithAtWordBoundary
 import com.github.tvinke.algorilla.util.findDescendants
 import com.github.tvinke.algorilla.util.isFollowedByExit
+import com.github.tvinke.algorilla.util.matchesAnyTargetPattern
 
 /**
  * Detects IO operations (HTTP calls, database queries, file operations) inside loops.
@@ -429,17 +429,10 @@ private fun matchesIOPattern(
  * character right before the match, if any, must not be a lowercase letter — so "writer"
  * matches "hibernateSession"-style camelCase compounds and "writer" itself, but not
  * "screenwriter"/"underwriter" where the match is buried inside an unrelated lowercase
- * word. Matching is done on the lowercased text; the boundary check reads the original
- * text at that position, since case info is gone once everything is lowercased first.
+ * word. See [matchesAnyTargetPattern] (shared with NPlusOneRepositoryCallRule, which had
+ * this exact same pattern-matching logic duplicated verbatim).
  */
 private fun matchesIOTargetPatterns(
     target: String,
     patterns: Set<String>,
-): Boolean =
-    patterns.any { pattern ->
-        if (pattern.startsWith("*")) {
-            target.contains(pattern.removePrefix("*"), ignoreCase = true)
-        } else {
-            endsWithAtWordBoundary(target, pattern)
-        }
-    }
+): Boolean = matchesAnyTargetPattern(target, patterns)
