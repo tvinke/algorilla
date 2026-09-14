@@ -20,6 +20,7 @@ import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import com.github.tvinke.algorilla.util.ParameterFlowQuery
+import com.github.tvinke.algorilla.util.containsAtWordBoundary
 import com.github.tvinke.algorilla.util.findDescendants
 import com.github.tvinke.algorilla.util.isFollowedByExit
 import com.github.tvinke.algorilla.util.matchesAnyTargetPattern
@@ -389,8 +390,10 @@ private fun isInMemoryTarget(
     registry: LanguageSemanticsRegistry,
 ): Boolean {
     val target = call.qualifiedTarget ?: return false
-    val lowered = target.lowercase()
-    if (registry.nonIoTargets(language).any { lowered.contains(it) }) return true
+    // Original case for the boundary check - lowercasing first would destroy the camelCase
+    // signal. "sb"/"buf" are short enough that "husband"/"crossbow"/"rebuffed" all contained
+    // them with no boundary at all.
+    if (registry.nonIoTargets(language).any { containsAtWordBoundary(target, it) }) return true
     return typeEnv?.let { env ->
         env.isO1(target) || env.isCollection(target) || env.isString(target)
     } == true
