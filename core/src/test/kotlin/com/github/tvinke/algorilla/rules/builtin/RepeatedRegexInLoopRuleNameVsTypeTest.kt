@@ -17,12 +17,12 @@ import io.kotest.matchers.collections.shouldHaveSize
 import org.junit.jupiter.api.Test
 
 /**
- * Canary properties for the testharnas campaign — this is the file the campaign
+ * Canary properties for the testharnas campaign - this is the file the campaign
  * is named after: isCompileCall's `call.qualifiedTarget?.contains("Pattern")` is the exact
- * "receiver-text-as-type-proof" shape from the #71 RCA (ExpensiveCallbackRule's
- * `qualifiedTarget?.contains("Pattern")`/`contains("Regex")` checks, same file family).
+ * "receiver-text-as-type-proof" shape from the root-cause analysis behind ExpensiveCallbackRule's
+ * `qualifiedTarget?.contains("Pattern")`/`contains("Regex")` checks, same file family.
  * `contains` matches anywhere in the string, so a totally unrelated class whose name
- * merely contains "Pattern"/"Regex" — `DateTimePatternValidator`, `NamingRegexResolver` —
+ * merely contains "Pattern"/"Regex" - `DateTimePatternValidator`, `NamingRegexResolver` -
  * gets its own, unrelated `compile()` method misread as `java.util.regex.Pattern.compile()`.
  */
 internal class RepeatedRegexInLoopRuleNameVsTypeTest {
