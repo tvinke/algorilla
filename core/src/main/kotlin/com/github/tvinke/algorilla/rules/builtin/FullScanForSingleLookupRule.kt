@@ -17,6 +17,7 @@ import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.util.findDescendants
+import com.github.tvinke.algorilla.util.startsWithAtWordBoundary
 
 /**
  * Detects loading all records from a data source then filtering for one in memory.
@@ -111,7 +112,7 @@ internal fun isBulkLoadCall(
     bulkLoadPrefixes: List<String>,
     domTargets: Set<String>,
 ): Boolean {
-    if (!bulkLoadPrefixes.any { call.name.startsWith(it, ignoreCase = true) }) return false
+    if (!bulkLoadPrefixes.any { startsWithAtWordBoundary(call.name, it) }) return false
     // Exclude DOM/test framework targets (e.g., wrapper.findAll in Vue test utils)
     val target = call.qualifiedTarget?.lowercase()
     if (target != null && domTargets.any { target.contains(it) }) return false
