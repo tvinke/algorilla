@@ -117,6 +117,20 @@ internal class MethodClassificationTest {
             isStringTarget("cacheKey") shouldBe true
             isStringTarget("filePath") shouldBe true
         }
+
+        /**
+         * Documented gap, not fixed here: stringIndicators' "replace(" entry matches anywhere
+         * in the receiver chain's source text, not just its final segment. Map.replace(K, V)
+         * is a real method too - a chain like `map.replace(k, v).contains(x)` has targetText
+         * "map.replace(k, v)", which contains "replace(" even though the actual receiver of
+         * .contains() is V (the previous value replace() returned), not a String. Needs
+         * chain-aware parsing (only the last segment) to fix properly - see the doc comment on
+         * isStringTarget.
+         */
+        @Test
+        fun `a chain merely containing 'replace(' from an earlier Map#replace hop is still misread as a string target (documented gap)`() {
+            isStringTarget("map.replace(k, v)") shouldBe true
+        }
     }
 
     companion object {

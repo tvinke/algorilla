@@ -121,6 +121,21 @@ internal class CardinalityExplosionRuleNameVsTypeTest {
         nestedLoopFindings("orders", "products", mutationTarget = "runningSum").shouldBeEmpty()
     }
 
+    // isPartitionedIteration's map-entry-unpacking check (Case 1) had a bare `contains`
+    // on the unanchored "values" entry - "entry.getMetaValues()" contains "values" with no
+    // boundary of its own (the dot only anchors the start of "getMetaValues" as a whole, not
+    // the "Values" tail inside it), so an unrelated getter was silently read as map-entry-
+    // value access and the real Cartesian-product finding got suppressed.
+    @Test
+    fun `a call merely containing 'values' inside a longer method name is still flagged, not misread as map-entry-value access`() {
+        nestedLoopFindings("grouped.entrySet()", "entry.getMetaValues()") shouldHaveSize 1
+    }
+
+    @Test
+    fun `a genuine entry-value access still suppresses the map-entry-unpacking finding`() {
+        nestedLoopFindings("grouped.entrySet()", "entry.getValue()").shouldBeEmpty()
+    }
+
     // determineEffectiveSeverity's smallCollectionHints check had the same missing-boundary
     // bug, found during the cc#105 bare-.contains() sweep - "type" is short enough that
     // "prototypes"/"genotype"/"stereotype" all satisfied it with no boundary at all, demoting

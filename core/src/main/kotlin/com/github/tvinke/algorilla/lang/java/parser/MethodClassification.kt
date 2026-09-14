@@ -326,6 +326,18 @@ public fun isStringTarget(
     language: Language = Language.JAVA,
 ): Boolean {
     val registry = registryInstance
+    // Documented gap, not fixed here: stringIndicators is a bare contains() over the full
+    // targetText, which for a chained call is the literal source text of the whole receiver
+    // chain (e.g. "map.replace(k, v)" for `map.replace(k, v).contains(x)`), not just the
+    // final segment. Most entries ("toString()", "trim()", ...) always correctly indicate a
+    // String wherever they occur in the chain, since those methods only exist on String. But
+    // "replace(" is also a real Map.replace(K, V) method returning V, and "concat(" is also
+    // Stream.concat(a, b) - if V or the concat result is itself a List, the *next* hop's real
+    // O(n) lookup gets misread as string indexOf/contains and suppressed. Fixing this needs
+    // chain-aware parsing (checking only the last segment, reusing this file's own
+    // findBalancedClose/stripStreamChainOps machinery) rather than a word-boundary check, and
+    // the realistic trigger shape (Map.replace()/Stream.concat() immediately followed by a
+    // lookup call on the returned value) is narrow enough that it's pinned here instead.
     return registry.stringIndicators(language).any { targetText.contains(it) } ||
         registry.stringNameSuffixes(language).any { suffix ->
             val getterSuffix = suffix.replaceFirstChar { it.uppercaseChar() }

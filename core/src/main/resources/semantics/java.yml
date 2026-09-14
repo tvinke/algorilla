@@ -989,6 +989,7 @@ string-name-suffixes:
   - Text
   - text
   - Str
+  - str
   - String
   - string
   - Line
