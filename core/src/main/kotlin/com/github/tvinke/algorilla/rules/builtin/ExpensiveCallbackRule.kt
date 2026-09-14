@@ -20,7 +20,6 @@ import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
-import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import com.github.tvinke.algorilla.util.CrossMethodResolver
 import com.github.tvinke.algorilla.util.endsWithAtWordBoundary
@@ -100,7 +99,7 @@ public class ExpensiveCallbackRule : Rule {
         for (creation in creations.filter { it.typeName in regexTypes }) {
             findings.add(buildRegexCreationFinding(container, creation))
         }
-        for (call in calls.filter { isCompileCall(it, typeEnv, context.registry, language) }) {
+        for (call in calls.filter { isCompileCall(it, typeEnv, regexTypes) }) {
             findings.add(buildRegexCompileFinding(container, call))
         }
         for (lookup in lookups.filter { !it.isO1 && !it.isScalar }) {
@@ -110,7 +109,7 @@ public class ExpensiveCallbackRule : Rule {
             findings.add(buildNestedIterationFinding(container, nested))
         }
         checkHeavyweightCreations(container, creations, language, context, findings)
-        checkCrossMethod(container, calls, language, context, findings, typeEnv)
+        checkCrossMethod(container, calls, language, context, findings, typeEnv, regexTypes)
     }
 
     private fun checkHeavyweightCreations(
@@ -137,11 +136,12 @@ public class ExpensiveCallbackRule : Rule {
         context: AnalysisContext,
         findings: MutableList<Finding>,
         typeEnv: TypeEnvironment?,
+        regexTypes: Set<String>,
     ) {
         val maxDepth = context.config.maxCallDepth.coerceAtMost(2)
         val candidates =
             calls.filter {
-                !isDateParseCall(it, language, context.registry) && !isCompileCall(it, typeEnv, context.registry, language)
+                !isDateParseCall(it, language, context.registry) && !isCompileCall(it, typeEnv, regexTypes)
             }
         for (call in candidates) {
             checkCrossMethodForCall(container, call, language, context, maxDepth, findings)
@@ -440,12 +440,11 @@ private fun asCallbackContainer(
 private fun isCompileCall(
     call: FunctionCall,
     typeEnv: TypeEnvironment?,
-    registry: LanguageSemanticsRegistry,
-    language: Language,
+    regexTypes: Set<String>,
 ): Boolean {
     if (call.name != "compile") return false
     val target = call.qualifiedTarget ?: return false
     val declaredType = typeEnv?.typeOf(target)?.simpleName
-    if (declaredType != null) return declaredType in registry.regexTypes(language)
+    if (declaredType != null) return declaredType in regexTypes
     return endsWithAtWordBoundary(target, "Pattern") || endsWithAtWordBoundary(target, "Regex")
 }

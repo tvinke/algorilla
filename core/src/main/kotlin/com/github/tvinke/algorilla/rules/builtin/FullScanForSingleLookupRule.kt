@@ -128,7 +128,6 @@ internal fun isBulkLoadCall(
     // declared type is known, check that instead of the bare variable name.
     val target = call.qualifiedTarget ?: return true
     val declaredType = typeEnv?.typeOf(target)?.simpleName
-    if (declaredType != null) return !containsAnyAtWordBoundary(declaredType, domTargets)
-    if (containsAnyAtWordBoundary(target, domTargets)) return false
+    if (containsAnyAtWordBoundary(declaredType ?: target, domTargets)) return false
     return true
 }

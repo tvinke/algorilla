@@ -16,7 +16,6 @@ import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
-import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import com.github.tvinke.algorilla.util.endsWithAtWordBoundary
 
@@ -65,9 +64,11 @@ public class RepeatedRegexInLoopRule : Rule {
             if (node is ObjectCreation && node.typeName in regexTypes) {
                 findings.add(buildFinding(node, loopStack, "new ${node.typeName}()"))
             }
-            val typeEnv = fn?.let { context.typeEnvironmentFor(it) }
-            if (node is FunctionCall && isCompileCall(node, typeEnv, context.registry, language) && hasConstantArgument(node)) {
-                findings.add(buildFinding(node, loopStack, "${node.qualifiedTarget ?: "Pattern"}.${node.name}()"))
+            if (node is FunctionCall && hasConstantArgument(node)) {
+                val typeEnv = fn?.let { context.typeEnvironmentFor(it) }
+                if (isCompileCall(node, typeEnv, regexTypes)) {
+                    findings.add(buildFinding(node, loopStack, "${node.qualifiedTarget ?: "Pattern"}.${node.name}()"))
+                }
             }
         }
 
@@ -117,13 +118,12 @@ public class RepeatedRegexInLoopRule : Rule {
 private fun isCompileCall(
     call: FunctionCall,
     typeEnv: TypeEnvironment?,
-    registry: LanguageSemanticsRegistry,
-    language: Language,
+    regexTypes: Set<String>,
 ): Boolean {
     if (call.name != "compile") return false
     val target = call.qualifiedTarget ?: return false
     val declaredType = typeEnv?.typeOf(target)?.simpleName
-    if (declaredType != null) return declaredType in registry.regexTypes(language)
+    if (declaredType != null) return declaredType in regexTypes
     return endsWithAtWordBoundary(target, "Pattern") || endsWithAtWordBoundary(target, "Regex")
 }
 

@@ -120,12 +120,7 @@ public class LazyLoadingInLoopRule : Rule {
     ): Boolean {
         val target = call.qualifiedTarget ?: return false
         val declaredType = typeEnv?.typeOf(target)?.simpleName
-        val isRepoTarget =
-            if (declaredType != null) {
-                containsAnyAtWordBoundary(declaredType, repoPatterns)
-            } else {
-                containsAnyAtWordBoundary(target, repoPatterns)
-            }
+        val isRepoTarget = containsAnyAtWordBoundary(declaredType ?: target, repoPatterns)
         if (!isRepoTarget) return false
         return fetchPrefixes.any { startsWithAtWordBoundary(call.name, it) }
     }

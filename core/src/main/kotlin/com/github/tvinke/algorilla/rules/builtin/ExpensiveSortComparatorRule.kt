@@ -88,15 +88,15 @@ public class ExpensiveSortComparatorRule : Rule {
             findings.add(buildDateCreationFinding(sort, creation))
         }
 
-        // Date parse calls inside comparator
+        // Date parse calls inside comparator - partitioned once rather than filtered twice,
+        // since isDateParseCall now does a TypeEnvironment lookup instead of a plain string check.
         val calls = body.filterIsInstance<FunctionCall>() + body.flatMap { it.findDescendants<FunctionCall>() }
-        val dateParseCalls = calls.filter { isDateParseCall(it, language, context.registry, typeEnv) }
+        val (dateParseCalls, nonDateCalls) = calls.partition { isDateParseCall(it, language, context.registry, typeEnv) }
         for (call in dateParseCalls) {
             findings.add(buildDateParseFinding(sort, call))
         }
 
         // Cross-method: check called methods for hidden date operations
-        val nonDateCalls = calls.filter { !isDateParseCall(it, language, context.registry, typeEnv) }
         for (call in nonDateCalls) {
             checkCrossMethodDate(sort, call, language, context, findings)
         }
@@ -128,7 +128,7 @@ public class ExpensiveSortComparatorRule : Rule {
                 // No TypeEnvironment here: this predicate runs against nodes inside a
                 // *different*, cross-method-resolved function body, whose own TypeEnvironment
                 // we don't have in scope - falls back to the name heuristic, same as before.
-            ) { isDateParseCall(it, language, context.registry, typeEnv = null) }
+            ) { isDateParseCall(it, language, context.registry) }
         if (parseOp != null) {
             findings.add(buildIndirectFinding(sort, call, parseOp))
         }
@@ -313,8 +313,5 @@ internal fun isDateParseCall(
     if (call.name !in registry.dateParseMethods(language)) return false
     val target = call.qualifiedTarget ?: return false
     val declaredType = typeEnv?.typeOf(target)?.simpleName
-    if (declaredType != null) {
-        return containsAnyAtWordBoundary(declaredType, registry.dateParseTargets(language), ignoreCase = false)
-    }
-    return containsAnyAtWordBoundary(target, registry.dateParseTargets(language), ignoreCase = false)
+    return containsAnyAtWordBoundary(declaredType ?: target, registry.dateParseTargets(language), ignoreCase = false)
 }

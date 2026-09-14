@@ -60,9 +60,11 @@ public class SequentialAsyncJoinInLoopRule : Rule {
 
         if (loopStack.isNotEmpty() && node is FunctionCall) {
             val semantics = context.registry.classify(language, node.name)
-            val typeEnv = fn?.let { context.typeEnvironmentFor(it) }
-            if (semantics?.category == SemanticCategory.BLOCKING && looksLikeFutureCall(node, language, context.registry, typeEnv)) {
-                findings.add(buildFinding(node, loopStack))
+            if (semantics?.category == SemanticCategory.BLOCKING) {
+                val typeEnv = fn?.let { context.typeEnvironmentFor(it) }
+                if (looksLikeFutureCall(node, language, context.registry, typeEnv)) {
+                    findings.add(buildFinding(node, loopStack))
+                }
             }
         }
 
@@ -124,6 +126,5 @@ private fun looksLikeFutureCall(
     // signal, e.g. "subtask" would falsely satisfy a bare "task" contains with no boundary.
     val target = call.qualifiedTarget ?: return false
     val declaredType = typeEnv?.typeOf(target)?.simpleName
-    if (declaredType != null) return containsAnyAtWordBoundary(declaredType, registry.futureIndicators(language))
-    return containsAnyAtWordBoundary(target, registry.futureIndicators(language))
+    return containsAnyAtWordBoundary(declaredType ?: target, registry.futureIndicators(language))
 }
