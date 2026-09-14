@@ -65,20 +65,9 @@ internal class ParameterFlowQueryTest {
         @Test
         fun `detects flow through helper into IO`() {
             val ioTarget = FlowTarget.MethodCallReceiver("save", loc)
-            val helperFlows =
-                listOf(
-                    ParameterFlow(0, "data", setOf(ioTarget)),
-                )
-            val helper = calleeFn(parameterFlows = helperFlows)
+            val helper = calleeFn(parameterFlows = listOf(ParameterFlow(0, "data", setOf(ioTarget))))
 
-            val callerFlows =
-                listOf(
-                    ParameterFlow(
-                        0,
-                        "items",
-                        setOf(FlowTarget.FunctionArgument("helper", loc)),
-                    ),
-                )
+            val callerFlows = listOf(ParameterFlow(0, "items", setOf(FlowTarget.FunctionArgument("helper", loc))))
             val caller = callerFn(parameterFlows = callerFlows)
             val call = FunctionCall("helper", null, location = loc, children = emptyList())
 
@@ -94,6 +83,50 @@ internal class ParameterFlowQueryTest {
             evidence.paramName shouldBe "items"
             evidence.steps shouldHaveSize 1
             evidence.steps.first().calledFunction shouldBe "helper"
+            evidence.resolutionConfidence shouldBe ResolutionConfidence.EXACT
+        }
+
+        @Test
+        fun `reports AMBIGUOUS_OVERLOAD_BEST_GUESS when an inner hop - not the outermost - resolves via an overload guess`() {
+            // caller -> outerHelper (the ONE registered "outerHelper", exact) -> innerHelper
+            // (TWO same-name candidates registered, ambiguous) -> IO. The outermost call
+            // resolves cleanly; the ambiguity is introduced one hop deeper, inside
+            // outerHelper's own body.
+            val innerCallNode = FunctionCall("innerHelper", null, location = loc, children = emptyList())
+            val innerCandidateWithFlow =
+                calleeFn(
+                    name = "innerHelper",
+                    parameterFlows = listOf(ParameterFlow(0, "data", setOf(FlowTarget.MethodCallReceiver("save", loc)))),
+                )
+            val innerCandidateWithoutFlow = calleeFn(name = "innerHelper", parameterFlows = emptyList())
+
+            val outerHelper =
+                FunctionDecl(
+                    name = "outerHelper",
+                    qualifiedName = "Test.outerHelper",
+                    parameters = listOf(Parameter("data", "List")),
+                    location = loc,
+                    children = listOf(innerCallNode),
+                )
+            outerHelper.parameterFlows = listOf(ParameterFlow(0, "data", setOf(FlowTarget.FunctionArgument("innerHelper", loc))))
+
+            val caller =
+                callerFn(parameterFlows = listOf(ParameterFlow(0, "items", setOf(FlowTarget.FunctionArgument("outerHelper", loc)))))
+            val call = FunctionCall("outerHelper", null, location = loc, children = emptyList())
+
+            // innerCandidateWithFlow registered first, so bestMatch's arbitrary pick among the
+            // two same-name/arity "innerHelper" candidates lands on the one with the matching
+            // flow - the test would still fail loudly (evidence null) if that ever flips, since
+            // resolutionConfidence.shouldBe below only makes sense once evidence is found.
+            val st = symbolTableWith(caller, outerHelper, innerCandidateWithFlow, innerCandidateWithoutFlow)
+
+            val evidence =
+                ParameterFlowQuery.parameterFlowsThrough(call, caller, st, maxDepth = 2) {
+                    it is FlowTarget.MethodCallReceiver && it.methodName == "save"
+                }
+
+            evidence.shouldNotBeNull()
+            evidence.resolutionConfidence shouldBe ResolutionConfidence.AMBIGUOUS_OVERLOAD_BEST_GUESS
         }
 
         @Test
