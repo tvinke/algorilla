@@ -16,6 +16,7 @@ import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
+import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import com.github.tvinke.algorilla.util.CrossMethodResolver
 import com.github.tvinke.algorilla.util.containsAnyAtWordBoundary
 import com.github.tvinke.algorilla.util.endsWithAtWordBoundary
@@ -80,8 +81,9 @@ public class NPlusOneRepositoryCallRule : Rule {
         findings: MutableList<Finding>,
     ) {
         val loopParamConfirmed = fn != null && loopIteratesParam(fn)
-        if (isSingleRecordFetch(node, language, context.registry)) {
-            val targetMatchesRepo = matchesRepoPattern(node.qualifiedTarget, language, context.registry)
+        val typeEnv = fn?.let { context.typeEnvironmentFor(it) }
+        if (isSingleRecordFetch(node, language, context.registry, typeEnv)) {
+            val targetMatchesRepo = matchesRepoPattern(node.qualifiedTarget, language, context.registry, typeEnv)
             findings.add(buildFinding(node, loopStack, loopParamConfirmed, targetMatchesRepo))
         } else {
             val maxDepth = context.config.maxCallDepth.coerceAtMost(2)
@@ -90,6 +92,10 @@ public class NPlusOneRepositoryCallRule : Rule {
                     node,
                     context.symbolTable,
                     maxDepth = maxDepth,
+                    // No TypeEnvironment here: this predicate runs against nodes inside a
+                    // *different*, cross-method-resolved function body, whose own
+                    // TypeEnvironment we don't have in scope - falls back to the name
+                    // heuristic, same as before.
                 ) { isSingleRecordFetch(it, language, context.registry) }
             if (hiddenFetch != null) {
                 val hiddenTargetMatchesRepo = matchesRepoPattern(hiddenFetch.qualifiedTarget, language, context.registry)
@@ -200,9 +206,11 @@ private fun matchesRepoPattern(
     target: String?,
     language: Language,
     registry: LanguageSemanticsRegistry,
+    typeEnv: TypeEnvironment? = null,
 ): Boolean {
     if (target == null) return false
-    return matchesAnyTargetPattern(target, registry.ioTargetPatterns(language))
+    val declaredType = typeEnv?.typeOf(target)?.simpleName
+    return matchesAnyTargetPattern(declaredType ?: target, registry.ioTargetPatterns(language))
 }
 
 /** Widened pattern: any verb+By+field pattern (e.g. findByEmail, getOrderByStatus, getBySku) */
@@ -216,11 +224,12 @@ private val SINGLE_FETCH_METHOD_REGEX =
 private val PAGINATED_BATCH_REGEX =
     Regex("""^(?:find|get)(?:First|Top)\d+By""", RegexOption.IGNORE_CASE)
 
-@Suppress("ReturnCount") // Guard clauses with early returns — clearer than nested if/else
+@Suppress("ReturnCount", "CyclomaticComplexMethod") // Guard clauses with early returns — clearer than nested if/else
 private fun isSingleRecordFetch(
     call: FunctionCall,
     language: Language,
     registry: LanguageSemanticsRegistry,
+    typeEnv: TypeEnvironment? = null,
 ): Boolean {
     val name = call.name
     // Original-case target for every boundary-aware check below - lowercasing first would
@@ -229,9 +238,15 @@ private fun isSingleRecordFetch(
     // below used to lowercase first too - "carpool"/"whirlpool" satisfied "pool" with no
     // boundary at all.
     val target = call.qualifiedTarget
+    // A declared type - a real repository/DAO class is conventionally named to match
+    // repoPatterns itself, same as elsewhere this batch - overrides the receiver's bare name
+    // either way: a field merely CALLED "userRepository" but declared as something unrelated
+    // shouldn't pass the repo-pattern gate, and a field named like a cache but genuinely
+    // declared as a repository type shouldn't be excluded by the cache/memo check either.
+    val effectiveTarget = target?.let { typeEnv?.typeOf(it)?.simpleName } ?: target
 
     // Exclude cache/memo targets before applying repo patterns
-    if (target != null && containsAnyAtWordBoundary(target, registry.nonRepositoryTargets(language))) {
+    if (effectiveTarget != null && containsAnyAtWordBoundary(effectiveTarget, registry.nonRepositoryTargets(language))) {
         return false
     }
     // Spring Data findFirst<N>By / findTop<N>By fetches a fixed-size batch, not a single record
@@ -241,7 +256,7 @@ private fun isSingleRecordFetch(
     // Exact prefix matches (highest confidence)
     val matchesPrefixes = registry.singleFetchPrefixes(language).any { name.startsWith(it, ignoreCase = true) }
     if (matchesPrefixes) {
-        if (target == null || containsAnyAtWordBoundary(target, repoPatterns)) return true
+        if (effectiveTarget == null || containsAnyAtWordBoundary(effectiveTarget, repoPatterns)) return true
     }
     // Widened pattern: any findByX/getByX on a repository-like target
     if (SINGLE_FETCH_METHOD_REGEX.matches(name)) {
@@ -256,7 +271,7 @@ private fun isSingleRecordFetch(
             return false
         }
         // For widened pattern, require a repository-like target to reduce FPs
-        if (target != null && containsAnyAtWordBoundary(target, repoPatterns)) return true
+        if (effectiveTarget != null && containsAnyAtWordBoundary(effectiveTarget, repoPatterns)) return true
     }
     return false
 }
