@@ -35,6 +35,24 @@ public object ParameterFlowQuery {
      * matching [predicate] in the resolved callee (or its transitive callees, up to [maxDepth]).
      *
      * Returns [FlowEvidence] describing the flow path, or null if no matching flow exists.
+     *
+     * Precondition: relies entirely on [FunctionDecl.parameterFlows] having already been
+     * populated by the parameter-flow annotation pass - an empty [callerFn].parameterFlows
+     * (the pass hasn't run, or genuinely found no flows) short-circuits to null immediately,
+     * it is not distinguished from "checked and found nothing".
+     *
+     * Guarantee: [call] must resolve to a [ResolutionResult.Resolved] via
+     * [CrossMethodResolver.resolve] to be followed at all - an unresolved callee (dynamic
+     * dispatch, external library call) returns null rather than guessing at the callee's
+     * behavior. The resolution confidence itself isn't consulted here - even an
+     * [ResolutionConfidence.AMBIGUOUS_OVERLOAD_BEST_GUESS] match is followed, same as before
+     * this distinction existed.
+     *
+     * Edge case: [maxDepth] bounds how many further calls are followed once inside the callee;
+     * at `maxDepth <= 1` only the immediate callee's own flows are checked, deeper calls are
+     * not traversed. Matching within the callee is by [FlowTarget.FunctionArgument.calledFunction]
+     * name, not by argument position - see [findCallByNameAndLocation]'s kdoc for why location is
+     * also needed to disambiguate same-named calls.
      */
     public fun parameterFlowsThrough(
         call: FunctionCall,
@@ -55,7 +73,7 @@ public object ParameterFlowQuery {
             }
         if (paramsPassed.isEmpty()) return null
 
-        val resolved = CrossMethodResolver.resolve(call, symbolTable) ?: return null
+        val resolved = CrossMethodResolver.resolve(call, symbolTable).declOrNull() ?: return null
 
         for (callerFlow in paramsPassed) {
             val evidence =
@@ -99,7 +117,7 @@ public object ParameterFlowQuery {
             val iteratingCallees = mutableListOf<String>()
             for (call in calls) {
                 if (call.name !in calleeNames) continue
-                val resolved = CrossMethodResolver.resolve(call, symbolTable) ?: continue
+                val resolved = CrossMethodResolver.resolve(call, symbolTable).declOrNull() ?: continue
                 if (calleeIteratesParam(resolved)) {
                     iteratingCallees.add(call.name)
                 }
@@ -134,7 +152,7 @@ public object ParameterFlowQuery {
                 // Follow one more level: if the callee passes the param to yet another function
                 if (maxDepth > 1 && target is FlowTarget.FunctionArgument) {
                     val innerCall = findCallByNameAndLocation(callee, target.calledFunction, target.location) ?: continue
-                    val innerResolved = CrossMethodResolver.resolve(innerCall, symbolTable) ?: continue
+                    val innerResolved = CrossMethodResolver.resolve(innerCall, symbolTable).declOrNull() ?: continue
                     val deeper =
                         checkCalleeFlows(
                             paramName,
@@ -163,7 +181,7 @@ public object ParameterFlowQuery {
      * matching on both here re-finds that same node deterministically - matching by name
      * alone (the previous behavior) picks the textually-first same-named call in the
      * callee body regardless of which one the flow was actually recorded from, the same
-     * "name looks right, isn't proof" shape as the #64/#71 recursion-family bug.
+     * "name looks right, isn't proof" shape as the earlier recursion-family name-vs-type bugs.
      */
     private fun findCallByNameAndLocation(
         fn: FunctionDecl,

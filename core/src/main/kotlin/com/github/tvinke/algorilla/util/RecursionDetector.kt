@@ -21,13 +21,20 @@ private val SELF_CALL_RECEIVERS: Set<String?> = setOf(null, "this")
 
 /**
  * Returns true if this [FunctionCall] is a genuine call to [target]'s own declaration:
- * matching name, a receiver that provably refers to this object (not `super`, not some
- * other variable or field), and matching arity. When a [symbolTable] is supplied, also
- * guards against sibling overloads: if another method with the same name and the same
- * parameter count exists in [target]'s declaring class, which one the call actually
- * targets is ambiguous without full argument-type resolution, and this conservatively
- * returns false rather than guessing (the Fineract `modifyLoanApprovedAmount`
- * sibling-overload false positive).
+ * matching name, a receiver that provably refers to this object, and matching arity.
+ *
+ * Guarantee: the receiver check excludes `super` on purpose - `super.foo()` dispatches to
+ * the superclass's implementation, not this one, so it is delegation, not a repeat of the
+ * same call (the Broadleaf `super.getSectionKey()` false positive this distinction fixes).
+ *
+ * Precondition: [symbolTable] is optional, but omitting it disables the sibling-overload
+ * guard below - pass it whenever one is available.
+ *
+ * Edge case: when [symbolTable] is supplied, this also guards against sibling overloads -
+ * if another method with the same name and the same parameter count exists in [target]'s
+ * declaring class, which one the call actually targets is ambiguous without full
+ * argument-type resolution, and this conservatively returns false rather than guessing
+ * (the Fineract `modifyLoanApprovedAmount` sibling-overload false positive).
  */
 public fun FunctionCall.isSelfCallOf(
     target: FunctionDecl,
@@ -61,8 +68,12 @@ public fun FunctionCall.isSelfCallOf(
  * Recursive methods (tree walkers, visitors, DFS) contain loops that iterate
  * child nodes — total work is O(tree_size), not O(n²).
  *
- * Pass a [symbolTable] when available so a same-name, same-arity sibling overload in the
- * same class does not get mistaken for a self-call — see [isSelfCallOf].
+ * Guarantee: only direct self-calls count - a call to a different function that itself
+ * recurses back into this one (mutual recursion) is not detected here; callers that need
+ * that shape check it themselves (see `NestedLookupRule.isTreeWalkCall`'s mutual-recursion case).
+ *
+ * Edge case: pass a [symbolTable] when available so a same-name, same-arity sibling overload
+ * in the same class does not get mistaken for a self-call — see [isSelfCallOf].
  */
 public fun FunctionDecl.isRecursive(symbolTable: SymbolTable? = null): Boolean =
     findDescendants<FunctionCall>().any { it.isSelfCallOf(this, symbolTable) }

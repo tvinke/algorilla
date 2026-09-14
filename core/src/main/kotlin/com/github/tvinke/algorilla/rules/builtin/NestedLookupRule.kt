@@ -22,6 +22,10 @@ import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import com.github.tvinke.algorilla.util.CrossMethodResolver
+import com.github.tvinke.algorilla.util.ResolutionConfidence
+import com.github.tvinke.algorilla.util.ResolutionResult
+import com.github.tvinke.algorilla.util.declOrNull
+import com.github.tvinke.algorilla.util.demoteIfAmbiguous
 import com.github.tvinke.algorilla.util.findDescendants
 import com.github.tvinke.algorilla.util.isCollectionLookup
 import com.github.tvinke.algorilla.util.isSelfCallOf
@@ -112,19 +116,41 @@ public class NestedLookupRule : Rule {
                 language = language,
             ) { it.isCollectionLookup(null, null, language, context.registry) }
         if (hiddenLookup != null) {
-            val confidence = crossMethodConfidence(node, hiddenLookup, iterationStack, enclosingFn)
+            // resolveAndFind above may have followed a chain of calls to find hiddenLookup;
+            // this direct resolve() of node is only to read the confidence of that first hop -
+            // was node itself an unambiguous resolution, or an arbitrary overload guess.
+            val resolutionConfidence =
+                (CrossMethodResolver.resolve(node, context.symbolTable, language) as? ResolutionResult.Resolved)?.confidence
+            val confidence = crossMethodConfidence(node, hiddenLookup, iterationStack, enclosingFn, resolutionConfidence)
             findings.add(buildCrossMethodFinding(node, hiddenLookup, iterationStack, confidence))
         }
     }
 
     /**
-     * Determines confidence for a cross-method nested lookup.
-     * When the call target is an external object (not a loop variable and not this/super),
-     * the hidden lookup is on the callee's internal data — demote to LOW.
-     * When parameter flow proves the loop variable reaches the hidden lookup — HIGH.
+     * Determines confidence for a cross-method nested lookup, then floors it to LOW via
+     * [demoteIfAmbiguous] when [resolutionConfidence] shows the call itself was resolved by an
+     * arbitrary overload guess - the hidden lookup found through it might belong to the wrong
+     * function entirely.
+     */
+    private fun crossMethodConfidence(
+        call: FunctionCall,
+        hiddenLookup: LookupCall,
+        iterationStack: List<IRNode>,
+        enclosingFn: FunctionDecl?,
+        resolutionConfidence: ResolutionConfidence?,
+    ): Confidence {
+        val signalConfidence = signalBasedConfidence(call, hiddenLookup, iterationStack, enclosingFn)
+        return resolutionConfidence?.demoteIfAmbiguous(signalConfidence) ?: signalConfidence
+    }
+
+    /**
+     * The confidence signals specific to this rule, ignoring resolution confidence entirely:
+     * when the call target is an external object (not a loop variable and not this/super), the
+     * hidden lookup is on the callee's internal data — demote to LOW. When parameter flow
+     * proves the loop variable reaches the hidden lookup — HIGH.
      */
     @Suppress("ReturnCount") // Guard clauses with early returns — clearer than nested if/else
-    private fun crossMethodConfidence(
+    private fun signalBasedConfidence(
         call: FunctionCall,
         hiddenLookup: LookupCall,
         iterationStack: List<IRNode>,
@@ -201,7 +227,7 @@ public class NestedLookupRule : Rule {
         // Recomputed here rather than reading the cached FunctionDecl.isRecursive property:
         // rule-level tests build an AnalysisContext directly without running
         // AnalysisEngine.annotateRecursion first, so the cached value can't be trusted.
-        val resolved = CrossMethodResolver.resolve(call, symbolTable, language) ?: return false
+        val resolved = CrossMethodResolver.resolve(call, symbolTable, language).declOrNull() ?: return false
         val resolvedCalls = resolved.findDescendants<FunctionCall>()
         if (resolvedCalls.any { it.isSelfCallOf(resolved, symbolTable) }) return true
 

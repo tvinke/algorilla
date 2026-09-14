@@ -19,6 +19,7 @@ import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.util.CrossMethodResolver
+import com.github.tvinke.algorilla.util.declOrNull
 import com.github.tvinke.algorilla.util.findDescendants
 import com.github.tvinke.algorilla.util.startsWithAtWordBoundary
 
@@ -71,15 +72,15 @@ public class ChainedGettersRule : Rule {
             if (!isGetterPattern(call, getterPrefixes)) continue
             val chain = buildChain(call, producedBy)
             if (chain.size >= MIN_CHAIN_LENGTH) {
-                // Check if any getter in the chain resolves to a function with linear lookups
+                // Check if any getter in the chain resolves to a function with linear lookups.
+                // An ambiguous overload guess is still checked the same as an exact match -
+                // the chain-length signal this rule is built on doesn't depend on which
+                // specific overload runs the linear lookup.
                 val hasLinear =
                     chain.any { c ->
-                        val resolved = CrossMethodResolver.resolve(c, context.symbolTable, language)
+                        val resolved = CrossMethodResolver.resolve(c, context.symbolTable, language).declOrNull()
                         resolved != null &&
-                            (
-                                resolved.findDescendants<LookupCall>().isNotEmpty() ||
-                                    resolved.findDescendants<LoopNode>().isNotEmpty()
-                            )
+                            (resolved.findDescendants<LookupCall>().isNotEmpty() || resolved.findDescendants<LoopNode>().isNotEmpty())
                     }
                 if (hasLinear) {
                     findings.add(buildFinding(fn, chain))

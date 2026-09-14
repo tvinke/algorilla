@@ -5,6 +5,7 @@ import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.util.CrossMethodResolver
+import com.github.tvinke.algorilla.util.declOrNull
 import io.github.oshai.kotlinlogging.KotlinLogging
 
 private val logger = KotlinLogging.logger {}
@@ -54,5 +55,8 @@ public class CallGraphBuilder(
     private fun resolveCallee(
         call: FunctionCall,
         enclosingFn: FunctionDecl,
-    ): FunctionDecl? = CrossMethodResolver.resolve(call, symbolTable, enclosingClass = enclosingFn.declaringClass)
+    ): FunctionDecl? =
+        // The call graph doesn't track resolution confidence - an ambiguous overload guess
+        // is still the best edge we have to offer between two functions.
+        CrossMethodResolver.resolve(call, symbolTable, enclosingClass = enclosingFn.declaringClass).declOrNull()
 }
