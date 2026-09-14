@@ -16,6 +16,7 @@ import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
+import com.github.tvinke.algorilla.util.startsWithAtWordBoundary
 
 /**
  * Detects cardinality explosion patterns where the output grows as the
@@ -474,14 +475,11 @@ public class CardinalityExplosionRule : Rule {
  * a real camelCase word boundary — "departmentHead" for "department" — but not a bare
  * text prefix like "career"/"cargo" for "car". Plain `startsWith` had no such boundary:
  * de-pluralizing "cars" to "car" then matched any inner name starting with "car",
- * silently suppressing a genuine Cartesian product over unrelated collections.
+ * silently suppressing a genuine Cartesian product over unrelated collections. Delegates
+ * to the shared [startsWithAtWordBoundary] rather than reimplementing the same boundary
+ * check locally.
  */
 private fun matchesElementName(
     innerBase: String,
     outerClean: String,
-): Boolean {
-    if (innerBase.equals(outerClean, ignoreCase = true)) return true
-    if (!innerBase.startsWith(outerClean, ignoreCase = true)) return false
-    val boundaryChar = innerBase.getOrNull(outerClean.length) ?: return true
-    return boundaryChar.isUpperCase() || boundaryChar.isDigit()
-}
+): Boolean = startsWithAtWordBoundary(innerBase, outerClean)

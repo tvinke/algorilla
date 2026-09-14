@@ -188,7 +188,8 @@ public fun LookupCall.isCollectionLookup(
     if (hasO1TargetName(registry, language)) return false
     // Name-based string heuristic: String.contains(substring) is O(n) on string length,
     // not O(n) on a collection — skip when the variable name suggests a String type.
-    return !(targetVariable != null && hasStringTargetName(targetVariable, registry, language))
+    if (targetVariable != null && hasStringTargetName(targetVariable, registry, language)) return false
+    return true
 }
 
 private fun LookupCall.isStaticUtilityTarget(

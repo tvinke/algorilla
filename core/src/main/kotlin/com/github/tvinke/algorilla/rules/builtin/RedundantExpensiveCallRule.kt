@@ -19,6 +19,7 @@ import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.MethodPurity
 import com.github.tvinke.algorilla.util.findDescendantsWithBranchContext
 import com.github.tvinke.algorilla.util.maxCoExecutableSubset
+import com.github.tvinke.algorilla.util.startsWithAtWordBoundary
 
 /**
  * Detects the same parameterized call invoked multiple times with the same arguments
@@ -195,14 +196,16 @@ private fun isSideEffectCall(
         MethodPurity.isSideEffect(call.name, call.qualifiedTarget, language)
 
 /**
- * Returns true if [name] starts with [prefix] followed by an uppercase letter — a real
- * camelCase word boundary (`readVarInt` for prefix `read`), not just a lowercase
- * continuation (`reader`, `readable`) that happens to share the same leading characters.
+ * Returns true if [name] starts with [prefix] at a real camelCase word boundary
+ * (`readVarInt` for prefix `read`), not just a lowercase continuation (`reader`,
+ * `readable`) that happens to share the same leading characters. Delegates to the shared
+ * [startsWithAtWordBoundary] rather than reimplementing the same boundary check locally;
+ * case-sensitive to match this file's original behavior.
  */
 private fun matchesCamelCasePrefix(
     name: String,
     prefix: String,
-): Boolean = name.length > prefix.length && name.startsWith(prefix) && name[prefix.length].isUpperCase()
+): Boolean = startsWithAtWordBoundary(name, prefix, ignoreCase = false)
 
 private fun isTypeCheckPredicate(
     name: String,
