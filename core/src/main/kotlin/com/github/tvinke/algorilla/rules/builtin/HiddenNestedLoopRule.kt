@@ -111,7 +111,7 @@ public class HiddenNestedLoopRule : Rule {
         // the hidden nested loop is O(k*m) with constant k
         if (loopStack.all { it.isConstantBound }) return
 
-        val (flowConfirmed, overallConfidence) = flowConfirmedConfidence(call, callerFn, resolutionConfidence, context)
+        val (flowConfirmed, overallConfidence) = flowConfirmedConfidence(call, callerFn, language, resolutionConfidence, context)
 
         findings.add(buildFinding(call, resolved, hiddenLoop, loopStack, flowConfirmed, overallConfidence))
     }
@@ -124,15 +124,17 @@ public class HiddenNestedLoopRule : Rule {
      * [worstOf] means a guess two hops into the flow still gets caught, not just an ambiguous
      * [call] itself.
      */
+    @Suppress("LongParameterList") // Threading language through alongside the existing confidence/context params
     private fun flowConfirmedConfidence(
         call: FunctionCall,
         callerFn: FunctionDecl?,
+        language: Language,
         resolutionConfidence: ResolutionConfidence,
         context: AnalysisContext,
     ): Pair<Boolean, ResolutionConfidence> {
         val flowEvidence =
             callerFn?.let {
-                ParameterFlowQuery.parameterFlowsThrough(call, it, context.symbolTable) { target ->
+                ParameterFlowQuery.parameterFlowsThrough(call, it, context.symbolTable, language = language) { target ->
                     target is FlowTarget.LoopIteration
                 }
             }

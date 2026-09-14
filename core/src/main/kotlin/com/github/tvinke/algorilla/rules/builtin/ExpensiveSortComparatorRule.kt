@@ -20,7 +20,9 @@ import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import com.github.tvinke.algorilla.util.CrossMethodResolver
+import com.github.tvinke.algorilla.util.ResolutionConfidence
 import com.github.tvinke.algorilla.util.containsAnyAtWordBoundary
+import com.github.tvinke.algorilla.util.demoteIfAmbiguous
 import com.github.tvinke.algorilla.util.findDescendants
 
 /**
@@ -111,26 +113,28 @@ public class ExpensiveSortComparatorRule : Rule {
     ) {
         val maxDepth = context.config.maxCallDepth.coerceAtMost(2)
         val dateOp =
-            CrossMethodResolver.resolveAndFind<ObjectCreation>(
+            CrossMethodResolver.resolveAndFindWithConfidence<ObjectCreation>(
                 call,
                 context.symbolTable,
                 maxDepth = maxDepth,
+                language = language,
             ) { isDateType(it.typeName, language, context.registry) }
-        if (dateOp != null) {
-            findings.add(buildIndirectFinding(sort, call, dateOp))
+        dateOp?.let { (node, confidence) ->
+            findings.add(buildIndirectFinding(sort, call, node, confidence))
             return
         }
         val parseOp =
-            CrossMethodResolver.resolveAndFind<FunctionCall>(
+            CrossMethodResolver.resolveAndFindWithConfidence<FunctionCall>(
                 call,
                 context.symbolTable,
                 maxDepth = maxDepth,
+                language = language,
                 // No TypeEnvironment here: this predicate runs against nodes inside a
                 // *different*, cross-method-resolved function body, whose own TypeEnvironment
                 // we don't have in scope - falls back to the name heuristic, same as before.
             ) { isDateParseCall(it, language, context.registry) }
-        if (parseOp != null) {
-            findings.add(buildIndirectFinding(sort, call, parseOp))
+        parseOp?.let { (node, confidence) ->
+            findings.add(buildIndirectFinding(sort, call, node, confidence))
         }
     }
 
@@ -205,10 +209,18 @@ public class ExpensiveSortComparatorRule : Rule {
         )
     }
 
+    /**
+     * Cross-method finding: the date operation lives inside a method resolved via
+     * [CrossMethodResolver.resolveAndFindWithConfidence], not directly in the comparator body.
+     * [resolutionConfidence] floors the finding to LOW when that resolution was an ambiguous
+     * overload guess - see [NestedLookupRule]/[HiddenNestedLoopRule]/[IOInLoopRule] for the
+     * same treatment.
+     */
     private fun buildIndirectFinding(
         sort: SortCall,
         call: FunctionCall,
         innerNode: IRNode,
+        resolutionConfidence: ResolutionConfidence = ResolutionConfidence.EXACT,
     ): Finding {
         val cx = ComplexityModel.sortTimesParse()
         val desc =
@@ -235,6 +247,7 @@ public class ExpensiveSortComparatorRule : Rule {
             evidence,
             "Date operation inside ${call.name}() called from sort comparator",
             "Parse dates once before sorting, not inside the comparator call chain",
+            resolutionConfidence.demoteIfAmbiguous(Confidence.MEDIUM),
         )
     }
 
@@ -271,10 +284,12 @@ public class ExpensiveSortComparatorRule : Rule {
         evidence: List<Evidence>,
         message: String,
         suggestion: String,
+        confidence: Confidence,
     ) = Finding(
         ruleId = id,
         ruleName = name,
         severity = severity,
+        confidence = confidence,
         location = location,
         message = message,
         suggestions = listOf(Suggestion.Freeform(suggestion)),

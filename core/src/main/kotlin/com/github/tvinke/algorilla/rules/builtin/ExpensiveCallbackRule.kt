@@ -22,6 +22,8 @@ import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import com.github.tvinke.algorilla.util.CrossMethodResolver
+import com.github.tvinke.algorilla.util.ResolutionConfidence
+import com.github.tvinke.algorilla.util.demoteIfAmbiguous
 import com.github.tvinke.algorilla.util.endsWithAtWordBoundary
 import com.github.tvinke.algorilla.util.findDescendants
 
@@ -157,25 +159,25 @@ public class ExpensiveCallbackRule : Rule {
         findings: MutableList<Finding>,
     ) {
         val dateOp =
-            CrossMethodResolver.resolveAndFind<ObjectCreation>(
+            CrossMethodResolver.resolveAndFindWithConfidence<ObjectCreation>(
                 call,
                 context.symbolTable,
                 maxDepth = maxDepth,
                 language = language,
             ) { isDateType(it.typeName, language, context.registry) }
-        if (dateOp != null) {
-            findings.add(buildIndirectFinding(container, call, dateOp))
+        dateOp?.let { (node, confidence) ->
+            findings.add(buildIndirectFinding(container, call, node, confidence))
             return
         }
         val parseOp =
-            CrossMethodResolver.resolveAndFind<FunctionCall>(
+            CrossMethodResolver.resolveAndFindWithConfidence<FunctionCall>(
                 call,
                 context.symbolTable,
                 maxDepth = maxDepth,
                 language = language,
             ) { isDateParseCall(it, language, context.registry) }
-        if (parseOp != null) {
-            findings.add(buildIndirectFinding(container, call, parseOp))
+        parseOp?.let { (node, confidence) ->
+            findings.add(buildIndirectFinding(container, call, node, confidence))
         }
     }
 
@@ -332,10 +334,18 @@ public class ExpensiveCallbackRule : Rule {
         return makeFinding(container, creation.location, cx, inner, "Heavyweight ${creation.typeName} creation inside callback")
     }
 
+    /**
+     * Cross-method finding: the expensive operation lives inside a method resolved via
+     * [CrossMethodResolver.resolveAndFindWithConfidence], not directly in the callback body.
+     * [resolutionConfidence] floors the finding to LOW when that resolution was an ambiguous
+     * overload guess - see [NestedLookupRule]/[HiddenNestedLoopRule]/[IOInLoopRule] for the
+     * same treatment.
+     */
     private fun buildIndirectFinding(
         container: CallbackContainer,
         call: FunctionCall,
         innerNode: IRNode,
+        resolutionConfidence: ResolutionConfidence = ResolutionConfidence.EXACT,
     ): Finding {
         val cx = ComplexityModel.loopTimesCost(container.varName, "parse")
         val desc = describeNode(innerNode)
@@ -355,6 +365,7 @@ public class ExpensiveCallbackRule : Rule {
             ruleId = id,
             ruleName = name,
             severity = severity,
+            confidence = resolutionConfidence.demoteIfAmbiguous(Confidence.MEDIUM),
             location = innerNode.location,
             message = "Expensive operation inside ${call.name}() called from callback",
             suggestions = listOf(Suggestion.Freeform("Hoist expensive operation before the loop, or pre-compute values into a Map")),
