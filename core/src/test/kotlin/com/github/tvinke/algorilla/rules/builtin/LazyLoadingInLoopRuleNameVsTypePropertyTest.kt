@@ -72,11 +72,34 @@ internal class LazyLoadingInLoopRuleNameVsTypePropertyTest {
         findingsFor(fetchMethod = "findAllOrders", getterMethod = "getChildrenCount") shouldHaveSize 1
     }
 
+    /**
+     * Found by a separate background reader of this file (the #98 matcher-DSL spike):
+     * isRepositoryFetch's repoPatterns gate (`repoPatterns.any { target.contains(it) }`)
+     * had no word boundary at all - "repo" is a literal substring of "report"
+     * (reportGenerator), "store" of "storefront". Same bug, same fix as
+     * NPlusOneRepositoryCallRule's isSingleRecordFetch.
+     */
+    @Test
+    fun `reportGenerator is not misread as a repository target just because it contains 'repo'`() {
+        findingsFor(fetchMethod = "findAllOrders", getterMethod = "getOrders", fetchTarget = "reportGenerator").shouldBeEmpty()
+    }
+
+    @Test
+    fun `storefront is not misread as a repository target just because it contains 'store'`() {
+        findingsFor(fetchMethod = "findAllOrders", getterMethod = "getOrders", fetchTarget = "storefront").shouldBeEmpty()
+    }
+
+    @Test
+    fun `a genuine store-based repository target is still recognized`() {
+        findingsFor(fetchMethod = "findAllOrders", getterMethod = "getOrders", fetchTarget = "orderStore") shouldHaveSize 1
+    }
+
     private fun findingsFor(
         fetchMethod: String,
         getterMethod: String,
+        fetchTarget: String = "orderRepository",
     ): List<Finding> {
-        val fetchCall = FunctionCall(fetchMethod, "orderRepository", emptyList(), loc, emptyList())
+        val fetchCall = FunctionCall(fetchMethod, fetchTarget, emptyList(), loc, emptyList())
         val entityVar = VariableDecl("orders", null, initializer = fetchCall, location = loc, children = listOf(fetchCall))
         val getterCall = FunctionCall(getterMethod, "element", emptyList(), loc, emptyList())
         val loop = LoopNode(kind = LoopKind.FOR_EACH, iteratedVariable = "orders", location = loc, children = listOf(getterCall))

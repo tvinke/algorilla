@@ -45,3 +45,30 @@ public fun endsWithAtWordBoundary(
     if (text[matchStart].isUpperCase()) return true
     return !text[matchStart - 1].isLetter()
 }
+
+/**
+ * Returns true if [word] occurs anywhere in [text] as a whole identifier segment — a real
+ * boundary (start/end of string, a camelCase transition, or a non-letter separator) on
+ * *both* sides of the match, not just one. Plain `contains` matches "repo" inside
+ * "reportGenerator" (the "repo" happens to sit at the very start of "report", so a
+ * leading-only boundary check would miss it) and "store" inside "storefront" — neither
+ * has anything to do with a repository. Checks every occurrence in case an earlier one
+ * fails the boundary test but a later one doesn't.
+ */
+public fun containsAtWordBoundary(
+    text: String,
+    word: String,
+    ignoreCase: Boolean = true,
+): Boolean {
+    if (word.isEmpty()) return false
+    var fromIndex = 0
+    while (true) {
+        val idx = text.indexOf(word, fromIndex, ignoreCase = ignoreCase)
+        if (idx < 0) return false
+        val leadingOk = idx == 0 || text[idx].isUpperCase() || !text[idx - 1].isLetter()
+        val trailingIdx = idx + word.length
+        val trailingOk = trailingIdx >= text.length || !text[trailingIdx].isLetterOrDigit() || text[trailingIdx].isUpperCase()
+        if (leadingOk && trailingOk) return true
+        fromIndex = idx + 1
+    }
+}

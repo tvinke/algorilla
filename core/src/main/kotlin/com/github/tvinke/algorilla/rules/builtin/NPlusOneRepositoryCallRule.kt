@@ -17,6 +17,7 @@ import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.CrossMethodResolver
+import com.github.tvinke.algorilla.util.containsAtWordBoundary
 import com.github.tvinke.algorilla.util.endsWithAtWordBoundary
 import com.github.tvinke.algorilla.util.startsWithAtWordBoundary
 
@@ -232,11 +233,15 @@ private fun isSingleRecordFetch(
     // Spring Data findFirst<N>By / findTop<N>By fetches a fixed-size batch, not a single record
     if (PAGINATED_BATCH_REGEX.containsMatchIn(name)) return false
 
+    // Original-case target for the boundary-aware checks below - lowercasing first would
+    // destroy the camelCase signal (userRepository) that tells a real boundary apart from
+    // a coincidental substring (reportGenerator, storefront).
+    val originalTarget = call.qualifiedTarget
     val repoPatterns = registry.repositoryPatterns(language)
     // Exact prefix matches (highest confidence)
     val matchesPrefixes = registry.singleFetchPrefixes(language).any { name.startsWith(it, ignoreCase = true) }
     if (matchesPrefixes) {
-        if (target == null || repoPatterns.any { target.contains(it) }) return true
+        if (originalTarget == null || repoPatterns.any { containsAtWordBoundary(originalTarget, it) }) return true
     }
     // Widened pattern: any findByX/getByX on a repository-like target
     if (SINGLE_FETCH_METHOD_REGEX.matches(name)) {
@@ -251,7 +256,7 @@ private fun isSingleRecordFetch(
             return false
         }
         // For widened pattern, require a repository-like target to reduce FPs
-        if (target != null && repoPatterns.any { target.contains(it) }) return true
+        if (originalTarget != null && repoPatterns.any { containsAtWordBoundary(originalTarget, it) }) return true
     }
     return false
 }

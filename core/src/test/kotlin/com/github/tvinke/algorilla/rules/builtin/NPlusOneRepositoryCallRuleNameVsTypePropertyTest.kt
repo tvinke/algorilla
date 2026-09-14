@@ -79,6 +79,38 @@ internal class NPlusOneRepositoryCallRuleNameVsTypePropertyTest {
         findings.first().confidence shouldBe Confidence.HIGH
     }
 
+    /**
+     * Found by a separate background reader of this file (the #98 matcher-DSL spike), not
+     * by this campaign's own grep sweep: isSingleRecordFetch's repository-patterns gate
+     * (`repoPatterns.any { target.contains(it) }`, lines 239/254) never got the same
+     * boundary treatment as matchesRepoPattern just above it in this file. "repo" is a
+     * literal substring of "report" (reportGenerator), and "store" of "storefront" - both
+     * repository-patterns entries, both false gates with no word boundary at all (not even
+     * a one-sided endsWith/startsWith - a bare `contains` anywhere).
+     */
+    @Test
+    fun `reportGenerator is not misread as a repository target just because it contains 'repo'`() {
+        findingsFor("findById", "reportGenerator").shouldBeEmpty()
+    }
+
+    @Test
+    fun `storefront is not misread as a repository target just because it contains 'store'`() {
+        findingsFor("findById", "storefront").shouldBeEmpty()
+    }
+
+    @Test
+    fun `a genuine store-based repository target is still recognized`() {
+        findingsFor("findById", "orderStore") shouldHaveSize 1
+    }
+
+    @Test
+    fun `the widened findByX pattern's repository gate has the same fix`() {
+        // Exercises the second repoPatterns.contains call site (line 254), reached via the
+        // SINGLE_FETCH_METHOD_REGEX branch rather than the exact-prefix branch above.
+        findingsFor("findAllocationById", "reportGenerator").shouldBeEmpty()
+        findingsFor("findAllocationById", "orderStore") shouldHaveSize 1
+    }
+
     private fun findingsFor(
         methodName: String,
         target: String,

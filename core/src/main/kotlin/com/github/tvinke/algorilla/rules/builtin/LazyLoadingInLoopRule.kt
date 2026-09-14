@@ -15,6 +15,7 @@ import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
+import com.github.tvinke.algorilla.util.containsAtWordBoundary
 import com.github.tvinke.algorilla.util.findDescendants
 import com.github.tvinke.algorilla.util.startsWithAtWordBoundary
 
@@ -108,8 +109,8 @@ public class LazyLoadingInLoopRule : Rule {
         repoPatterns: Set<String>,
         fetchPrefixes: List<String>,
     ): Boolean {
-        val target = call.qualifiedTarget?.lowercase() ?: return false
-        val isRepoTarget = repoPatterns.any { target.contains(it) }
+        val target = call.qualifiedTarget ?: return false
+        val isRepoTarget = repoPatterns.any { containsAtWordBoundary(target, it) }
         if (!isRepoTarget) return false
         return fetchPrefixes.any { startsWithAtWordBoundary(call.name, it) }
     }

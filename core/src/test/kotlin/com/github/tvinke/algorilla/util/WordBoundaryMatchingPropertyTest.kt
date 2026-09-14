@@ -29,13 +29,23 @@ internal class WordBoundaryMatchingPropertyTest {
     private val digits = ('0'..'9').toList()
     private val separators = listOf('_', '-', '.', '@')
 
+    // Disjoint from the filler alphabet below, so the intentionally-placed matched word
+    // can never accidentally reappear inside random leading/trailing filler text.
+    private val matchLetters = ('a'..'m').toList()
+    private val fillerLetters = ('n'..'z').toList()
+
     /** A boundary character is upper/digit/non-letter — the independent regex oracle. */
     private val boundaryCharRegex = Regex("^[A-Z0-9]|^[^A-Za-z]")
 
-    private fun wordArb(lengthRange: IntRange = 1..6): Arb<String> =
+    private fun wordArb(lengthRange: IntRange = 1..6): Arb<String> = wordArbFrom(lowerLetters, lengthRange)
+
+    private fun wordArbFrom(
+        pool: List<Char>,
+        lengthRange: IntRange,
+    ): Arb<String> =
         Arb
-            .list(Arb.int(0 until lowerLetters.size), lengthRange)
-            .map { indices -> indices.joinToString("") { lowerLetters[it].toString() } }
+            .list(Arb.int(0 until pool.size), lengthRange)
+            .map { indices -> indices.joinToString("") { pool[it].toString() } }
 
     private fun charFrom(pool: List<Char>): Arb<Char> = Arb.int(0 until pool.size).map { pool[it] }
 
@@ -99,6 +109,50 @@ internal class WordBoundaryMatchingPropertyTest {
                 val text = preceding + matchOccurrence
                 val expected = preceding.isEmpty() || capitalizeMatch || precedingIsBoundary
                 endsWithAtWordBoundary(text, suffix) shouldBe expected
+            }
+        }
+    }
+
+    /**
+     * containsAtWordBoundary needs a boundary on BOTH sides of the match. Built from
+     * independent left/right "wrapping" generators — each side either empty, separated by
+     * a punctuation character (a real boundary), or a plain lowercase word from a
+     * *disjoint* letter range (guaranteed not to accidentally re-contain the matched word
+     * itself, so the independently-tracked ground truth can't be invalidated by a stray
+     * extra occurrence).
+     */
+    private data class Side(
+        val text: String,
+        val isBoundary: Boolean,
+    )
+
+    private fun sideArb(prependSeparator: Boolean): Arb<Side> =
+        Arb.of(0, 1, 2).flatMap { kind ->
+            when (kind) {
+                0 -> Arb.constant(Side("", true))
+                1 ->
+                    charFrom(separators).flatMap { s ->
+                        wordArbFrom(fillerLetters, 0..4).map { filler ->
+                            Side(if (prependSeparator) "$s$filler" else "$filler$s", true)
+                        }
+                    }
+                else -> wordArbFrom(fillerLetters, 1..4).map { Side(it, false) }
+            }
+        }
+
+    @Test
+    fun `containsAtWordBoundary agrees with an independent oracle over random left+right wrapping`() {
+        runBlocking {
+            checkAll(
+                sideArb(prependSeparator = false),
+                wordArbFrom(matchLetters, 2..6),
+                sideArb(prependSeparator = true),
+                Arb.of(true, false),
+            ) { leading, word, trailing, capitalizeMatch ->
+                val matchOccurrence = if (capitalizeMatch) word.replaceFirstChar { it.uppercaseChar() } else word
+                val text = leading.text + matchOccurrence + trailing.text
+                val expected = (leading.isBoundary || capitalizeMatch) && trailing.isBoundary
+                containsAtWordBoundary(text, word) shouldBe expected
             }
         }
     }
