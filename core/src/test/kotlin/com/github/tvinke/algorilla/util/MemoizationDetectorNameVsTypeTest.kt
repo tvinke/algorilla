@@ -10,7 +10,7 @@ import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 
 /**
- * Canary properties for the testharnas campaign (cc #73). hasVisitedTracking's Set
+ * Canary properties for the testharnas campaign. hasVisitedTracking's Set
  * add()/contains() check hardcodes the literal method name "contains" regardless of
  * [Language] — but this rule (UnmemoizedRecursionRule) runs on every language, and
  * JavaScript/TypeScript's real `Set` doesn't have a `contains()` method at all, it has

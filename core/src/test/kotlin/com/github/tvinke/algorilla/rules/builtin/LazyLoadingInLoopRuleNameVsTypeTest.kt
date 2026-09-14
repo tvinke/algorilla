@@ -18,7 +18,7 @@ import io.kotest.matchers.collections.shouldHaveSize
 import org.junit.jupiter.api.Test
 
 /**
- * Canary properties for the testharnas campaign (cc #73). isRepositoryFetch and
+ * Canary properties for the testharnas campaign. isRepositoryFetch and
  * isLazyCollectionGetter both classify a method name by a bare prefix list with no
  * word-boundary check, the same shape already fixed in RedundantExpensiveCallRule,
  * IOInLoopRule and NPlusOneRepositoryCallRule this campaign:
@@ -57,7 +57,7 @@ internal class LazyLoadingInLoopRuleNameVsTypeTest {
     }
 
     /**
-     * Documented finding (cc #73), not fixed here: isLazyCollectionGetter's second
+     * Documented finding, not fixed here: isLazyCollectionGetter's second
      * condition (`collGetterNames.any { lower.contains(it) }`) has no scalar-suffix
      * exclusion at all, unlike its sibling condition just above it. `getChildrenCount()`
      * genuinely contains "Children" as a real capitalized word (not a text-matching

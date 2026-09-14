@@ -12,7 +12,7 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import org.junit.jupiter.api.Test
 
 /**
- * Canary property for the testharnas campaign (cc #73) - the exact "self-call-by-name"
+ * Canary property for the testharnas campaign - the exact "self-call-by-name"
  * shape from the original #64/#71 recursion-family bug (matching a call by bare name
  * instead of confirming it's really the same one), now found in a different helper.
  *

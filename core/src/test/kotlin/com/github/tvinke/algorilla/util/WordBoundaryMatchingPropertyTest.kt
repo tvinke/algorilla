@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test
 /**
  * Genuinely generative property tests for [startsWithAtWordBoundary] and
  * [endsWithAtWordBoundary] themselves — the shared primitive behind every "missing word
- * boundary" fix in the testharnas campaign (cc #73), used directly or indirectly by 5+
+ * boundary" fix in the testharnas campaign, used directly or indirectly by 5+
  * rule files, but with no test file of its own until now. Every property test written
  * earlier in this campaign was `Arb.of(handPickedList)` — a fine regression net for bugs
  * already found, but no evidence against undiscovered ones. These generate random

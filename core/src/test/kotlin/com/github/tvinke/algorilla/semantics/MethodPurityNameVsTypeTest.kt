@@ -4,7 +4,7 @@ import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 
 /**
- * Canary properties for the testharnas campaign (cc #73), from the cross-file grep this
+ * Canary properties for the testharnas campaign, from the cross-file grep this
  * campaign did after fixing RedundantExpensiveCallRule's isSequentialReadPrefix (missing
  * word boundary on a prefix list): MethodPurity.classify's two `lower.startsWith(it)`
  * checks have the identical shape. "settings()" starts with side-effect-prefix "set" with

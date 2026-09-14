@@ -20,7 +20,7 @@ import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 
 /**
- * Canary properties for the testharnas campaign (cc #73). isSingleRecordFetch and
+ * Canary properties for the testharnas campaign. isSingleRecordFetch and
  * matchesRepoPattern both classify a method/target name by prefix or suffix list, and both
  * had the same missing-word-boundary shape found elsewhere in this campaign:
  *

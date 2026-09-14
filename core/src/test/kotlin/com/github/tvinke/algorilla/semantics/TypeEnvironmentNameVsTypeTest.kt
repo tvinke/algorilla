@@ -11,7 +11,7 @@ import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 
 /**
- * Canary properties for the testharnas campaign (cc #73). TypeEnvironment's inference
+ * Canary properties for the testharnas campaign. TypeEnvironment's inference
  * strategies each carry a [TypeSource], and the whole point of that provenance is that
  * low-trust, name-shaped evidence must not be treated as proof once a caller asks a
  * yes/no question ("is this an O(1) type? a collection?"). [TypeEnvironmentTest] already
@@ -62,7 +62,7 @@ internal class TypeEnvironmentNameVsTypeTest {
         )
 
     /**
-     * cc #73 finding: isCollection/isList made no such exclusion — a variable whose
+     * Finding: isCollection/isList made no such exclusion - a variable whose
      * *only* evidence is a method name ending in Map/Set/List/Stream (e.g. a getter on a
      * domain value object that happens to be called `getWorkflowStateMap()` but returns a
      * `WorkflowStateMap` record, not a real `java.util.Map`) was silently trusted as a
@@ -158,7 +158,7 @@ internal class TypeEnvironmentNameVsTypeTest {
     }
 
     /**
-     * Documented finding (cc #73), not fixed here: inferChainEnd infers a type from the
+     * Documented finding, not fixed here: inferChainEnd infers a type from the
      * *name* of the last call in a chain (`toList`, `toArray`, `collect`, ...) with no
      * check that the receiver is actually a Stream/Collection pipeline at all. A class
      * that happens to define its own method literally called `toList()` — e.g. a

@@ -82,7 +82,7 @@ internal class PrecisionRegressionTest : FullPipelineTestSupport() {
                 "chained-getters/negative/independent-lookups-merged-not-a-chain.java",
                 "chained-getters",
                 "mapEntry.getValue() and product.getPrincipalVariationsForBorrowerCycle() are independent, " +
-                    "not a sequential chain, even though both feed fetchLoanCycleDefaultValue() (cc #64)",
+                    "not a sequential chain, even though both feed fetchLoanCycleDefaultValue()",
             )
     }
 
@@ -731,7 +731,7 @@ internal class PrecisionRegressionTest : FullPipelineTestSupport() {
             assertNoFindings(
                 "unmemoized-recursion/negative/super-call-delegation.java",
                 "unmemoized-recursion",
-                "super.resolveKey() dispatches to the superclass, it does not repeat this method's call (cc #64)",
+                "super.resolveKey() dispatches to the superclass, it does not repeat this method's call",
             )
 
         @Test
@@ -739,7 +739,7 @@ internal class PrecisionRegressionTest : FullPipelineTestSupport() {
             assertNoFindings(
                 "unmemoized-recursion/negative/sibling-overload-same-arity.java",
                 "unmemoized-recursion",
-                "the call resolves ambiguously between two same-arity overloads, not provably a self-call (cc #64/#71)",
+                "the call resolves ambiguously between two same-arity overloads, not provably a self-call",
             )
 
         @Test

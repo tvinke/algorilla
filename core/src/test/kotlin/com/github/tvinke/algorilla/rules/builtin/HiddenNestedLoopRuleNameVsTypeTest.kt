@@ -17,7 +17,7 @@ import io.kotest.matchers.collections.shouldHaveSize
 import org.junit.jupiter.api.Test
 
 /**
- * Canary property for the testharnas campaign (cc #73). isStringOrCopyMethod's
+ * Canary property for the testharnas campaign. isStringOrCopyMethod's
  * `hiddenLoopSkipPrefixes.any { lower.startsWith(it) }` has the same missing word boundary
  * as everywhere else this campaign: a call literally named "reader()"/"writer()" (an
  * unrelated method, nothing to do with stream reading/writing) starts with skip-prefixes

@@ -17,7 +17,7 @@ import io.kotest.matchers.collections.shouldHaveSize
 import org.junit.jupiter.api.Test
 
 /**
- * Canary property for the testharnas campaign (cc #73). isRemovalCall's
+ * Canary property for the testharnas campaign. isRemovalCall's
  * `nonListTargetsSuffixes(lang).any { suffix -> lower.endsWith(suffix) }` has the same
  * missing word boundary already fixed elsewhere this campaign: "vegetable" ends in "table"
  * (a non-list-target suffix) with no real boundary and isn't a Map/O(1) type in any sense,

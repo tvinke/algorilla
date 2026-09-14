@@ -16,7 +16,7 @@ import io.kotest.matchers.collections.shouldHaveSize
 import org.junit.jupiter.api.Test
 
 /**
- * Canary properties for the testharnas campaign (cc #73). isSequentialReadPrefix decides
+ * Canary properties for the testharnas campaign. isSequentialReadPrefix decides
  * whether a repeated call is a "sequential read" (Iterator.next()-style — each call is
  * legitimately different, don't suggest caching) purely from whether the name starts with
  * "read"/"next". Its two siblings in this file, isTypeCheckPredicate and isGetterPattern,

@@ -15,7 +15,7 @@ import io.kotest.matchers.collections.shouldHaveSize
 import org.junit.jupiter.api.Test
 
 /**
- * Canary property for the testharnas campaign (cc #73). isCollectionVariable's
+ * Canary property for the testharnas campaign. isCollectionVariable's
  * first-letter-case check ("starts lowercase" = variable, "starts uppercase" = class
  * reference like Collectors/Stream) is a case-convention heuristic, unlike the other
  * checks fixed this campaign, but a well-founded one — Java/Kotlin/Groovy naming

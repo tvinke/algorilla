@@ -7,8 +7,8 @@ import com.github.tvinke.algorilla.model.Parameter
 import com.github.tvinke.algorilla.model.SourceLocation
 
 /**
- * Shared hand-built IR fixtures for the cc #64/#71 recursion tests
- * ([RecursionDetectorTest], [NameVsTypeRecursionPropertyTest]) — a bare declaration/call pair
+ * Shared hand-built IR fixtures for the recursion tests
+ * ([RecursionDetectorTest], [NameVsTypeRecursionPropertyTest]) - a bare declaration/call pair
  * with a fixed dummy location, no parser involved.
  */
 internal val loc = SourceLocation("Fixture.java", 1, 1)

@@ -7,7 +7,7 @@ package com.github.tvinke.algorilla.util
  * "screenwriter", "In" matches the tail of "findByOrigin". These require a real camelCase
  * transition (or a non-letter separator) at the boundary, not just an arbitrary run of
  * letters that happens to line up — the same "name looks right, isn't" failure this
- * campaign (cc #73) keeps finding, applied consistently wherever a prefix/suffix list is
+ * campaign keeps finding, applied consistently wherever a prefix/suffix list is
  * matched against free-form identifier text.
  */
 

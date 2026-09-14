@@ -5,7 +5,7 @@ import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 
 /**
- * Canary properties for the testharnas campaign (cc #73). SemanticsYamlParser has no
+ * Canary properties for the testharnas campaign. SemanticsYamlParser has no
  * resolved-type concept to get wrong — it's a raw line-based YAML tokenizer, so the
  * shape here is different from TypeEnvironment/RegexRecompilationInLoopRule: the risk is
  * "does the parser actually extract what a line means" rather than "name vs resolved

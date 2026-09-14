@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test
  * Before this test existed, `isRecursive` was only reached indirectly through the
  * `lang-java` fixtures in `UnmemoizedRecursionRuleJavaTest`/`PrecisionRegressionTest`, which
  * sit outside `core`'s pitest scope — every mutant on this function came back NO_COVERAGE.
- * [NameVsTypeRecursionPropertyTest] covers the same cc #64/#71 edge cases but only ever
+ * [NameVsTypeRecursionPropertyTest] covers the same edge cases but only ever
  * calls [FunctionCall.isSelfCallOf] directly on a hand-built call/target pair; it never
  * builds a [FunctionDecl] with real descendant [FunctionCall]s, so `isRecursive`'s own
  * `findDescendants<FunctionCall>()` walk was never actually invoked. These tests close that
@@ -49,8 +49,8 @@ internal class RecursionDetectorTest {
 
     @Test
     fun `does not mistake a super delegation for recursion`() {
-        // cc #64 (Broadleaf): super.getSectionKey() dispatches to the superclass's own
-        // implementation, not a repeat of this method — exercised here via isRecursive(),
+        // Broadleaf: super.getSectionKey() dispatches to the superclass's own
+        // implementation, not a repeat of this method - exercised here via isRecursive(),
         // not isSelfCallOf() directly.
         val fn = decl("getSectionKey", "AdminUserManagementController", parameters = listOf(Parameter("pathVars", "Map")))
         val withSuperCall = fn.withBody(statement(call("getSectionKey", "super", argCount = 1)))
@@ -70,7 +70,7 @@ internal class RecursionDetectorTest {
 
     @Test
     fun `falls back to true without a symbol table even when a sibling overload would disambiguate it away`() {
-        // cc #64/#71 (Fineract): without a symbolTable the ambiguity guard can't run, so a
+        // Fineract: without a symbolTable the ambiguity guard can't run, so a
         // same-name, same-arity call is reported as recursive — matching isSelfCallOf's own
         // documented fallback behaviour.
         val fn = loanFunction(sameArityParams = true)

@@ -18,7 +18,7 @@ import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 
 /**
- * Canary properties for the testharnas campaign (cc #73). isMapTarget and
+ * Canary properties for the testharnas campaign. isMapTarget and
  * isNonRegexMatchesTarget both follow the same shape: check a declared type first, then
  * fall back to a name heuristic "for cases without type info". But neither actually
  * distinguishes "no type info" from "type info says no" — when the declared type is

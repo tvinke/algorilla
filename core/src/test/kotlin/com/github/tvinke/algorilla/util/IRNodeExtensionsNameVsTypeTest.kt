@@ -11,7 +11,7 @@ import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 
 /**
- * Canary properties for the testharnas campaign (cc #73). isCollectionLookup ran
+ * Canary properties for the testharnas campaign. isCollectionLookup ran
  * hasO1TargetName — a bare name heuristic ("cache"/"table"/"queue"/... suffixes) —
  * *before* ever consulting the resolved type (TypeEnvironment or the declared parameter/
  * variable type), unlike every other declared-type-vs-heuristic fix in this campaign,

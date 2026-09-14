@@ -145,7 +145,7 @@ internal class PrecisionRegressionTest : FullPipelineTestSupport() {
             assertNoFindings(
                 "unmemoized-recursion/negative/super-call-delegation.groovy",
                 "unmemoized-recursion",
-                "super.resolveKey() dispatches to the superclass, it does not repeat this method's call (cc #64)",
+                "super.resolveKey() dispatches to the superclass, it does not repeat this method's call",
             )
 
         @Test

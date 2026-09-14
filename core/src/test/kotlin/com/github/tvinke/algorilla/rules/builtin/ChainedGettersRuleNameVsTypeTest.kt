@@ -19,7 +19,7 @@ import io.kotest.matchers.collections.shouldHaveSize
 import org.junit.jupiter.api.Test
 
 /**
- * Canary property for the testharnas campaign (cc #73). isGetterPattern's
+ * Canary property for the testharnas campaign. isGetterPattern's
  * `getterPrefixes.any { call.name.startsWith(it, ignoreCase = true) }` has the same
  * missing word boundary already fixed in RedundantExpensiveCallRule's isGetterPattern:
  * "loader()"/"resolver()" (a method returning a Loader/Resolver utility, not a chainable

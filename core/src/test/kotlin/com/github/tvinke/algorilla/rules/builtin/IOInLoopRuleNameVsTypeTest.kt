@@ -18,7 +18,7 @@ import io.kotest.matchers.collections.shouldHaveSize
 import org.junit.jupiter.api.Test
 
 /**
- * Canary properties for the testharnas campaign (cc #73). matchesIOPattern's suffix-only
+ * Canary properties for the testharnas campaign. matchesIOPattern's suffix-only
  * branch (`t.endsWith(pattern)`) is deliberately chosen over `contains` specifically to
  * avoid "session" matching "sessionState" — the doc comment says so. But `endsWith` alone
  * has no boundary check either, just on the other side: "writer" also matches inside
@@ -59,7 +59,7 @@ internal class IOInLoopRuleNameVsTypeTest {
     }
 
     /**
-     * Documented finding (cc #73), not fixed here: isStreamCopyLoop matches the bare method
+     * Documented finding, not fixed here: isStreamCopyLoop matches the bare method
      * names "read"/"write" with no receiver-type confirmation, same category as
      * CardinalityExplosionRule.scanFlatMap's hardcoded "flatMap". A loop calling read()/write()
      * on two unrelated, non-stream receivers (e.g. an access-control check named

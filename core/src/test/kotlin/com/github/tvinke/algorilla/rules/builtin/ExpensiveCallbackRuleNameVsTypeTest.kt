@@ -17,7 +17,7 @@ import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 
 /**
- * Canary properties for the testharnas campaign (cc #73). isCompileCall here is the exact
+ * Canary properties for the testharnas campaign. isCompileCall here is the exact
  * same code as RepeatedRegexInLoopRule's — `qualifiedTarget?.contains("Pattern")` /
  * `contains("Regex")` matches anywhere in the receiver name, so a class like
  * DateTimePatternValidator.compile() (nothing to do with java.util.regex.Pattern) gets

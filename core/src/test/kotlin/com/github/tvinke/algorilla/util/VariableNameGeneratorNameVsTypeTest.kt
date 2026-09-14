@@ -4,7 +4,7 @@ import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 
 /**
- * Canary properties for the testharnas campaign (cc #73).
+ * Canary properties for the testharnas campaign.
  *
  * extractSimpleName's own "get" prefix check already has the word-boundary guard its
  * counterparts elsewhere in this campaign were missing (`withoutParens[3].isUpperCase()`)

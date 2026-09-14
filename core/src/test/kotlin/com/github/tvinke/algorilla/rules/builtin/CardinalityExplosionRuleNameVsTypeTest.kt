@@ -18,7 +18,7 @@ import io.kotest.matchers.collections.shouldHaveSize
 import org.junit.jupiter.api.Test
 
 /**
- * Canary properties for the testharnas campaign (cc #73). isPartitionedIteration's
+ * Canary properties for the testharnas campaign. isPartitionedIteration's
  * job is to tell "the inner loop iterates a per-element child collection of the outer
  * loop" (O(sum), suppress) apart from "two genuinely unrelated collections" (O(product),
  * keep flagging). Its de-pluralize-and-prefix-match check (`innerBase.startsWith(outerClean,
@@ -68,7 +68,7 @@ internal class CardinalityExplosionRuleNameVsTypeTest {
     }
 
     /**
-     * Documented finding (cc #73), not fixed here: classifyMutation treats any single-letter
+     * Documented finding, not fixed here: classifyMutation treats any single-letter
      * receiver name calling add() as a scalar accumulator (BigDecimal-style), never a
      * collection. A short-named List (`l.add(x)`, `r.add(x)`) in a genuine Cartesian nesting
      * is silently reclassified as SCALAR_ACCUMULATION and the whole group gets suppressed.
@@ -82,7 +82,7 @@ internal class CardinalityExplosionRuleNameVsTypeTest {
     }
 
     /**
-     * Documented finding (cc #73), not fixed here: scanFlatMap matches the bare method name
+     * Documented finding, not fixed here: scanFlatMap matches the bare method name
      * "flatMap" with no registry lookup and no receiver-type confirmation — the one hardcoded
      * name check in this file (the others already consult YAML-driven sets). A class with
      * its own unrelated flatMap() method would collide the same way a real Stream one does.

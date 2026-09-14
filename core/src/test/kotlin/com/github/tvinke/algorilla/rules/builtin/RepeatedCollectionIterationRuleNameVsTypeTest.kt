@@ -15,7 +15,7 @@ import io.kotest.matchers.collections.shouldHaveSize
 import org.junit.jupiter.api.Test
 
 /**
- * Canary property for the testharnas campaign (cc #73). checkStreamPipelines' pattern-A
+ * Canary property for the testharnas campaign. checkStreamPipelines' pattern-A
  * check (`it.first.name == "stream"`) is a bare, hardcoded, single-language method name,
  * even though this rule runs on every language. Documented finding, not fixed here:
  *

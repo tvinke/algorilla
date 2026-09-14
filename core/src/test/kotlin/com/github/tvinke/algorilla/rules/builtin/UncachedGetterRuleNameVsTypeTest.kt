@@ -17,7 +17,7 @@ import io.kotest.matchers.collections.shouldHaveSize
 import org.junit.jupiter.api.Test
 
 /**
- * Canary property for the testharnas campaign (cc #73). Same isGetterPattern bug as
+ * Canary property for the testharnas campaign. Same isGetterPattern bug as
  * ChainedGettersRule and RedundantExpensiveCallRule: "loader()"/"resolver()" start with
  * getter-prefixes "load"/"resolve" with no camelCase boundary and get misread as getter
  * calls, producing a false uncached-getter finding when called twice with the same

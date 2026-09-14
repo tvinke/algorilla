@@ -25,7 +25,7 @@ import org.junit.jupiter.api.Test
  * production code — and is reachable by mutation testing there.
  *
  * See `ChainedGettersRuleJavaTest` and `PrecisionRegressionTest` in `lang-java` for the
- * full-pipeline, real-Java-source version of the same cc #64 regression.
+ * full-pipeline, real-Java-source version of the same regression.
  */
 internal class ChainedGettersRuleTest {
     private val loc = SourceLocation("Fixture.java", 1, 1)
@@ -35,7 +35,7 @@ internal class ChainedGettersRuleTest {
     fun `does not chain two independent lookups merged into one call`() {
         // loanCycleNumber = getValue(); variations = getPrincipalVariationsForBorrowerCycle();
         // fetchLoanCycleDefaultValue(variations, loanCycleNumber) is a join of two independent
-        // producers, not a sequential chain (cc #64, the Fineract fan-in false positive).
+        // producers, not a sequential chain (the Fineract fan-in false positive).
         val loanCycleNumberDecl = varDecl("loanCycleNumber", call("getValue"))
         val variationsDecl = varDecl("variations", call("getPrincipalVariationsForBorrowerCycle"))
         val mergeCall = call("fetchLoanCycleDefaultValue", ref("variations"), ref("loanCycleNumber"))

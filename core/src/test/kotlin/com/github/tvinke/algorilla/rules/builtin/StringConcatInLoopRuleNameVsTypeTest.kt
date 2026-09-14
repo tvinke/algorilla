@@ -17,7 +17,7 @@ import io.kotest.matchers.collections.shouldHaveSize
 import org.junit.jupiter.api.Test
 
 /**
- * Canary property for the testharnas campaign (cc #73). isConcatCall's `call.name ==
+ * Canary property for the testharnas campaign. isConcatCall's `call.name ==
  * "concat"` is an exact match, not a boundary-vulnerable prefix/suffix/contains check, and
  * this rule already resolves the receiver's real type first (isNonStringReceiver) before
  * ever falling back to "type unknown, flag conservatively" - the correct order, unlike the

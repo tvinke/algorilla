@@ -5,7 +5,7 @@ import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 
 /**
- * Canary property for the testharnas campaign (cc #73), discovered as a side effect of
+ * Canary property for the testharnas campaign, discovered as a side effect of
  * the SemanticsYamlParser inline-comment fix: cleaning up java.yml's `Stream  # ...`
  * monadic-types entry to the plain "Stream" unmasked a second, pre-existing bug in
  * [LanguageSemanticsRegistry.isMonadicTarget] — it matched a monadic type name as a raw

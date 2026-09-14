@@ -9,7 +9,7 @@ import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 
 /**
- * Canary property for the testharnas campaign (cc #73). isBulkLoadCall's
+ * Canary property for the testharnas campaign. isBulkLoadCall's
  * `bulkLoadPrefixes.any { call.name.startsWith(it, ignoreCase = true) }` has the same
  * missing word boundary already fixed elsewhere this campaign: "findAllocation()" (a
  * single-entity fetch) starts with "findAll" with no real boundary and gets misread as a
