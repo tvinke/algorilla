@@ -16,6 +16,7 @@ import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
+import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import com.github.tvinke.algorilla.util.containsAnyAtWordBoundary
 import com.github.tvinke.algorilla.util.findDescendants
 import com.github.tvinke.algorilla.util.startsWithAtWordBoundary
@@ -38,7 +39,7 @@ public class FullScanForSingleLookupRule : Rule {
         for ((_, fileRoot) in context.irTrees) {
             val bulkLoadPrefixes = context.registry.bulkLoadPrefixes(fileRoot.language)
             val domTargets = context.registry.domTargetNames(fileRoot.language)
-            scanNode(fileRoot, bulkLoadPrefixes, domTargets, findings)
+            scanNode(fileRoot, bulkLoadPrefixes, domTargets, context, findings)
         }
         return findings
     }
@@ -47,23 +48,27 @@ public class FullScanForSingleLookupRule : Rule {
         node: IRNode,
         bulkLoadPrefixes: List<String>,
         domTargets: Set<String>,
+        context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
         if (node is FunctionDecl) {
-            checkFunction(node, bulkLoadPrefixes, domTargets, findings)
+            checkFunction(node, bulkLoadPrefixes, domTargets, context, findings)
         }
         for (child in node.children) {
-            scanNode(child, bulkLoadPrefixes, domTargets, findings)
+            scanNode(child, bulkLoadPrefixes, domTargets, context, findings)
         }
     }
 
+    @Suppress("LongParameterList") // Threading the AnalysisContext through for TypeEnvironment lookups
     private fun checkFunction(
         fn: FunctionDecl,
         bulkLoadPrefixes: List<String>,
         domTargets: Set<String>,
+        context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
-        val bulkCalls = fn.findDescendants<FunctionCall>().filter { isBulkLoadCall(it, bulkLoadPrefixes, domTargets) }
+        val typeEnv = context.typeEnvironmentFor(fn)
+        val bulkCalls = fn.findDescendants<FunctionCall>().filter { isBulkLoadCall(it, bulkLoadPrefixes, domTargets, typeEnv) }
         if (bulkCalls.isEmpty()) return
         val hasFilter =
             fn.findDescendants<LookupCall>().any { !it.isScalar } ||
@@ -112,12 +117,18 @@ internal fun isBulkLoadCall(
     call: FunctionCall,
     bulkLoadPrefixes: List<String>,
     domTargets: Set<String>,
+    typeEnv: TypeEnvironment? = null,
 ): Boolean {
     if (!bulkLoadPrefixes.any { startsWithAtWordBoundary(call.name, it) }) return false
     // Exclude DOM/test framework targets (e.g., wrapper.findAll in Vue test utils). Original
     // case for the boundary check - "dom"/"el" are short enough that "random"/"freedom"/
-    // "model"/"channel" all satisfied a bare contains with no boundary at all.
-    val target = call.qualifiedTarget
-    if (target != null && containsAnyAtWordBoundary(target, domTargets)) return false
+    // "model"/"channel" all satisfied a bare contains with no boundary at all. A receiver
+    // merely NAMED "wrapper"/"element" isn't necessarily one though - an OrderRepository
+    // field someone happened to call "wrapper" would be wrongly excluded here. When the
+    // declared type is known, check that instead of the bare variable name.
+    val target = call.qualifiedTarget ?: return true
+    val declaredType = typeEnv?.typeOf(target)?.simpleName
+    if (declaredType != null) return !containsAnyAtWordBoundary(declaredType, domTargets)
+    if (containsAnyAtWordBoundary(target, domTargets)) return false
     return true
 }

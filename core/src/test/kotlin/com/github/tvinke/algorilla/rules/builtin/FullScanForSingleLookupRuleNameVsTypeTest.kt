@@ -1,10 +1,13 @@
 package com.github.tvinke.algorilla.rules.builtin
 
 import com.github.tvinke.algorilla.model.FunctionCall
+import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.GenericNode
 import com.github.tvinke.algorilla.model.Language
+import com.github.tvinke.algorilla.model.Parameter
 import com.github.tvinke.algorilla.model.SourceLocation
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
+import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 
@@ -47,5 +50,40 @@ internal class FullScanForSingleLookupRuleNameVsTypeTest {
     fun `a genuine DOM wrapper target is still excluded`() {
         val call = FunctionCall("findAllOrders", "wrapper", emptyList(), loc, emptyList())
         isBulkLoadCall(call, bulkLoadPrefixes, domTargets) shouldBe false
+    }
+
+    /**
+     * "wrapper" is on the DOM-target exclusion list by name alone - but a field genuinely
+     * declared as a repository type just happens to be called "wrapper" here, and the
+     * exclusion should not apply once the real type is known.
+     */
+    @Test
+    fun `a repository field merely named like a DOM target is not excluded once its declared type is known`() {
+        val call = FunctionCall("findAllOrders", "wrapper", emptyList(), loc, emptyList())
+        val typeEnv = typeEnvFor("wrapper", "OrderRepository")
+        isBulkLoadCall(call, bulkLoadPrefixes, domTargets, typeEnv) shouldBe true
+    }
+
+    @Test
+    fun `a genuine DOM wrapper is still excluded once its declared type confirms it, even under a different name`() {
+        val call = FunctionCall("findAllOrders", "cmp", emptyList(), loc, emptyList())
+        val typeEnv = typeEnvFor("cmp", "Wrapper")
+        isBulkLoadCall(call, bulkLoadPrefixes, domTargets, typeEnv) shouldBe false
+    }
+
+    private fun typeEnvFor(
+        varName: String,
+        declaredType: String,
+    ): TypeEnvironment {
+        val fn =
+            FunctionDecl(
+                name = "handler",
+                qualifiedName = "Fixture.handler",
+                parameters = listOf(Parameter(varName, declaredType)),
+                declaringClass = "Fixture",
+                location = loc,
+                children = emptyList(),
+            )
+        return TypeEnvironment.build(fn, emptyMap(), Language.JAVA, registry)
     }
 }
