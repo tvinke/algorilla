@@ -18,6 +18,7 @@ import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.CrossMethodResolver
+import com.github.tvinke.algorilla.util.containsAtWordBoundary
 import com.github.tvinke.algorilla.util.findDescendants
 
 /**
@@ -273,11 +274,19 @@ public class ExpensiveSortComparatorRule : Rule {
     )
 }
 
+// ignoreCase = false: type names are case-sensitive PascalCase identifiers. Boundary-checked
+// (not just case-sensitive) so a class like "Dateline" isn't waved through by a bare "Date"
+// substring with no boundary at all - but this doesn't fully solve the same problem
+// isO1Type/isCollectionType had: "DateUtils"/"InstantSource" still match, since both have a
+// capitalized continuation right after the match, same ambiguity as "ResultSet"/"Set". Left
+// without a YAML exclusion list here (unlike LanguageSemanticsRegistry) since this rule's
+// blast radius is narrower - comparator cost estimation only, not every isCollection/isO1
+// caller - see ExpensiveSortComparatorRuleNameVsTypeTest for the documented gap.
 internal fun isDateType(
     typeName: String,
     language: Language,
     registry: LanguageSemanticsRegistry,
-): Boolean = registry.dateTypeNames(language).any { typeName.contains(it) }
+): Boolean = registry.dateTypeNames(language).any { containsAtWordBoundary(typeName, it, ignoreCase = false) }
 
 internal fun isDateParseCall(
     call: FunctionCall,
@@ -286,5 +295,5 @@ internal fun isDateParseCall(
 ): Boolean {
     if (call.name !in registry.dateParseMethods(language)) return false
     val target = call.qualifiedTarget ?: return false
-    return registry.dateParseTargets(language).any { target.contains(it) }
+    return registry.dateParseTargets(language).any { containsAtWordBoundary(target, it, ignoreCase = false) }
 }
