@@ -1,9 +1,12 @@
 package com.github.tvinke.algorilla.rules.builtin
 
 import com.github.tvinke.algorilla.model.FunctionCall
+import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.Language
+import com.github.tvinke.algorilla.model.Parameter
 import com.github.tvinke.algorilla.model.SourceLocation
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
+import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 
@@ -51,5 +54,42 @@ internal class ExpensiveSortComparatorRuleNameVsTypeTest {
     @Test
     fun `a utility class with a capitalized continuation right after the date type name is still misread (documented gap)`() {
         isDateType("DateUtils", Language.JAVA, registry) shouldBe true
+    }
+
+    /**
+     * A static factory call's qualifiedTarget is already the real type name (LocalDate.parse),
+     * nothing to check further. But an instance call's qualifiedTarget is a *variable* name -
+     * "myDateTimeFormatterHelper" still boundary-matches "DateTimeFormatter" by name, even
+     * though its declared type here is an unrelated formatter. With a TypeEnvironment
+     * available, the declared type wins.
+     */
+    @Test
+    fun `a variable named like a date-parse target but declared as something else is not flagged`() {
+        val call = FunctionCall("parse", "myDateTimeFormatterHelper", emptyList(), loc, emptyList())
+        val typeEnv = typeEnvFor("myDateTimeFormatterHelper", "CustomFormatter")
+        isDateParseCall(call, Language.JAVA, registry, typeEnv) shouldBe false
+    }
+
+    @Test
+    fun `a variable not named like a date-parse target but declared as SimpleDateFormat is still flagged`() {
+        val call = FunctionCall("parse", "fmt", emptyList(), loc, emptyList())
+        val typeEnv = typeEnvFor("fmt", "SimpleDateFormat")
+        isDateParseCall(call, Language.JAVA, registry, typeEnv) shouldBe true
+    }
+
+    private fun typeEnvFor(
+        varName: String,
+        declaredType: String,
+    ): TypeEnvironment {
+        val fn =
+            FunctionDecl(
+                name = "compare",
+                qualifiedName = "Fixture.compare",
+                parameters = listOf(Parameter(varName, declaredType)),
+                declaringClass = "Fixture",
+                location = loc,
+                children = emptyList(),
+            )
+        return TypeEnvironment.build(fn, emptyMap(), Language.JAVA, registry)
     }
 }
