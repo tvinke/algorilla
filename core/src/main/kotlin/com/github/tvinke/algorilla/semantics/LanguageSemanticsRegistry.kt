@@ -70,8 +70,12 @@ public class LanguageSemanticsRegistry private constructor(
 
     /**
      * Returns true if the given type name indicates an O(1) lookup type, in any language.
+     * Iterates the languages actually loaded into [maps] rather than [Language.entries] -
+     * this is on the hot path (once per lookup-shaped call site during parsing), and
+     * entries() includes TYPESCRIPT, which resolveLanguage() aliases to JAVASCRIPT, so
+     * iterating the full enum re-scanned the same candidate/exclusion sets twice.
      */
-    public fun isO1Type(typeName: String): Boolean = Language.entries.any { isO1Type(it, typeName) }
+    public fun isO1Type(typeName: String): Boolean = maps.o1.keys.any { isO1Type(it, typeName) }
 
     /**
      * Returns true if the given type name indicates an O(1) lookup type for the language.

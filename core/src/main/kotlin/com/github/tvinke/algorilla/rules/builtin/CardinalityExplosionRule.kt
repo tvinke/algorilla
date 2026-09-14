@@ -221,14 +221,11 @@ public class CardinalityExplosionRule : Rule {
         registry: LanguageSemanticsRegistry,
     ): Boolean {
         // Case 1: Map entry unpacking — outer is entrySet()/keySet(), inner accesses values.
-        // Reviewed, not changed: 3 of 4 map-value-accessors entries (".getValue()", ".values",
-        // ".value") are already self-anchored by their leading dot - containsAtWordBoundary
-        // would actually break them, since its leading-boundary check assumes the match
-        // starts with a letter (same reasoning as MethodClassification's ".stream()" checks,
-        // deliberately left as bare contains()). Only the bare "values" entry lacks that
-        // anchor, but innerVar here is always a dotted method-call/field-access chain from an
-        // entrySet()/keySet() iteration - the practical collision risk is low enough that
-        // special-casing just that one entry isn't worth the added complexity.
+        // Reviewed, not changed: 3 of 4 map-value-accessors entries are dot-anchored
+        // (".getValue()"/".values"/".value") and containsAtWordBoundary would break those -
+        // same reasoning as MethodClassification's ".stream()" checks. The bare "values"
+        // entry lacks that anchor, but the collision risk is low here given innerVar is
+        // always a dotted chain from an entrySet()/keySet() iteration.
         val outerIsEntrySet = outerVar.endsWith(".entrySet()") || outerVar.endsWith(".keySet()")
         if (outerIsEntrySet && registry.mapValueAccessors(language).any { innerVar.contains(it) }) return true
 

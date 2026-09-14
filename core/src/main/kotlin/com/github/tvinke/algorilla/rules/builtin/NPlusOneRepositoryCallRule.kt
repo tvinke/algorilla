@@ -228,10 +228,10 @@ private fun isSingleRecordFetch(
     // coincidental substring (reportGenerator, storefront). The cache/memo exclusion just
     // below used to lowercase first too - "carpool"/"whirlpool" satisfied "pool" with no
     // boundary at all.
-    val originalTarget = call.qualifiedTarget
+    val target = call.qualifiedTarget
 
     // Exclude cache/memo targets before applying repo patterns
-    if (originalTarget != null && registry.nonRepositoryTargets(language).any { containsAtWordBoundary(originalTarget, it) }) {
+    if (target != null && registry.nonRepositoryTargets(language).any { containsAtWordBoundary(target, it) }) {
         return false
     }
     // Spring Data findFirst<N>By / findTop<N>By fetches a fixed-size batch, not a single record
@@ -241,7 +241,7 @@ private fun isSingleRecordFetch(
     // Exact prefix matches (highest confidence)
     val matchesPrefixes = registry.singleFetchPrefixes(language).any { name.startsWith(it, ignoreCase = true) }
     if (matchesPrefixes) {
-        if (originalTarget == null || repoPatterns.any { containsAtWordBoundary(originalTarget, it) }) return true
+        if (target == null || repoPatterns.any { containsAtWordBoundary(target, it) }) return true
     }
     // Widened pattern: any findByX/getByX on a repository-like target
     if (SINGLE_FETCH_METHOD_REGEX.matches(name)) {
@@ -256,7 +256,7 @@ private fun isSingleRecordFetch(
             return false
         }
         // For widened pattern, require a repository-like target to reduce FPs
-        if (originalTarget != null && repoPatterns.any { containsAtWordBoundary(originalTarget, it) }) return true
+        if (target != null && repoPatterns.any { containsAtWordBoundary(target, it) }) return true
     }
     return false
 }

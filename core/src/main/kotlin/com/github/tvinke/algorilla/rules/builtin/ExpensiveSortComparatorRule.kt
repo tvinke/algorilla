@@ -274,14 +274,11 @@ public class ExpensiveSortComparatorRule : Rule {
     )
 }
 
-// ignoreCase = false: type names are case-sensitive PascalCase identifiers. Boundary-checked
-// (not just case-sensitive) so a class like "Dateline" isn't waved through by a bare "Date"
-// substring with no boundary at all - but this doesn't fully solve the same problem
-// isO1Type/isCollectionType had: "DateUtils"/"InstantSource" still match, since both have a
-// capitalized continuation right after the match, same ambiguity as "ResultSet"/"Set". Left
-// without a YAML exclusion list here (unlike LanguageSemanticsRegistry) since this rule's
-// blast radius is narrower - comparator cost estimation only, not every isCollection/isO1
-// caller - see ExpensiveSortComparatorRuleNameVsTypeTest for the documented gap.
+// ignoreCase = false: type names are case-sensitive. Same boundary-ambiguity as
+// LanguageSemanticsRegistry.matchesTypeName ("DateUtils"/"InstantSource" still match, see
+// its doc) - not given a YAML exclusion list here since this rule's blast radius is
+// narrower (comparator cost estimation only); see ExpensiveSortComparatorRuleNameVsTypeTest
+// for the documented gap.
 internal fun isDateType(
     typeName: String,
     language: Language,

@@ -281,16 +281,8 @@ o1-types:
   - EnumMap
   - ArrayDeque
 
-# Real types whose name happens to contain a collection-types entry at a camelCase
-# boundary without actually being that kind of collection. Empty for Kotlin: its
-# collection-types list uses "Sequence", not "Stream", so the java.io.*Stream collision
-# that affects Java/Groovy doesn't apply here.
-non-collection-type-names:
-
-# Real types whose name happens to contain an o1-types entry at a camelCase boundary
-# without actually being that kind of O(1) type (java.sql.ResultSet contains "Set" but
-# is a cursor, not a java.util.Set; android.graphics.Bitmap contains "Map" but is an
-# image buffer, not a java.util.Map) - applies to Kotlin too via JVM interop.
+# Same JVM-collision list as java.yml's non-o1-type-names (see there for why) - applies
+# to Kotlin too via JVM interop.
 non-o1-type-names:
   - ResultSet
   - resultSet
