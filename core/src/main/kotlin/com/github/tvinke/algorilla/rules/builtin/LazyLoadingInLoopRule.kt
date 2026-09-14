@@ -15,6 +15,7 @@ import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
+import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import com.github.tvinke.algorilla.util.containsAnyAtWordBoundary
 import com.github.tvinke.algorilla.util.findDescendants
 import com.github.tvinke.algorilla.util.startsWithAtWordBoundary
@@ -67,7 +68,8 @@ public class LazyLoadingInLoopRule : Rule {
         findings: MutableList<Finding>,
     ) {
         // Step 1: find variables assigned from repository-like fetches
-        val entityVars = findEntityVariables(fn, repoPatterns, fetchPrefixes)
+        val typeEnv = context.typeEnvironmentFor(fn)
+        val entityVars = findEntityVariables(fn, repoPatterns, fetchPrefixes, typeEnv)
         if (entityVars.isEmpty()) return
 
         // Step 2: find loops and check for collection-getter calls on entity variables
@@ -93,24 +95,37 @@ public class LazyLoadingInLoopRule : Rule {
         fn: FunctionDecl,
         repoPatterns: Set<String>,
         fetchPrefixes: List<String>,
+        typeEnv: TypeEnvironment?,
     ): Set<String> {
         val vars = mutableSetOf<String>()
         for (varDecl in fn.findDescendants<VariableDecl>()) {
             val initCalls = varDecl.findDescendants<FunctionCall>()
-            if (initCalls.any { isRepositoryFetch(it, repoPatterns, fetchPrefixes) }) {
+            if (initCalls.any { isRepositoryFetch(it, repoPatterns, fetchPrefixes, typeEnv) }) {
                 vars.add(varDecl.name)
             }
         }
         return vars
     }
 
+    // Real repository/DAO/service classes are conventionally named to match repoPatterns
+    // themselves (OrderRepository, UserDao, PaymentService), so checking the receiver's
+    // declared type against the same set is a stronger version of the same signal, not a
+    // different one. A local variable merely NAMED "orderRepository" but declared as
+    // something unrelated (a mock, a DTO holder) would otherwise pass this check just by name.
     private fun isRepositoryFetch(
         call: FunctionCall,
         repoPatterns: Set<String>,
         fetchPrefixes: List<String>,
+        typeEnv: TypeEnvironment?,
     ): Boolean {
         val target = call.qualifiedTarget ?: return false
-        val isRepoTarget = containsAnyAtWordBoundary(target, repoPatterns)
+        val declaredType = typeEnv?.typeOf(target)?.simpleName
+        val isRepoTarget =
+            if (declaredType != null) {
+                containsAnyAtWordBoundary(declaredType, repoPatterns)
+            } else {
+                containsAnyAtWordBoundary(target, repoPatterns)
+            }
         if (!isRepoTarget) return false
         return fetchPrefixes.any { startsWithAtWordBoundary(call.name, it) }
     }

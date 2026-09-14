@@ -9,10 +9,14 @@ import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LoopKind
 import com.github.tvinke.algorilla.model.LoopNode
+import com.github.tvinke.algorilla.model.Parameter
 import com.github.tvinke.algorilla.model.SourceLocation
 import com.github.tvinke.algorilla.model.VariableDecl
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Finding
+import com.github.tvinke.algorilla.rules.signatureKey
+import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
+import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import org.junit.jupiter.api.Test
@@ -92,6 +96,53 @@ internal class LazyLoadingInLoopRuleNameVsTypeTest {
     @Test
     fun `a genuine store-based repository target is still recognized`() {
         findingsFor(fetchMethod = "findAllOrders", getterMethod = "getOrders", fetchTarget = "orderStore") shouldHaveSize 1
+    }
+
+    /**
+     * "orderRepository" matches the repository name pattern, but its declared type here is
+     * an unrelated mock/factory class - once a TypeEnvironment is available, the declared
+     * type wins and the fetch is no longer treated as a repository call.
+     */
+    @Test
+    fun `a variable merely named like a repository but declared as something else does not establish an entity variable`() {
+        findingsForWithDeclaredType(fetchTarget = "orderRepository", declaredType = "MockDataFactory").shouldBeEmpty()
+    }
+
+    @Test
+    fun `a variable not named like a repository but declared as one is still recognized`() {
+        findingsForWithDeclaredType(fetchTarget = "ds", declaredType = "OrderRepository") shouldHaveSize 1
+    }
+
+    private fun findingsForWithDeclaredType(
+        fetchTarget: String,
+        declaredType: String,
+    ): List<Finding> {
+        val fetchCall = FunctionCall("findAllOrders", fetchTarget, emptyList(), loc, emptyList())
+        val entityVar = VariableDecl("orders", null, initializer = fetchCall, location = loc, children = listOf(fetchCall))
+        val getterCall = FunctionCall("getOrders", "element", emptyList(), loc, emptyList())
+        val loop = LoopNode(kind = LoopKind.FOR_EACH, iteratedVariable = "orders", location = loc, children = listOf(getterCall))
+        val fn =
+            FunctionDecl(
+                name = "process",
+                qualifiedName = "Fixture.process",
+                parameters = listOf(Parameter(fetchTarget, declaredType)),
+                declaringClass = "Fixture",
+                location = loc,
+                children = listOf(entityVar, loop),
+            )
+        val registry = LanguageSemanticsRegistry.DEFAULT
+        val typeEnv = TypeEnvironment.build(fn, emptyMap(), Language.JAVA, registry)
+        val fileRoot = FileRoot(filePath = "Fixture.java", language = Language.JAVA, location = loc, children = listOf(fn))
+        val context =
+            AnalysisContext(
+                irTrees = mapOf("Fixture.java" to fileRoot),
+                symbolTable = SymbolTable(),
+                callGraph = CallGraph(),
+                config = AnalysisConfig(),
+                registry = registry,
+                typeEnvironments = mapOf(signatureKey(fn) to typeEnv),
+            )
+        return rule.evaluate(context)
     }
 
     private fun findingsFor(
