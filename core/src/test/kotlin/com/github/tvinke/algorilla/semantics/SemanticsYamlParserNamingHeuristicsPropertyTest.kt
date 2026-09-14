@@ -2,10 +2,6 @@ package com.github.tvinke.algorilla.semantics
 
 import io.kotest.matchers.maps.shouldContainKey
 import io.kotest.matchers.shouldBe
-import io.kotest.property.Arb
-import io.kotest.property.arbitrary.of
-import io.kotest.property.forAll
-import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 
 /**
@@ -37,10 +33,8 @@ internal class SemanticsYamlParserNamingHeuristicsPropertyTest {
 
     @Test
     fun `a trailing inline comment does not leak into the parsed list value`() {
-        runBlocking {
-            forAll(Arb.of(realWorldInlineCommentLines)) { (line, expected) ->
-                collectListItems(listOf(line)) == setOf(expected)
-            }
+        realWorldInlineCommentLines.forEach { (line, expected) ->
+            collectListItems(listOf(line)) shouldBe setOf(expected)
         }
     }
 
@@ -62,11 +56,9 @@ internal class SemanticsYamlParserNamingHeuristicsPropertyTest {
 
     @Test
     fun `double and single quoted items round-trip to their unquoted content`() {
-        runBlocking {
-            forAll(Arb.of(plainWords)) { word ->
-                collectListItems(listOf("  - \"$word\"")) == setOf(word) &&
-                    collectListItems(listOf("  - '$word'")) == setOf(word)
-            }
+        plainWords.forEach { word ->
+            collectListItems(listOf("  - \"$word\"")) shouldBe setOf(word)
+            collectListItems(listOf("  - '$word'")) shouldBe setOf(word)
         }
     }
 
@@ -76,14 +68,13 @@ internal class SemanticsYamlParserNamingHeuristicsPropertyTest {
 
     @Test
     fun `an indented line ending in a colon is content, never a new section header`() {
-        runBlocking {
-            forAll(Arb.of(indentedColonLines)) { line ->
-                val yaml = "methods:\n$line\n  get: { semantics: lookup }\n"
-                val sections = splitSections(yaml)
-                // Still exactly one section ("methods") - the indented "...:" line joined
-                // its contents instead of starting a section of its own.
-                sections.keys == setOf("methods") && sections["methods"]!!.contains(line.trimEnd())
-            }
+        indentedColonLines.forEach { line ->
+            val yaml = "methods:\n$line\n  get: { semantics: lookup }\n"
+            val sections = splitSections(yaml)
+            // Still exactly one section ("methods") - the indented "...:" line joined
+            // its contents instead of starting a section of its own.
+            sections.keys shouldBe setOf("methods")
+            sections["methods"]!!.contains(line.trimEnd()) shouldBe true
         }
     }
 

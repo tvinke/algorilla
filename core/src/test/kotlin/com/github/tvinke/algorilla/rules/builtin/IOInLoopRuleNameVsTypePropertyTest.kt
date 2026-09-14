@@ -15,10 +15,6 @@ import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
-import io.kotest.property.Arb
-import io.kotest.property.arbitrary.of
-import io.kotest.property.forAll
-import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 
 /**
@@ -46,10 +42,8 @@ internal class IOInLoopRuleNameVsTypePropertyTest {
 
     @Test
     fun `a domain word that merely ends with an IO suffix is not treated as an IO target`() {
-        runBlocking {
-            forAll(Arb.of(unrelatedSuffixCollisions)) { (target, methodName) ->
-                findingsFor(target, methodName).isEmpty()
-            }
+        unrelatedSuffixCollisions.forEach { (target, methodName) ->
+            findingsFor(target, methodName).shouldBeEmpty()
         }
     }
 

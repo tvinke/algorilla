@@ -8,10 +8,6 @@ import com.github.tvinke.algorilla.model.SourceLocation
 import com.github.tvinke.algorilla.model.TypeSource
 import com.github.tvinke.algorilla.model.VariableDecl
 import io.kotest.matchers.shouldBe
-import io.kotest.property.Arb
-import io.kotest.property.arbitrary.of
-import io.kotest.property.forAll
-import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 
 /**
@@ -76,21 +72,19 @@ internal class TypeEnvironmentNameVsTypePropertyTest {
      */
     @Test
     fun `name-heuristic types are not trusted as proof of collection-ness, like isO1 already requires`() {
-        runBlocking {
-            forAll(Arb.of(nameHeuristicCases)) { case ->
-                val env =
-                    TypeEnvironment.build(
-                        fn(listOf(varDecl("target", listOf(functionCall(case.methodName))))),
-                        emptyMap(),
-                        Language.JAVA,
-                        registry,
-                    )
-                val type = env.typeOf("target")!!
-                type.source == TypeSource.NAME_HEURISTIC &&
-                    type.simpleName == case.expectedSimpleName &&
-                    !env.isCollection("target") &&
-                    !env.isList("target")
-            }
+        nameHeuristicCases.forEach { case ->
+            val env =
+                TypeEnvironment.build(
+                    fn(listOf(varDecl("target", listOf(functionCall(case.methodName))))),
+                    emptyMap(),
+                    Language.JAVA,
+                    registry,
+                )
+            val type = env.typeOf("target")!!
+            type.source shouldBe TypeSource.NAME_HEURISTIC
+            type.simpleName shouldBe case.expectedSimpleName
+            env.isCollection("target") shouldBe false
+            env.isList("target") shouldBe false
         }
     }
 
@@ -116,25 +110,23 @@ internal class TypeEnvironmentNameVsTypePropertyTest {
      */
     @Test
     fun `cross-file suffix fallback stays silent when two classes share a method name, whoever they are`() {
-        runBlocking {
-            forAll(Arb.of(crossFileAmbiguityCases)) { case ->
-                val context =
-                    TypeContext(
-                        globalMethodReturnTypes =
-                            mapOf(
-                                "${case.first}.${case.methodName}" to "List",
-                                "${case.second}.${case.methodName}" to "Set",
-                            ),
-                    )
-                val env =
-                    TypeEnvironment.build(
-                        fn(listOf(varDecl("items", listOf(functionCall(case.methodName))))),
-                        context,
-                        Language.JAVA,
-                        registry,
-                    )
-                env.typeOf("items") == null
-            }
+        crossFileAmbiguityCases.forEach { case ->
+            val context =
+                TypeContext(
+                    globalMethodReturnTypes =
+                        mapOf(
+                            "${case.first}.${case.methodName}" to "List",
+                            "${case.second}.${case.methodName}" to "Set",
+                        ),
+                )
+            val env =
+                TypeEnvironment.build(
+                    fn(listOf(varDecl("items", listOf(functionCall(case.methodName))))),
+                    context,
+                    Language.JAVA,
+                    registry,
+                )
+            env.typeOf("items") shouldBe null
         }
     }
 

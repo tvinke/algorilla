@@ -1,10 +1,6 @@
 package com.github.tvinke.algorilla.util
 
 import io.kotest.matchers.shouldBe
-import io.kotest.property.Arb
-import io.kotest.property.arbitrary.of
-import io.kotest.property.forAll
-import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 
 /**
@@ -34,10 +30,8 @@ internal class VariableNameGeneratorNameVsTypePropertyTest {
 
     @Test
     fun `a real camelCase getter still strips the get prefix`() {
-        runBlocking {
-            forAll(Arb.of(genuineGetters)) { (expression, expected) ->
-                VariableNameGenerator.extractSimpleName(expression) == expected
-            }
+        genuineGetters.forEach { (expression, expected) ->
+            VariableNameGenerator.extractSimpleName(expression) shouldBe expected
         }
     }
 
@@ -49,10 +43,8 @@ internal class VariableNameGeneratorNameVsTypePropertyTest {
 
     @Test
     fun `a domain method that merely starts with 'get' keeps its full name`() {
-        runBlocking {
-            forAll(Arb.of(nonGetterWordsStartingWithGet)) { (expression, expected) ->
-                VariableNameGenerator.extractSimpleName(expression) == expected
-            }
+        nonGetterWordsStartingWithGet.forEach { (expression, expected) ->
+            VariableNameGenerator.extractSimpleName(expression) shouldBe expected
         }
     }
 

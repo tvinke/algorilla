@@ -12,10 +12,7 @@ import com.github.tvinke.algorilla.model.SourceLocation
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Finding
 import io.kotest.matchers.collections.shouldBeEmpty
-import io.kotest.property.Arb
-import io.kotest.property.arbitrary.of
-import io.kotest.property.forAll
-import kotlinx.coroutines.runBlocking
+import io.kotest.matchers.collections.shouldHaveSize
 import org.junit.jupiter.api.Test
 
 /**
@@ -41,10 +38,8 @@ internal class RedundantExpensiveCallRuleNamingHeuristicsPropertyTest {
 
     @Test
     fun `a getter that merely starts with 'read' or 'next' without a real word boundary is still flagged as redundant`() {
-        runBlocking {
-            forAll(Arb.of(readNextBoundaryCollisions)) { name ->
-                evaluateTwoIdenticalCalls(name).size == 1
-            }
+        readNextBoundaryCollisions.forEach { name ->
+            evaluateTwoIdenticalCalls(name) shouldHaveSize 1
         }
     }
 
@@ -52,10 +47,8 @@ internal class RedundantExpensiveCallRuleNamingHeuristicsPropertyTest {
 
     @Test
     fun `a genuine readXxx or nextXxx call is still excluded from redundant-call detection`() {
-        runBlocking {
-            forAll(Arb.of(genuineReadNextPrefixMatches)) { name ->
-                evaluateTwoIdenticalCalls(name).isEmpty()
-            }
+        genuineReadNextPrefixMatches.forEach { name ->
+            evaluateTwoIdenticalCalls(name).shouldBeEmpty()
         }
     }
 
@@ -70,13 +63,11 @@ internal class RedundantExpensiveCallRuleNamingHeuristicsPropertyTest {
 
     @Test
     fun `type-check and getter prefixes require a real word boundary, not just a string prefix`() {
-        runBlocking {
-            forAll(Arb.of(typeCheckWordBoundaryNonMatches)) { name ->
-                // None of these are type-check/getter patterns ("is"+"land" isn't isLand,
-                // "has"+"tily" isn't hasTily) - two identical calls must still be flagged
-                // at the MIN_DUPLICATES threshold, not silently skipped as accessors.
-                evaluateTwoIdenticalCalls(name).size == 1
-            }
+        // None of these are type-check/getter patterns ("is"+"land" isn't isLand,
+        // "has"+"tily" isn't hasTily) - two identical calls must still be flagged
+        // at the MIN_DUPLICATES threshold, not silently skipped as accessors.
+        typeCheckWordBoundaryNonMatches.forEach { name ->
+            evaluateTwoIdenticalCalls(name) shouldHaveSize 1
         }
     }
 

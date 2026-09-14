@@ -8,10 +8,6 @@ import com.github.tvinke.algorilla.model.Parameter
 import com.github.tvinke.algorilla.model.SourceLocation
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import io.kotest.matchers.shouldBe
-import io.kotest.property.Arb
-import io.kotest.property.arbitrary.of
-import io.kotest.property.forAll
-import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 
 /**
@@ -39,10 +35,8 @@ internal class IRNodeExtensionsNameVsTypePropertyTest {
 
     @Test
     fun `a declared List whose name coincidentally suggests a Map is still a real collection lookup`() {
-        runBlocking {
-            forAll(Arb.of(nameSuffixCollisions)) { (varName, declaredType) ->
-                lookupFor(varName).isCollectionLookup(fnWith(varName, declaredType), null, Language.JAVA, registry)
-            }
+        nameSuffixCollisions.forEach { (varName, declaredType) ->
+            lookupFor(varName).isCollectionLookup(fnWith(varName, declaredType), null, Language.JAVA, registry) shouldBe true
         }
     }
 

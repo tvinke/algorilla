@@ -15,10 +15,6 @@ import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
-import io.kotest.property.Arb
-import io.kotest.property.arbitrary.of
-import io.kotest.property.forAll
-import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 
 /**
@@ -51,10 +47,8 @@ internal class CardinalityExplosionRuleNameVsTypePropertyTest {
 
     @Test
     fun `an unrelated variable sharing only a text prefix with the outer element is still a Cartesian product`() {
-        runBlocking {
-            forAll(Arb.of(unrelatedPrefixCollisions)) { case ->
-                nestedLoopFindings(case.outerVar, case.innerVar).size == 1
-            }
+        unrelatedPrefixCollisions.forEach { case ->
+            nestedLoopFindings(case.outerVar, case.innerVar) shouldHaveSize 1
         }
     }
 

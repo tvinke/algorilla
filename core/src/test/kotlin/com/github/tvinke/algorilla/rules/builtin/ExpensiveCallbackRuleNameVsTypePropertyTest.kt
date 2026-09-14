@@ -13,10 +13,7 @@ import com.github.tvinke.algorilla.model.SourceLocation
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Finding
 import io.kotest.matchers.collections.shouldHaveSize
-import io.kotest.property.Arb
-import io.kotest.property.arbitrary.of
-import io.kotest.property.forAll
-import kotlinx.coroutines.runBlocking
+import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 
 /**
@@ -40,10 +37,8 @@ internal class ExpensiveCallbackRuleNameVsTypePropertyTest {
 
     @Test
     fun `a class whose name merely contains 'Pattern' or 'Regex' does not trigger a false regex-compile finding`() {
-        runBlocking {
-            forAll(Arb.of(unrelatedClassesContainingRegexWords)) { target ->
-                findingsFor(target).none { it.message.contains("Regex compilation", ignoreCase = true) }
-            }
+        unrelatedClassesContainingRegexWords.forEach { target ->
+            findingsFor(target).none { it.message.contains("Regex compilation", ignoreCase = true) } shouldBe true
         }
     }
 

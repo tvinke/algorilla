@@ -15,10 +15,6 @@ import com.github.tvinke.algorilla.model.SourceLocation
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
-import io.kotest.property.Arb
-import io.kotest.property.arbitrary.of
-import io.kotest.property.forAll
-import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 
 /**
@@ -54,11 +50,9 @@ internal class RegexRecompilationInLoopRuleNameVsTypePropertyTest {
 
     @Test
     fun `a String or List whose name coincidentally ends in a Map suffix still gets flagged`() {
-        runBlocking {
-            forAll(Arb.of(mapNameCollisionCases)) { case ->
-                val findings = evaluateReplaceAllInLoop(case.varName, case.declaredType)
-                findings.size == 1
-            }
+        mapNameCollisionCases.forEach { case ->
+            val findings = evaluateReplaceAllInLoop(case.varName, case.declaredType)
+            findings.size shouldBe 1
         }
     }
 
@@ -99,11 +93,9 @@ internal class RegexRecompilationInLoopRuleNameVsTypePropertyTest {
 
     @Test
     fun `a String whose name coincidentally contains 'matcher' or 'predicate' still gets flagged`() {
-        runBlocking {
-            forAll(Arb.of(matchesNameCollisionCases)) { case ->
-                val findings = evaluateMatchesInLoop(case.varName, case.declaredType)
-                findings.size == 1
-            }
+        matchesNameCollisionCases.forEach { case ->
+            val findings = evaluateMatchesInLoop(case.varName, case.declaredType)
+            findings.size shouldBe 1
         }
     }
 
@@ -125,21 +117,15 @@ internal class RegexRecompilationInLoopRuleNameVsTypePropertyTest {
 
     @Test
     fun `split fast-path applies for any single non-metachar regardless of quote style`() {
-        runBlocking {
-            forAll(Arb.of(quoteStyles)) { quote ->
-                val findings = evaluateSplitInLoop(quotedLiteral("_", quote))
-                findings.isEmpty()
-            }
+        quoteStyles.forEach { quote ->
+            evaluateSplitInLoop(quotedLiteral("_", quote)).shouldBeEmpty()
         }
     }
 
     @Test
     fun `split still flags a single metacharacter regardless of quote style`() {
-        runBlocking {
-            forAll(Arb.of(quoteStyles)) { quote ->
-                val findings = evaluateSplitInLoop(quotedLiteral(".", quote))
-                findings.size == 1
-            }
+        quoteStyles.forEach { quote ->
+            evaluateSplitInLoop(quotedLiteral(".", quote)).size shouldBe 1
         }
     }
 
