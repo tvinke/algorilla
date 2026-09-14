@@ -26,6 +26,7 @@ import com.github.tvinke.algorilla.util.demoteIfAmbiguous
 import com.github.tvinke.algorilla.util.findDescendants
 import com.github.tvinke.algorilla.util.isRecursive
 import com.github.tvinke.algorilla.util.startsWithAtWordBoundary
+import com.github.tvinke.algorilla.util.worstOf
 
 /**
  * Detects loops hidden behind method calls: when a loop calls a method that internally
@@ -114,16 +115,22 @@ public class HiddenNestedLoopRule : Rule {
         if (loopStack.all { it.isConstantBound }) return
 
         // Flow-based confidence: if a parameter flows through this call into a loop
-        // in the callee, we have proof the nested iteration is on caller data
-        val flowConfirmed =
-            callerFn != null &&
-                ParameterFlowQuery.parameterFlowsThrough(
-                    call,
-                    callerFn,
-                    context.symbolTable,
-                ) { it is FlowTarget.LoopIteration } != null
+        // in the callee, we have proof the nested iteration is on caller data. The flow
+        // chain can itself cross an ambiguous overload guess at a hop deeper than `call`
+        // (parameterFlowsThrough follows further calls up to its own maxDepth) - folding its
+        // resolutionConfidence in via worstOf means a guess two hops into the flow still
+        // gets caught, not just an ambiguous `call` itself.
+        val flowEvidence =
+            callerFn?.let {
+                ParameterFlowQuery.parameterFlowsThrough(call, it, context.symbolTable) { target ->
+                    target is FlowTarget.LoopIteration
+                }
+            }
+        val flowConfirmed = flowEvidence != null
+        val overallConfidence =
+            flowEvidence?.let { worstOf(resolutionConfidence, it.resolutionConfidence) } ?: resolutionConfidence
 
-        findings.add(buildFinding(call, resolved, hiddenLoop, loopStack, flowConfirmed, resolutionConfidence))
+        findings.add(buildFinding(call, resolved, hiddenLoop, loopStack, flowConfirmed, overallConfidence))
     }
 
     private fun buildFinding(

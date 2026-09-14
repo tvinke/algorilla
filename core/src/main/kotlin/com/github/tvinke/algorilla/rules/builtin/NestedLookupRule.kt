@@ -23,7 +23,6 @@ import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import com.github.tvinke.algorilla.util.CrossMethodResolver
 import com.github.tvinke.algorilla.util.ResolutionConfidence
-import com.github.tvinke.algorilla.util.ResolutionResult
 import com.github.tvinke.algorilla.util.declOrNull
 import com.github.tvinke.algorilla.util.demoteIfAmbiguous
 import com.github.tvinke.algorilla.util.findDescendants
@@ -108,19 +107,15 @@ public class NestedLookupRule : Rule {
         if (isTreeWalkCall(node, enclosingFn, iterationStack, language, context.symbolTable)) return
 
         val maxDepth = context.config.maxCallDepth.coerceAtMost(2)
-        val hiddenLookup =
-            CrossMethodResolver.resolveAndFind<LookupCall>(
+        val hiddenLookupMatch =
+            CrossMethodResolver.resolveAndFindWithConfidence<LookupCall>(
                 node,
                 context.symbolTable,
                 maxDepth = maxDepth,
                 language = language,
             ) { it.isCollectionLookup(null, null, language, context.registry) }
-        if (hiddenLookup != null) {
-            // resolveAndFind above may have followed a chain of calls to find hiddenLookup;
-            // this direct resolve() of node is only to read the confidence of that first hop -
-            // was node itself an unambiguous resolution, or an arbitrary overload guess.
-            val resolutionConfidence =
-                (CrossMethodResolver.resolve(node, context.symbolTable, language) as? ResolutionResult.Resolved)?.confidence
+        if (hiddenLookupMatch != null) {
+            val (hiddenLookup, resolutionConfidence) = hiddenLookupMatch
             val confidence = crossMethodConfidence(node, hiddenLookup, iterationStack, enclosingFn, resolutionConfidence)
             findings.add(buildCrossMethodFinding(node, hiddenLookup, iterationStack, confidence))
         }
@@ -128,19 +123,20 @@ public class NestedLookupRule : Rule {
 
     /**
      * Determines confidence for a cross-method nested lookup, then floors it to LOW via
-     * [demoteIfAmbiguous] when [resolutionConfidence] shows the call itself was resolved by an
-     * arbitrary overload guess - the hidden lookup found through it might belong to the wrong
-     * function entirely.
+     * [demoteIfAmbiguous] when [resolutionConfidence] shows any hop of the chain that found
+     * [hiddenLookup] - not just the outermost call - was resolved by an arbitrary overload
+     * guess. The hidden lookup found through an ambiguous hop might belong to the wrong
+     * function entirely, however deep that hop was.
      */
     private fun crossMethodConfidence(
         call: FunctionCall,
         hiddenLookup: LookupCall,
         iterationStack: List<IRNode>,
         enclosingFn: FunctionDecl?,
-        resolutionConfidence: ResolutionConfidence?,
+        resolutionConfidence: ResolutionConfidence,
     ): Confidence {
         val signalConfidence = signalBasedConfidence(call, hiddenLookup, iterationStack, enclosingFn)
-        return resolutionConfidence?.demoteIfAmbiguous(signalConfidence) ?: signalConfidence
+        return resolutionConfidence.demoteIfAmbiguous(signalConfidence)
     }
 
     /**

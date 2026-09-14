@@ -4,16 +4,23 @@ import com.github.tvinke.algorilla.graph.SymbolTable
 import com.github.tvinke.algorilla.model.FlowTarget
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
+import com.github.tvinke.algorilla.model.ParameterFlow
 import com.github.tvinke.algorilla.model.SourceLocation
 
 /**
  * Evidence that a parameter flows through a call chain into an operation
  * matching a predicate. Used by rules to build cross-method evidence chains.
+ *
+ * [resolutionConfidence] is the worst (most ambiguous) [ResolutionConfidence] seen while
+ * resolving any hop of [steps] - a caller that only checks the confidence of its own direct
+ * [CrossMethodResolver.resolve] call on the outermost call would miss an ambiguous overload
+ * guess introduced two or more hops into the chain.
  */
 public data class FlowEvidence(
     val paramName: String,
     val steps: List<FlowStep>,
     val terminal: FlowTarget,
+    val resolutionConfidence: ResolutionConfidence,
 )
 
 /**
@@ -44,9 +51,10 @@ public object ParameterFlowQuery {
      * Guarantee: [call] must resolve to a [ResolutionResult.Resolved] via
      * [CrossMethodResolver.resolve] to be followed at all - an unresolved callee (dynamic
      * dispatch, external library call) returns null rather than guessing at the callee's
-     * behavior. The resolution confidence itself isn't consulted here - even an
-     * [ResolutionConfidence.AMBIGUOUS_OVERLOAD_BEST_GUESS] match is followed, same as before
-     * this distinction existed.
+     * behavior. Unlike before, the resolution confidence at every hop *is* consulted now -
+     * see [FlowEvidence.resolutionConfidence] - even though an
+     * [ResolutionConfidence.AMBIGUOUS_OVERLOAD_BEST_GUESS] match is still followed the same as
+     * an exact one; only the reported confidence differs, not which flows get checked.
      *
      * Edge case: [maxDepth] bounds how many further calls are followed once inside the callee;
      * at `maxDepth <= 1` only the immediate callee's own flows are checked, deeper calls are
@@ -61,34 +69,36 @@ public object ParameterFlowQuery {
         maxDepth: Int = 2,
         predicate: (FlowTarget) -> Boolean,
     ): FlowEvidence? {
-        // Which caller parameters are passed as arguments to this call?
-        val callerFlows = callerFn.parameterFlows
-        if (callerFlows.isEmpty()) return null
-
-        val paramsPassed =
-            callerFlows.filter { flow ->
-                flow.flowsInto.any { target ->
-                    target is FlowTarget.FunctionArgument && target.calledFunction == call.name
-                }
-            }
+        val paramsPassed = paramsFlowingInto(callerFn.parameterFlows, call.name)
         if (paramsPassed.isEmpty()) return null
 
-        val resolved = CrossMethodResolver.resolve(call, symbolTable).declOrNull() ?: return null
+        val (resolved, confidence) =
+            when (val result = CrossMethodResolver.resolve(call, symbolTable)) {
+                is ResolutionResult.Unresolved -> return null
+                is ResolutionResult.Resolved -> result.decl to result.confidence
+            }
 
-        for (callerFlow in paramsPassed) {
-            val evidence =
-                checkCalleeFlows(
-                    callerFlow.paramName,
-                    resolved,
-                    symbolTable,
-                    maxDepth,
-                    predicate,
-                    listOf(FlowStep(call.name, call.location)),
-                )
-            if (evidence != null) return evidence
+        return paramsPassed.firstNotNullOfOrNull { callerFlow ->
+            checkCalleeFlows(
+                callerFlow.paramName,
+                resolved,
+                symbolTable,
+                maxDepth,
+                predicate,
+                listOf(FlowStep(call.name, call.location)),
+                confidence,
+            )
         }
-        return null
     }
+
+    /** Which of [callerFlows] are passed as an argument to [calledFunction] - empty if none, or if [callerFlows] itself is empty. */
+    private fun paramsFlowingInto(
+        callerFlows: List<ParameterFlow>,
+        calledFunction: String,
+    ): List<ParameterFlow> =
+        callerFlows.filter { flow ->
+            flow.flowsInto.any { target -> target is FlowTarget.FunctionArgument && target.calledFunction == calledFunction }
+        }
 
     /**
      * Finds cases where multiple callees from [callerFn] all iterate the same parameter.
@@ -131,7 +141,7 @@ public object ParameterFlowQuery {
         return results
     }
 
-    @Suppress("NestedBlockDepth", "LoopWithTooManyJumpStatements") // Flow traversal requires nested checks
+    @Suppress("LoopWithTooManyJumpStatements") // Filter + continue is idiomatic for resolution chains
     private fun checkCalleeFlows(
         paramName: String,
         callee: FunctionDecl,
@@ -139,34 +149,51 @@ public object ParameterFlowQuery {
         maxDepth: Int,
         predicate: (FlowTarget) -> Boolean,
         path: List<FlowStep>,
+        confidenceSoFar: ResolutionConfidence,
     ): FlowEvidence? {
         // Check callee's own parameter flows for a match
         // Heuristic: match by name since we can't reliably determine arg position
-        val calleeFlows = callee.parameterFlows
-        for (calleeFlow in calleeFlows) {
+        for (calleeFlow in callee.parameterFlows) {
             for (target in calleeFlow.flowsInto) {
                 if (predicate(target)) {
-                    return FlowEvidence(paramName = paramName, steps = path, terminal = target)
+                    return FlowEvidence(paramName = paramName, steps = path, terminal = target, resolutionConfidence = confidenceSoFar)
                 }
+                if (maxDepth <= 1 || target !is FlowTarget.FunctionArgument) continue
 
-                // Follow one more level: if the callee passes the param to yet another function
-                if (maxDepth > 1 && target is FlowTarget.FunctionArgument) {
-                    val innerCall = findCallByNameAndLocation(callee, target.calledFunction, target.location) ?: continue
-                    val innerResolved = CrossMethodResolver.resolve(innerCall, symbolTable).declOrNull() ?: continue
-                    val deeper =
-                        checkCalleeFlows(
-                            paramName,
-                            innerResolved,
-                            symbolTable,
-                            maxDepth - 1,
-                            predicate,
-                            path + FlowStep(target.calledFunction, target.location),
-                        )
-                    if (deeper != null) return deeper
-                }
+                val deeper = followIntoNextHop(paramName, callee, target, symbolTable, maxDepth, predicate, path, confidenceSoFar)
+                if (deeper != null) return deeper
             }
         }
         return null
+    }
+
+    /** Follow one more level: the callee passes the param to yet another function - resolve and recurse into it. */
+    @Suppress("LongParameterList") // Threading path/confidence through the recursive descent needs all of these
+    private fun followIntoNextHop(
+        paramName: String,
+        callee: FunctionDecl,
+        target: FlowTarget.FunctionArgument,
+        symbolTable: SymbolTable,
+        maxDepth: Int,
+        predicate: (FlowTarget) -> Boolean,
+        path: List<FlowStep>,
+        confidenceSoFar: ResolutionConfidence,
+    ): FlowEvidence? {
+        val innerCall = findCallByNameAndLocation(callee, target.calledFunction, target.location) ?: return null
+        val (innerResolved, innerConfidence) =
+            when (val result = CrossMethodResolver.resolve(innerCall, symbolTable)) {
+                is ResolutionResult.Unresolved -> return null
+                is ResolutionResult.Resolved -> result.decl to result.confidence
+            }
+        return checkCalleeFlows(
+            paramName,
+            innerResolved,
+            symbolTable,
+            maxDepth - 1,
+            predicate,
+            path + FlowStep(target.calledFunction, target.location),
+            worstOf(confidenceSoFar, innerConfidence),
+        )
     }
 
     private fun calleeIteratesParam(callee: FunctionDecl): Boolean =
