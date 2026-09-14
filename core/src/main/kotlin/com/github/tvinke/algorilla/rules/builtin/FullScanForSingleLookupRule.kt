@@ -16,7 +16,7 @@ import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
-import com.github.tvinke.algorilla.util.containsAtWordBoundary
+import com.github.tvinke.algorilla.util.containsAnyAtWordBoundary
 import com.github.tvinke.algorilla.util.findDescendants
 import com.github.tvinke.algorilla.util.startsWithAtWordBoundary
 
@@ -118,6 +118,6 @@ internal fun isBulkLoadCall(
     // case for the boundary check - "dom"/"el" are short enough that "random"/"freedom"/
     // "model"/"channel" all satisfied a bare contains with no boundary at all.
     val target = call.qualifiedTarget
-    if (target != null && domTargets.any { containsAtWordBoundary(target, it) }) return false
+    if (target != null && containsAnyAtWordBoundary(target, domTargets)) return false
     return true
 }

@@ -1,7 +1,7 @@
 package com.github.tvinke.algorilla.semantics
 
 import com.github.tvinke.algorilla.model.Language
-import com.github.tvinke.algorilla.util.containsAtWordBoundary
+import com.github.tvinke.algorilla.util.containsAnyAtWordBoundary
 
 /**
  * Classifies a method call as pure, side-effectful, or unknown based on naming conventions.
@@ -44,8 +44,7 @@ public object MethodPurity {
             // camelCase signal, and "log" (a real side-effect-targets entry) is short enough
             // that "catalog"/"dialog"/"analog" all satisfy a bare contains with no boundary
             // check at all, unrelated words that merely happen to end in the same letters.
-            val sideEffectTargets = registry.sideEffectTargets(language)
-            if (sideEffectTargets.any { containsAtWordBoundary(qualifiedTarget, it) }) return Purity.SIDE_EFFECT
+            if (containsAnyAtWordBoundary(qualifiedTarget, registry.sideEffectTargets(language))) return Purity.SIDE_EFFECT
         }
         return classify(methodName, language)
     }

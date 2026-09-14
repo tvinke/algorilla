@@ -16,7 +16,7 @@ import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
-import com.github.tvinke.algorilla.util.containsAtWordBoundary
+import com.github.tvinke.algorilla.util.containsAnyAtWordBoundary
 import com.github.tvinke.algorilla.util.declaredTypeOf
 import com.github.tvinke.algorilla.util.endsWithAtWordBoundary
 
@@ -172,10 +172,10 @@ private fun isNonRegexMatchesTarget(
     // we must not fall through to the name heuristic once the type is actually known.
     val nonRegexTypes = registry.nonRegexMatchesTargets(language)
     val declaredType = enclosingFn?.declaredTypeOf(target)
-    if (declaredType != null) return nonRegexTypes.any { containsAtWordBoundary(declaredType, it, ignoreCase = false) }
+    if (declaredType != null) return containsAnyAtWordBoundary(declaredType, nonRegexTypes, ignoreCase = false)
     // Name heuristic: variable names like "predicate", "matcher", "pattern". Original case
     // for the boundary check - lowercasing first would destroy the camelCase signal.
-    return NON_REGEX_MATCHES_NAME_HINTS.any { containsAtWordBoundary(target, it) }
+    return containsAnyAtWordBoundary(target, NON_REGEX_MATCHES_NAME_HINTS)
 }
 
 private val NON_REGEX_MATCHES_NAME_HINTS = setOf("predicate", "matcher")

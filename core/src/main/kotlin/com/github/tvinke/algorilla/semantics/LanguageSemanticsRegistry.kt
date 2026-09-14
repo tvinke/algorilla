@@ -4,6 +4,7 @@ import com.github.tvinke.algorilla.model.AccessKind
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LookupKind
 import com.github.tvinke.algorilla.model.SortKind
+import com.github.tvinke.algorilla.util.containsAnyAtWordBoundary
 import com.github.tvinke.algorilla.util.containsAtWordBoundary
 import io.github.oshai.kotlinlogging.KotlinLogging
 
@@ -44,7 +45,7 @@ public class LanguageSemanticsRegistry private constructor(
         // convention), and some callers pass a receiver variable name here too - keeping
         // case-sensitive avoids matching a lowercase variable like "pattern" against a real
         // "Pattern" type name.
-        return maps.heavyweight[resolved]?.any { containsAtWordBoundary(typeName, it, ignoreCase = false) } == true
+        return containsAnyAtWordBoundary(typeName, maps.heavyweight[resolved] ?: emptySet(), ignoreCase = false)
     }
 
     /**
@@ -70,10 +71,11 @@ public class LanguageSemanticsRegistry private constructor(
 
     /**
      * Returns true if the given type name indicates an O(1) lookup type, in any language.
-     * Iterates the languages actually loaded into [maps] rather than [Language.entries] -
+     * Iterates `maps.o1.keys` (the languages actually loaded) rather than [Language.entries]:
      * this is on the hot path (once per lookup-shaped call site during parsing), and
-     * entries() includes TYPESCRIPT, which resolveLanguage() aliases to JAVASCRIPT, so
-     * iterating the full enum re-scanned the same candidate/exclusion sets twice.
+     * [Language.entries] includes `TYPESCRIPT`, which [resolveLanguage] aliases to
+     * `JAVASCRIPT` - iterating the full enum would re-scan the same candidate/exclusion
+     * sets for that alias a second time.
      */
     public fun isO1Type(typeName: String): Boolean = maps.o1.keys.any { isO1Type(it, typeName) }
 
@@ -717,8 +719,11 @@ private fun matchesTypeName(
     // convention), and some callers pass a receiver variable name here too - keeping
     // case-sensitive avoids matching a lowercase variable like "map" against a real "Map"
     // type name (see inferO1Factory in TypeEnvironment.kt, which relies on exactly this).
-    if (exclusions.any { containsAtWordBoundary(typeName, it, ignoreCase = false) }) return false
-    return candidates.any { containsAtWordBoundary(typeName, it, ignoreCase = false) }
+    // Candidates checked first: exclusions can only change the outcome once a candidate
+    // already matched, so this short-circuits the (dominant, in a real codebase) no-match
+    // case without ever scanning the exclusion list.
+    if (!containsAnyAtWordBoundary(typeName, candidates, ignoreCase = false)) return false
+    return !containsAnyAtWordBoundary(typeName, exclusions, ignoreCase = false)
 }
 
 /**

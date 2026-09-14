@@ -11,7 +11,7 @@ import com.github.tvinke.algorilla.model.LoopKind
 import com.github.tvinke.algorilla.model.LoopNode
 import com.github.tvinke.algorilla.model.VariableDecl
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
-import com.github.tvinke.algorilla.util.containsAtWordBoundary
+import com.github.tvinke.algorilla.util.containsAnyAtWordBoundary
 import com.github.tvinke.algorilla.util.findDescendants
 import io.github.oshai.kotlinlogging.KotlinLogging
 
@@ -104,7 +104,7 @@ public class LoopBoundAnnotator(
         // camelCase signal a boundary check needs, same pattern as the other bare-.contains()
         // fixes in this batch.
         val loopVar = loop.iteratedVariable ?: return false
-        return keywords.any { kw -> containsAtWordBoundary(loopVar, kw) }
+        return containsAnyAtWordBoundary(loopVar, keywords)
     }
 
     /**

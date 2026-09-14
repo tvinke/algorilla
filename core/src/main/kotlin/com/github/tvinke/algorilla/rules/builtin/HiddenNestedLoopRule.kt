@@ -19,7 +19,7 @@ import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.CrossMethodResolver
 import com.github.tvinke.algorilla.util.ParameterFlowQuery
-import com.github.tvinke.algorilla.util.containsAtWordBoundary
+import com.github.tvinke.algorilla.util.containsAnyAtWordBoundary
 import com.github.tvinke.algorilla.util.findDescendants
 import com.github.tvinke.algorilla.util.isRecursive
 import com.github.tvinke.algorilla.util.startsWithAtWordBoundary
@@ -216,5 +216,5 @@ private fun isStringOrCopyMethod(
     // char-iteration method - the trailing boundary catches it (the "ge" after "Char" is a
     // lowercase continuation, not a new word), the same way "screenwriter" doesn't match
     // "writer" elsewhere in this campaign.
-    return registry.hiddenLoopSkipKeywords(language).any { containsAtWordBoundary(name, it) }
+    return containsAnyAtWordBoundary(name, registry.hiddenLoopSkipKeywords(language))
 }

@@ -210,11 +210,10 @@ private fun LookupCall.hasO1TargetName(
     val lang = language ?: Language.JAVA
     val suffixes = registry.nonListTargetsSuffixes(lang)
     if (suffixes.any { endsWithAtWordBoundary(target, it) }) return true
-    val contains = registry.nonListTargetsContains(lang)
     // Same non-list-targets-contains list as QuadraticRemovalRule's isRemovalCall
     // ("store"/"repository"/"dao"/...) - needed the same boundary check, "restoreList" was
     // matching "store" here too.
-    return contains.any { containsAtWordBoundary(target, it) }
+    return containsAnyAtWordBoundary(target, registry.nonListTargetsContains(lang))
 }
 
 /**

@@ -63,9 +63,35 @@ public fun containsAtWordBoundary(
     if (word.isEmpty()) return false
     // Case-insensitive String.indexOf falls onto Kotlin's manual char-by-char scan instead
     // of the JVM's native indexOf. Lowering both sides once and searching case-sensitively
-    // finds the same positions (identifiers are effectively ASCII) at native speed - useful
-    // here since callers commonly run this in a loop over a whole pattern set per call.
+    // finds the same positions (identifiers are effectively ASCII) at native speed.
     val searchText = if (ignoreCase) text.lowercase() else text
+    return containsInLoweredText(text, searchText, word, ignoreCase)
+}
+
+/**
+ * Returns true if any of [words] occurs in [text] at a word boundary (see
+ * [containsAtWordBoundary]). Lowers [text] once regardless of how many [words] are checked,
+ * rather than the `words.any { containsAtWordBoundary(text, it) }` shape re-lowering the
+ * same (typically much longer) subject string on every candidate - the common call shape
+ * across the rules that classify a receiver/variable name against a whole YAML pattern set.
+ */
+public fun containsAnyAtWordBoundary(
+    text: String,
+    words: Collection<String>,
+    ignoreCase: Boolean = true,
+): Boolean {
+    if (words.isEmpty()) return false
+    val searchText = if (ignoreCase) text.lowercase() else text
+    return words.any { containsInLoweredText(text, searchText, it, ignoreCase) }
+}
+
+private fun containsInLoweredText(
+    text: String,
+    searchText: String,
+    word: String,
+    ignoreCase: Boolean,
+): Boolean {
+    if (word.isEmpty()) return false
     val searchWord = if (ignoreCase) word.lowercase() else word
     var fromIndex = 0
     while (true) {
