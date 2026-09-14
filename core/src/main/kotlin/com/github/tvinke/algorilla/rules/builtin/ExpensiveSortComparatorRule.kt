@@ -3,6 +3,7 @@ package com.github.tvinke.algorilla.rules.builtin
 import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.FunctionCall
+import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LookupCall
@@ -17,6 +18,7 @@ import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
+import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import com.github.tvinke.algorilla.util.CrossMethodResolver
 import com.github.tvinke.algorilla.util.containsAnyAtWordBoundary
 import com.github.tvinke.algorilla.util.findDescendants
@@ -41,32 +43,37 @@ public class ExpensiveSortComparatorRule : Rule {
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
-            scanNode(fileRoot, fileRoot.language, context, findings)
+            scanNode(fileRoot, null, fileRoot.language, context, findings)
         }
         return findings
     }
 
     private fun scanNode(
         node: IRNode,
+        enclosingFn: FunctionDecl?,
         language: Language,
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
+        val fn = if (node is FunctionDecl) node else enclosingFn
         if (node is SortCall) {
-            checkComparatorBody(node, language, context, findings)
+            checkComparatorBody(node, fn, language, context, findings)
         }
         for (child in node.children) {
-            scanNode(child, language, context, findings)
+            scanNode(child, fn, language, context, findings)
         }
     }
 
+    @Suppress("LongParameterList") // Threading the enclosing function through for TypeEnvironment lookups
     private fun checkComparatorBody(
         sort: SortCall,
+        enclosingFn: FunctionDecl?,
         language: Language,
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
         val body = sort.comparatorBody ?: return
+        val typeEnv = enclosingFn?.let { context.typeEnvironmentFor(it) }
 
         // Linear lookups inside comparator
         val lookups = body.filterIsInstance<LookupCall>() + body.flatMap { it.findDescendants<LookupCall>() }
@@ -81,15 +88,15 @@ public class ExpensiveSortComparatorRule : Rule {
             findings.add(buildDateCreationFinding(sort, creation))
         }
 
-        // Date parse calls inside comparator
+        // Date parse calls inside comparator - partitioned once rather than filtered twice,
+        // since isDateParseCall now does a TypeEnvironment lookup instead of a plain string check.
         val calls = body.filterIsInstance<FunctionCall>() + body.flatMap { it.findDescendants<FunctionCall>() }
-        val dateParseCalls = calls.filter { isDateParseCall(it, language, context.registry) }
+        val (dateParseCalls, nonDateCalls) = calls.partition { isDateParseCall(it, language, context.registry, typeEnv) }
         for (call in dateParseCalls) {
             findings.add(buildDateParseFinding(sort, call))
         }
 
         // Cross-method: check called methods for hidden date operations
-        val nonDateCalls = calls.filter { !isDateParseCall(it, language, context.registry) }
         for (call in nonDateCalls) {
             checkCrossMethodDate(sort, call, language, context, findings)
         }
@@ -118,6 +125,9 @@ public class ExpensiveSortComparatorRule : Rule {
                 call,
                 context.symbolTable,
                 maxDepth = maxDepth,
+                // No TypeEnvironment here: this predicate runs against nodes inside a
+                // *different*, cross-method-resolved function body, whose own TypeEnvironment
+                // we don't have in scope - falls back to the name heuristic, same as before.
             ) { isDateParseCall(it, language, context.registry) }
         if (parseOp != null) {
             findings.add(buildIndirectFinding(sort, call, parseOp))
@@ -288,12 +298,20 @@ internal fun isDateType(
     registry: LanguageSemanticsRegistry,
 ): Boolean = containsAnyAtWordBoundary(typeName, registry.dateTypeNames(language), ignoreCase = false)
 
+// Static factory calls (LocalDate.parse(...), Instant.ofEpochMilli(...)) have the type's
+// own name as qualifiedTarget already, so there's no name-vs-type question there. But an
+// instance call through a variable (sdf.parse(x)) has the variable's *name* as
+// qualifiedTarget - a variable named to look like a date/time type ("dateFormatter") whose
+// declared type is actually something unrelated would still pass the bare name check. When
+// a TypeEnvironment is available, check the declared type instead of trusting the name.
 internal fun isDateParseCall(
     call: FunctionCall,
     language: Language,
     registry: LanguageSemanticsRegistry,
+    typeEnv: TypeEnvironment? = null,
 ): Boolean {
     if (call.name !in registry.dateParseMethods(language)) return false
     val target = call.qualifiedTarget ?: return false
-    return containsAnyAtWordBoundary(target, registry.dateParseTargets(language), ignoreCase = false)
+    val declaredType = typeEnv?.declaredTypeName(target)
+    return containsAnyAtWordBoundary(declaredType ?: target, registry.dateParseTargets(language), ignoreCase = false)
 }

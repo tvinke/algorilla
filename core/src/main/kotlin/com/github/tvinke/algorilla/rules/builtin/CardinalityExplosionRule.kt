@@ -4,6 +4,7 @@ import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.FileRoot
 import com.github.tvinke.algorilla.model.FunctionCall
+import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LoopNode
@@ -16,6 +17,7 @@ import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
+import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import com.github.tvinke.algorilla.util.containsAnyAtWordBoundary
 import com.github.tvinke.algorilla.util.startsWithAtWordBoundary
 
@@ -49,9 +51,10 @@ public class CardinalityExplosionRule : Rule {
             val mutationMethods = resolveMutationMethods(context, language)
             val langOrJava = language ?: Language.JAVA
             val mutationGroups = mutableMapOf<LoopPairKey, MutationGroup>()
-            scanNode(fileRoot, emptyList(), mutationMethods, langOrJava, context.registry, mutationGroups)
+            scanNode(fileRoot, null, emptyList(), mutationMethods, langOrJava, context.registry, mutationGroups)
             for ((_, group) in mutationGroups) {
-                val classified = group.calls.map { it to classifyMutation(it, langOrJava, context.registry) }
+                val typeEnv = group.enclosingFn?.let { context.typeEnvironmentFor(it) }
+                val classified = group.calls.map { it to classifyMutation(it, langOrJava, context.registry, typeEnv) }
                 if (classified.any { it.second == MutationType.COLLECTION_EXPANSION }) {
                     findings.add(buildGroupedCartesianFinding(group, langOrJava, context.registry, classified))
                 }
@@ -77,6 +80,7 @@ public class CardinalityExplosionRule : Rule {
         call: FunctionCall,
         language: Language,
         registry: LanguageSemanticsRegistry,
+        typeEnv: TypeEnvironment?,
     ): MutationType {
         val methodName = call.name
         // Original case - lowercasing first would destroy the camelCase signal the
@@ -95,9 +99,13 @@ public class CardinalityExplosionRule : Rule {
 
         // Ambiguous `add` — check if receiver looks like a scalar accumulator.
         // List.add() grows a collection, but BigDecimal.add() accumulates a scalar.
-        // Use receiver name heuristics: scalar hint words, single-char variables,
-        // and absence of collection-like naming patterns.
         if (methodName == "add") {
+            // A declared type overrides the name hint either way — see classifyByDeclaredType below.
+            // Only when the type is unresolved do we fall back to name heuristics, same as
+            // before that check existed.
+            classifyByDeclaredType(typeEnv, target)?.let { return it }
+            // Use receiver name heuristics: scalar hint words, single-char variables,
+            // and absence of collection-like naming patterns.
             val scalarHints = registry.scalarReceiverHints(language)
             // "sum"/"count"/"cost"/"amount" are short enough that "consumer"/"discount"/
             // "costume"/"paramount" all satisfied a bare contains with no boundary at all.
@@ -120,36 +128,42 @@ public class CardinalityExplosionRule : Rule {
         val outerLoop: LoopNode,
         val innerLoop: LoopNode,
         val loopStack: List<LoopNode>,
+        val enclosingFn: FunctionDecl?,
         val calls: MutableList<FunctionCall> = mutableListOf(),
     )
 
+    @Suppress("LongParameterList") // Threading the enclosing function through for TypeEnvironment lookups
     private fun scanNode(
         node: IRNode,
+        enclosingFn: FunctionDecl?,
         loopStack: List<LoopNode>,
         mutationMethods: Set<String>,
         language: Language,
         registry: LanguageSemanticsRegistry,
         mutationGroups: MutableMap<LoopPairKey, MutationGroup>,
     ) {
+        val fn = if (node is FunctionDecl) node else enclosingFn
+
         if (node is LoopNode) {
             for (child in node.children) {
-                scanNode(child, loopStack + node, mutationMethods, language, registry, mutationGroups)
+                scanNode(child, fn, loopStack + node, mutationMethods, language, registry, mutationGroups)
             }
             return
         }
 
         if (loopStack.size >= 2 && node is FunctionCall && node.name in mutationMethods) {
-            collectCartesianProduct(node, loopStack, language, registry, mutationGroups)
+            collectCartesianProduct(node, fn, loopStack, language, registry, mutationGroups)
         }
 
         for (child in node.children) {
-            scanNode(child, loopStack, mutationMethods, language, registry, mutationGroups)
+            scanNode(child, fn, loopStack, mutationMethods, language, registry, mutationGroups)
         }
     }
 
-    @Suppress("LongMethod") // Multi-step loop-pair classification with partitioned-iteration filtering
+    @Suppress("LongMethod", "LongParameterList") // Multi-step loop-pair classification with partitioned-iteration filtering
     private fun collectCartesianProduct(
         call: FunctionCall,
+        enclosingFn: FunctionDecl?,
         loopStack: List<LoopNode>,
         language: Language,
         registry: LanguageSemanticsRegistry,
@@ -172,7 +186,7 @@ public class CardinalityExplosionRule : Rule {
         val key = LoopPairKey(outerLoop.location.line, innerLoop.location.line)
         mutationGroups
             .getOrPut(key) {
-                MutationGroup(outerLoop, innerLoop, loopStack.toList())
+                MutationGroup(outerLoop, innerLoop, loopStack.toList(), enclosingFn)
             }.calls
             .add(call)
     }
@@ -484,6 +498,30 @@ public class CardinalityExplosionRule : Rule {
         // removals, and in-place operations that don't produce Cartesian output
         val nonGrowth = context.registry.nonGrowthMutations(langOrJava)
         return (copyOnModify + context.registry.mutationMethods(langOrJava)) - nonGrowth
+    }
+}
+
+/**
+ * A real collection type (`List<BigDecimal> totalAmounts`) is never a scalar just because
+ * it's named like one, and a real O(1)/String/other non-collection type definitely isn't a
+ * collection expansion either — a declared type wins over the name heuristic either way.
+ * Returns null when the receiver's type can't be resolved, so the caller falls back to the
+ * name-based heuristics.
+ */
+private fun classifyByDeclaredType(
+    typeEnv: TypeEnvironment?,
+    target: String,
+): CardinalityExplosionRule.MutationType? {
+    // declaredTypeName (not the raw typeOf) - a NAME_HEURISTIC-sourced guess (e.g. "results"
+    // inferred as "List" purely from an initializer call named getOrderList()) is exactly
+    // the kind of weak evidence this whole check exists to NOT trust; falling through to the
+    // name heuristics below is the correct behavior for that case, not isCollection's
+    // filtered-to-false verdict on it.
+    if (typeEnv?.declaredTypeName(target) == null) return null
+    return if (typeEnv.isCollection(target)) {
+        CardinalityExplosionRule.MutationType.COLLECTION_EXPANSION
+    } else {
+        CardinalityExplosionRule.MutationType.SCALAR_ACCUMULATION
     }
 }
 

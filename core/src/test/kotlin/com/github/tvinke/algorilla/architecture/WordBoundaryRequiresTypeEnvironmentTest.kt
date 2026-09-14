@@ -60,7 +60,7 @@ internal class WordBoundaryRequiresTypeEnvironmentTest {
         )
     private val typeEnvironmentOwner = "com.github.tvinke.algorilla.semantics.TypeEnvironment"
     private val typeEnvironmentMethods =
-        setOf("typeOf", "isO1", "isCollection", "isBoundedSmallCollection", "isString", "isList")
+        setOf("typeOf", "isO1", "isCollection", "isBoundedSmallCollection", "isString", "isList", "declaredTypeName")
 
     // Permanent, hand-reviewed exceptions - not technical debt, not frozen violations.
     private val permanentExceptions =

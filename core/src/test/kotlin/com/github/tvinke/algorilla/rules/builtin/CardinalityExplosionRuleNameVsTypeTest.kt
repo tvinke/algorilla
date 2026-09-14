@@ -5,15 +5,21 @@ import com.github.tvinke.algorilla.graph.CallGraph
 import com.github.tvinke.algorilla.graph.SymbolTable
 import com.github.tvinke.algorilla.model.FileRoot
 import com.github.tvinke.algorilla.model.FunctionCall
+import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.GenericNode
+import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LoopKind
 import com.github.tvinke.algorilla.model.LoopNode
+import com.github.tvinke.algorilla.model.Parameter
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.model.SourceLocation
+import com.github.tvinke.algorilla.model.VariableDecl
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Finding
+import com.github.tvinke.algorilla.rules.signatureKey
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
+import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -70,17 +76,47 @@ internal class CardinalityExplosionRuleNameVsTypeTest {
     }
 
     /**
-     * Documented finding, not fixed here: classifyMutation treats any single-letter
-     * receiver name calling add() as a scalar accumulator (BigDecimal-style), never a
-     * collection. A short-named List (`l.add(x)`, `r.add(x)`) in a genuine Cartesian nesting
-     * is silently reclassified as SCALAR_ACCUMULATION and the whole group gets suppressed.
-     * This can't be fixed locally without wiring a TypeEnvironment through this rule (it
-     * currently has none) — closer to a V3-light "extend existing infra" step than an
-     * in-file tweak, so it's pinned here rather than changed.
+     * classifyMutation treats any single-letter receiver name calling add() as a scalar
+     * accumulator (BigDecimal-style), never a collection. Without a declared type to check
+     * against, a short-named List (`l.add(x)`) in a genuine Cartesian nesting still falls
+     * back to that name heuristic and gets misread as SCALAR_ACCUMULATION, suppressing the
+     * whole group. That's expected when the receiver's type genuinely can't be resolved —
+     * see the tests below for the case where a TypeEnvironment IS available, which now
+     * overrides the name heuristic instead of being silently wrong.
      */
     @Test
-    fun `a single-letter collection receiver is still misread as a scalar accumulator (documented gap)`() {
+    fun `a single-letter receiver with no resolvable type still falls back to the scalar name heuristic`() {
         nestedLoopFindings("orders", "products", mutationTarget = "l").shouldBeEmpty()
+    }
+
+    @Test
+    fun `a scalar-hint-named receiver with a declared collection type is flagged, not misread as scalar`() {
+        // "l" (single-letter) AND wouldn't even need the scalar-hint path to be misread,
+        // but pick a name that actively looks like a scalar accumulator (sum) to prove the
+        // declared type wins over the name heuristic outright, not just over the single-char case.
+        nestedLoopFindingsWithDeclaredType("orders", "products", mutationTarget = "sum", declaredType = "List") shouldHaveSize 1
+    }
+
+    @Test
+    fun `a scalar-hint-named receiver with a declared non-collection type still stays excluded`() {
+        nestedLoopFindingsWithDeclaredType(
+            "orders",
+            "products",
+            mutationTarget = "sum",
+            declaredType = "BigDecimal",
+        ).shouldBeEmpty()
+    }
+
+    /**
+     * "results" gets an inferred type here purely from its initializer's method-name suffix
+     * (`repository.getOrderList()` ends in "List") - the lowest-trust inference strategy
+     * TypeEnvironment has, the same one isCollection/isO1 already refuse to act on. A receiver
+     * with only this weak evidence must still fall through to the name-based heuristic below,
+     * not get short-circuited into SCALAR_ACCUMULATION just because *some* type was inferred.
+     */
+    @Test
+    fun `a receiver whose only type evidence is a method-name-suffix guess still falls back to the name heuristic`() {
+        nestedLoopFindingsWithNameHeuristicType("orders", "products", mutationTarget = "results") shouldHaveSize 1
     }
 
     /**
@@ -163,6 +199,85 @@ internal class CardinalityExplosionRuleNameVsTypeTest {
         val innerLoop = LoopNode(kind = LoopKind.FOR_EACH, iteratedVariable = innerVar, location = loc, children = listOf(mutationCall))
         val outerLoop = LoopNode(kind = LoopKind.FOR_EACH, iteratedVariable = outerVar, location = loc, children = listOf(innerLoop))
         return rule.evaluate(fixtureContext(listOf(outerLoop)))
+    }
+
+    /**
+     * Same nested-loop-plus-mutation shape as [nestedLoopFindings], but wraps it in a
+     * [FunctionDecl] whose [mutationTarget] parameter carries [declaredType] — so a
+     * [TypeEnvironment] can actually be resolved and consulted for the receiver, instead
+     * of falling back to the name-only heuristic.
+     */
+    private fun nestedLoopFindingsWithDeclaredType(
+        outerVar: String,
+        innerVar: String,
+        mutationTarget: String,
+        declaredType: String,
+    ): List<Finding> {
+        val mutationCall =
+            FunctionCall("add", mutationTarget, listOf(GenericNode("x", loc, emptyList())), loc, emptyList())
+        val innerLoop = LoopNode(kind = LoopKind.FOR_EACH, iteratedVariable = innerVar, location = loc, children = listOf(mutationCall))
+        val outerLoop = LoopNode(kind = LoopKind.FOR_EACH, iteratedVariable = outerVar, location = loc, children = listOf(innerLoop))
+        val fn =
+            FunctionDecl(
+                name = "process",
+                qualifiedName = "Fixture.process",
+                parameters = listOf(Parameter(mutationTarget, declaredType)),
+                declaringClass = "Fixture",
+                location = loc,
+                children = listOf(outerLoop),
+            )
+        val typeEnv = TypeEnvironment.build(fn, emptyMap(), Language.JAVA, registry)
+        val fileRoot = FileRoot(filePath = "Fixture.java", language = Language.JAVA, location = loc, children = listOf(fn))
+        return rule.evaluate(
+            AnalysisContext(
+                irTrees = mapOf("Fixture.java" to fileRoot),
+                symbolTable = SymbolTable(),
+                callGraph = CallGraph(),
+                config = AnalysisConfig(),
+                registry = registry,
+                typeEnvironments = mapOf(signatureKey(fn) to typeEnv),
+            ),
+        )
+    }
+
+    /**
+     * Same nested-loop-plus-mutation shape, but [mutationTarget] gets no declared parameter
+     * type at all - its only type evidence comes from a `VariableDecl` initialized by a call
+     * named to end in "List" (`getOrderList()`), which TypeEnvironment infers as a
+     * NAME_HEURISTIC-sourced "List" guess, not a real declared type.
+     */
+    private fun nestedLoopFindingsWithNameHeuristicType(
+        outerVar: String,
+        innerVar: String,
+        mutationTarget: String,
+    ): List<Finding> {
+        val fetchCall = FunctionCall("getOrderList", "repository", emptyList(), loc, emptyList())
+        val varDecl = VariableDecl(mutationTarget, null, initializer = fetchCall, location = loc, children = listOf(fetchCall))
+        val mutationCall =
+            FunctionCall("add", mutationTarget, listOf(GenericNode("x", loc, emptyList())), loc, emptyList())
+        val innerLoop = LoopNode(kind = LoopKind.FOR_EACH, iteratedVariable = innerVar, location = loc, children = listOf(mutationCall))
+        val outerLoop = LoopNode(kind = LoopKind.FOR_EACH, iteratedVariable = outerVar, location = loc, children = listOf(innerLoop))
+        val fn =
+            FunctionDecl(
+                name = "process",
+                qualifiedName = "Fixture.process",
+                parameters = emptyList(),
+                declaringClass = "Fixture",
+                location = loc,
+                children = listOf(varDecl, outerLoop),
+            )
+        val typeEnv = TypeEnvironment.build(fn, emptyMap(), Language.JAVA, registry)
+        val fileRoot = FileRoot(filePath = "Fixture.java", language = Language.JAVA, location = loc, children = listOf(fn))
+        return rule.evaluate(
+            AnalysisContext(
+                irTrees = mapOf("Fixture.java" to fileRoot),
+                symbolTable = SymbolTable(),
+                callGraph = CallGraph(),
+                config = AnalysisConfig(),
+                registry = registry,
+                typeEnvironments = mapOf(signatureKey(fn) to typeEnv),
+            ),
+        )
     }
 
     private fun fixtureContext(children: List<com.github.tvinke.algorilla.model.IRNode>): AnalysisContext {
