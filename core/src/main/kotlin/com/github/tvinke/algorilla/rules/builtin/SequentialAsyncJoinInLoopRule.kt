@@ -3,6 +3,7 @@ package com.github.tvinke.algorilla.rules.builtin
 import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.FunctionCall
+import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LoopNode
@@ -15,6 +16,7 @@ import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.semantics.SemanticCategory
+import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import com.github.tvinke.algorilla.util.containsAnyAtWordBoundary
 
 /**
@@ -33,34 +35,39 @@ public class SequentialAsyncJoinInLoopRule : Rule {
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
-            scanNode(fileRoot, emptyList(), fileRoot.language, context, findings)
+            scanNode(fileRoot, null, emptyList(), fileRoot.language, context, findings)
         }
         return findings
     }
 
+    @Suppress("LongParameterList") // Threading the enclosing function through for TypeEnvironment lookups
     private fun scanNode(
         node: IRNode,
+        enclosingFn: FunctionDecl?,
         loopStack: List<LoopNode>,
         language: Language,
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
+        val fn = if (node is FunctionDecl) node else enclosingFn
+
         if (node is LoopNode) {
             for (child in node.children) {
-                scanNode(child, loopStack + node, language, context, findings)
+                scanNode(child, fn, loopStack + node, language, context, findings)
             }
             return
         }
 
         if (loopStack.isNotEmpty() && node is FunctionCall) {
             val semantics = context.registry.classify(language, node.name)
-            if (semantics?.category == SemanticCategory.BLOCKING && looksLikeFutureCall(node, language, context.registry)) {
+            val typeEnv = fn?.let { context.typeEnvironmentFor(it) }
+            if (semantics?.category == SemanticCategory.BLOCKING && looksLikeFutureCall(node, language, context.registry, typeEnv)) {
                 findings.add(buildFinding(node, loopStack))
             }
         }
 
         for (child in node.children) {
-            scanNode(child, loopStack, language, context, findings)
+            scanNode(child, fn, loopStack, language, context, findings)
         }
     }
 
@@ -102,15 +109,21 @@ public class SequentialAsyncJoinInLoopRule : Rule {
 }
 
 /**
- * Heuristic: the call target variable name hints at a Future type.
+ * The call target's declared type hints at a Future when known; otherwise its name does.
+ * A variable named "userTask" isn't necessarily a Future just because "task" is one of the
+ * indicator words - and a Future stashed in an oddly-named variable is still one, if the
+ * type is resolvable.
  */
 private fun looksLikeFutureCall(
     call: FunctionCall,
     language: Language,
     registry: LanguageSemanticsRegistry,
+    typeEnv: TypeEnvironment? = null,
 ): Boolean {
     // Original case for the boundary check - lowercasing first would destroy the camelCase
     // signal, e.g. "subtask" would falsely satisfy a bare "task" contains with no boundary.
     val target = call.qualifiedTarget ?: return false
+    val declaredType = typeEnv?.typeOf(target)?.simpleName
+    if (declaredType != null) return containsAnyAtWordBoundary(declaredType, registry.futureIndicators(language))
     return containsAnyAtWordBoundary(target, registry.futureIndicators(language))
 }

@@ -1,1 +1,0 @@
-com.github.tvinke.algorilla.rules.builtin.SequentialAsyncJoinInLoopRule calls a word-boundary matcher but never calls TypeEnvironment in the same file
