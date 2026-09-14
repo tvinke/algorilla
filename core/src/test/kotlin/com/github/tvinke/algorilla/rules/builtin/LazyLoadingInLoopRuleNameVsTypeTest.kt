@@ -113,14 +113,45 @@ internal class LazyLoadingInLoopRuleNameVsTypeTest {
         findingsForWithDeclaredType(fetchTarget = "ds", declaredType = "OrderRepository") shouldHaveSize 1
     }
 
+    /**
+     * "orderRepository" matches the repository name pattern - the name heuristic alone would
+     * correctly establish it as an entity fetch. But its only type evidence here comes from
+     * an initializer's method-name suffix ("helper.getResultList()" ends in "List") - the
+     * lowest-trust NAME_HEURISTIC source, same one isCollection/isO1 already refuse to act
+     * on. A raw typeOf().simpleName read that irrelevant "List" guess as a real declared
+     * type, found it doesn't match repoPatterns, and suppressed the entity-fetch detection
+     * entirely instead of falling back to the name check.
+     */
+    @Test
+    fun `a repository-named variable with only a name-heuristic-inferred type still establishes the entity variable`() {
+        findingsForWithNameHeuristicRepoType("orderRepository") shouldHaveSize 1
+    }
+
+    private fun findingsForWithNameHeuristicRepoType(repoVarName: String): List<Finding> {
+        val listyInit = FunctionCall("getResultList", "helper", emptyList(), loc, emptyList())
+        val repoVarDecl = VariableDecl(repoVarName, null, initializer = listyInit, location = loc, children = listOf(listyInit))
+        val fetchCall = FunctionCall("findAllOrders", repoVarName, emptyList(), loc, emptyList())
+        val entityVar = VariableDecl("orders", null, initializer = fetchCall, location = loc, children = listOf(fetchCall))
+        val loop = entityLoop()
+        val fn =
+            FunctionDecl(
+                name = "process",
+                qualifiedName = "Fixture.process",
+                parameters = emptyList(),
+                declaringClass = "Fixture",
+                location = loc,
+                children = listOf(repoVarDecl, entityVar, loop),
+            )
+        return evaluateWithTypeEnv(fn)
+    }
+
     private fun findingsForWithDeclaredType(
         fetchTarget: String,
         declaredType: String,
     ): List<Finding> {
         val fetchCall = FunctionCall("findAllOrders", fetchTarget, emptyList(), loc, emptyList())
         val entityVar = VariableDecl("orders", null, initializer = fetchCall, location = loc, children = listOf(fetchCall))
-        val getterCall = FunctionCall("getOrders", "element", emptyList(), loc, emptyList())
-        val loop = LoopNode(kind = LoopKind.FOR_EACH, iteratedVariable = "orders", location = loc, children = listOf(getterCall))
+        val loop = entityLoop()
         val fn =
             FunctionDecl(
                 name = "process",
@@ -130,6 +161,15 @@ internal class LazyLoadingInLoopRuleNameVsTypeTest {
                 location = loc,
                 children = listOf(entityVar, loop),
             )
+        return evaluateWithTypeEnv(fn)
+    }
+
+    private fun entityLoop(): LoopNode {
+        val getterCall = FunctionCall("getOrders", "element", emptyList(), loc, emptyList())
+        return LoopNode(kind = LoopKind.FOR_EACH, iteratedVariable = "orders", location = loc, children = listOf(getterCall))
+    }
+
+    private fun evaluateWithTypeEnv(fn: FunctionDecl): List<Finding> {
         val registry = LanguageSemanticsRegistry.DEFAULT
         val typeEnv = TypeEnvironment.build(fn, emptyMap(), Language.JAVA, registry)
         val fileRoot = FileRoot(filePath = "Fixture.java", language = Language.JAVA, location = loc, children = listOf(fn))

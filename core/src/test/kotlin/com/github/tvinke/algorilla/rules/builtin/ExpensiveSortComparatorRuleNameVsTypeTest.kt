@@ -5,6 +5,7 @@ import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.Parameter
 import com.github.tvinke.algorilla.model.SourceLocation
+import com.github.tvinke.algorilla.model.VariableDecl
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import io.kotest.matchers.shouldBe
@@ -75,6 +76,37 @@ internal class ExpensiveSortComparatorRuleNameVsTypeTest {
         val call = FunctionCall("parse", "fmt", emptyList(), loc, emptyList())
         val typeEnv = typeEnvFor("fmt", "SimpleDateFormat")
         isDateParseCall(call, Language.JAVA, registry, typeEnv) shouldBe true
+    }
+
+    /**
+     * "myDateTimeFormatterHelper" boundary-matches "DateTimeFormatter" by name - the name
+     * heuristic alone would correctly flag it. But its only type evidence here comes from an
+     * initializer's method-name suffix ("helper.getResultList()" ends in "List") - the
+     * lowest-trust NAME_HEURISTIC source, same one isCollection/isO1 already refuse to act
+     * on. A raw typeOf().simpleName read that irrelevant "List" guess as a real declared
+     * type, found it doesn't match dateParseTargets, and returned false without ever
+     * reaching the name check - silently swallowing a real date-parse-in-comparator finding.
+     */
+    @Test
+    fun `a date-parse-target-named variable with only a name-heuristic-inferred type is still flagged`() {
+        val call = FunctionCall("parse", "myDateTimeFormatterHelper", emptyList(), loc, emptyList())
+        val typeEnv = typeEnvWithNameHeuristicType("myDateTimeFormatterHelper")
+        isDateParseCall(call, Language.JAVA, registry, typeEnv) shouldBe true
+    }
+
+    private fun typeEnvWithNameHeuristicType(varName: String): TypeEnvironment {
+        val listyInit = FunctionCall("getResultList", "helper", emptyList(), loc, emptyList())
+        val varDecl = VariableDecl(varName, null, initializer = listyInit, location = loc, children = listOf(listyInit))
+        val fn =
+            FunctionDecl(
+                name = "compare",
+                qualifiedName = "Fixture.compare",
+                parameters = emptyList(),
+                declaringClass = "Fixture",
+                location = loc,
+                children = listOf(varDecl),
+            )
+        return TypeEnvironment.build(fn, emptyMap(), Language.JAVA, registry)
     }
 
     private fun typeEnvFor(

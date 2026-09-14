@@ -12,6 +12,7 @@ import com.github.tvinke.algorilla.model.LoopKind
 import com.github.tvinke.algorilla.model.LoopNode
 import com.github.tvinke.algorilla.model.Parameter
 import com.github.tvinke.algorilla.model.SourceLocation
+import com.github.tvinke.algorilla.model.VariableDecl
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.signatureKey
@@ -101,6 +102,50 @@ internal class RepeatedRegexInLoopRuleNameVsTypeTest {
     @Test
     fun `a variable not named like a regex type but declared as Pattern is still flagged`() {
         findingsForWithDeclaredType("compiler", "Pattern") shouldHaveSize 1
+    }
+
+    /**
+     * "myRegex" ends with "Regex" at a real word boundary - the name heuristic alone would
+     * correctly flag it. But its only type evidence here comes from an initializer's
+     * method-name suffix ("helper.getResultList()" ends in "List") - the lowest-trust
+     * NAME_HEURISTIC source, same one isCollection/isO1 already refuse to act on. A raw
+     * typeOf().simpleName read that irrelevant "List" guess as if it were a real declared
+     * type, found it doesn't match regexTypes, and returned false without ever reaching the
+     * name check - silently swallowing a real regex-compile-in-loop finding.
+     */
+    @Test
+    fun `a regex-named variable with only a name-heuristic-inferred type is still flagged`() {
+        findingsForWithNameHeuristicType("myRegex") shouldHaveSize 1
+    }
+
+    private fun findingsForWithNameHeuristicType(varName: String): List<Finding> {
+        val listyInit = FunctionCall("getResultList", "helper", emptyList(), loc, emptyList())
+        val varDecl = VariableDecl(varName, null, initializer = listyInit, location = loc, children = listOf(listyInit))
+        val arg = GenericNode("\"[0-9]+\"", loc, emptyList())
+        val call = FunctionCall("compile", varName, listOf(arg), loc, emptyList())
+        val loop = LoopNode(kind = LoopKind.FOR_EACH, iteratedVariable = "items", location = loc, children = listOf(call))
+        val fn =
+            FunctionDecl(
+                name = "process",
+                qualifiedName = "Fixture.process",
+                parameters = emptyList(),
+                declaringClass = "Fixture",
+                location = loc,
+                children = listOf(varDecl, loop),
+            )
+        val registry = LanguageSemanticsRegistry.DEFAULT
+        val typeEnv = TypeEnvironment.build(fn, emptyMap(), Language.JAVA, registry)
+        val fileRoot = FileRoot(filePath = "Fixture.java", language = Language.JAVA, location = loc, children = listOf(fn))
+        val context =
+            AnalysisContext(
+                irTrees = mapOf("Fixture.java" to fileRoot),
+                symbolTable = SymbolTable(),
+                callGraph = CallGraph(),
+                config = AnalysisConfig(),
+                registry = registry,
+                typeEnvironments = mapOf(signatureKey(fn) to typeEnv),
+            )
+        return rule.evaluate(context)
     }
 
     private fun findingsForWithDeclaredType(
