@@ -1,7 +1,11 @@
 package com.github.tvinke.algorilla.lang.template.parser
 
 import com.github.tvinke.algorilla.model.IRNode
+import com.github.tvinke.algorilla.model.SourceLocation
 import org.treesitter.TSNode
+import com.github.tvinke.algorilla.engine.locationOf as sharedLocationOf
+import com.github.tvinke.algorilla.engine.nodeText as sharedNodeText
+import com.github.tvinke.algorilla.engine.visitChildren as sharedVisitChildren
 
 /**
  * Walks a tree-sitter CST for <LANGUAGE> and produces IR nodes.
@@ -37,16 +41,7 @@ internal class TemplateTreeSitterVisitor(
         }
     }
 
-    private fun visitChildren(node: TSNode): List<IRNode> {
-        val result = mutableListOf<IRNode>()
-        for (i in 0 until node.namedChildCount) {
-            val child = node.getNamedChild(i)
-            if (!child.isNull) {
-                result.addAll(visit(child))
-            }
-        }
-        return result
-    }
+    private fun visitChildren(node: TSNode): List<IRNode> = sharedVisitChildren(node, ::visit)
 
     // -----------------------------------------------------------------------
     // IR node handlers — implement one per construct your language needs.
@@ -102,9 +97,14 @@ internal class TemplateTreeSitterVisitor(
     // Utility methods
     // -----------------------------------------------------------------------
 
-    // TODO: add helpers as needed. Common ones from existing parsers:
-    //   - nodeText(node): extract source text for a TSNode
-    //   - locationOf(node): create a SourceLocation from a TSNode
+    // nodeText(node) and locationOf(node) below cover the two generic ones every tree-sitter
+    // visitor needs (see TreeSitterVisitorSupport.kt for the shared implementation).
+    //
+    // TODO: add language-specific helpers as needed, e.g.:
     //   - findChildByType(node, type): find the first named child with a given type
     //   - findAllChildrenByType(node, type): find all named children with a given type
+
+    private fun nodeText(node: TSNode): String = sharedNodeText(node, source)
+
+    private fun locationOf(node: TSNode): SourceLocation = sharedLocationOf(node, filePath)
 }
