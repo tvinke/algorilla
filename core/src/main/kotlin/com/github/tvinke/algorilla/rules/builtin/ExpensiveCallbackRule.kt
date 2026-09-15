@@ -165,8 +165,8 @@ public class ExpensiveCallbackRule : Rule {
                 maxDepth = maxDepth,
                 language = language,
             ) { isDateType(it.typeName, language, context.registry) }
-        if (dateOp != null) {
-            findings.add(buildIndirectFinding(container, call, dateOp.value, dateOp.confidence))
+        dateOp?.let { (node, confidence) ->
+            findings.add(buildIndirectFinding(container, call, node, confidence))
             return
         }
         val parseOp =
@@ -176,8 +176,8 @@ public class ExpensiveCallbackRule : Rule {
                 maxDepth = maxDepth,
                 language = language,
             ) { isDateParseCall(it, language, context.registry) }
-        if (parseOp != null) {
-            findings.add(buildIndirectFinding(container, call, parseOp.value, parseOp.confidence))
+        parseOp?.let { (node, confidence) ->
+            findings.add(buildIndirectFinding(container, call, node, confidence))
         }
     }
 

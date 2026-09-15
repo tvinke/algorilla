@@ -38,26 +38,28 @@ public class SortForLastRule : Rule {
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
-            scanNode(fileRoot, context, findings)
+            scanNode(fileRoot, fileRoot.language, context, findings)
         }
         return findings
     }
 
     private fun scanNode(
         node: IRNode,
+        language: Language,
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
         if (node is FunctionDecl) {
-            checkFunction(node, context, findings)
+            checkFunction(node, language, context, findings)
         }
         for (child in node.children) {
-            scanNode(child, context, findings)
+            scanNode(child, language, context, findings)
         }
     }
 
     private fun checkFunction(
         fn: FunctionDecl,
+        language: Language,
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
@@ -81,32 +83,33 @@ public class SortForLastRule : Rule {
 
         // Cross-method: sort here, access inside a called method
         for (sort in sorts.filter { it !in matchedSorts }) {
-            checkSortWithCrossMethodAccess(sort, calls, context, findings)
+            checkSortWithCrossMethodAccess(sort, calls, language, context, findings)
         }
 
         // Cross-method: access here, sort inside a called method
         for (access in accesses.filter { it !in matchedAccesses }) {
-            checkAccessWithCrossMethodSort(access, calls, context, findings)
+            checkAccessWithCrossMethodSort(access, calls, language, context, findings)
         }
     }
 
-    @Suppress("LoopWithTooManyJumpStatements")
+    @Suppress("LoopWithTooManyJumpStatements", "LongParameterList")
     private fun checkSortWithCrossMethodAccess(
         sort: SortCall,
         calls: List<FunctionCall>,
+        language: Language,
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
         val nearbyCalls = calls.filter { isNearbyCall(sort, it) }
         val maxDepth = context.config.maxCallDepth.coerceAtMost(2)
         for (call in nearbyCalls) {
-            val resolved =
+            val (access, confidence) =
                 CrossMethodResolver.resolveAndFindWithConfidence<CollectionAccess>(
                     call,
                     context.symbolTable,
                     maxDepth = maxDepth,
+                    language = language,
                 ) ?: continue
-            val access = resolved.value
             // Skip when sort and access targets are known and different
             if (sort.qualifiedTarget != null &&
                 access.qualifiedTarget != null &&
@@ -114,28 +117,29 @@ public class SortForLastRule : Rule {
             ) {
                 continue
             }
-            findings.add(buildIndirectFinding(sort, call, access, resolved.confidence))
+            findings.add(buildIndirectFinding(sort, call, access, confidence))
             return
         }
     }
 
-    @Suppress("LoopWithTooManyJumpStatements")
+    @Suppress("LoopWithTooManyJumpStatements", "LongParameterList")
     private fun checkAccessWithCrossMethodSort(
         access: CollectionAccess,
         calls: List<FunctionCall>,
+        language: Language,
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
         val nearbyCalls = calls.filter { isNearbyCallBefore(it, access) }
         val maxDepth = context.config.maxCallDepth.coerceAtMost(2)
         for (call in nearbyCalls) {
-            val resolved =
+            val (sort, confidence) =
                 CrossMethodResolver.resolveAndFindWithConfidence<SortCall>(
                     call,
                     context.symbolTable,
                     maxDepth = maxDepth,
+                    language = language,
                 ) ?: continue
-            val sort = resolved.value
             // Skip when sort and access targets are known and different
             if (sort.qualifiedTarget != null &&
                 access.qualifiedTarget != null &&
@@ -143,7 +147,7 @@ public class SortForLastRule : Rule {
             ) {
                 continue
             }
-            findings.add(buildIndirectFinding(sort, call, access, resolved.confidence))
+            findings.add(buildIndirectFinding(sort, call, access, confidence))
             return
         }
     }

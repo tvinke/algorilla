@@ -117,9 +117,10 @@ public class ExpensiveSortComparatorRule : Rule {
                 call,
                 context.symbolTable,
                 maxDepth = maxDepth,
+                language = language,
             ) { isDateType(it.typeName, language, context.registry) }
-        if (dateOp != null) {
-            findings.add(buildIndirectFinding(sort, call, dateOp.value, dateOp.confidence))
+        dateOp?.let { (node, confidence) ->
+            findings.add(buildIndirectFinding(sort, call, node, confidence))
             return
         }
         val parseOp =
@@ -127,12 +128,13 @@ public class ExpensiveSortComparatorRule : Rule {
                 call,
                 context.symbolTable,
                 maxDepth = maxDepth,
+                language = language,
                 // No TypeEnvironment here: this predicate runs against nodes inside a
                 // *different*, cross-method-resolved function body, whose own TypeEnvironment
                 // we don't have in scope - falls back to the name heuristic, same as before.
             ) { isDateParseCall(it, language, context.registry) }
-        if (parseOp != null) {
-            findings.add(buildIndirectFinding(sort, call, parseOp.value, parseOp.confidence))
+        parseOp?.let { (node, confidence) ->
+            findings.add(buildIndirectFinding(sort, call, node, confidence))
         }
     }
 
@@ -282,7 +284,7 @@ public class ExpensiveSortComparatorRule : Rule {
         evidence: List<Evidence>,
         message: String,
         suggestion: String,
-        confidence: Confidence = Confidence.MEDIUM,
+        confidence: Confidence,
     ) = Finding(
         ruleId = id,
         ruleName = name,

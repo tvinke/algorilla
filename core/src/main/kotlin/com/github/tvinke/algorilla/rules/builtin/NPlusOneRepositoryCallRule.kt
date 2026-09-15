@@ -94,14 +94,15 @@ public class NPlusOneRepositoryCallRule : Rule {
                     node,
                     context.symbolTable,
                     maxDepth = maxDepth,
+                    language = language,
                     // No TypeEnvironment here: this predicate runs against nodes inside a
                     // *different*, cross-method-resolved function body, whose own
                     // TypeEnvironment we don't have in scope - falls back to the name
                     // heuristic, same as before.
                 ) { isSingleRecordFetch(it, language, context.registry) }
-            if (hiddenFetch != null) {
-                val hiddenTargetMatchesRepo = matchesRepoPattern(hiddenFetch.value.qualifiedTarget, language, context.registry)
-                findings.add(buildCrossMethodFinding(node, hiddenFetch.value, loopStack, hiddenTargetMatchesRepo, hiddenFetch.confidence))
+            hiddenFetch?.let { (fetch, confidence) ->
+                val hiddenTargetMatchesRepo = matchesRepoPattern(fetch.qualifiedTarget, language, context.registry)
+                findings.add(buildCrossMethodFinding(node, fetch, loopStack, hiddenTargetMatchesRepo, confidence))
             }
         }
     }
