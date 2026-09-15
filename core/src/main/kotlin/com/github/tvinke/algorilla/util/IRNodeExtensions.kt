@@ -83,6 +83,42 @@ internal fun pushChildrenWithContext(
 }
 
 /**
+ * Walks this IR (sub)tree, tracking the enclosing [FunctionDecl] and the stack of [LoopNode]s
+ * a node is nested in, and invokes [visit] for every non-loop node that sits inside at least
+ * one loop. A [LoopNode] itself - including one nested inside an outer loop - is never passed
+ * to [visit]; it's consumed to push the loop stack for its children instead.
+ *
+ * This is the shared scaffold behind the "loop-amplifier" rules (hidden nested loops, N+1
+ * queries, regex recompilation, etc.): push a [LoopNode] onto the stack, recurse into its
+ * children, and call [visit] for everything found underneath. Callers filter [visit] on the
+ * node type(s) they care about (e.g. `if (node is FunctionCall) ...`) - the walker itself
+ * doesn't need to know which node kinds a given rule dispatches on.
+ */
+public fun IRNode.walkLoopSites(visit: (node: IRNode, enclosingFn: FunctionDecl?, loopStack: List<LoopNode>) -> Unit) {
+    fun scan(
+        node: IRNode,
+        enclosingFn: FunctionDecl?,
+        loopStack: List<LoopNode>,
+    ) {
+        val fn = if (node is FunctionDecl) node else enclosingFn
+
+        if (node is LoopNode) {
+            for (child in node.children) {
+                scan(child, fn, loopStack + node)
+            }
+            return
+        }
+
+        if (loopStack.isNotEmpty()) visit(node, fn, loopStack)
+
+        for (child in node.children) {
+            scan(child, fn, loopStack)
+        }
+    }
+    scan(this, null, emptyList())
+}
+
+/**
  * Returns true if two branch contexts are compatible, meaning the nodes can co-execute.
  * Contexts are incompatible when they disagree on the branch index for any shared [BranchNode].
  */
