@@ -168,6 +168,7 @@ public class IOInLoopRule : Rule {
                 call = call,
                 callerFn = callerFn,
                 symbolTable = context.symbolTable,
+                language = language,
                 maxDepth = context.config.maxCallDepth.coerceAtMost(2),
             ) { target ->
                 // Check if the terminal operation is a method call to an IO method

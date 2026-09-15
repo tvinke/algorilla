@@ -4,6 +4,7 @@ import com.github.tvinke.algorilla.graph.SymbolTable
 import com.github.tvinke.algorilla.model.FlowTarget
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
+import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.ParameterFlow
 import com.github.tvinke.algorilla.model.SourceLocation
 
@@ -61,24 +62,32 @@ public object ParameterFlowQuery {
      * not traversed. Matching within the callee is by [FlowTarget.FunctionArgument.calledFunction]
      * name, not by argument position - see [findCallByNameAndLocation]'s kdoc for why location is
      * also needed to disambiguate same-named calls.
+     *
+     * [language] is passed through to every [CrossMethodResolver.resolve] call in the chain -
+     * [call] itself and every further hop [followIntoNextHop] follows - so a Kotlin/Groovy/JS
+     * caller doesn't get resolved against Java's unresolvable-names skiplist. Defaults to
+     * [Language.JAVA] only for callers that genuinely don't have a language in scope (e.g.
+     * existing tests); production call sites should always pass the actual source language.
      */
     public fun parameterFlowsThrough(
         call: FunctionCall,
         callerFn: FunctionDecl,
         symbolTable: SymbolTable,
+        language: Language = Language.JAVA,
         maxDepth: Int = 2,
         predicate: (FlowTarget) -> Boolean,
     ): FlowEvidence? {
         val paramsPassed = paramsFlowingInto(callerFn.parameterFlows, call.name)
         if (paramsPassed.isEmpty()) return null
 
-        val (resolved, confidence) = CrossMethodResolver.resolve(call, symbolTable).declAndConfidenceOrNull() ?: return null
+        val (resolved, confidence) = CrossMethodResolver.resolve(call, symbolTable, language).declAndConfidenceOrNull() ?: return null
 
         return paramsPassed.firstNotNullOfOrNull { callerFlow ->
             checkCalleeFlows(
                 callerFlow.paramName,
                 resolved,
                 symbolTable,
+                language,
                 maxDepth,
                 predicate,
                 listOf(FlowStep(call.name, call.location)),
@@ -137,11 +146,12 @@ public object ParameterFlowQuery {
         return results
     }
 
-    @Suppress("LoopWithTooManyJumpStatements") // Filter + continue is idiomatic for resolution chains
+    @Suppress("LoopWithTooManyJumpStatements", "LongParameterList") // Filter + continue is idiomatic for resolution chains
     private fun checkCalleeFlows(
         paramName: String,
         callee: FunctionDecl,
         symbolTable: SymbolTable,
+        language: Language,
         maxDepth: Int,
         predicate: (FlowTarget) -> Boolean,
         path: List<FlowStep>,
@@ -156,7 +166,8 @@ public object ParameterFlowQuery {
                 }
                 if (maxDepth <= 1 || target !is FlowTarget.FunctionArgument) continue
 
-                val deeper = followIntoNextHop(paramName, callee, target, symbolTable, maxDepth, predicate, path, confidenceSoFar)
+                val deeper =
+                    followIntoNextHop(paramName, callee, target, symbolTable, language, maxDepth, predicate, path, confidenceSoFar)
                 if (deeper != null) return deeper
             }
         }
@@ -170,6 +181,7 @@ public object ParameterFlowQuery {
         callee: FunctionDecl,
         target: FlowTarget.FunctionArgument,
         symbolTable: SymbolTable,
+        language: Language,
         maxDepth: Int,
         predicate: (FlowTarget) -> Boolean,
         path: List<FlowStep>,
@@ -177,11 +189,12 @@ public object ParameterFlowQuery {
     ): FlowEvidence? {
         val innerCall = findCallByNameAndLocation(callee, target.calledFunction, target.location) ?: return null
         val (innerResolved, innerConfidence) =
-            CrossMethodResolver.resolve(innerCall, symbolTable).declAndConfidenceOrNull() ?: return null
+            CrossMethodResolver.resolve(innerCall, symbolTable, language).declAndConfidenceOrNull() ?: return null
         return checkCalleeFlows(
             paramName,
             innerResolved,
             symbolTable,
+            language,
             maxDepth - 1,
             predicate,
             path + FlowStep(target.calledFunction, target.location),
