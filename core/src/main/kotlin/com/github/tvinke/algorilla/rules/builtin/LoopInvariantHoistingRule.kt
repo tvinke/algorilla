@@ -21,6 +21,7 @@ import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.util.findDescendants
 import com.github.tvinke.algorilla.util.referencesName
+import com.github.tvinke.algorilla.util.walkLoopSites
 
 /**
  * Detects function calls inside loop bodies that don't depend on the loop variable
@@ -44,31 +45,14 @@ public class LoopInvariantHoistingRule : Rule {
             val language = (fileRoot as? FileRoot)?.language ?: Language.JAVA
             val skipMethods = collectSkipMethods(language, context)
             for (fn in fileRoot.findDescendants<FunctionDecl>()) {
-                scanNode(fn, fn.children, emptyList(), skipMethods, findings)
+                // enclosingFn is unused by checkLoopInvariant below, so the walker's own
+                // per-nested-FunctionDecl tracking (irrelevant here) is safe to ignore.
+                fn.walkLoopSites { node, _, loopStack ->
+                    if (node is FunctionCall) checkLoopInvariant(node, loopStack, skipMethods, findings)
+                }
             }
         }
         return findings
-    }
-
-    private fun scanNode(
-        enclosingFn: FunctionDecl,
-        nodes: List<IRNode>,
-        loopStack: List<LoopNode>,
-        skipMethods: Set<String>,
-        findings: MutableList<Finding>,
-    ) {
-        for (node in nodes) {
-            if (node is LoopNode) {
-                scanNode(enclosingFn, node.children, loopStack + node, skipMethods, findings)
-                continue
-            }
-
-            if (loopStack.isNotEmpty() && node is FunctionCall) {
-                checkLoopInvariant(node, loopStack, skipMethods, findings)
-            }
-
-            scanNode(enclosingFn, node.children, loopStack, skipMethods, findings)
-        }
     }
 
     @Suppress("ReturnCount")
