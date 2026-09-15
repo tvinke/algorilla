@@ -5,7 +5,6 @@ import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.FlowTarget
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
-import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LoopNode
 import com.github.tvinke.algorilla.model.Severity
@@ -16,7 +15,15 @@ import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
+import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import com.github.tvinke.algorilla.util.CrossMethodResolver
+import com.github.tvinke.algorilla.util.ResolutionConfidence
+import com.github.tvinke.algorilla.util.containsAnyAtWordBoundary
+import com.github.tvinke.algorilla.util.demoteIfAmbiguous
+import com.github.tvinke.algorilla.util.endsWithAtWordBoundary
+import com.github.tvinke.algorilla.util.matchesAnyTargetPattern
+import com.github.tvinke.algorilla.util.startsWithAtWordBoundary
+import com.github.tvinke.algorilla.util.walkLoopSites
 
 /**
  * Detects repository/DAO single-record fetch calls inside loops (N+1 problem).
@@ -36,35 +43,12 @@ public class NPlusOneRepositoryCallRule : Rule {
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
-            scanNode(fileRoot, null, emptyList(), fileRoot.language, context, findings)
+            val language = fileRoot.language
+            fileRoot.walkLoopSites { node, fn, loopStack ->
+                if (node is FunctionCall) checkCallInLoop(node, fn, loopStack, language, context, findings)
+            }
         }
         return findings
-    }
-
-    private fun scanNode(
-        node: IRNode,
-        enclosingFn: FunctionDecl?,
-        loopStack: List<LoopNode>,
-        language: Language,
-        context: AnalysisContext,
-        findings: MutableList<Finding>,
-    ) {
-        val fn = if (node is FunctionDecl) node else enclosingFn
-
-        if (node is LoopNode) {
-            for (child in node.children) {
-                scanNode(child, fn, loopStack + node, language, context, findings)
-            }
-            return
-        }
-
-        if (loopStack.isNotEmpty() && node is FunctionCall) {
-            checkCallInLoop(node, fn, loopStack, language, context, findings)
-        }
-
-        for (child in node.children) {
-            scanNode(child, fn, loopStack, language, context, findings)
-        }
     }
 
     private fun checkCallInLoop(
@@ -76,20 +60,26 @@ public class NPlusOneRepositoryCallRule : Rule {
         findings: MutableList<Finding>,
     ) {
         val loopParamConfirmed = fn != null && loopIteratesParam(fn)
-        if (isSingleRecordFetch(node, language, context.registry)) {
-            val targetMatchesRepo = matchesRepoPattern(node.qualifiedTarget, language, context.registry)
+        val typeEnv = fn?.let { context.typeEnvironmentFor(it) }
+        if (isSingleRecordFetch(node, language, context.registry, typeEnv)) {
+            val targetMatchesRepo = matchesRepoPattern(node.qualifiedTarget, language, context.registry, typeEnv)
             findings.add(buildFinding(node, loopStack, loopParamConfirmed, targetMatchesRepo))
         } else {
             val maxDepth = context.config.maxCallDepth.coerceAtMost(2)
             val hiddenFetch =
-                CrossMethodResolver.resolveAndFind<FunctionCall>(
+                CrossMethodResolver.resolveAndFindWithConfidence<FunctionCall>(
                     node,
                     context.symbolTable,
                     maxDepth = maxDepth,
+                    language = language,
+                    // No TypeEnvironment here: this predicate runs against nodes inside a
+                    // *different*, cross-method-resolved function body, whose own
+                    // TypeEnvironment we don't have in scope - falls back to the name
+                    // heuristic, same as before.
                 ) { isSingleRecordFetch(it, language, context.registry) }
-            if (hiddenFetch != null) {
-                val hiddenTargetMatchesRepo = matchesRepoPattern(hiddenFetch.qualifiedTarget, language, context.registry)
-                findings.add(buildCrossMethodFinding(node, hiddenFetch, loopStack, hiddenTargetMatchesRepo))
+            hiddenFetch?.let { (fetch, confidence) ->
+                val hiddenTargetMatchesRepo = matchesRepoPattern(fetch.qualifiedTarget, language, context.registry)
+                findings.add(buildCrossMethodFinding(node, fetch, loopStack, hiddenTargetMatchesRepo, confidence))
             }
         }
     }
@@ -99,12 +89,22 @@ public class NPlusOneRepositoryCallRule : Rule {
             flow.flowsInto.any { it is FlowTarget.LoopIteration }
         }
 
-    @Suppress("LongMethod")
+    /**
+     * [resolutionConfidence] is the confidence of the [CrossMethodResolver] chain that found
+     * [hiddenFetch] - floors the finding to LOW when any hop of that chain was an ambiguous
+     * overload guess, same treatment as [NestedLookupRule]/[HiddenNestedLoopRule]/[IOInLoopRule].
+     *
+     * LongMethod/LongParameterList suppressed: straightforward Finding construction - call,
+     * hiddenFetch, loopStack, and the two confidence-related flags/values all feed directly into
+     * the message/evidence below, splitting them up would just relocate the same parameter list.
+     */
+    @Suppress("LongMethod", "LongParameterList")
     private fun buildCrossMethodFinding(
         call: FunctionCall,
         hiddenFetch: FunctionCall,
         loopStack: List<LoopNode>,
         targetMatchesRepo: Boolean = false,
+        resolutionConfidence: ResolutionConfidence = ResolutionConfidence.EXACT,
     ): Finding {
         val outerLoop = loopStack.first()
         val loopVar = outerLoop.iteratedVariable ?: "items"
@@ -121,11 +121,12 @@ public class NPlusOneRepositoryCallRule : Rule {
                     complexity = "IO \u2190 bottleneck",
                 ),
             )
+        val baseConfidence = if (targetMatchesRepo) Confidence.HIGH else Confidence.MEDIUM
         return Finding(
             ruleId = id,
             ruleName = name,
             severity = severity,
-            confidence = if (targetMatchesRepo) Confidence.HIGH else Confidence.MEDIUM,
+            confidence = resolutionConfidence.demoteIfAmbiguous(baseConfidence),
             location = call.location,
             message = "Single-record fetch $target.${hiddenFetch.name}() inside ${call.name}() called from ${outerLoop.kind.label()} (N+1)",
             suggestions =
@@ -188,21 +189,19 @@ public class NPlusOneRepositoryCallRule : Rule {
 
 /**
  * Returns true if the target variable matches a repository/DAO naming pattern from the
- * YAML io-target-patterns section (repository, dao, entityManager, mapper, etc.).
+ * YAML io-target-patterns section (repository, dao, entityManager, mapper, etc.). See
+ * [matchesAnyTargetPattern] (shared with IOInLoopRule, which had this exact same
+ * pattern-matching logic duplicated verbatim).
  */
 private fun matchesRepoPattern(
     target: String?,
     language: Language,
     registry: LanguageSemanticsRegistry,
+    typeEnv: TypeEnvironment? = null,
 ): Boolean {
-    val t = target?.lowercase() ?: return false
-    return registry.ioTargetPatterns(language).any { pattern ->
-        if (pattern.startsWith("*")) {
-            t.contains(pattern.removePrefix("*"))
-        } else {
-            t.endsWith(pattern) || t == pattern
-        }
-    }
+    if (target == null) return false
+    val declaredType = typeEnv?.declaredTypeName(target)
+    return matchesAnyTargetPattern(declaredType ?: target, registry.ioTargetPatterns(language))
 }
 
 /** Widened pattern: any verb+By+field pattern (e.g. findByEmail, getOrderByStatus, getBySku) */
@@ -216,17 +215,31 @@ private val SINGLE_FETCH_METHOD_REGEX =
 private val PAGINATED_BATCH_REGEX =
     Regex("""^(?:find|get)(?:First|Top)\d+By""", RegexOption.IGNORE_CASE)
 
-@Suppress("ReturnCount") // Guard clauses with early returns — clearer than nested if/else
+@Suppress("ReturnCount", "CyclomaticComplexMethod") // Guard clauses with early returns — clearer than nested if/else
 private fun isSingleRecordFetch(
     call: FunctionCall,
     language: Language,
     registry: LanguageSemanticsRegistry,
+    typeEnv: TypeEnvironment? = null,
 ): Boolean {
     val name = call.name
-    val target = call.qualifiedTarget?.lowercase()
+    // Original-case target for every boundary-aware check below - lowercasing first would
+    // destroy the camelCase signal (userRepository) that tells a real boundary apart from a
+    // coincidental substring (reportGenerator, storefront). The cache/memo exclusion just
+    // below used to lowercase first too - "carpool"/"whirlpool" satisfied "pool" with no
+    // boundary at all.
+    val target = call.qualifiedTarget
+    // A declared type - a real repository/DAO class is conventionally named to match
+    // repoPatterns itself, same as elsewhere this batch - overrides the receiver's bare name
+    // either way: a field merely CALLED "userRepository" but declared as something unrelated
+    // shouldn't pass the repo-pattern gate, and a field named like a cache but genuinely
+    // declared as a repository type shouldn't be excluded by the cache/memo check either.
+    val effectiveTarget = target?.let { typeEnv?.declaredTypeName(it) } ?: target
 
     // Exclude cache/memo targets before applying repo patterns
-    if (target != null && registry.nonRepositoryTargets(language).any { target.contains(it) }) return false
+    if (effectiveTarget != null && containsAnyAtWordBoundary(effectiveTarget, registry.nonRepositoryTargets(language))) {
+        return false
+    }
     // Spring Data findFirst<N>By / findTop<N>By fetches a fixed-size batch, not a single record
     if (PAGINATED_BATCH_REGEX.containsMatchIn(name)) return false
 
@@ -234,22 +247,22 @@ private fun isSingleRecordFetch(
     // Exact prefix matches (highest confidence)
     val matchesPrefixes = registry.singleFetchPrefixes(language).any { name.startsWith(it, ignoreCase = true) }
     if (matchesPrefixes) {
-        if (target == null || repoPatterns.any { target.contains(it) }) return true
+        if (effectiveTarget == null || containsAnyAtWordBoundary(effectiveTarget, repoPatterns)) return true
     }
     // Widened pattern: any findByX/getByX on a repository-like target
     if (SINGLE_FETCH_METHOD_REGEX.matches(name)) {
         // Exclude batch patterns
         val batchSuffixes = registry.batchMethodSuffixes(language)
-        if (batchSuffixes.any { name.endsWith(it, ignoreCase = true) }) return false
+        if (batchSuffixes.any { endsWithAtWordBoundary(name, it) }) return false
         val batchPrefixes = registry.batchMethodPrefixes(language)
         if (batchPrefixes.any {
-                name.startsWith(it, ignoreCase = true) && name.contains("By", ignoreCase = true)
+                startsWithAtWordBoundary(name, it) && name.contains("By", ignoreCase = true)
             }
         ) {
             return false
         }
         // For widened pattern, require a repository-like target to reduce FPs
-        if (target != null && repoPatterns.any { target.contains(it) }) return true
+        if (effectiveTarget != null && containsAnyAtWordBoundary(effectiveTarget, repoPatterns)) return true
     }
     return false
 }

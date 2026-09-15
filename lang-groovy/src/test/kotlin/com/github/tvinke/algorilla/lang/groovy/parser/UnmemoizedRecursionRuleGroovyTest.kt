@@ -40,6 +40,20 @@ internal class UnmemoizedRecursionRuleGroovyTest {
 
             findings.shouldBeEmpty()
         }
+
+        @Test
+        fun `should not flag super call delegation as recursion`() {
+            val findings = analyzeFixture("unmemoized-recursion/negative/super-call-delegation.groovy")
+
+            findings.shouldBeEmpty()
+        }
+
+        @Test
+        fun `should not flag delegation to a differently named object as recursion`() {
+            val findings = analyzeFixture("unmemoized-recursion/negative/delegate-to-other-object.groovy")
+
+            findings.shouldBeEmpty()
+        }
     }
 
     private fun analyzeFixture(fixturePath: String): List<Finding> {

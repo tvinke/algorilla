@@ -83,6 +83,42 @@ internal fun pushChildrenWithContext(
 }
 
 /**
+ * Walks this IR (sub)tree, tracking the enclosing [FunctionDecl] and the stack of [LoopNode]s
+ * a node is nested in, and invokes [visit] for every non-loop node that sits inside at least
+ * one loop. A [LoopNode] itself - including one nested inside an outer loop - is never passed
+ * to [visit]; it's consumed to push the loop stack for its children instead.
+ *
+ * This is the shared scaffold behind the "loop-amplifier" rules (hidden nested loops, N+1
+ * queries, regex recompilation, etc.): push a [LoopNode] onto the stack, recurse into its
+ * children, and call [visit] for everything found underneath. Callers filter [visit] on the
+ * node type(s) they care about (e.g. `if (node is FunctionCall) ...`) - the walker itself
+ * doesn't need to know which node kinds a given rule dispatches on.
+ */
+public fun IRNode.walkLoopSites(visit: (node: IRNode, enclosingFn: FunctionDecl?, loopStack: List<LoopNode>) -> Unit) {
+    fun scan(
+        node: IRNode,
+        enclosingFn: FunctionDecl?,
+        loopStack: List<LoopNode>,
+    ) {
+        val fn = if (node is FunctionDecl) node else enclosingFn
+
+        if (node is LoopNode) {
+            for (child in node.children) {
+                scan(child, fn, loopStack + node)
+            }
+            return
+        }
+
+        if (loopStack.isNotEmpty()) visit(node, fn, loopStack)
+
+        for (child in node.children) {
+            scan(child, fn, loopStack)
+        }
+    }
+    scan(this, null, emptyList())
+}
+
+/**
  * Returns true if two branch contexts are compatible, meaning the nodes can co-execute.
  * Contexts are incompatible when they disagree on the branch index for any shared [BranchNode].
  */
@@ -130,21 +166,49 @@ public fun <T> maxCoExecutableSubset(items: List<Pair<T, BranchContext>>): List<
 }
 
 /**
+ * Returns the declared type of [variableName] as a parameter or local variable of this
+ * function, or null when it can't be resolved at all. A caller that finds a non-null
+ * result here has an authoritative answer and must not fall back to a name heuristic
+ * afterwards — a `List<User> userCache` parameter is a List even though its name ends in
+ * "cache".
+ */
+public fun FunctionDecl.declaredTypeOf(variableName: String?): String? {
+    if (variableName == null) return null
+    return parameters.find { it.name == variableName }?.typeName
+        ?: findDescendants<VariableDecl>().find { it.name == variableName }?.typeName
+}
+
+/**
  * Checks if a variable name corresponds to an O(1) lookup type based on parameter or variable declarations.
  * Delegates to the semantics registry for O(1) type detection.
+ *
+ * Precondition: this is a fallback — callers should prefer a [TypeEnvironment] lookup (field
+ * types, factory inference, chain-end resolution) when one is available, and only reach for
+ * this narrower parameter/local-declaration check when no `TypeEnvironment` exists yet (see
+ * `QuadraticRemovalRule.isRemovalCall`, which calls this only after its own `typeEnv` check
+ * comes back null).
+ *
+ * Edge case: [variableName] null (no declared type could be determined by the caller) or a
+ * name that resolves to no parameter/local declaration on this function both return false —
+ * the caller cannot distinguish "confirmed not O(1)" from "unknown", so callers that need the
+ * conservative direction (treat unknown as "still might be a collection") check
+ * `enclosingFn == null` separately rather than trusting a bare `false` here.
  */
 public fun FunctionDecl.hasO1Type(variableName: String?): Boolean {
-    if (variableName == null) return false
-    val registry = registryInstance
-    val paramType = parameters.find { it.name == variableName }?.typeName
-    if (paramType != null && registry.isO1Type(paramType)) return true
-    val varType = findDescendants<VariableDecl>().find { it.name == variableName }?.typeName
-    return varType != null && registry.isO1Type(varType)
+    val type = declaredTypeOf(variableName) ?: return false
+    return registryInstance.isO1Type(type)
 }
 
 /**
  * Enhanced version that uses [TypeEnvironment] for full type resolution.
  * Falls back to the basic version when no type environment is available.
+ *
+ * Guarantee: delegates to the language-aware overload with [Language] unset and the merged
+ * default registry — equivalent to that overload's `language = null` behavior, not a
+ * separate code path.
+ *
+ * Precondition: prefer the other overload (with an explicit [Language] and [LanguageSemanticsRegistry])
+ * when a specific language is known — this one merges all languages' extras, which is coarser.
  */
 @Suppress("ReturnCount")
 public fun LookupCall.isCollectionLookup(
@@ -154,6 +218,23 @@ public fun LookupCall.isCollectionLookup(
 
 /**
  * Language-aware version that queries per-language extras instead of merging all languages.
+ *
+ * Guarantee: an O(1)-typed or scalar-typed lookup target ([isO1] / [isScalar]) always returns
+ * false before any heuristic runs — those are never treated as a linear collection lookup.
+ *
+ * Guarantee: a call on a known static-utility class target (e.g. `Collections`, `Arrays`)
+ * always returns false — those aren't lookups on a caller-owned collection.
+ *
+ * Precondition: once a [typeEnv] is available and [LookupCall.targetVariable] resolves through
+ * it, that answer is trusted completely and no name-based heuristic runs afterward — a real
+ * `List` named like a cache/map by convention (e.g. `userCache`) must not be second-guessed by
+ * its name once the type is actually known. The same precedence applies to a plain declared
+ * parameter/variable type from [fn] when no [TypeEnvironment] is available.
+ *
+ * Edge case: with no type information at all (no [typeEnv] match, no declared type on [fn]),
+ * this falls back to name heuristics — a target name suggesting a non-list type (registry
+ * suffix/contains lists) or a String-like name returns false; everything else defaults to true,
+ * i.e. an unclassifiable target is assumed to be a collection lookup rather than skipped.
  */
 @Suppress("ReturnCount")
 public fun LookupCall.isCollectionLookup(
@@ -163,16 +244,24 @@ public fun LookupCall.isCollectionLookup(
     registry: LanguageSemanticsRegistry,
 ): Boolean {
     if (isO1 || isScalar) return false
-    if (isStaticUtilityTarget(registry, language) || hasO1TargetName(registry, language)) return false
-    // TypeEnvironment has broader coverage (field types, factory inference, chain-end)
-    // When available, trust it fully — it already includes everything hasO1Type checks.
+    if (isStaticUtilityTarget(registry, language)) return false
+    // TypeEnvironment has broader coverage (field types, factory inference, chain-end).
+    // When available, trust it fully — it already includes everything hasO1Type checks —
+    // and skip the name heuristics below entirely: a real List named like a Map/cache by
+    // convention must not be second-guessed by its name once the type is actually known.
     if (typeEnv != null && targetVariable != null) {
         return !(typeEnv.isO1(targetVariable) || typeEnv.isString(targetVariable) || typeEnv.isBoundedSmallCollection(targetVariable))
     }
+    // Same reasoning for a plain declared parameter/variable type, when there's no
+    // TypeEnvironment to consult.
+    val declaredType = fn?.declaredTypeOf(targetVariable)
+    if (declaredType != null) return !registryInstance.isO1Type(declaredType)
+    // No type info at all — fall back to name heuristics.
+    if (hasO1TargetName(registry, language)) return false
     // Name-based string heuristic: String.contains(substring) is O(n) on string length,
     // not O(n) on a collection — skip when the variable name suggests a String type.
     if (targetVariable != null && hasStringTargetName(targetVariable, registry, language)) return false
-    return fn == null || !fn.hasO1Type(targetVariable)
+    return true
 }
 
 private fun LookupCall.isStaticUtilityTarget(
@@ -189,12 +278,14 @@ private fun LookupCall.hasO1TargetName(
     registry: LanguageSemanticsRegistry,
     language: Language? = null,
 ): Boolean {
-    val target = targetVariable?.lowercase() ?: return false
+    val target = targetVariable ?: return false
     val lang = language ?: Language.JAVA
     val suffixes = registry.nonListTargetsSuffixes(lang)
-    if (suffixes.any { target.endsWith(it) || target == it }) return true
-    val contains = registry.nonListTargetsContains(lang)
-    return contains.any { target.contains(it) }
+    if (suffixes.any { endsWithAtWordBoundary(target, it) }) return true
+    // Same non-list-targets-contains list as QuadraticRemovalRule's isRemovalCall
+    // ("store"/"repository"/"dao"/...) - needed the same boundary check, "restoreList" was
+    // matching "store" here too.
+    return containsAnyAtWordBoundary(target, registry.nonListTargetsContains(lang))
 }
 
 /**
@@ -208,7 +299,7 @@ private fun hasStringTargetName(
 ): Boolean {
     val lang = language ?: Language.JAVA
     if (varName in registry.stringExactNames(lang)) return true
-    return registry.stringNameSuffixes(lang).any { varName.endsWith(it) }
+    return registry.stringNameSuffixes(lang).any { endsWithAtWordBoundary(varName, it, ignoreCase = false) }
 }
 
 /**
@@ -226,13 +317,6 @@ public fun IRNode.referencesName(name: String): Boolean =
         is TypeCheck -> variableName == name
         else -> false
     }
-
-/**
- * Returns true if the function calls itself directly (recursive method).
- * Recursive methods (tree walkers, visitors, DFS) contain loops that iterate
- * child nodes — total work is O(tree_size), not O(n²).
- */
-public fun FunctionDecl.isRecursive(): Boolean = findDescendants<FunctionCall>().any { it.name == name }
 
 /**
  * Recursively transforms an IR tree by applying [fn] to each node bottom-up.
@@ -276,6 +360,20 @@ private val LOOP_EXITS = setOf(ExitKind.THROW, ExitKind.BREAK, ExitKind.RETURN)
  *
  * Searches the call's enclosing block (found by scanning the given IR tree for the call's location)
  * and checks if any sibling after the call is a loop-terminating exit.
+ *
+ * Precondition: [loopBody] must be the list of IR nodes the call's location is actually
+ * findable within — [call] is matched by [com.github.tvinke.algorilla.model.SourceLocation]
+ * equality, not by identity, so passing a body that doesn't contain a node at that location
+ * (e.g. the wrong loop's body) makes this always return false rather than throwing.
+ *
+ * Guarantee: only [ExitKind] values in [LOOP_EXITS] (`THROW`, `BREAK`, `RETURN`) count as a
+ * qualifying exit — a `CONTINUE` immediately after the call does not, since it doesn't stop
+ * the loop from running again.
+ *
+ * Edge case: the call may sit inside a nested [BranchNode] (an if/else) rather than directly
+ * in [loopBody] — the search recurses into each branch and treats an exit found there as
+ * following the call too, so `if (x) { call(); return; }` counts even though `return` isn't a
+ * direct sibling of `call()` at the top level.
  */
 public fun isFollowedByExit(
     call: FunctionCall,

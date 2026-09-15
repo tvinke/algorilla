@@ -15,6 +15,9 @@ import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
+import com.github.tvinke.algorilla.semantics.TypeEnvironment
+import com.github.tvinke.algorilla.util.endsWithAtWordBoundary
+import com.github.tvinke.algorilla.util.walkLoopSites
 
 /**
  * Detects regex pattern compilation inside loops. Compiling a regex is expensive;
@@ -32,36 +35,19 @@ public class RepeatedRegexInLoopRule : Rule {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
             val regexTypes = context.registry.regexTypes(fileRoot.language)
-            scanNode(fileRoot, emptyList(), regexTypes, findings)
+            fileRoot.walkLoopSites { node, fn, loopStack ->
+                if (node is ObjectCreation && node.typeName in regexTypes) {
+                    findings.add(buildFinding(node, loopStack, "new ${node.typeName}()"))
+                }
+                if (node is FunctionCall && hasConstantArgument(node)) {
+                    val typeEnv = fn?.let { context.typeEnvironmentFor(it) }
+                    if (isCompileCall(node, typeEnv, regexTypes)) {
+                        findings.add(buildFinding(node, loopStack, "${node.qualifiedTarget ?: "Pattern"}.${node.name}()"))
+                    }
+                }
+            }
         }
         return findings
-    }
-
-    private fun scanNode(
-        node: IRNode,
-        loopStack: List<LoopNode>,
-        regexTypes: Set<String>,
-        findings: MutableList<Finding>,
-    ) {
-        if (node is LoopNode) {
-            for (child in node.children) {
-                scanNode(child, loopStack + node, regexTypes, findings)
-            }
-            return
-        }
-
-        if (loopStack.isNotEmpty()) {
-            if (node is ObjectCreation && node.typeName in regexTypes) {
-                findings.add(buildFinding(node, loopStack, "new ${node.typeName}()"))
-            }
-            if (node is FunctionCall && isCompileCall(node) && hasConstantArgument(node)) {
-                findings.add(buildFinding(node, loopStack, "${node.qualifiedTarget ?: "Pattern"}.${node.name}()"))
-            }
-        }
-
-        for (child in node.children) {
-            scanNode(child, loopStack, regexTypes, findings)
-        }
     }
 
     private fun buildFinding(
@@ -96,12 +82,23 @@ public class RepeatedRegexInLoopRule : Rule {
     }
 }
 
-private fun isCompileCall(call: FunctionCall): Boolean =
-    call.name == "compile" &&
-        (
-            call.qualifiedTarget?.contains("Pattern") == true ||
-                call.qualifiedTarget?.contains("Regex") == true
-        )
+// "Pattern"/"Regex" must be the receiver's own (qualified) name, not merely a substring
+// somewhere in it — a class like DateTimePatternValidator.compile() has nothing to do
+// with java.util.regex.Pattern, even though its name contains "Pattern". When the receiver's
+// declared type is known, trust that over the name instead: a "userPattern" field typed as
+// a domain class with its own compile() method isn't a regex compile just because the name
+// ends in "Pattern".
+private fun isCompileCall(
+    call: FunctionCall,
+    typeEnv: TypeEnvironment?,
+    regexTypes: Set<String>,
+): Boolean {
+    if (call.name != "compile") return false
+    val target = call.qualifiedTarget ?: return false
+    val declaredType = typeEnv?.declaredTypeName(target)
+    if (declaredType != null) return declaredType in regexTypes
+    return endsWithAtWordBoundary(target, "Pattern") || endsWithAtWordBoundary(target, "Regex")
+}
 
 /**
  * Returns true if the compile() call's first argument appears to be a constant (string literal).

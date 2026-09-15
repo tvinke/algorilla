@@ -4,6 +4,8 @@ import com.github.tvinke.algorilla.model.AccessKind
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LookupKind
 import com.github.tvinke.algorilla.model.SortKind
+import com.github.tvinke.algorilla.util.containsAnyAtWordBoundary
+import com.github.tvinke.algorilla.util.containsAtWordBoundary
 import io.github.oshai.kotlinlogging.KotlinLogging
 
 private val logger = KotlinLogging.logger {}
@@ -39,7 +41,11 @@ public class LanguageSemanticsRegistry private constructor(
         typeName: String,
     ): Boolean {
         val resolved = resolveLanguage(language)
-        return maps.heavyweight[resolved]?.any { typeName.contains(it) } == true
+        // ignoreCase = false: type names are case-sensitive identifiers (PascalCase by
+        // convention), and some callers pass a receiver variable name here too - keeping
+        // case-sensitive avoids matching a lowercase variable like "pattern" against a real
+        // "Pattern" type name.
+        return containsAnyAtWordBoundary(typeName, maps.heavyweight[resolved] ?: emptySet(), ignoreCase = false)
     }
 
     /**
@@ -59,14 +65,19 @@ public class LanguageSemanticsRegistry private constructor(
         typeName: String,
     ): Boolean {
         val resolved = resolveLanguage(language)
-        return maps.collectionTypes[resolved]?.any { typeName.contains(it) } == true ||
-            maps.o1[resolved]?.any { typeName.contains(it) } == true
+        return matchesTypeName(typeName, maps.collectionTypes[resolved], extraSection(language, "non-collection-type-names")) ||
+            matchesTypeName(typeName, maps.o1[resolved], extraSection(language, "non-o1-type-names"))
     }
 
     /**
-     * Returns true if the given type name indicates an O(1) lookup type.
+     * Returns true if the given type name indicates an O(1) lookup type, in any language.
+     * Iterates `maps.o1.keys` (the languages actually loaded) rather than [Language.entries]:
+     * this is on the hot path (once per lookup-shaped call site during parsing), and
+     * [Language.entries] includes `TYPESCRIPT`, which [resolveLanguage] aliases to
+     * `JAVASCRIPT` - iterating the full enum would re-scan the same candidate/exclusion
+     * sets for that alias a second time.
      */
-    public fun isO1Type(typeName: String): Boolean = maps.o1.values.any { types -> types.any { typeName.contains(it) } }
+    public fun isO1Type(typeName: String): Boolean = maps.o1.keys.any { isO1Type(it, typeName) }
 
     /**
      * Returns true if the given type name indicates an O(1) lookup type for the language.
@@ -76,7 +87,7 @@ public class LanguageSemanticsRegistry private constructor(
         typeName: String,
     ): Boolean {
         val resolved = resolveLanguage(language)
-        return maps.o1[resolved]?.any { typeName.contains(it) } == true
+        return matchesTypeName(typeName, maps.o1[resolved], extraSection(language, "non-o1-type-names"))
     }
 
     /**
@@ -401,14 +412,16 @@ public class LanguageSemanticsRegistry private constructor(
             maps.monadicVarNames.values
                 .flatten()
                 .toSet()
-        return allTypes.any { targetText.contains(it) } ||
+        return allTypes.any { containsTypeReference(targetText, it) } ||
             matchesCamelCasePrefix(extractBaseVarName(targetText), allVarNames) ||
             extractBaseVarName(targetText) in allVarNames
     }
 
     /**
      * Returns true if the target expression matches a monadic type or variable name
-     * for the given language.
+     * for the given language, or references a class from `monadic-factory-classes`
+     * (e.g. `ReactiveSecurityContextHolder.getContext()`) - a reactive factory whose
+     * methods return Mono/Flux, not a collection to iterate.
      */
     public fun isMonadicTarget(
         language: Language,
@@ -417,9 +430,26 @@ public class LanguageSemanticsRegistry private constructor(
         val resolved = resolveLanguage(language)
         val types = maps.monadicTypes[resolved] ?: emptySet()
         val varNames = maps.monadicVarNames[resolved] ?: emptySet()
-        return types.any { targetText.contains(it) } ||
+        return types.any { containsTypeReference(targetText, it) } ||
             matchesCamelCasePrefix(extractBaseVarName(targetText), varNames) ||
-            extractBaseVarName(targetText) in varNames
+            extractBaseVarName(targetText) in varNames ||
+            isReactiveFactoryTarget(targetText, language)
+    }
+
+    // ReactiveSecurityContextHolder.getContext().map(...).flatMap(...) — the class is a
+    // reactive factory whose methods return Mono/Flux, not a collection to iterate. Boundary-
+    // checked, not just a bare contains(), so an unrelated class merely containing one of these
+    // names doesn't false-match - though a wrapper/adapter class like "LegacyServerRequestAdapter"
+    // still would (its capitalized "Adapter" tail satisfies the trailing boundary the same way
+    // "ResultSet"/"DateUtils" do elsewhere in this campaign); narrow enough that it's left as a
+    // documented gap rather than a YAML exclusion list, same call as ExpensiveSortComparatorRule.
+    private fun isReactiveFactoryTarget(
+        target: String,
+        language: Language,
+    ): Boolean {
+        val factories = extraSection(language, "monadic-factory-classes")
+        if (factories.isEmpty()) return false
+        return containsAnyAtWordBoundary(target, factories)
     }
 
     /**
@@ -687,6 +717,68 @@ private fun matchesCamelCasePrefix(
             varName.startsWith(prefix) &&
             (varName[prefix.length].isUpperCase() || varName[prefix.length].isDigit())
     }
+
+/**
+ * Returns true if [typeName] matches one of [candidates] at a word boundary, unless it also
+ * matches one of [exclusions] - real types whose name happens to contain a candidate as a
+ * camelCase-capitalized tail without actually being that kind of type (`java.sql.ResultSet`
+ * contains "Set" but isn't a `java.util.Set`; `java.io.InputStream`/`OutputStream` contain
+ * "Stream" but aren't a collection `Stream`). A plain boundary check alone can't tell these
+ * apart from a genuine subclass-style name like `UserHashMap` - both have a capitalized
+ * candidate substring at the end of the string - so known collisions are excluded explicitly
+ * via YAML (`non-collection-type-names`/`non-o1-type-names`) instead.
+ */
+private fun matchesTypeName(
+    typeName: String,
+    candidates: Set<String>?,
+    exclusions: Set<String>,
+): Boolean {
+    if (candidates.isNullOrEmpty()) return false
+    // ignoreCase = false: type names are case-sensitive identifiers (PascalCase by
+    // convention), and some callers pass a receiver variable name here too - keeping
+    // case-sensitive avoids matching a lowercase variable like "map" against a real "Map"
+    // type name (see inferO1Factory in TypeEnvironment.kt, which relies on exactly this).
+    // Candidates checked first: exclusions can only change the outcome once a candidate
+    // already matched, so this short-circuits the (dominant, in a real codebase) no-match
+    // case without ever scanning the exclusion list.
+    if (!containsAnyAtWordBoundary(typeName, candidates, ignoreCase = false)) return false
+    return !containsAnyAtWordBoundary(typeName, exclusions, ignoreCase = false)
+}
+
+/**
+ * Returns true if [targetText] contains [type] as a whole identifier segment — the
+ * character right before the match, if any, must not be a letter or digit, AND the match
+ * must not run straight into a lowercase continuation of the same word on the far side
+ * either. Plain `contains` would let a monadic type name like "Stream" match inside
+ * "parallelStream()" too, treating every `.parallelStream()`/`.someStream()` call as
+ * monadic and silently skipping it from loop classification. Same failure shape as the
+ * camelCase-prefix bugs elsewhere in this campaign (a name matches textually without the
+ * boundary that would prove it's actually that identifier).
+ *
+ * Deliberately NOT the same check as [com.github.tvinke.algorilla.util.containsAtWordBoundary]:
+ * that helper also accepts an uppercase *matched* character as leading-boundary proof on its
+ * own (so `"hibernateSession"` counts "Session" as a real word even though the preceding "e"
+ * is a letter) — exactly the shape that would make "Stream" match again inside
+ * "parallelStream()", since the "S" there is capitalized too. A type-literal reference like
+ * `Stream.of(...)` has to be a standalone token, not a capitalized tail of a longer camelCase
+ * name, so the leading side here only accepts start-of-string or a genuinely non-letter-or-
+ * digit separator before the match.
+ */
+private fun containsTypeReference(
+    targetText: String,
+    type: String,
+): Boolean {
+    var idx = targetText.indexOf(type)
+    while (idx >= 0) {
+        val leadingOk = idx == 0 || !targetText[idx - 1].isLetterOrDigit()
+        val afterIdx = idx + type.length
+        val trailingOk =
+            afterIdx >= targetText.length || !targetText[afterIdx].isLetterOrDigit() || targetText[afterIdx].isUpperCase()
+        if (leadingOk && trailingOk) return true
+        idx = targetText.indexOf(type, idx + 1)
+    }
+    return false
+}
 
 private fun extractBaseVarName(targetText: String): String {
     val cleaned = targetText.trim()

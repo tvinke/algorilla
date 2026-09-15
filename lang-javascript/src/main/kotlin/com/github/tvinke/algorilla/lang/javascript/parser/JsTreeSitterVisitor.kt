@@ -602,7 +602,6 @@ private fun classifyChainedJsCall(
     jsSortKindFor(methodName)?.let { kind ->
         return SortCall(
             kind = kind,
-            hasComparator = argNodes.isNotEmpty(),
             comparatorBody =
                 argNodes.ifEmpty {
                     null

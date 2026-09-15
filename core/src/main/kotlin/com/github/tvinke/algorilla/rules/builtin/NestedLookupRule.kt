@@ -22,9 +22,12 @@ import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import com.github.tvinke.algorilla.util.CrossMethodResolver
+import com.github.tvinke.algorilla.util.ResolutionConfidence
+import com.github.tvinke.algorilla.util.declOrNull
+import com.github.tvinke.algorilla.util.demoteIfAmbiguous
 import com.github.tvinke.algorilla.util.findDescendants
 import com.github.tvinke.algorilla.util.isCollectionLookup
-import com.github.tvinke.algorilla.util.isRecursive
+import com.github.tvinke.algorilla.util.isSelfCallOf
 
 /**
  * Detects linear lookup operations (contains, indexOf, find, filter, etc.) inside loop bodies
@@ -104,27 +107,46 @@ public class NestedLookupRule : Rule {
         if (isTreeWalkCall(node, enclosingFn, iterationStack, language, context.symbolTable)) return
 
         val maxDepth = context.config.maxCallDepth.coerceAtMost(2)
-        val hiddenLookup =
-            CrossMethodResolver.resolveAndFind<LookupCall>(
+        val hiddenLookupMatch =
+            CrossMethodResolver.resolveAndFindWithConfidence<LookupCall>(
                 node,
                 context.symbolTable,
                 maxDepth = maxDepth,
                 language = language,
             ) { it.isCollectionLookup(null, null, language, context.registry) }
-        if (hiddenLookup != null) {
-            val confidence = crossMethodConfidence(node, hiddenLookup, iterationStack, enclosingFn)
+        if (hiddenLookupMatch != null) {
+            val (hiddenLookup, resolutionConfidence) = hiddenLookupMatch
+            val confidence = crossMethodConfidence(node, hiddenLookup, iterationStack, enclosingFn, resolutionConfidence)
             findings.add(buildCrossMethodFinding(node, hiddenLookup, iterationStack, confidence))
         }
     }
 
     /**
-     * Determines confidence for a cross-method nested lookup.
-     * When the call target is an external object (not a loop variable and not this/super),
-     * the hidden lookup is on the callee's internal data — demote to LOW.
-     * When parameter flow proves the loop variable reaches the hidden lookup — HIGH.
+     * Determines confidence for a cross-method nested lookup, then floors it to LOW via
+     * [demoteIfAmbiguous] when [resolutionConfidence] shows any hop of the chain that found
+     * [hiddenLookup] - not just the outermost call - was resolved by an arbitrary overload
+     * guess. The hidden lookup found through an ambiguous hop might belong to the wrong
+     * function entirely, however deep that hop was.
+     */
+    private fun crossMethodConfidence(
+        call: FunctionCall,
+        hiddenLookup: LookupCall,
+        iterationStack: List<IRNode>,
+        enclosingFn: FunctionDecl?,
+        resolutionConfidence: ResolutionConfidence,
+    ): Confidence {
+        val signalConfidence = signalBasedConfidence(call, hiddenLookup, iterationStack, enclosingFn)
+        return resolutionConfidence.demoteIfAmbiguous(signalConfidence)
+    }
+
+    /**
+     * The confidence signals specific to this rule, ignoring resolution confidence entirely:
+     * when the call target is an external object (not a loop variable and not this/super), the
+     * hidden lookup is on the callee's internal data — demote to LOW. When parameter flow
+     * proves the loop variable reaches the hidden lookup — HIGH.
      */
     @Suppress("ReturnCount") // Guard clauses with early returns — clearer than nested if/else
-    private fun crossMethodConfidence(
+    private fun signalBasedConfidence(
         call: FunctionCall,
         hiddenLookup: LookupCall,
         iterationStack: List<IRNode>,
@@ -137,7 +159,7 @@ public class NestedLookupRule : Rule {
         // Call on an external object (not this/super, not a loop variable) — the hidden lookup
         // operates on the callee's own data, not the loop's collection
         val target = call.qualifiedTarget
-        if (target != null && target !in SELF_REFERENCES && target !in loopVars) {
+        if (target != null && target !in CrossMethodResolver.SELF_OR_SUPER_REFERENCES && target !in loopVars) {
             return Confidence.LOW
         }
 
@@ -175,10 +197,6 @@ public class NestedLookupRule : Rule {
             else -> null
         }
 
-    private companion object {
-        private val SELF_REFERENCES = setOf("this", "super")
-    }
-
     /**
      * Detects tree-walk/transform patterns that should not be flagged as nested lookups.
      * A call is a tree-walk when it's inside a higher-order iteration (.map/.forEach) and:
@@ -199,15 +217,20 @@ public class NestedLookupRule : Rule {
         if (outerLoop !is LoopNode || outerLoop.kind != LoopKind.HIGHER_ORDER) return false
 
         // Case 1: direct self-recursion (processModule calls processModule)
-        if (enclosingFn != null && call.name == enclosingFn.name) return true
+        if (enclosingFn != null && call.isSelfCallOf(enclosingFn, symbolTable)) return true
 
-        // Case 2: resolved function is itself recursive (processPackage calls processPackage)
-        val resolved = CrossMethodResolver.resolve(call, symbolTable, language) ?: return false
-        if (resolved.isRecursive()) return true
+        // Case 2: resolved function is itself recursive (processPackage calls processPackage).
+        // Recomputed here rather than reading the cached FunctionDecl.isRecursive property:
+        // rule-level tests build an AnalysisContext directly without running
+        // AnalysisEngine.annotateRecursion first, so the cached value can't be trusted.
+        val resolved = CrossMethodResolver.resolve(call, symbolTable, language).declOrNull() ?: return false
+        val resolvedCalls = resolved.findDescendants<FunctionCall>()
+        if (resolvedCalls.any { it.isSelfCallOf(resolved, symbolTable) }) return true
 
-        // Case 3: mutual recursion — resolved function calls back to enclosing function
+        // Case 3: mutual recursion — resolved function calls back to enclosing function.
+        // Reuses resolvedCalls above instead of walking resolved's body a second time.
         if (enclosingFn != null) {
-            val callsBack = resolved.findDescendants<FunctionCall>().any { it.name == enclosingFn.name }
+            val callsBack = resolvedCalls.any { it.isSelfCallOf(enclosingFn, symbolTable) }
             if (callsBack) return true
         }
 

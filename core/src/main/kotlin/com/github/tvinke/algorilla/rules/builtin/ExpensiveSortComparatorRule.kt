@@ -3,6 +3,7 @@ package com.github.tvinke.algorilla.rules.builtin
 import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.FunctionCall
+import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LookupCall
@@ -17,7 +18,11 @@ import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
+import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import com.github.tvinke.algorilla.util.CrossMethodResolver
+import com.github.tvinke.algorilla.util.ResolutionConfidence
+import com.github.tvinke.algorilla.util.containsAnyAtWordBoundary
+import com.github.tvinke.algorilla.util.demoteIfAmbiguous
 import com.github.tvinke.algorilla.util.findDescendants
 
 /**
@@ -40,32 +45,37 @@ public class ExpensiveSortComparatorRule : Rule {
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
-            scanNode(fileRoot, fileRoot.language, context, findings)
+            scanNode(fileRoot, null, fileRoot.language, context, findings)
         }
         return findings
     }
 
     private fun scanNode(
         node: IRNode,
+        enclosingFn: FunctionDecl?,
         language: Language,
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
+        val fn = if (node is FunctionDecl) node else enclosingFn
         if (node is SortCall) {
-            checkComparatorBody(node, language, context, findings)
+            checkComparatorBody(node, fn, language, context, findings)
         }
         for (child in node.children) {
-            scanNode(child, language, context, findings)
+            scanNode(child, fn, language, context, findings)
         }
     }
 
+    @Suppress("LongParameterList") // Threading the enclosing function through for TypeEnvironment lookups
     private fun checkComparatorBody(
         sort: SortCall,
+        enclosingFn: FunctionDecl?,
         language: Language,
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
         val body = sort.comparatorBody ?: return
+        val typeEnv = enclosingFn?.let { context.typeEnvironmentFor(it) }
 
         // Linear lookups inside comparator
         val lookups = body.filterIsInstance<LookupCall>() + body.flatMap { it.findDescendants<LookupCall>() }
@@ -80,15 +90,15 @@ public class ExpensiveSortComparatorRule : Rule {
             findings.add(buildDateCreationFinding(sort, creation))
         }
 
-        // Date parse calls inside comparator
+        // Date parse calls inside comparator - partitioned once rather than filtered twice,
+        // since isDateParseCall now does a TypeEnvironment lookup instead of a plain string check.
         val calls = body.filterIsInstance<FunctionCall>() + body.flatMap { it.findDescendants<FunctionCall>() }
-        val dateParseCalls = calls.filter { isDateParseCall(it, language, context.registry) }
+        val (dateParseCalls, nonDateCalls) = calls.partition { isDateParseCall(it, language, context.registry, typeEnv) }
         for (call in dateParseCalls) {
             findings.add(buildDateParseFinding(sort, call))
         }
 
         // Cross-method: check called methods for hidden date operations
-        val nonDateCalls = calls.filter { !isDateParseCall(it, language, context.registry) }
         for (call in nonDateCalls) {
             checkCrossMethodDate(sort, call, language, context, findings)
         }
@@ -103,23 +113,28 @@ public class ExpensiveSortComparatorRule : Rule {
     ) {
         val maxDepth = context.config.maxCallDepth.coerceAtMost(2)
         val dateOp =
-            CrossMethodResolver.resolveAndFind<ObjectCreation>(
+            CrossMethodResolver.resolveAndFindWithConfidence<ObjectCreation>(
                 call,
                 context.symbolTable,
                 maxDepth = maxDepth,
+                language = language,
             ) { isDateType(it.typeName, language, context.registry) }
-        if (dateOp != null) {
-            findings.add(buildIndirectFinding(sort, call, dateOp))
+        dateOp?.let { (node, confidence) ->
+            findings.add(buildIndirectFinding(sort, call, node, confidence))
             return
         }
         val parseOp =
-            CrossMethodResolver.resolveAndFind<FunctionCall>(
+            CrossMethodResolver.resolveAndFindWithConfidence<FunctionCall>(
                 call,
                 context.symbolTable,
                 maxDepth = maxDepth,
+                language = language,
+                // No TypeEnvironment here: this predicate runs against nodes inside a
+                // *different*, cross-method-resolved function body, whose own TypeEnvironment
+                // we don't have in scope - falls back to the name heuristic, same as before.
             ) { isDateParseCall(it, language, context.registry) }
-        if (parseOp != null) {
-            findings.add(buildIndirectFinding(sort, call, parseOp))
+        parseOp?.let { (node, confidence) ->
+            findings.add(buildIndirectFinding(sort, call, node, confidence))
         }
     }
 
@@ -194,10 +209,18 @@ public class ExpensiveSortComparatorRule : Rule {
         )
     }
 
+    /**
+     * Cross-method finding: the date operation lives inside a method resolved via
+     * [CrossMethodResolver.resolveAndFindWithConfidence], not directly in the comparator body.
+     * [resolutionConfidence] floors the finding to LOW when that resolution was an ambiguous
+     * overload guess - see [NestedLookupRule]/[HiddenNestedLoopRule]/[IOInLoopRule] for the
+     * same treatment.
+     */
     private fun buildIndirectFinding(
         sort: SortCall,
         call: FunctionCall,
         innerNode: IRNode,
+        resolutionConfidence: ResolutionConfidence = ResolutionConfidence.EXACT,
     ): Finding {
         val cx = ComplexityModel.sortTimesParse()
         val desc =
@@ -224,6 +247,7 @@ public class ExpensiveSortComparatorRule : Rule {
             evidence,
             "Date operation inside ${call.name}() called from sort comparator",
             "Parse dates once before sorting, not inside the comparator call chain",
+            resolutionConfidence.demoteIfAmbiguous(Confidence.MEDIUM),
         )
     }
 
@@ -260,10 +284,12 @@ public class ExpensiveSortComparatorRule : Rule {
         evidence: List<Evidence>,
         message: String,
         suggestion: String,
+        confidence: Confidence,
     ) = Finding(
         ruleId = id,
         ruleName = name,
         severity = severity,
+        confidence = confidence,
         location = location,
         message = message,
         suggestions = listOf(Suggestion.Freeform(suggestion)),
@@ -273,18 +299,34 @@ public class ExpensiveSortComparatorRule : Rule {
     )
 }
 
+// ignoreCase = false: type names are case-sensitive. Same boundary-ambiguity as
+// LanguageSemanticsRegistry.matchesTypeName ("DateUtils"/"InstantSource" still match, see
+// its doc). Also used by ExpensiveCallbackRule (heavyweight-object-in-callback detection),
+// not just this rule's own comparator cost estimation - not given a YAML exclusion list
+// here regardless, since "DateUtils"-style collisions are less certain to occur in a real
+// codebase than the JDK-standard ResultSet/InputStream ones that justified the list on
+// LanguageSemanticsRegistry; see ExpensiveSortComparatorRuleNameVsTypeTest for the
+// documented gap.
 internal fun isDateType(
     typeName: String,
     language: Language,
     registry: LanguageSemanticsRegistry,
-): Boolean = registry.dateTypeNames(language).any { typeName.contains(it) }
+): Boolean = containsAnyAtWordBoundary(typeName, registry.dateTypeNames(language), ignoreCase = false)
 
+// Static factory calls (LocalDate.parse(...), Instant.ofEpochMilli(...)) have the type's
+// own name as qualifiedTarget already, so there's no name-vs-type question there. But an
+// instance call through a variable (sdf.parse(x)) has the variable's *name* as
+// qualifiedTarget - a variable named to look like a date/time type ("dateFormatter") whose
+// declared type is actually something unrelated would still pass the bare name check. When
+// a TypeEnvironment is available, check the declared type instead of trusting the name.
 internal fun isDateParseCall(
     call: FunctionCall,
     language: Language,
     registry: LanguageSemanticsRegistry,
+    typeEnv: TypeEnvironment? = null,
 ): Boolean {
     if (call.name !in registry.dateParseMethods(language)) return false
     val target = call.qualifiedTarget ?: return false
-    return registry.dateParseTargets(language).any { target.contains(it) }
+    val declaredType = typeEnv?.declaredTypeName(target)
+    return containsAnyAtWordBoundary(declaredType ?: target, registry.dateParseTargets(language), ignoreCase = false)
 }

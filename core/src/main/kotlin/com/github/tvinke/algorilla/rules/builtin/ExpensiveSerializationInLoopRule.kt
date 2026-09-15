@@ -2,7 +2,6 @@ package com.github.tvinke.algorilla.rules.builtin
 
 import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.FunctionCall
-import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LoopNode
 import com.github.tvinke.algorilla.model.Severity
@@ -13,6 +12,7 @@ import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.SemanticCategory
+import com.github.tvinke.algorilla.util.walkLoopSites
 
 /**
  * Detects expensive serialization/deserialization calls inside loops.
@@ -29,36 +29,17 @@ public class ExpensiveSerializationInLoopRule : Rule {
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
-            val lang = fileRoot.language
-            scanNode(fileRoot, emptyList(), lang, context, findings)
+            val language = fileRoot.language
+            fileRoot.walkLoopSites { node, _, loopStack ->
+                if (node is FunctionCall) {
+                    val semantics = context.registry.classify(language, node.name)
+                    if (semantics?.category == SemanticCategory.SERIALIZATION) {
+                        findings.add(buildFinding(node, loopStack))
+                    }
+                }
+            }
         }
         return findings
-    }
-
-    private fun scanNode(
-        node: IRNode,
-        loopStack: List<LoopNode>,
-        language: Language,
-        context: AnalysisContext,
-        findings: MutableList<Finding>,
-    ) {
-        if (node is LoopNode) {
-            for (child in node.children) {
-                scanNode(child, loopStack + node, language, context, findings)
-            }
-            return
-        }
-
-        if (loopStack.isNotEmpty() && node is FunctionCall) {
-            val semantics = context.registry.classify(language, node.name)
-            if (semantics?.category == SemanticCategory.SERIALIZATION) {
-                findings.add(buildFinding(node, loopStack))
-            }
-        }
-
-        for (child in node.children) {
-            scanNode(child, loopStack, language, context, findings)
-        }
     }
 
     private fun buildFinding(
