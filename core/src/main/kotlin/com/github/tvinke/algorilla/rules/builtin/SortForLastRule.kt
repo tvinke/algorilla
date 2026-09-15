@@ -18,6 +18,8 @@ import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.util.CrossMethodResolver
+import com.github.tvinke.algorilla.util.ResolutionConfidence
+import com.github.tvinke.algorilla.util.demoteIfAmbiguous
 import com.github.tvinke.algorilla.util.findDescendants
 
 /**
@@ -98,12 +100,13 @@ public class SortForLastRule : Rule {
         val nearbyCalls = calls.filter { isNearbyCall(sort, it) }
         val maxDepth = context.config.maxCallDepth.coerceAtMost(2)
         for (call in nearbyCalls) {
-            val access =
-                CrossMethodResolver.resolveAndFind<CollectionAccess>(
+            val resolved =
+                CrossMethodResolver.resolveAndFindWithConfidence<CollectionAccess>(
                     call,
                     context.symbolTable,
                     maxDepth = maxDepth,
                 ) ?: continue
+            val access = resolved.value
             // Skip when sort and access targets are known and different
             if (sort.qualifiedTarget != null &&
                 access.qualifiedTarget != null &&
@@ -111,7 +114,7 @@ public class SortForLastRule : Rule {
             ) {
                 continue
             }
-            findings.add(buildIndirectFinding(sort, call, access))
+            findings.add(buildIndirectFinding(sort, call, access, resolved.confidence))
             return
         }
     }
@@ -126,12 +129,13 @@ public class SortForLastRule : Rule {
         val nearbyCalls = calls.filter { isNearbyCallBefore(it, access) }
         val maxDepth = context.config.maxCallDepth.coerceAtMost(2)
         for (call in nearbyCalls) {
-            val sort =
-                CrossMethodResolver.resolveAndFind<SortCall>(
+            val resolved =
+                CrossMethodResolver.resolveAndFindWithConfidence<SortCall>(
                     call,
                     context.symbolTable,
                     maxDepth = maxDepth,
                 ) ?: continue
+            val sort = resolved.value
             // Skip when sort and access targets are known and different
             if (sort.qualifiedTarget != null &&
                 access.qualifiedTarget != null &&
@@ -139,7 +143,7 @@ public class SortForLastRule : Rule {
             ) {
                 continue
             }
-            findings.add(buildIndirectFinding(sort, call, access))
+            findings.add(buildIndirectFinding(sort, call, access, resolved.confidence))
             return
         }
     }
@@ -214,15 +218,23 @@ public class SortForLastRule : Rule {
         )
     }
 
+    /**
+     * [resolutionConfidence] is the confidence of the [CrossMethodResolver] chain that linked
+     * [sort] and [access] across methods - floors the finding to LOW when that resolution was
+     * an ambiguous overload guess, same treatment as
+     * [NestedLookupRule]/[HiddenNestedLoopRule]/[IOInLoopRule].
+     */
     private fun buildIndirectFinding(
         sort: SortCall,
         call: FunctionCall,
         access: CollectionAccess,
+        resolutionConfidence: ResolutionConfidence = ResolutionConfidence.EXACT,
     ): Finding {
         val cx = ComplexityModel.sortForAccess()
         return Finding(
             ruleId = id,
             ruleName = name,
+            confidence = resolutionConfidence.demoteIfAmbiguous(Confidence.MEDIUM),
             severity = severity,
             location = sort.location,
             message = "Sorting entire collection just to access ${accessLabel(access.kind)} element via ${call.name}()",

@@ -18,7 +18,9 @@ import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import com.github.tvinke.algorilla.util.CrossMethodResolver
+import com.github.tvinke.algorilla.util.ResolutionConfidence
 import com.github.tvinke.algorilla.util.containsAnyAtWordBoundary
+import com.github.tvinke.algorilla.util.demoteIfAmbiguous
 import com.github.tvinke.algorilla.util.endsWithAtWordBoundary
 import com.github.tvinke.algorilla.util.matchesAnyTargetPattern
 import com.github.tvinke.algorilla.util.startsWithAtWordBoundary
@@ -88,7 +90,7 @@ public class NPlusOneRepositoryCallRule : Rule {
         } else {
             val maxDepth = context.config.maxCallDepth.coerceAtMost(2)
             val hiddenFetch =
-                CrossMethodResolver.resolveAndFind<FunctionCall>(
+                CrossMethodResolver.resolveAndFindWithConfidence<FunctionCall>(
                     node,
                     context.symbolTable,
                     maxDepth = maxDepth,
@@ -98,8 +100,8 @@ public class NPlusOneRepositoryCallRule : Rule {
                     // heuristic, same as before.
                 ) { isSingleRecordFetch(it, language, context.registry) }
             if (hiddenFetch != null) {
-                val hiddenTargetMatchesRepo = matchesRepoPattern(hiddenFetch.qualifiedTarget, language, context.registry)
-                findings.add(buildCrossMethodFinding(node, hiddenFetch, loopStack, hiddenTargetMatchesRepo))
+                val hiddenTargetMatchesRepo = matchesRepoPattern(hiddenFetch.value.qualifiedTarget, language, context.registry)
+                findings.add(buildCrossMethodFinding(node, hiddenFetch.value, loopStack, hiddenTargetMatchesRepo, hiddenFetch.confidence))
             }
         }
     }
@@ -109,12 +111,18 @@ public class NPlusOneRepositoryCallRule : Rule {
             flow.flowsInto.any { it is FlowTarget.LoopIteration }
         }
 
-    @Suppress("LongMethod")
+    /**
+     * [resolutionConfidence] is the confidence of the [CrossMethodResolver] chain that found
+     * [hiddenFetch] - floors the finding to LOW when any hop of that chain was an ambiguous
+     * overload guess, same treatment as [NestedLookupRule]/[HiddenNestedLoopRule]/[IOInLoopRule].
+     */
+    @Suppress("LongMethod", "LongParameterList")
     private fun buildCrossMethodFinding(
         call: FunctionCall,
         hiddenFetch: FunctionCall,
         loopStack: List<LoopNode>,
         targetMatchesRepo: Boolean = false,
+        resolutionConfidence: ResolutionConfidence = ResolutionConfidence.EXACT,
     ): Finding {
         val outerLoop = loopStack.first()
         val loopVar = outerLoop.iteratedVariable ?: "items"
@@ -131,11 +139,12 @@ public class NPlusOneRepositoryCallRule : Rule {
                     complexity = "IO \u2190 bottleneck",
                 ),
             )
+        val baseConfidence = if (targetMatchesRepo) Confidence.HIGH else Confidence.MEDIUM
         return Finding(
             ruleId = id,
             ruleName = name,
             severity = severity,
-            confidence = if (targetMatchesRepo) Confidence.HIGH else Confidence.MEDIUM,
+            confidence = resolutionConfidence.demoteIfAmbiguous(baseConfidence),
             location = call.location,
             message = "Single-record fetch $target.${hiddenFetch.name}() inside ${call.name}() called from ${outerLoop.kind.label()} (N+1)",
             suggestions =
