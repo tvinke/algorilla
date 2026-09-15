@@ -8,7 +8,6 @@ import com.github.tvinke.algorilla.model.FileRoot
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.LookupCall
-import com.github.tvinke.algorilla.model.TypeSource
 import com.github.tvinke.algorilla.model.VariableDecl
 import com.github.tvinke.algorilla.rules.signatureKey
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
@@ -183,14 +182,15 @@ private fun markScalarLookupsInFunction(
                 type == null -> node
                 typeEnv.isO1(varName) -> node.copy(isO1 = true)
                 // isCollection() returning false means "can't confirm it's a collection" - it's
-                // also false for a NAME_HEURISTIC-sourced guess, which isn't proof the variable
-                // is scalar, just that we don't trust the type enough to call it a collection.
-                // Checking type.source here applies the same NAME_HEURISTIC exclusion
-                // declaredTypeName()/isCollection() apply internally (reusing the already-fetched
-                // `type` instead of triggering another typeOf() lookup), so we only promote to
-                // isScalar when we have an actual declared type to confirm is not a collection -
-                // not merely an unconfirmed one.
-                type.source != TypeSource.NAME_HEURISTIC && !typeEnv.isCollection(varName) -> node.copy(isScalar = true)
+                // also false for a NAME_HEURISTIC-sourced guess (e.g. "results" inferred as
+                // "List" purely from an initializer call named getOrderList()), which isn't proof
+                // the variable is scalar, just that we don't trust the type enough to call it a
+                // collection. declaredTypeName() applies the same NAME_HEURISTIC exclusion - same
+                // check CardinalityExplosionRule.classifyByDeclaredType already uses for this
+                // exact problem - so gating on it here means we only promote to isScalar when we
+                // have an actual declared type to confirm is not a collection, not merely an
+                // unconfirmed one.
+                typeEnv.declaredTypeName(varName) != null && !typeEnv.isCollection(varName) -> node.copy(isScalar = true)
                 else -> node
             }
         } else {

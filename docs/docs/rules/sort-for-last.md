@@ -13,7 +13,7 @@ tags:
     |---|---|
     | **Rule ID** | `sort-for-last` |
     | **[Severity](/algorilla/guide/understanding-output/#severity-levels)** | WARNING — likely performance problem |
-    | **[Confidence](/algorilla/guide/understanding-output/#confidence-levels)** | HIGH — structurally proven |
+    | **[Confidence](/algorilla/guide/understanding-output/#confidence-levels)** | HIGH (default) · LOW (ambiguous cross-method resolution) |
     | **Category** | Sort abuse |
     | **[Complexity](/algorilla/concepts/big-o-primer/)** | O(n log n) → O(n) |
 

@@ -116,6 +116,10 @@ public class NPlusOneRepositoryCallRule : Rule {
      * [resolutionConfidence] is the confidence of the [CrossMethodResolver] chain that found
      * [hiddenFetch] - floors the finding to LOW when any hop of that chain was an ambiguous
      * overload guess, same treatment as [NestedLookupRule]/[HiddenNestedLoopRule]/[IOInLoopRule].
+     *
+     * LongMethod/LongParameterList suppressed: straightforward Finding construction - call,
+     * hiddenFetch, loopStack, and the two confidence-related flags/values all feed directly into
+     * the message/evidence below, splitting them up would just relocate the same parameter list.
      */
     @Suppress("LongMethod", "LongParameterList")
     private fun buildCrossMethodFinding(

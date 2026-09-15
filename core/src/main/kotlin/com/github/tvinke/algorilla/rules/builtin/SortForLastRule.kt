@@ -92,6 +92,9 @@ public class SortForLastRule : Rule {
         }
     }
 
+    // LoopWithTooManyJumpStatements: continue/return control the nearby-call search itself, not
+    // incidental flow. LongParameterList: language/context/findings travel together with
+    // sort/calls across this rule's whole cross-method-check family.
     @Suppress("LoopWithTooManyJumpStatements", "LongParameterList")
     private fun checkSortWithCrossMethodAccess(
         sort: SortCall,
@@ -122,6 +125,7 @@ public class SortForLastRule : Rule {
         }
     }
 
+    // Same shape as checkSortWithCrossMethodAccess above - see its suppress comment.
     @Suppress("LoopWithTooManyJumpStatements", "LongParameterList")
     private fun checkAccessWithCrossMethodSort(
         access: CollectionAccess,
