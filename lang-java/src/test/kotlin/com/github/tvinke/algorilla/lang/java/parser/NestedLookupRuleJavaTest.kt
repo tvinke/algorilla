@@ -156,13 +156,12 @@ internal class NestedLookupRuleJavaTest {
         }
 
         @Test
-        fun `should be MEDIUM confidence when no type info available`() {
-            // Use fixture without typeEnvironments — fallback to name-based detection
+        fun `should be HIGH confidence when declared parameter type resolves via markScalarLookups`() {
+            // analyzeFixture runs markScalarLookups, which resolves the declared List<String>
+            // parameter here — so this is HIGH, not a name-based-heuristic MEDIUM.
             val findings = analyzeFixture("nested-lookup/positive/list-contains-in-for.java")
 
             findings shouldHaveSize 1
-            // With TypeEnvironment from markScalarLookups, the declared List<String> parameter
-            // will be resolved — so this should actually be HIGH now
             findings.first().confidence shouldBe Confidence.HIGH
         }
 
