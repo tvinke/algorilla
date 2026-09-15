@@ -9,6 +9,7 @@ import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LookupCall
 import com.github.tvinke.algorilla.model.LookupKind
 import com.github.tvinke.algorilla.model.Severity
+import com.github.tvinke.algorilla.model.SortCall
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.ComplexityModel
 import com.github.tvinke.algorilla.rules.Evidence
@@ -25,9 +26,12 @@ import com.github.tvinke.algorilla.util.maxCoExecutableSubset
  * Detects multiple linear scans on the same collection within a single function.
  * Each additional scan multiplies the cost; caching or combining into a single pass is preferred.
  *
- * Covers both [LookupCall] nodes (contains, find, filter, etc.) and full-scan [FunctionCall]
- * nodes (groupBy, distinct, toMap, etc.) from the YAML `full-scan-methods` section.
+ * Covers [LookupCall] nodes (contains, find, filter, etc.), full-scan [FunctionCall] nodes
+ * (groupBy, distinct, toMap, etc.) from the YAML `full-scan-methods` section, and [SortCall]
+ * nodes (sort, sorted, sortBy, orderBy) — sort has its own IR node type, so it isn't reachable
+ * through the `full-scan-methods` YAML list.
  */
+@Suppress("LargeClass") // Cohesive rule: three node-type scan paths (lookup/full-scan/sort) for one anti-pattern
 public class RepeatedLinearScanRule : Rule {
     override val id: String = "repeated-linear-scan"
     override val name: String = "Repeated Linear Scan"
@@ -68,8 +72,9 @@ public class RepeatedLinearScanRule : Rule {
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
-        val reportedTargets = checkLookupCalls(fn, language, context, findings)
-        checkFullScanCalls(fn, fullScanMethods, reportedTargets, findings)
+        val lookupTargets = checkLookupCalls(fn, language, context, findings)
+        val sortTargets = checkSortCalls(fn, lookupTargets, findings)
+        checkFullScanCalls(fn, fullScanMethods, lookupTargets + sortTargets, findings)
     }
 
     private fun checkLookupCalls(
@@ -94,6 +99,73 @@ public class RepeatedLinearScanRule : Rule {
         }
         return lookupsByTarget.keys
     }
+
+    /**
+     * Detects repeated `.sort()`/`.sorted()`/`.sortBy()`/`.orderBy()` calls on the same
+     * collection — each is its own O(n log n) full pass, not a lookup or a YAML full-scan
+     * method (sort has its own dedicated [SortCall] IR node, so [checkFullScanCalls]
+     * never sees it).
+     */
+    private fun checkSortCalls(
+        fn: FunctionDecl,
+        reportedTargets: Set<String?>,
+        findings: MutableList<Finding>,
+    ): Set<String?> {
+        val sortsWithContext = fn.findDescendantsWithBranchContext<SortCall>()
+        val filteredSorts =
+            sortsWithContext.filter {
+                val target = it.first.qualifiedTarget
+                target != null && target !in reportedTargets && isCollectionVariable(target)
+            }
+        val sortsByTarget = filteredSorts.groupBy { it.first.qualifiedTarget }
+        val newlyReported = mutableSetOf<String?>()
+        for ((targetVar, callsWithContext) in sortsByTarget) {
+            val coExecutable = maxCoExecutableSubset(callsWithContext)
+            if (coExecutable.size >= MIN_SCANS_TO_REPORT) {
+                findings.add(buildSortFinding(fn, targetVar!!, coExecutable))
+                newlyReported.add(targetVar)
+            }
+        }
+        return newlyReported
+    }
+
+    private fun buildSortFinding(
+        fn: FunctionDecl,
+        targetVar: String,
+        sorts: List<SortCall>,
+    ): Finding {
+        val cx = ComplexityModel.repeatedScans(sorts.size)
+        val opsDesc = sorts.joinToString(" and ") { ".${it.kind.label}()" }
+        val paramBacked = fn.parameterFlows.any { it.paramName == targetVar }
+        return Finding(
+            ruleId = id,
+            ruleName = name,
+            severity = severity,
+            confidence = if (paramBacked) Confidence.HIGH else Confidence.MEDIUM,
+            location = sorts.first().location,
+            message =
+                "'$targetVar' is sorted ${sorts.size} times in ${fn.name}(): " +
+                    "each $opsDesc re-sorts the full collection",
+            suggestions = listOf(Suggestion.Freeform("Sort '$targetVar' once and reuse the result")),
+            currentComplexity = cx.current,
+            suggestedComplexity = cx.suggested,
+            evidence = buildSortEvidence(sorts, targetVar),
+        )
+    }
+
+    private fun buildSortEvidence(
+        sorts: List<SortCall>,
+        targetVar: String,
+    ): List<Evidence> =
+        sorts.mapIndexed { idx, sort ->
+            val tag = if (idx == 0) "1st" else "#${idx + 1}"
+            Evidence(
+                location = sort.location,
+                label = ".${sort.kind.label}() on '$targetVar' ($tag)",
+                executionContext = ExecutionContext.SINGLE,
+                complexity = ComplexityModel.loopEvidence(targetVar),
+            )
+        }
 
     private fun checkFullScanCalls(
         fn: FunctionDecl,
