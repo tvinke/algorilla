@@ -144,7 +144,7 @@ Full docs at **[tvinke.github.io/algorilla](https://tvinke.github.io/algorilla/)
 ## Building from source
 
 ```bash
-./gradlew build        # compile + test + detekt + ktlint
+./gradlew build        # compile + test + detekt + ktlint + cpd (duplication report)
 ./gradlew shadowJar    # create executable JAR
 ```
 

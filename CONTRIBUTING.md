@@ -49,7 +49,9 @@ Use the **Bug Report** or **Feature Request** templates.
 ./gradlew build
 ```
 
-This runs compilation, tests, detekt, and ktlint. Always run the full build before submitting a PR — running only `test` skips static analysis.
+This runs compilation, tests, detekt, ktlint, and a CPD duplication scan (report-only
+for now, doesn't fail the build). Always run the full build before submitting a PR —
+running only `test` skips static analysis.
 
 ### Run against a project
 
@@ -123,7 +125,7 @@ Add methods to the YAML files in `core/src/main/resources/semantics/`. See exist
 
 - One feature or fix per PR
 - Include tests for new rules
-- Run `./gradlew build` before submitting (compiles + tests + ktlint + detekt)
+- Run `./gradlew build` before submitting (compiles + tests + ktlint + detekt + cpd)
 - Keep PRs focused and reviewable
 
 ## Code style

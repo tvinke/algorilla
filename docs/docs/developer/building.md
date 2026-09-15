@@ -19,7 +19,8 @@ cd algorilla
 ./gradlew check
 ```
 
-This runs unit tests, Detekt static analysis, and ktlint formatting checks.
+This runs unit tests, Detekt static analysis, ktlint formatting checks, and a CPD
+duplication scan over the Kotlin sources (report-only for now, see `build/reports/cpd/`).
 
 ## Build the Fat JAR
 

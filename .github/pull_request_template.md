@@ -8,5 +8,5 @@
 
 ## Testing
 
-- [ ] `./gradlew build` passes (tests + detekt + ktlint)
+- [ ] `./gradlew build` passes (tests + detekt + ktlint + cpd)
 - [ ] New/changed rules have test fixtures
