@@ -37,7 +37,6 @@ internal class ExpensiveSortComparatorRuleConfidenceTest {
         val sort =
             SortCall(
                 kind = SortKind.SORT,
-                hasComparator = true,
                 comparatorBody = listOf(call),
                 location = loc,
                 children = emptyList(),

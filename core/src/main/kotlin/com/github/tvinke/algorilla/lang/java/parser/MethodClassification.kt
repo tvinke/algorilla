@@ -33,7 +33,6 @@ public fun classifyChainedCall(
     sortKindFor(methodName, language)?.let { kind ->
         return SortCall(
             kind = kind,
-            hasComparator = argNodes.isNotEmpty(),
             comparatorBody = argNodes.ifEmpty { null },
             location = loc,
             children = argNodes,

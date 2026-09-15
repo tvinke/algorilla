@@ -34,7 +34,7 @@ internal class SortForLastRuleConfidenceTest {
 
     @Test
     fun `demotes cross-method sort-for-last finding to LOW when the callee resolves via an ambiguous overload guess`() {
-        val sort = SortCall(kind = SortKind.SORT, hasComparator = false, comparatorBody = null, location = loc, children = emptyList())
+        val sort = SortCall(kind = SortKind.SORT, comparatorBody = null, location = loc, children = emptyList())
         val call =
             FunctionCall(
                 name = "helper",
