@@ -3,13 +3,11 @@ package com.github.tvinke.algorilla.engine
 import com.github.tvinke.algorilla.graph.CallGraph
 import com.github.tvinke.algorilla.model.CardinalityBucket
 import com.github.tvinke.algorilla.model.FileRoot
-import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.GroupType
 import com.github.tvinke.algorilla.model.GroupVisibility
 import com.github.tvinke.algorilla.model.IssueGroup
 import com.github.tvinke.algorilla.model.PathContext
 import com.github.tvinke.algorilla.rules.Finding
-import com.github.tvinke.algorilla.util.findDescendants
 
 /**
  * Groups related findings into [IssueGroup]s using anchor-based grouping.
@@ -25,10 +23,11 @@ internal fun groupFindings(
 ): List<IssueGroup> {
     if (findings.isEmpty()) return emptyList()
 
-    val methodRanges = buildMethodRanges(irTrees)
+    val methodRangeIndex = buildMethodRangeIndex(irTrees)
     val findingMethods =
         findings.map { finding ->
-            findEnclosingMethod(finding, methodRanges)
+            val rangesInFile = methodRangeIndex[finding.location.file] ?: emptyList()
+            findEnclosingMethod(rangesInFile, finding.location.line)
                 ?: cachedMethodHints["${finding.location.file}:${finding.location.line}"]
         }
     val methodAdj = buildMethodAdjacency(callGraph)
@@ -93,9 +92,12 @@ private fun buildAnchorGroups(
 ): Map<String, List<Int>> {
     val groups = mutableMapOf<String, MutableList<Int>>()
     for ((idx, method) in findingMethods.withIndex()) {
+        // methodToAnchor is total over every method key assignMethodsToAnchors saw - which is
+        // every non-null entry in findingMethods, by construction - so a missing key here means
+        // that invariant broke, not a legitimate "no anchor yet" case worth falling back on.
         val anchor =
             when {
-                method != null -> methodToAnchor[method] ?: method
+                method != null -> methodToAnchor.getValue(method)
                 else -> classAnchorFromPath(findings[idx].location.file)
             }
         groups.getOrPut(anchor) { mutableListOf() }.add(idx)
@@ -119,7 +121,7 @@ private fun buildIssueGroup(
     val groupFindings = indices.map { findings[it] }
     val methods = indices.mapNotNull { findingMethods[it] }.toSet()
     val groupType = classifyGroupType(methods, callGraph)
-    val visibility = classifyVisibility(methods, callGraph)
+    val visibility = visibilityFor(groupType)
     val representative = selectRepresentative(groupFindings)
     val pathContexts = groupFindings.mapNotNull { it.pathContext }.toSet()
     val maxCardinality = groupFindings.mapNotNull { it.cardinalityBucket }.maxByOrNull { cardinalityRank(it) }
@@ -151,14 +153,16 @@ private fun classifyGroupType(
         else -> GroupType.SHARED_EVIDENCE_CHAIN
     }
 
-private fun classifyVisibility(
-    methods: Set<String>,
-    callGraph: CallGraph,
-): GroupVisibility =
-    when {
-        methods.size <= 1 -> GroupVisibility.UNKNOWN
-        hasCallEdgeBetween(methods, callGraph) -> GroupVisibility.RESOLVED_SAFE
-        else -> GroupVisibility.AMBIGUOUS
+/**
+ * Derived from [GroupType] rather than re-running [hasCallEdgeBetween] - the two questions
+ * ("how are these findings related" and "how reliably was that established") reduce to the
+ * same call-edge check, one-to-one with the group type that already answered it.
+ */
+private fun visibilityFor(groupType: GroupType): GroupVisibility =
+    when (groupType) {
+        GroupType.SAME_METHOD -> GroupVisibility.UNKNOWN
+        GroupType.SAFE_CALL_EDGE -> GroupVisibility.RESOLVED_SAFE
+        GroupType.SHARED_EVIDENCE_CHAIN -> GroupVisibility.AMBIGUOUS
     }
 
 /**
@@ -196,13 +200,10 @@ private fun pathContextRank(ctx: PathContext?): Int =
         PathContext.LIFECYCLE -> PATH_RANK_LIFECYCLE
     }
 
-private fun cardinalityRank(c: CardinalityBucket?): Int =
-    when (c) {
-        CardinalityBucket.LIKELY_LARGE -> CARD_RANK_LARGE
-        CardinalityBucket.UNKNOWN -> CARD_RANK_UNKNOWN
-        CardinalityBucket.CONSTANT_SMALL -> CARD_RANK_SMALL
-        null -> CARD_RANK_UNKNOWN
-    }
+// CardinalityBucket and GroupVisibility are both declared in worst-to-best/best-to-worst
+// ranking order already, so the rank is just the enum's ordinal - no separate mapping to
+// keep in sync with the enum by hand.
+private fun cardinalityRank(c: CardinalityBucket?): Int = (c ?: CardinalityBucket.UNKNOWN).ordinal
 
 private const val PATH_RANK_REQUEST = 0
 private const val PATH_RANK_BATCH = 1
@@ -210,57 +211,11 @@ private const val PATH_RANK_MIXED = 2
 private const val PATH_RANK_UNKNOWN = 3
 private const val PATH_RANK_LIFECYCLE = 4
 
-private const val CARD_RANK_SMALL = 0
-private const val CARD_RANK_UNKNOWN = 1
-private const val CARD_RANK_LARGE = 2
-
-private fun visibilityRank(v: GroupVisibility): Int =
-    when (v) {
-        GroupVisibility.RESOLVED_SAFE -> 0
-        GroupVisibility.AMBIGUOUS -> 1
-        GroupVisibility.UNKNOWN -> 2
-    }
+private fun visibilityRank(v: GroupVisibility): Int = v.ordinal
 
 // ── Method resolution helpers ──
-
-private data class MethodRange(
-    val qualifiedName: String,
-    val file: String,
-    val startLine: Int,
-    val endLine: Int,
-)
-
-private fun buildMethodRanges(irTrees: Map<String, FileRoot>): List<MethodRange> {
-    val ranges = mutableListOf<MethodRange>()
-    for ((_, fileRoot) in irTrees) {
-        for (fn in fileRoot.findDescendants<FunctionDecl>()) {
-            ranges.add(
-                MethodRange(
-                    qualifiedName = fn.qualifiedName,
-                    file = fileRoot.filePath,
-                    startLine = fn.location.line,
-                    endLine = maxLineOf(fn),
-                ),
-            )
-        }
-    }
-    return ranges
-}
-
-private fun findEnclosingMethod(
-    finding: Finding,
-    methodRanges: List<MethodRange>,
-): String? {
-    var best: MethodRange? = null
-    for (range in methodRanges) {
-        if (range.file == finding.location.file && finding.location.line in range.startLine..range.endLine) {
-            if (best == null || (range.endLine - range.startLine) < (best.endLine - best.startLine)) {
-                best = range
-            }
-        }
-    }
-    return best?.qualifiedName
-}
+// buildMethodRangeIndex/findEnclosingMethod/maxLineOf live in MethodRangeIndex.kt, shared with
+// AnalysisEngine's cache persistence - see that file's kdoc for why.
 
 private fun buildMethodAdjacency(callGraph: CallGraph): Map<String, Set<String>> {
     val adj = mutableMapOf<String, MutableSet<String>>()
@@ -271,14 +226,4 @@ private fun buildMethodAdjacency(callGraph: CallGraph): Map<String, Set<String>>
         }
     }
     return adj
-}
-
-/** Recursively finds the maximum source line in an IR subtree. */
-private fun maxLineOf(node: com.github.tvinke.algorilla.model.IRNode): Int {
-    var max = node.location.line
-    for (child in node.children) {
-        val childMax = maxLineOf(child)
-        if (childMax > max) max = childMax
-    }
-    return max
 }

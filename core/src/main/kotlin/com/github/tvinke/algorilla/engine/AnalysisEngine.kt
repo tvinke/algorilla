@@ -95,8 +95,8 @@ public class AnalysisEngine(
             }
 
         // Resolve enclosing methods for fresh findings (needed for cache + grouping)
-        val methodRanges = buildMethodRangesForCache(irTrees)
-        saveCache(sourceFiles, filesToParse, freshFindings, cachedEntries, finalContexts, methodRanges)
+        val methodRangeIndex = buildMethodRangeIndex(irTrees)
+        saveCache(sourceFiles, filesToParse, freshFindings, cachedEntries, finalContexts, methodRangeIndex)
 
         // Build method hint map: fresh findings from IR, cached findings from cache
         val cachedMethodHints = buildCachedMethodHints(cachedEntries)
@@ -175,7 +175,7 @@ public class AnalysisEngine(
         freshFindings: List<Finding>,
         previousCache: Map<String, CachedFileEntry>,
         fileContexts: Map<String, FileContext> = emptyMap(),
-        methodRanges: Map<String, List<Pair<IntRange, String>>> = emptyMap(),
+        methodRangeIndex: Map<String, List<MethodRange>> = emptyMap(),
     ) {
         if (cache == null) return
 
@@ -184,13 +184,13 @@ public class AnalysisEngine(
         val entries =
             allFiles.map { file ->
                 if (file in freshSet) {
-                    val fileRanges = methodRanges[file] ?: emptyList()
+                    val rangesInFile = methodRangeIndex[file] ?: emptyList()
                     CachedFileEntry(
                         filePath = file,
                         contentHash = AnalysisCache.hashFile(file),
                         findings =
                             (freshFindingsByFile[file] ?: emptyList()).map { finding ->
-                                val method = fileRanges.firstOrNull { finding.location.line in it.first }?.second
+                                val method = findEnclosingMethod(rangesInFile, finding.location.line)
                                 CachedFinding.fromFinding(finding, enclosingMethod = method)
                             },
                         fileContext = fileContexts[file],
@@ -206,20 +206,6 @@ public class AnalysisEngine(
         cache.save(entries)
     }
 
-    /** Builds file → list of (lineRange, qualifiedMethodName) for caching enclosing methods. */
-    private fun buildMethodRangesForCache(irTrees: Map<String, FileRoot>): Map<String, List<Pair<IntRange, String>>> {
-        val result = mutableMapOf<String, MutableList<Pair<IntRange, String>>>()
-        for ((_, fileRoot) in irTrees) {
-            val ranges = mutableListOf<Pair<IntRange, String>>()
-            for (fn in fileRoot.findDescendants<FunctionDecl>()) {
-                val end = maxLineOf(fn)
-                ranges.add((fn.location.line..end) to fn.qualifiedName)
-            }
-            result[fileRoot.filePath] = ranges
-        }
-        return result
-    }
-
     /** Builds a lookup from (file, line) → enclosingMethod from cached entries. */
     private fun buildCachedMethodHints(cachedEntries: Map<String, CachedFileEntry>): Map<String, String?> {
         val hints = mutableMapOf<String, String?>()
@@ -230,16 +216,6 @@ public class AnalysisEngine(
             }
         }
         return hints
-    }
-
-    /** Recursively finds the maximum source line in an IR subtree. */
-    private fun maxLineOf(node: IRNode): Int {
-        var max = node.location.line
-        for (child in node.children) {
-            val childMax = maxLineOf(child)
-            if (childMax > max) max = childMax
-        }
-        return max
     }
 
     private fun parseFiles(sourceFiles: List<String>): ParseResult {

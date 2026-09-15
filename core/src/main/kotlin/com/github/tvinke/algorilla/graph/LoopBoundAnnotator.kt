@@ -214,8 +214,7 @@ public class LoopBoundAnnotator(
         if (bulkPrefixes.any { iterVar.contains(it, ignoreCase = true) }) return true
 
         // Variable-assigned: look up initializer
-        val decl = varDecls.firstOrNull { it.name == iterVar } ?: return false
-        val init = decl.initializer as? FunctionCall ?: return false
+        val init = resolveInitializer(iterVar, varDecls) ?: return false
         return bulkPrefixes.any { init.name.startsWith(it, ignoreCase = true) }
     }
 

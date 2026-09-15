@@ -5,7 +5,6 @@ import com.github.tvinke.algorilla.model.ClassNode
 import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.FileRoot
 import com.github.tvinke.algorilla.model.FunctionDecl
-import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LoopNode
 import com.github.tvinke.algorilla.rules.Finding
@@ -192,16 +191,6 @@ internal fun enrichCardinality(
         val worst = enclosing.maxBy { it.second.ordinal }.second
         if (worst != CardinalityBucket.UNKNOWN) finding.copy(cardinalityBucket = worst) else finding
     }
-}
-
-/** Recursively finds the maximum source line in an IR subtree. */
-private fun maxLineOf(node: IRNode): Int {
-    var max = node.location.line
-    for (child in node.children) {
-        val childMax = maxLineOf(child)
-        if (childMax > max) max = childMax
-    }
-    return max
 }
 
 /**

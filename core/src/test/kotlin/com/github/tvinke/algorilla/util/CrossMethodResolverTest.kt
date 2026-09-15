@@ -133,11 +133,6 @@ internal class CrossMethodResolverTest {
         // is a coincidental same-name/same-arity method on a completely different class.
         val table = SymbolTable()
 
-        val fourArgs = List(4) { makeArg() }
-        val threeArgs = List(3) { makeArg() }
-        val fourParams = List(4) { makeParam() }
-        val threeParams = List(3) { makeParam() }
-
         val repoACall = makeCall("getById", "repoA")
         val repoBCall = makeCall("getBySku", "repoB")
 
