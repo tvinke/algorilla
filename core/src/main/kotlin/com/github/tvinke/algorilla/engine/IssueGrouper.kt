@@ -39,7 +39,7 @@ internal fun groupFindings(
     return anchorGroups
         .map { (anchor, indices) ->
             buildIssueGroup(anchor, indices, findings, findingMethods, callGraph)
-        }.sortedWith(GROUP_ORDER)
+        }.sortedWith(groupOrder)
 }
 
 private fun buildMethodIndex(findingMethods: List<String?>): Map<String, List<Int>> {
@@ -180,8 +180,13 @@ internal fun selectRepresentative(findings: List<Finding>): Finding =
                 .thenBy { it.location.line },
         ).first()
 
-/** Sort order for groups: severity → confidence → pathContext → cardinality → size → visibility → file → line. */
-private val GROUP_ORDER: Comparator<IssueGroup> =
+/**
+ * Sort order for groups: severity → confidence → pathContext → cardinality → size → visibility →
+ * file → line. Internal (not private) so `AnalysisEngine.filterIssueGroups` can re-apply it
+ * after severity/confidence filtering changes a group's representative finding - a group's
+ * position must reflect its current representative, not the one it had before filtering ran.
+ */
+internal val groupOrder: Comparator<IssueGroup> =
     compareByDescending<IssueGroup> { it.representativeFinding.severity }
         .thenByDescending { it.representativeFinding.confidence }
         .thenBy { pathContextRank(it.pathContext) }

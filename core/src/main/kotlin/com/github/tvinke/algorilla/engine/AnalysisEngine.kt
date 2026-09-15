@@ -138,14 +138,18 @@ public class AnalysisEngine(
         visibleFindings: List<Finding>,
     ): List<com.github.tvinke.algorilla.model.IssueGroup> {
         val fingerprints = visibleFindings.map { Baseline.fingerprintOf(it).contentHash }.toSet()
-        return groups.mapNotNull { group ->
-            val visible = group.contributingFindings.filter { Baseline.fingerprintOf(it).contentHash in fingerprints }
-            if (visible.isEmpty()) {
-                null
-            } else {
-                group.copy(contributingFindings = visible, representativeFinding = selectRepresentative(visible))
-            }
-        }
+        return groups
+            .mapNotNull { group ->
+                val visible = group.contributingFindings.filter { Baseline.fingerprintOf(it).contentHash in fingerprints }
+                if (visible.isEmpty()) {
+                    null
+                } else {
+                    group.copy(contributingFindings = visible, representativeFinding = selectRepresentative(visible))
+                }
+                // Re-sorted below: filtering can change a group's representative finding (e.g. an
+                // ERROR gets filtered out, demoting the representative to WARNING), which changes
+                // where groupOrder would place it - the pre-filter position is stale otherwise.
+            }.sortedWith(groupOrder)
     }
 
     private fun partitionByCache(

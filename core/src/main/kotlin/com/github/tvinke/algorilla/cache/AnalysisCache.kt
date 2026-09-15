@@ -2,8 +2,10 @@ package com.github.tvinke.algorilla.cache
 
 import com.github.tvinke.algorilla.config.AnalysisConfig
 import com.github.tvinke.algorilla.engine.FileContext
+import com.github.tvinke.algorilla.model.CardinalityBucket
 import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.ExecutionContext
+import com.github.tvinke.algorilla.model.PathContext
 import com.github.tvinke.algorilla.model.Severity
 import com.github.tvinke.algorilla.model.SourceLocation
 import com.github.tvinke.algorilla.rules.Evidence
@@ -218,6 +220,10 @@ public data class CachedFinding(
     val evidence: List<CachedEvidence> = emptyList(),
     /** Qualified name of the enclosing method, used for issue grouping. */
     val enclosingMethod: String? = null,
+    /** Enum name of [Finding.pathContext], used for issue grouping. Null defaults are backward-compatible with caches written before this field existed. */
+    val pathContext: String? = null,
+    /** Enum name of [Finding.cardinalityBucket], used for issue grouping. Null defaults are backward-compatible with caches written before this field existed. */
+    val cardinalityBucket: String? = null,
 ) {
     internal fun toFinding(): Finding =
         Finding(
@@ -231,6 +237,8 @@ public data class CachedFinding(
             currentComplexity = currentComplexity,
             suggestedComplexity = suggestedComplexity,
             evidence = evidence.map { it.toEvidence() },
+            pathContext = pathContext?.let { runCatching { PathContext.valueOf(it) }.getOrNull() },
+            cardinalityBucket = cardinalityBucket?.let { runCatching { CardinalityBucket.valueOf(it) }.getOrNull() },
         )
 
     internal companion object {
@@ -252,6 +260,8 @@ public data class CachedFinding(
                 suggestedComplexity = finding.suggestedComplexity,
                 evidence = finding.evidence.map { CachedEvidence.fromEvidence(it) },
                 enclosingMethod = enclosingMethod,
+                pathContext = finding.pathContext?.name,
+                cardinalityBucket = finding.cardinalityBucket?.name,
             )
     }
 }
