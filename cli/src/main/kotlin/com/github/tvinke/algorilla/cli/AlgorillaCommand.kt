@@ -171,7 +171,10 @@ internal class AlgorillaCommand :
 
     @Option(
         names = ["--view"],
-        description = ["Output view: findings (default leaf view), groups (issue group view)"],
+        description = [
+            "Console display mode: findings (default leaf view), groups (issue group view). " +
+                "No effect on --format json/sarif — json always includes both.",
+        ],
         defaultValue = "findings",
     )
     private var view: String = "findings"

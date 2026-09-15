@@ -46,6 +46,7 @@ If no build system is detected, the given path is used as-is and a notice is pri
 |--------|-------------|---------|
 | `-i`, `--input` | Files or directories to analyze (alternative to positional args) | |
 | `-f`, `--format` | Output format: `console`, `sarif`, `json` | `console` |
+| `--view` | Console display mode: `findings` (flat leaf list), `groups` (findings clustered by anchor method). JSON output always includes both. | `findings` |
 | `-o`, `--output` | Write report to file instead of stdout | stdout |
 | `-v`, `--verbose` | Show detailed analysis progress (DEBUG logging) | off |
 | `--severity` | Minimum severity to report: `info`, `warning`, `error` | `warning` |
@@ -85,6 +86,9 @@ algorilla --format sarif -o results.sarif .
 
 # Only errors, exclude generated code
 algorilla --severity error --exclude "**/generated/**" .
+
+# Cluster related findings by their anchor method instead of a flat list
+algorilla --view groups .
 
 # Save baseline, then only report new findings
 algorilla --save-baseline baseline.json .

@@ -51,6 +51,26 @@ The format breaks down as:
 7. **Evidence chain** with tree markers (`⎿`) tracing the path from outer context to the bottleneck
 8. **Fingerprint hash** — a stable identifier for this finding, used with `--accept` to add it to the [ignore list](workflow.md#accept-it-ignore-list)
 
+### Grouped view (`--view groups`)
+
+The default view above is a flat list, one entry per finding. `--view groups` clusters findings that share an anchor — the same enclosing method, or methods connected by a resolved call edge — into one entry instead:
+
+```
+▶ OrderService.applyDiscounts  3 findings · request handler · large collection
+    com.example.shop.service.OrderService:45
+
+      Linear contains on 'discountedProductIds' inside for-each loop
+      ...
+
+      also in this group:
+        warning · sort-for-last · OrderService.java:52
+        info    · uncached-getter · OrderService.java:58
+```
+
+Only the group's *representative* finding (highest severity, then confidence, then cardinality) gets the full rendering — code snippet and evidence chain; the rest are listed underneath by rule and location. Tags after the finding count (`request handler`, `large collection`, ...) come from the [path context](../concepts/how-detection-works.md) and cardinality signals shared by the group's findings, when those signals agree across the whole group.
+
+This only changes the console's own display mode. `--format json` output always includes both the flat `findings` array and the `issueGroups` array (see [JSON output](#json-output) below) — `--view` has no effect there, or on `--format sarif`.
+
 ### Severity levels
 
 Severity tells you how likely the finding is to be a real performance problem at production scale:
@@ -214,6 +234,7 @@ The JSON output includes metadata for versioning and tooling:
 
 - **`schemaVersion`** — format version number (currently `1`). Bumped when the structure changes.
 - **`algorillaVersion`** — the version of algorilla that produced the output (e.g. `"0.2.0"`).
+- **`issueGroups`** — the same [grouped view](#grouped-view-view-groups) available on the console, always present alongside the flat `findings` array regardless of `--view`. Each group carries its `representativeFinding`, the full `contributingFindings` list, and the `anchor`/`groupType`/`visibility`/`pathContext`/`maxCardinality` signals that produced it.
 
 If you consume JSON output programmatically, **ignore unknown fields** — new fields may be added in any release without bumping `schemaVersion`. See [Stability & Compatibility](../stability.md) for the full contract.
 
