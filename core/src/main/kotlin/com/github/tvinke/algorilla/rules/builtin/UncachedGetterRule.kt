@@ -16,6 +16,7 @@ import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.util.findDescendantsWithBranchContext
 import com.github.tvinke.algorilla.util.maxCoExecutableSubset
+import com.github.tvinke.algorilla.util.startsWithAtWordBoundary
 
 /**
  * Detects the same getter-style call invoked multiple times with the same argument
@@ -111,7 +112,7 @@ private fun isGetterPattern(
     getterPrefixes: List<String>,
 ): Boolean {
     if (call.name in excludedNames) return false
-    return getterPrefixes.any { call.name.startsWith(it, ignoreCase = true) }
+    return getterPrefixes.any { startsWithAtWordBoundary(call.name, it) }
 }
 
 private fun argKey(call: FunctionCall): String =

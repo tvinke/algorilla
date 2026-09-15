@@ -5,7 +5,6 @@ import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.FlowTarget
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
-import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LoopNode
 import com.github.tvinke.algorilla.model.Severity
@@ -19,8 +18,15 @@ import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.CrossMethodResolver
 import com.github.tvinke.algorilla.util.ParameterFlowQuery
+import com.github.tvinke.algorilla.util.ResolutionConfidence
+import com.github.tvinke.algorilla.util.containsAnyAtWordBoundary
+import com.github.tvinke.algorilla.util.declAndConfidenceOrNull
+import com.github.tvinke.algorilla.util.demoteIfAmbiguous
 import com.github.tvinke.algorilla.util.findDescendants
 import com.github.tvinke.algorilla.util.isRecursive
+import com.github.tvinke.algorilla.util.startsWithAtWordBoundary
+import com.github.tvinke.algorilla.util.walkLoopSites
+import com.github.tvinke.algorilla.util.worstOf
 
 /**
  * Detects loops hidden behind method calls: when a loop calls a method that internally
@@ -40,35 +46,12 @@ public class HiddenNestedLoopRule : Rule {
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
-            scanNode(fileRoot, null, emptyList(), fileRoot.language, context, findings)
+            val language = fileRoot.language
+            fileRoot.walkLoopSites { node, fn, loopStack ->
+                if (node is FunctionCall) checkForHiddenLoop(node, fn, loopStack, language, context, findings)
+            }
         }
         return findings
-    }
-
-    private fun scanNode(
-        node: IRNode,
-        enclosingFn: FunctionDecl?,
-        loopStack: List<LoopNode>,
-        language: Language,
-        context: AnalysisContext,
-        findings: MutableList<Finding>,
-    ) {
-        val fn = if (node is FunctionDecl) node else enclosingFn
-
-        if (node is LoopNode) {
-            for (child in node.children) {
-                scanNode(child, fn, loopStack + node, language, context, findings)
-            }
-            return
-        }
-
-        if (loopStack.isNotEmpty() && node is FunctionCall) {
-            checkForHiddenLoop(node, fn, loopStack, language, context, findings)
-        }
-
-        for (child in node.children) {
-            scanNode(child, fn, loopStack, language, context, findings)
-        }
     }
 
     @Suppress("ReturnCount") // Guard clauses with early returns — clearer than nested if/else
@@ -82,11 +65,15 @@ public class HiddenNestedLoopRule : Rule {
     ) {
         if (isStringOrCopyMethod(call.name, language, context.registry)) return
 
-        val resolved = CrossMethodResolver.resolve(call, context.symbolTable, language) ?: return
+        val (resolved, resolutionConfidence) =
+            CrossMethodResolver.resolve(call, context.symbolTable, language).declAndConfidenceOrNull() ?: return
 
         // Skip recursive methods — their internal loop iterates child nodes
-        // of the same data structure, not an independent collection
-        if (resolved.isRecursive()) return
+        // of the same data structure, not an independent collection.
+        // Recomputed here rather than reading the cached FunctionDecl.isRecursive property:
+        // rule-level tests build an AnalysisContext directly without running
+        // AnalysisEngine.annotateRecursion first, so the cached value can't be trusted.
+        if (resolved.isRecursive(context.symbolTable)) return
 
         val hiddenLoop = resolved.findDescendants<LoopNode>().firstOrNull() ?: return
 
@@ -101,17 +88,35 @@ public class HiddenNestedLoopRule : Rule {
         // the hidden nested loop is O(k*m) with constant k
         if (loopStack.all { it.isConstantBound }) return
 
-        // Flow-based confidence: if a parameter flows through this call into a loop
-        // in the callee, we have proof the nested iteration is on caller data
-        val flowConfirmed =
-            callerFn != null &&
-                ParameterFlowQuery.parameterFlowsThrough(
-                    call,
-                    callerFn,
-                    context.symbolTable,
-                ) { it is FlowTarget.LoopIteration } != null
+        val (flowConfirmed, overallConfidence) = flowConfirmedConfidence(call, callerFn, language, resolutionConfidence, context)
 
-        findings.add(buildFinding(call, resolved, hiddenLoop, loopStack, flowConfirmed))
+        findings.add(buildFinding(call, resolved, hiddenLoop, loopStack, flowConfirmed, overallConfidence))
+    }
+
+    /**
+     * Flow-based confidence: if a parameter flows through [call] into a loop in the callee, we
+     * have proof the nested iteration is on caller data. The flow chain can itself cross an
+     * ambiguous overload guess at a hop deeper than [call] (parameterFlowsThrough follows
+     * further calls up to its own maxDepth) - folding its resolutionConfidence in via
+     * [worstOf] means a guess two hops into the flow still gets caught, not just an ambiguous
+     * [call] itself.
+     */
+    @Suppress("LongParameterList") // Threading language through alongside the existing confidence/context params
+    private fun flowConfirmedConfidence(
+        call: FunctionCall,
+        callerFn: FunctionDecl?,
+        language: Language,
+        resolutionConfidence: ResolutionConfidence,
+        context: AnalysisContext,
+    ): Pair<Boolean, ResolutionConfidence> {
+        val flowEvidence =
+            callerFn?.let {
+                ParameterFlowQuery.parameterFlowsThrough(call, it, context.symbolTable, language = language) { target ->
+                    target is FlowTarget.LoopIteration
+                }
+            }
+        val overallConfidence = flowEvidence?.let { worstOf(resolutionConfidence, it.resolutionConfidence) } ?: resolutionConfidence
+        return (flowEvidence != null) to overallConfidence
     }
 
     private fun buildFinding(
@@ -120,15 +125,20 @@ public class HiddenNestedLoopRule : Rule {
         hiddenLoop: LoopNode,
         loopStack: List<LoopNode>,
         flowConfirmed: Boolean = false,
+        resolutionConfidence: ResolutionConfidence = ResolutionConfidence.EXACT,
     ): Finding {
         val outerVar = (loopStack.first().iteratedVariable ?: "items")
         val innerVar = hiddenLoop.iteratedVariable ?: "elements"
         val cx = ComplexityModel.loopTimesLookup(outerVar, innerVar)
+        // An ambiguous overload guess means "resolved" might not be the function the call
+        // actually targets - the hidden loop we're reporting could belong to the wrong
+        // overload entirely, so never report higher than LOW on a guess, flow-confirmed or not.
+        val confidence = resolutionConfidence.demoteIfAmbiguous(if (flowConfirmed) Confidence.HIGH else Confidence.MEDIUM)
         return Finding(
             ruleId = id,
             ruleName = name,
             severity = severity,
-            confidence = if (flowConfirmed) Confidence.HIGH else Confidence.MEDIUM,
+            confidence = confidence,
             location = call.location,
             message =
                 "${call.name}() contains a ${hiddenLoop.kind.label()} \u2014 " +
@@ -205,7 +215,11 @@ private fun isStringOrCopyMethod(
     registry: LanguageSemanticsRegistry,
 ): Boolean {
     if (name in registry.hiddenLoopSkipMethods(language)) return true
-    val lower = name.lowercase()
-    if (registry.hiddenLoopSkipPrefixes(language).any { lower.startsWith(it) }) return true
-    return registry.hiddenLoopSkipKeywords(language).any { lower.contains(it) }
+    if (registry.hiddenLoopSkipPrefixes(language).any { startsWithAtWordBoundary(name, it) }) return true
+    // Original-case name for the boundary check - lowercasing first would destroy the
+    // camelCase signal a boundary check needs. "processCharge" contains "char" but isn't a
+    // char-iteration method - the trailing boundary catches it (the "ge" after "Char" is a
+    // lowercase continuation, not a new word), the same way "screenwriter" doesn't match
+    // "writer" elsewhere in this campaign.
+    return containsAnyAtWordBoundary(name, registry.hiddenLoopSkipKeywords(language))
 }

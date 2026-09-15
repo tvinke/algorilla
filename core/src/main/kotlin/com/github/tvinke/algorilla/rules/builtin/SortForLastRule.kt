@@ -18,6 +18,8 @@ import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.util.CrossMethodResolver
+import com.github.tvinke.algorilla.util.ResolutionConfidence
+import com.github.tvinke.algorilla.util.demoteIfAmbiguous
 import com.github.tvinke.algorilla.util.findDescendants
 
 /**
@@ -36,26 +38,28 @@ public class SortForLastRule : Rule {
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
-            scanNode(fileRoot, context, findings)
+            scanNode(fileRoot, fileRoot.language, context, findings)
         }
         return findings
     }
 
     private fun scanNode(
         node: IRNode,
+        language: Language,
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
         if (node is FunctionDecl) {
-            checkFunction(node, context, findings)
+            checkFunction(node, language, context, findings)
         }
         for (child in node.children) {
-            scanNode(child, context, findings)
+            scanNode(child, language, context, findings)
         }
     }
 
     private fun checkFunction(
         fn: FunctionDecl,
+        language: Language,
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
@@ -79,30 +83,35 @@ public class SortForLastRule : Rule {
 
         // Cross-method: sort here, access inside a called method
         for (sort in sorts.filter { it !in matchedSorts }) {
-            checkSortWithCrossMethodAccess(sort, calls, context, findings)
+            checkSortWithCrossMethodAccess(sort, calls, language, context, findings)
         }
 
         // Cross-method: access here, sort inside a called method
         for (access in accesses.filter { it !in matchedAccesses }) {
-            checkAccessWithCrossMethodSort(access, calls, context, findings)
+            checkAccessWithCrossMethodSort(access, calls, language, context, findings)
         }
     }
 
-    @Suppress("LoopWithTooManyJumpStatements")
+    // LoopWithTooManyJumpStatements: continue/return control the nearby-call search itself, not
+    // incidental flow. LongParameterList: language/context/findings travel together with
+    // sort/calls across this rule's whole cross-method-check family.
+    @Suppress("LoopWithTooManyJumpStatements", "LongParameterList")
     private fun checkSortWithCrossMethodAccess(
         sort: SortCall,
         calls: List<FunctionCall>,
+        language: Language,
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
         val nearbyCalls = calls.filter { isNearbyCall(sort, it) }
         val maxDepth = context.config.maxCallDepth.coerceAtMost(2)
         for (call in nearbyCalls) {
-            val access =
-                CrossMethodResolver.resolveAndFind<CollectionAccess>(
+            val (access, confidence) =
+                CrossMethodResolver.resolveAndFindWithConfidence<CollectionAccess>(
                     call,
                     context.symbolTable,
                     maxDepth = maxDepth,
+                    language = language,
                 ) ?: continue
             // Skip when sort and access targets are known and different
             if (sort.qualifiedTarget != null &&
@@ -111,26 +120,29 @@ public class SortForLastRule : Rule {
             ) {
                 continue
             }
-            findings.add(buildIndirectFinding(sort, call, access))
+            findings.add(buildIndirectFinding(sort, call, access, confidence))
             return
         }
     }
 
-    @Suppress("LoopWithTooManyJumpStatements")
+    // Same shape as checkSortWithCrossMethodAccess above - see its suppress comment.
+    @Suppress("LoopWithTooManyJumpStatements", "LongParameterList")
     private fun checkAccessWithCrossMethodSort(
         access: CollectionAccess,
         calls: List<FunctionCall>,
+        language: Language,
         context: AnalysisContext,
         findings: MutableList<Finding>,
     ) {
         val nearbyCalls = calls.filter { isNearbyCallBefore(it, access) }
         val maxDepth = context.config.maxCallDepth.coerceAtMost(2)
         for (call in nearbyCalls) {
-            val sort =
-                CrossMethodResolver.resolveAndFind<SortCall>(
+            val (sort, confidence) =
+                CrossMethodResolver.resolveAndFindWithConfidence<SortCall>(
                     call,
                     context.symbolTable,
                     maxDepth = maxDepth,
+                    language = language,
                 ) ?: continue
             // Skip when sort and access targets are known and different
             if (sort.qualifiedTarget != null &&
@@ -139,7 +151,7 @@ public class SortForLastRule : Rule {
             ) {
                 continue
             }
-            findings.add(buildIndirectFinding(sort, call, access))
+            findings.add(buildIndirectFinding(sort, call, access, confidence))
             return
         }
     }
@@ -214,15 +226,23 @@ public class SortForLastRule : Rule {
         )
     }
 
+    /**
+     * [resolutionConfidence] is the confidence of the [CrossMethodResolver] chain that linked
+     * [sort] and [access] across methods - floors the finding to LOW when that resolution was
+     * an ambiguous overload guess, same treatment as
+     * [NestedLookupRule]/[HiddenNestedLoopRule]/[IOInLoopRule].
+     */
     private fun buildIndirectFinding(
         sort: SortCall,
         call: FunctionCall,
         access: CollectionAccess,
+        resolutionConfidence: ResolutionConfidence = ResolutionConfidence.EXACT,
     ): Finding {
         val cx = ComplexityModel.sortForAccess()
         return Finding(
             ruleId = id,
             ruleName = name,
+            confidence = resolutionConfidence.demoteIfAmbiguous(Confidence.MEDIUM),
             severity = severity,
             location = sort.location,
             message = "Sorting entire collection just to access ${accessLabel(access.kind)} element via ${call.name}()",

@@ -4,16 +4,24 @@ import com.github.tvinke.algorilla.graph.SymbolTable
 import com.github.tvinke.algorilla.model.FlowTarget
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
+import com.github.tvinke.algorilla.model.Language
+import com.github.tvinke.algorilla.model.ParameterFlow
 import com.github.tvinke.algorilla.model.SourceLocation
 
 /**
  * Evidence that a parameter flows through a call chain into an operation
  * matching a predicate. Used by rules to build cross-method evidence chains.
+ *
+ * [resolutionConfidence] is the worst (most ambiguous) [ResolutionConfidence] seen while
+ * resolving any hop of [steps] - a caller that only checks the confidence of its own direct
+ * [CrossMethodResolver.resolve] call on the outermost call would miss an ambiguous overload
+ * guess introduced two or more hops into the chain.
  */
 public data class FlowEvidence(
     val paramName: String,
     val steps: List<FlowStep>,
     val terminal: FlowTarget,
+    val resolutionConfidence: ResolutionConfidence,
 )
 
 /**
@@ -35,52 +43,81 @@ public object ParameterFlowQuery {
      * matching [predicate] in the resolved callee (or its transitive callees, up to [maxDepth]).
      *
      * Returns [FlowEvidence] describing the flow path, or null if no matching flow exists.
+     *
+     * Precondition: relies entirely on [FunctionDecl.parameterFlows] having already been
+     * populated by the parameter-flow annotation pass - an empty [callerFn].parameterFlows
+     * (the pass hasn't run, or genuinely found no flows) short-circuits to null immediately,
+     * it is not distinguished from "checked and found nothing".
+     *
+     * Guarantee: [call] must resolve to a [ResolutionResult.Resolved] via
+     * [CrossMethodResolver.resolve] to be followed at all - an unresolved callee (dynamic
+     * dispatch, external library call) returns null rather than guessing at the callee's
+     * behavior. Unlike before, the resolution confidence at every hop *is* consulted now -
+     * see [FlowEvidence.resolutionConfidence] - even though an
+     * [ResolutionConfidence.AMBIGUOUS_OVERLOAD_BEST_GUESS] match is still followed the same as
+     * an exact one; only the reported confidence differs, not which flows get checked.
+     *
+     * Edge case: [maxDepth] bounds how many further calls are followed once inside the callee;
+     * at `maxDepth <= 1` only the immediate callee's own flows are checked, deeper calls are
+     * not traversed. Matching within the callee is by [FlowTarget.FunctionArgument.calledFunction]
+     * name, not by argument position - see [findCallByNameAndLocation]'s kdoc for why location is
+     * also needed to disambiguate same-named calls.
+     *
+     * [language] is passed through to every [CrossMethodResolver.resolve] call in the chain -
+     * [call] itself and every further hop [followIntoNextHop] follows - so a Kotlin/Groovy/JS
+     * caller doesn't get resolved against Java's unresolvable-names skiplist. Defaults to
+     * [Language.JAVA] only for callers that genuinely don't have a language in scope (e.g.
+     * existing tests); production call sites should always pass the actual source language.
      */
     public fun parameterFlowsThrough(
         call: FunctionCall,
         callerFn: FunctionDecl,
         symbolTable: SymbolTable,
+        language: Language = Language.JAVA,
         maxDepth: Int = 2,
         predicate: (FlowTarget) -> Boolean,
     ): FlowEvidence? {
-        // Which caller parameters are passed as arguments to this call?
-        val callerFlows = callerFn.parameterFlows
-        if (callerFlows.isEmpty()) return null
-
-        val paramsPassed =
-            callerFlows.filter { flow ->
-                flow.flowsInto.any { target ->
-                    target is FlowTarget.FunctionArgument && target.calledFunction == call.name
-                }
-            }
+        val paramsPassed = paramsFlowingInto(callerFn.parameterFlows, call.name)
         if (paramsPassed.isEmpty()) return null
 
-        val resolved = CrossMethodResolver.resolve(call, symbolTable) ?: return null
+        val (resolved, confidence) = CrossMethodResolver.resolve(call, symbolTable, language).declAndConfidenceOrNull() ?: return null
 
-        for (callerFlow in paramsPassed) {
-            val evidence =
-                checkCalleeFlows(
-                    callerFlow.paramName,
-                    resolved,
-                    symbolTable,
-                    maxDepth,
-                    predicate,
-                    listOf(FlowStep(call.name, call.location)),
-                )
-            if (evidence != null) return evidence
+        return paramsPassed.firstNotNullOfOrNull { callerFlow ->
+            checkCalleeFlows(
+                callerFlow.paramName,
+                resolved,
+                ResolutionScope(symbolTable, language, maxDepth),
+                predicate,
+                listOf(FlowStep(call.name, call.location)),
+                confidence,
+            )
         }
-        return null
     }
+
+    /** Which of [callerFlows] are passed as an argument to [calledFunction] - empty if none, or if [callerFlows] itself is empty. */
+    private fun paramsFlowingInto(
+        callerFlows: List<ParameterFlow>,
+        calledFunction: String,
+    ): List<ParameterFlow> =
+        callerFlows.filter { flow ->
+            flow.flowsInto.any { target -> target is FlowTarget.FunctionArgument && target.calledFunction == calledFunction }
+        }
 
     /**
      * Finds cases where multiple callees from [callerFn] all iterate the same parameter.
      * Returns a list of (paramName, list of callee names that iterate it).
+     *
+     * [language] is passed through to [CrossMethodResolver.resolve] so a
+     * Kotlin/Groovy/JS caller isn't resolved against Java's unresolvable-names skiplist -
+     * see [parameterFlowsThrough]'s kdoc for the same reasoning. Defaults to [Language.JAVA]
+     * only for callers that genuinely don't have a language in scope.
      */
     @Suppress("LoopWithTooManyJumpStatements") // Filter + continue is idiomatic for resolution chains
     public fun findRedundantIterations(
         callerFn: FunctionDecl,
         calls: List<FunctionCall>,
         symbolTable: SymbolTable,
+        language: Language = Language.JAVA,
     ): List<RedundantIteration> {
         val callerFlows = callerFn.parameterFlows
         if (callerFlows.isEmpty()) return emptyList()
@@ -99,7 +136,7 @@ public object ParameterFlowQuery {
             val iteratingCallees = mutableListOf<String>()
             for (call in calls) {
                 if (call.name !in calleeNames) continue
-                val resolved = CrossMethodResolver.resolve(call, symbolTable) ?: continue
+                val resolved = CrossMethodResolver.resolve(call, symbolTable, language).declOrNull() ?: continue
                 if (calleeIteratesParam(resolved)) {
                     iteratingCallees.add(call.name)
                 }
@@ -113,42 +150,52 @@ public object ParameterFlowQuery {
         return results
     }
 
-    @Suppress("NestedBlockDepth", "LoopWithTooManyJumpStatements") // Flow traversal requires nested checks
+    @Suppress("LoopWithTooManyJumpStatements") // Filter + continue is idiomatic for resolution chains
     private fun checkCalleeFlows(
         paramName: String,
         callee: FunctionDecl,
-        symbolTable: SymbolTable,
-        maxDepth: Int,
+        scope: ResolutionScope,
         predicate: (FlowTarget) -> Boolean,
         path: List<FlowStep>,
+        confidenceSoFar: ResolutionConfidence,
     ): FlowEvidence? {
         // Check callee's own parameter flows for a match
         // Heuristic: match by name since we can't reliably determine arg position
-        val calleeFlows = callee.parameterFlows
-        for (calleeFlow in calleeFlows) {
+        for (calleeFlow in callee.parameterFlows) {
             for (target in calleeFlow.flowsInto) {
                 if (predicate(target)) {
-                    return FlowEvidence(paramName = paramName, steps = path, terminal = target)
+                    return FlowEvidence(paramName = paramName, steps = path, terminal = target, resolutionConfidence = confidenceSoFar)
                 }
+                if (scope.maxDepth <= 1 || target !is FlowTarget.FunctionArgument) continue
 
-                // Follow one more level: if the callee passes the param to yet another function
-                if (maxDepth > 1 && target is FlowTarget.FunctionArgument) {
-                    val innerCall = findCallByName(callee, target.calledFunction) ?: continue
-                    val innerResolved = CrossMethodResolver.resolve(innerCall, symbolTable) ?: continue
-                    val deeper =
-                        checkCalleeFlows(
-                            paramName,
-                            innerResolved,
-                            symbolTable,
-                            maxDepth - 1,
-                            predicate,
-                            path + FlowStep(target.calledFunction, target.location),
-                        )
-                    if (deeper != null) return deeper
-                }
+                val deeper = followIntoNextHop(paramName, callee, target, scope, predicate, path, confidenceSoFar)
+                if (deeper != null) return deeper
             }
         }
         return null
+    }
+
+    /** Follow one more level: the callee passes the param to yet another function - resolve and recurse into it. */
+    private fun followIntoNextHop(
+        paramName: String,
+        callee: FunctionDecl,
+        target: FlowTarget.FunctionArgument,
+        scope: ResolutionScope,
+        predicate: (FlowTarget) -> Boolean,
+        path: List<FlowStep>,
+        confidenceSoFar: ResolutionConfidence,
+    ): FlowEvidence? {
+        val innerCall = findCallByNameAndLocation(callee, target.calledFunction, target.location) ?: return null
+        val (innerResolved, innerConfidence) =
+            CrossMethodResolver.resolve(innerCall, scope.symbolTable, scope.language).declAndConfidenceOrNull() ?: return null
+        return checkCalleeFlows(
+            paramName,
+            innerResolved,
+            scope.copy(maxDepth = scope.maxDepth - 1),
+            predicate,
+            path + FlowStep(target.calledFunction, target.location),
+            worstOf(confidenceSoFar, innerConfidence),
+        )
     }
 
     private fun calleeIteratesParam(callee: FunctionDecl): Boolean =
@@ -156,10 +203,20 @@ public object ParameterFlowQuery {
             flow.flowsInto.any { it is FlowTarget.LoopIteration }
         }
 
-    private fun findCallByName(
+    /**
+     * Re-finds the exact call the [FlowTarget.FunctionArgument] was recorded from.
+     * [ParameterFlowAnnotator][com.github.tvinke.algorilla.graph.ParameterFlowAnnotator]
+     * constructs that FlowTarget directly from the call node's own name and location, so
+     * matching on both here re-finds that same node deterministically - matching by name
+     * alone (the previous behavior) picks the textually-first same-named call in the
+     * callee body regardless of which one the flow was actually recorded from, the same
+     * "name looks right, isn't proof" shape as the earlier recursion-family name-vs-type bugs.
+     */
+    private fun findCallByNameAndLocation(
         fn: FunctionDecl,
         name: String,
-    ): FunctionCall? = fn.findDescendants<FunctionCall>().firstOrNull { it.name == name }
+        location: SourceLocation,
+    ): FunctionCall? = fn.findDescendants<FunctionCall>().firstOrNull { it.name == name && it.location == location }
 }
 
 /**
@@ -168,4 +225,18 @@ public object ParameterFlowQuery {
 public data class RedundantIteration(
     val paramName: String,
     val iteratingCallees: List<String>,
+)
+
+/**
+ * Bundles the [symbolTable]/[language]/[maxDepth] that travel together through every hop of
+ * [ParameterFlowQuery.checkCalleeFlows]/[ParameterFlowQuery.followIntoNextHop] - the same
+ * combination [CrossMethodResolver.resolve] itself takes as three separate parameters. Extracted
+ * once this combination started appearing in 4+ signatures in this file alone, so a future
+ * addition (another resolution-time option) grows one type instead of every recursive-descent
+ * function's parameter list.
+ */
+private data class ResolutionScope(
+    val symbolTable: SymbolTable,
+    val language: Language,
+    val maxDepth: Int,
 )

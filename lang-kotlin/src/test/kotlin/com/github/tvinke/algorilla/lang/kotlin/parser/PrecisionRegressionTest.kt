@@ -120,6 +120,14 @@ internal class PrecisionRegressionTest : FullPipelineTestSupport() {
                 "unmemoized-recursion",
                 "tree traversal visits different nodes, not unmemoized",
             )
+
+        @Test
+        fun `delegate to a differently named object`() =
+            assertNoFindings(
+                "unmemoized-recursion/negative/delegate-to-other-object.kt",
+                "unmemoized-recursion",
+                "the call is on a field, not on this — same name, different receiver",
+            )
     }
 
     // ── Regression fixtures: specific FP patterns from benchmark repos ────────
