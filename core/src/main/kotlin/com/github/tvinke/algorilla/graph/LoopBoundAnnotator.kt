@@ -4,7 +4,6 @@ import com.github.tvinke.algorilla.model.BranchNode
 import com.github.tvinke.algorilla.model.ControlFlowExit
 import com.github.tvinke.algorilla.model.ExitKind
 import com.github.tvinke.algorilla.model.FileRoot
-import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LoopKind
@@ -13,6 +12,7 @@ import com.github.tvinke.algorilla.model.VariableDecl
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.containsAnyAtWordBoundary
 import com.github.tvinke.algorilla.util.findDescendants
+import com.github.tvinke.algorilla.util.resolveInitializer
 import io.github.oshai.kotlinlogging.KotlinLogging
 
 private val logger = KotlinLogging.logger {}
@@ -140,8 +140,7 @@ public class LoopBoundAnnotator(
             return argCount <= MAX_SMALL_COLLECTION
         }
         // Case 2: variable-assigned — look up VariableDecl with matching name
-        val decl = varDecls.firstOrNull { it.name == iterVar } ?: return false
-        val init = decl.initializer as? FunctionCall ?: return false
+        val init = resolveInitializer(iterVar, varDecls) ?: return false
         if (init.name in SMALL_FACTORY_METHODS) {
             return init.arguments.size <= MAX_SMALL_COLLECTION
         }
