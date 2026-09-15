@@ -244,3 +244,10 @@ o1-types:
   - ImmutableBiMap
   - ImmutableMultiset
   - ImmutableTable
+
+heavyweight-types:
+  - CacheBuilder
+  - LoadingCache
+  - ServiceManager
+  - RateLimiter
+  - TypeToken
