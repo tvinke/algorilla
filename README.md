@@ -106,6 +106,16 @@ Pure AST pattern matching — no AI, no ML, fully deterministic. Algorilla parse
 **Output**: Console (default), SARIF for GitHub Code Scanning, JSON for tooling
 **Speed**: Incremental caching — only re-analyzes changed files
 
+## Why not just PMD or SonarQube?
+
+Those are general-purpose analyzers — style, bugs, security, complexity, all bundled together. Algorilla is narrower on purpose: only algorithmic complexity, nothing else. Run it alongside PMD/SonarQube/ESLint, not instead of them.
+
+A few places the approach actually differs, not just the scope:
+
+- **Confidence is separate from severity.** PMD collapses "how bad" and "how sure" into one 1-5 priority number. Algorilla keeps two axes — the same nested-lookup pattern gets HIGH confidence when the type resolves, MEDIUM when it doesn't, but severity never moves. Filter on trust and impact independently.
+- **No compiled classpath required.** PMD's real type resolution needs your project to build first. Algorilla infers types heuristically — declarations, constructors, call chains — across Java/Kotlin/Groovy/JS/TS, on code that doesn't compile yet. A name-based guess alone never promotes a finding to HIGH confidence.
+- **Semantic knowledge lives in YAML, not scattered across rule code.** Which methods are IO, which types are heavyweight, which collections are O(1) — that's data, not logic. Framework overlays (Spring, JPA, Reactor, ...) extend it without touching a rule.
+
 ## Confidence levels
 
 Not all findings are equally certain. Each one has a [confidence tier](https://tvinke.github.io/algorilla/guide/understanding-output/#confidence-levels):
