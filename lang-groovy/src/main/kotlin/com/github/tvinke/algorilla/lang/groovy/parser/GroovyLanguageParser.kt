@@ -2,11 +2,12 @@ package com.github.tvinke.algorilla.lang.groovy.parser
 
 import com.github.tvinke.algorilla.engine.LanguageParser
 import com.github.tvinke.algorilla.engine.ParserRegistry
+import com.github.tvinke.algorilla.engine.parseFileOrEmpty
 import com.github.tvinke.algorilla.lang.java.parser.JavaLexer
 import com.github.tvinke.algorilla.lang.java.parser.JavaParser
 import com.github.tvinke.algorilla.model.FileRoot
+import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
-import com.github.tvinke.algorilla.model.SourceLocation
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
@@ -25,26 +26,18 @@ public class GroovyLanguageParser : LanguageParser {
 
     override fun canParse(filePath: String): Boolean = filePath.endsWith(".groovy")
 
-    override fun parse(filePath: String): FileRoot {
-        val file = File(filePath)
-        if (!file.exists()) {
-            logger.warn { "File not found: $filePath" }
-            return emptyFileRoot(filePath)
-        }
-        return try {
-            parseWithJavaGrammar(file, filePath)
-        } catch (
-            @Suppress("TooGenericExceptionCaught") e: Exception,
-        ) {
-            logger.warn { "Groovy file not parseable with Java grammar: $filePath (${e.message})" }
-            emptyFileRoot(filePath)
-        }
-    }
+    override fun parse(filePath: String): FileRoot =
+        parseFileOrEmpty(
+            filePath = filePath,
+            language = language,
+            logger = logger,
+            onParseFailure = { e -> "Groovy file not parseable with Java grammar: $filePath (${e.message})" },
+        ) { file -> parseWithJavaGrammar(file, filePath) }
 
     private fun parseWithJavaGrammar(
         file: File,
         filePath: String,
-    ): FileRoot {
+    ): List<IRNode> {
         val source = preprocessGroovySource(file.readText())
         val input = CharStreams.fromString(source, filePath)
         val lexer = JavaLexer(input)
@@ -54,23 +47,8 @@ public class GroovyLanguageParser : LanguageParser {
         parser.removeErrorListeners()
 
         val compilationUnit = parser.compilationUnit()
-        val children = GroovyIRVisitor(filePath).visit(compilationUnit)
-
-        return FileRoot(
-            filePath = filePath,
-            language = Language.GROOVY,
-            location = SourceLocation(filePath, 1, 1),
-            children = children,
-        )
+        return GroovyIRVisitor(filePath).visit(compilationUnit)
     }
-
-    private fun emptyFileRoot(filePath: String): FileRoot =
-        FileRoot(
-            filePath = filePath,
-            language = Language.GROOVY,
-            location = SourceLocation(filePath, 1, 1),
-            children = emptyList(),
-        )
 
     public companion object {
         init {

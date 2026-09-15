@@ -2,13 +2,12 @@ package com.github.tvinke.algorilla.lang.kotlin.parser
 
 import com.github.tvinke.algorilla.engine.LanguageParser
 import com.github.tvinke.algorilla.engine.ParserRegistry
+import com.github.tvinke.algorilla.engine.parseFileOrEmpty
 import com.github.tvinke.algorilla.model.FileRoot
 import com.github.tvinke.algorilla.model.Language
-import com.github.tvinke.algorilla.model.SourceLocation
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.treesitter.TSParser
 import org.treesitter.TreeSitterKotlin
-import java.io.File
 
 private val logger = KotlinLogging.logger {}
 
@@ -21,36 +20,8 @@ public class KotlinLanguageParser : LanguageParser {
 
     override fun canParse(filePath: String): Boolean = filePath.endsWith(".kt") || filePath.endsWith(".kts")
 
-    override fun parse(filePath: String): FileRoot {
-        val file = File(filePath)
-        if (!file.exists()) {
-            logger.warn { "File not found: $filePath" }
-            return emptyFileRoot(filePath)
-        }
-        return try {
-            val source = file.readText()
-            val children = parseWithTreeSitter(filePath, source)
-            FileRoot(
-                filePath = filePath,
-                language = Language.KOTLIN,
-                location = SourceLocation(filePath, 1, 1),
-                children = children,
-            )
-        } catch (
-            @Suppress("TooGenericExceptionCaught") e: Exception,
-        ) {
-            logger.warn { "Failed to parse $filePath: ${e.message}" }
-            emptyFileRoot(filePath)
-        }
-    }
-
-    private fun emptyFileRoot(filePath: String) =
-        FileRoot(
-            filePath = filePath,
-            language = language,
-            location = SourceLocation(filePath, 1, 1),
-            children = emptyList(),
-        )
+    override fun parse(filePath: String): FileRoot =
+        parseFileOrEmpty(filePath, language, logger) { file -> parseWithTreeSitter(filePath, file.readText()) }
 
     @Suppress("TooGenericExceptionCaught")
     private fun parseWithTreeSitter(
