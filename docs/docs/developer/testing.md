@@ -57,7 +57,7 @@ fun `should detect contains inside forEach`() {
 ## Running Tests
 
 ```bash
-./gradlew check          # All tests + Detekt + ktlint
+./gradlew check          # All tests + Detekt + ktlint + CPD (duplication report)
 ./gradlew test           # Tests only
 ./gradlew :core:test     # Tests for a specific module
 ```
