@@ -20,6 +20,9 @@ import com.github.tvinke.algorilla.model.SourceLocation
 import com.github.tvinke.algorilla.model.TypeCheck
 import com.github.tvinke.algorilla.model.VariableDecl
 import org.treesitter.TSNode
+import com.github.tvinke.algorilla.engine.locationOf as sharedLocationOf
+import com.github.tvinke.algorilla.engine.nodeText as sharedNodeText
+import com.github.tvinke.algorilla.engine.visitChildren as sharedVisitChildren
 
 /**
  * Walks a tree-sitter JavaScript/TypeScript CST and produces IR nodes.
@@ -58,16 +61,7 @@ internal class JsTreeSitterVisitor(
         }
     }
 
-    private fun visitChildren(node: TSNode): List<IRNode> {
-        val result = mutableListOf<IRNode>()
-        for (i in 0 until node.namedChildCount) {
-            val child = node.getNamedChild(i)
-            if (!child.isNull) {
-                result.addAll(visit(child))
-            }
-        }
-        return result
-    }
+    private fun visitChildren(node: TSNode): List<IRNode> = sharedVisitChildren(node, ::visit)
 
     private fun visitFunctionDeclaration(node: TSNode): List<IRNode> {
         val nameNode = node.getChildByFieldName("name")
@@ -493,14 +487,9 @@ internal class JsTreeSitterVisitor(
         }
     }
 
-    private fun nodeText(node: TSNode): String {
-        if (node.isNull) return ""
-        val start = node.startByte.coerceAtMost(source.length)
-        val end = node.endByte.coerceAtMost(source.length)
-        return source.substring(start, end)
-    }
+    private fun nodeText(node: TSNode): String = sharedNodeText(node, source)
 
-    private fun locationOf(node: TSNode): SourceLocation = SourceLocation(filePath, node.startPoint.row + 1, node.startPoint.column + 1)
+    private fun locationOf(node: TSNode): SourceLocation = sharedLocationOf(node, filePath)
 }
 
 /** Node types that are transparent — we visit their children without producing IR nodes. */

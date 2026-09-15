@@ -13,6 +13,7 @@ dependencies {
     implementation(libs.logback)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.antlr.runtime)
+    api(libs.treesitter)
     testImplementation(libs.konsist)
     testImplementation(libs.archunit.junit5)
     if (arcmutateLicence.exists()) {
