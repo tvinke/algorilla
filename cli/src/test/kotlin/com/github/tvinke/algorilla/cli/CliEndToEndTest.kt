@@ -267,6 +267,50 @@ internal class CliEndToEndTest {
         result.stdout shouldNotContain "Showing"
     }
 
+    // -- Custom rules --
+
+    @Tag("contract")
+    @Test
+    fun `custom rule script in dotAlgorilla rules directory produces a finding`() {
+        val project = writeSource("Clean.java", "package com.example;\npublic class Clean {}\n")
+        val rulesDir = project.resolve(".algorilla/rules")
+        rulesDir.mkdirs()
+        rulesDir.resolve("flag-all-classes.kts").writeText(
+            """
+            import com.github.tvinke.algorilla.rules.custom.rule
+            import com.github.tvinke.algorilla.model.FileRoot
+
+            rule("custom-flag-all-files") {
+                name = "Custom: flag every file"
+                onNode<FileRoot> { node, file ->
+                    report(node.location, "custom rule fired for ${'$'}file")
+                }
+            }
+            """.trimIndent(),
+        )
+
+        val result = run("--no-cache", "--fail-on", "error", project.absolutePath)
+        result.stdout shouldContain "custom-flag-all-files"
+        result.stdout shouldContain "custom rule fired"
+    }
+
+    @Test
+    fun `list-rules with a path argument shows that project's custom rules`() {
+        val project = writeSource("Clean.java", "package com.example;\npublic class Clean {}\n")
+        val rulesDir = project.resolve(".algorilla/rules")
+        rulesDir.mkdirs()
+        rulesDir.resolve("custom.kts").writeText(
+            """
+            import com.github.tvinke.algorilla.rules.custom.rule
+            rule("custom-for-list-rules-test") {}
+            """.trimIndent(),
+        )
+
+        val result = run("--list-rules", project.absolutePath)
+        result.exitCode shouldBe 0
+        result.stdout shouldContain "custom-for-list-rules-test"
+    }
+
     companion object {
         private val NESTED_LOOKUP_SOURCE =
             """
