@@ -5,7 +5,6 @@ import com.github.tvinke.algorilla.model.FileRoot
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.GenericNode
-import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LoopNode
 import com.github.tvinke.algorilla.model.Severity
@@ -19,6 +18,7 @@ import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.util.containsAnyAtWordBoundary
 import com.github.tvinke.algorilla.util.declaredTypeOf
 import com.github.tvinke.algorilla.util.endsWithAtWordBoundary
+import com.github.tvinke.algorilla.util.walkLoopSites
 
 /**
  * Detects String methods that recompile a regex on every call when used inside loops.
@@ -38,36 +38,14 @@ public class RegexRecompilationInLoopRule : Rule {
         for ((_, fileRoot) in context.irTrees) {
             val language = (fileRoot as? FileRoot)?.language
             val methods = language?.let { context.registry.regexRecompilationMethods(it) } ?: emptySet()
-            scanNode(fileRoot, null, emptyList(), language, methods, context.registry, findings)
+            val registry = context.registry
+            fileRoot.walkLoopSites { node, fn, loopStack ->
+                if (node is FunctionCall && isRegexRecompilationCall(node, fn, language, methods, registry)) {
+                    findings.add(buildFinding(node, loopStack))
+                }
+            }
         }
         return findings
-    }
-
-    private fun scanNode(
-        node: IRNode,
-        enclosingFn: FunctionDecl?,
-        loopStack: List<LoopNode>,
-        language: Language?,
-        regexMethods: Set<String>,
-        registry: LanguageSemanticsRegistry,
-        findings: MutableList<Finding>,
-    ) {
-        val fn = if (node is FunctionDecl) node else enclosingFn
-
-        if (node is LoopNode) {
-            for (child in node.children) {
-                scanNode(child, fn, loopStack + node, language, regexMethods, registry, findings)
-            }
-            return
-        }
-
-        if (loopStack.isNotEmpty() && node is FunctionCall && isRegexRecompilationCall(node, fn, language, regexMethods, registry)) {
-            findings.add(buildFinding(node, loopStack))
-        }
-
-        for (child in node.children) {
-            scanNode(child, fn, loopStack, language, regexMethods, registry, findings)
-        }
     }
 
     private fun buildFinding(
