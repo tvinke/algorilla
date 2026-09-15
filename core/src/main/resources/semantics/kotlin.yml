@@ -231,13 +231,44 @@ builder-methods:
   - contentType
 
 heavyweight-types:
+  # Kotlin-specific
+  - Regex
+  # Inherited from the JVM/Java stdlib — same classes available via interop
   - ObjectMapper
+  - Gson
   - XmlMapper
-  - Pattern
-  - SimpleDateFormat
-  - MessageDigest
   - DocumentBuilderFactory
   - TransformerFactory
+  - Pattern
+  - SimpleDateFormat
+  - Collator
+  - RuleBasedCollator
+  - MessageDigest
+  - SAXParserFactory
+  - SAXParser
+  - Cipher
+  - KeyGenerator
+  - KeyPairGenerator
+  - SecretKeyFactory
+  - KeyFactory
+  - Signature
+  - Mac
+  - SSLContext
+  - SSLSocketFactory
+  - HttpClient
+  - HttpURLConnection
+  - ScheduledExecutorService
+  - ThreadPoolExecutor
+  - ForkJoinPool
+  - DateTimeFormatter
+  - XMLInputFactory
+  - XMLOutputFactory
+  - XPathFactory
+  - SchemaFactory
+  - Validator
+  - JAXBContext
+  - MBeanServer
+  - ScriptEngine
 
 string-types:
   - String

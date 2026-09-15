@@ -263,6 +263,7 @@ builder-methods:
 
 heavyweight-types:
   - ObjectMapper
+  - Gson
   - XmlMapper
   - DocumentBuilderFactory
   - TransformerFactory
@@ -278,6 +279,8 @@ heavyweight-types:
   - KeyPairGenerator
   - SecretKeyFactory
   - KeyFactory
+  - Signature
+  - Mac
   - SSLContext
   - SSLSocketFactory
   - HttpClient
@@ -286,6 +289,8 @@ heavyweight-types:
   - ThreadPoolExecutor
   - ForkJoinPool
   - DateTimeFormatter
+  - XMLInputFactory
+  - XMLOutputFactory
   - XPathFactory
   - SchemaFactory
   - Validator

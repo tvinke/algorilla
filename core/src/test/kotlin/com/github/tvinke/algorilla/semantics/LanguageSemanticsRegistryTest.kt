@@ -117,6 +117,49 @@ internal class LanguageSemanticsRegistryTest {
     }
 
     @Test
+    fun `should detect newly-added Java crypto and StAX heavyweight types`() {
+        registry.isHeavyweight(Language.JAVA, "Signature").shouldBeTrue()
+        registry.isHeavyweight(Language.JAVA, "Mac").shouldBeTrue()
+        registry.isHeavyweight(Language.JAVA, "XMLInputFactory").shouldBeTrue()
+        registry.isHeavyweight(Language.JAVA, "XMLOutputFactory").shouldBeTrue()
+    }
+
+    @Test
+    fun `Kotlin heavyweight-types should inherit the JVM stdlib set plus Regex`() {
+        registry.isHeavyweight(Language.KOTLIN, "Regex").shouldBeTrue()
+        // Spot-check a few of the inherited Java stdlib types
+        registry.isHeavyweight(Language.KOTLIN, "Cipher").shouldBeTrue()
+        registry.isHeavyweight(Language.KOTLIN, "SSLContext").shouldBeTrue()
+        registry.isHeavyweight(Language.KOTLIN, "ScheduledExecutorService").shouldBeTrue()
+    }
+
+    @Test
+    fun `Groovy heavyweight-types should include Groovy-specific and inherited JVM types`() {
+        registry.isHeavyweight(Language.GROOVY, "GroovyShell").shouldBeTrue()
+        registry.isHeavyweight(Language.GROOVY, "MarkupBuilder").shouldBeTrue()
+        registry.isHeavyweight(Language.GROOVY, "SimpleTemplateEngine").shouldBeTrue()
+        // Spot-check an inherited Java stdlib type
+        registry.isHeavyweight(Language.GROOVY, "Cipher").shouldBeTrue()
+    }
+
+    @Test
+    fun `JavaScript heavyweight-types should include DOM XML and network additions`() {
+        registry.isHeavyweight(Language.JAVASCRIPT, "DOMParser").shouldBeTrue()
+        registry.isHeavyweight(Language.JAVASCRIPT, "XSLTProcessor").shouldBeTrue()
+        registry.isHeavyweight(Language.JAVASCRIPT, "EventSource").shouldBeTrue()
+    }
+
+    @Test
+    fun `Java heavyweight-types YAML covers the formerly-hardcoded default set`() {
+        // These 5 used to be a Kotlin-code fallback (AnalysisConfig.DEFAULT_HEAVYWEIGHT_TYPES).
+        // Now that the fallback is gone, java.yml is the only source — lock it in.
+        val formerlyHardcoded = setOf("ObjectMapper", "Gson", "XmlMapper", "DocumentBuilderFactory", "TransformerFactory")
+        formerlyHardcoded.forEach { type ->
+            registry.isHeavyweight(Language.JAVA, type).shouldBeTrue()
+        }
+    }
+
+    @Test
     fun `should merge user heavyweight types`() {
         val merged = LanguageSemanticsRegistry.withOverrides(registry, setOf("CustomMapper"))
         merged.isHeavyweight(Language.JAVA, "CustomMapper").shouldBeTrue()
