@@ -3,8 +3,6 @@ package com.github.tvinke.algorilla.rules.builtin
 import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.FunctionCall
-import com.github.tvinke.algorilla.model.FunctionDecl
-import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LoopNode
 import com.github.tvinke.algorilla.model.Severity
@@ -18,6 +16,7 @@ import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.semantics.SemanticCategory
 import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import com.github.tvinke.algorilla.util.containsAnyAtWordBoundary
+import com.github.tvinke.algorilla.util.walkLoopSites
 
 /**
  * Detects blocking calls (.join(), .get()) on futures inside loops.
@@ -35,42 +34,20 @@ public class SequentialAsyncJoinInLoopRule : Rule {
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
-            scanNode(fileRoot, null, emptyList(), fileRoot.language, context, findings)
-        }
-        return findings
-    }
-
-    @Suppress("LongParameterList") // Threading the enclosing function through for TypeEnvironment lookups
-    private fun scanNode(
-        node: IRNode,
-        enclosingFn: FunctionDecl?,
-        loopStack: List<LoopNode>,
-        language: Language,
-        context: AnalysisContext,
-        findings: MutableList<Finding>,
-    ) {
-        val fn = if (node is FunctionDecl) node else enclosingFn
-
-        if (node is LoopNode) {
-            for (child in node.children) {
-                scanNode(child, fn, loopStack + node, language, context, findings)
-            }
-            return
-        }
-
-        if (loopStack.isNotEmpty() && node is FunctionCall) {
-            val semantics = context.registry.classify(language, node.name)
-            if (semantics?.category == SemanticCategory.BLOCKING) {
-                val typeEnv = fn?.let { context.typeEnvironmentFor(it) }
-                if (looksLikeFutureCall(node, language, context.registry, typeEnv)) {
-                    findings.add(buildFinding(node, loopStack))
+            val language = fileRoot.language
+            fileRoot.walkLoopSites { node, fn, loopStack ->
+                if (node is FunctionCall) {
+                    val semantics = context.registry.classify(language, node.name)
+                    if (semantics?.category == SemanticCategory.BLOCKING) {
+                        val typeEnv = fn?.let { context.typeEnvironmentFor(it) }
+                        if (looksLikeFutureCall(node, language, context.registry, typeEnv)) {
+                            findings.add(buildFinding(node, loopStack))
+                        }
+                    }
                 }
             }
         }
-
-        for (child in node.children) {
-            scanNode(child, fn, loopStack, language, context, findings)
-        }
+        return findings
     }
 
     @Suppress("LongMethod") // Assembles async-blocking finding with wait-bottleneck evidence

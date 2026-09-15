@@ -5,7 +5,6 @@ import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.FileRoot
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
-import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LoopNode
 import com.github.tvinke.algorilla.model.Severity
@@ -19,6 +18,7 @@ import com.github.tvinke.algorilla.util.containsAnyAtWordBoundary
 import com.github.tvinke.algorilla.util.endsWithAtWordBoundary
 import com.github.tvinke.algorilla.util.hasO1Type
 import com.github.tvinke.algorilla.util.isFollowedByExit
+import com.github.tvinke.algorilla.util.walkLoopSites
 
 /**
  * Detects element-by-element removal from List/Array inside loops. Each remove() on an
@@ -40,38 +40,15 @@ public class QuadraticRemovalRule : Rule {
         for ((_, fileRoot) in context.irTrees) {
             val language = (fileRoot as? FileRoot)?.language
             val methods = language?.let { context.registry.removalMethods(it) } ?: emptySet()
-            scanNode(fileRoot, null, emptyList(), methods, language, context, findings)
+            fileRoot.walkLoopSites { node, fn, loopStack ->
+                if (node is FunctionCall && isRemovalCall(node, fn, methods, language, context)) {
+                    if (!loopStack.last().isSingleIteration && !isFollowedByExit(node, loopStack.last().children)) {
+                        findings.add(buildFinding(node, loopStack))
+                    }
+                }
+            }
         }
         return findings
-    }
-
-    private fun scanNode(
-        node: IRNode,
-        enclosingFn: FunctionDecl?,
-        loopStack: List<LoopNode>,
-        removalMethods: Set<String>,
-        language: Language?,
-        context: AnalysisContext,
-        findings: MutableList<Finding>,
-    ) {
-        val fn = if (node is FunctionDecl) node else enclosingFn
-
-        if (node is LoopNode) {
-            for (child in node.children) {
-                scanNode(child, fn, loopStack + node, removalMethods, language, context, findings)
-            }
-            return
-        }
-
-        if (loopStack.isNotEmpty() && node is FunctionCall && isRemovalCall(node, fn, removalMethods, language, context)) {
-            if (!loopStack.last().isSingleIteration && !isFollowedByExit(node, loopStack.last().children)) {
-                findings.add(buildFinding(node, loopStack))
-            }
-        }
-
-        for (child in node.children) {
-            scanNode(child, fn, loopStack, removalMethods, language, context, findings)
-        }
     }
 
     @Suppress("LongMethod")

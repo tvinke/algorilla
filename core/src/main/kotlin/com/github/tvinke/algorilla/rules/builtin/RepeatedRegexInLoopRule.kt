@@ -3,7 +3,6 @@ package com.github.tvinke.algorilla.rules.builtin
 import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.FunctionCall
-import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.GenericNode
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
@@ -18,6 +17,7 @@ import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import com.github.tvinke.algorilla.util.endsWithAtWordBoundary
+import com.github.tvinke.algorilla.util.walkLoopSites
 
 /**
  * Detects regex pattern compilation inside loops. Compiling a regex is expensive;
@@ -34,47 +34,20 @@ public class RepeatedRegexInLoopRule : Rule {
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
-            val language = fileRoot.language
-            val regexTypes = context.registry.regexTypes(language)
-            scanNode(fileRoot, null, emptyList(), regexTypes, language, context, findings)
-        }
-        return findings
-    }
-
-    @Suppress("LongParameterList") // Threading the enclosing function through for TypeEnvironment lookups
-    private fun scanNode(
-        node: IRNode,
-        enclosingFn: FunctionDecl?,
-        loopStack: List<LoopNode>,
-        regexTypes: Set<String>,
-        language: Language,
-        context: AnalysisContext,
-        findings: MutableList<Finding>,
-    ) {
-        val fn = if (node is FunctionDecl) node else enclosingFn
-
-        if (node is LoopNode) {
-            for (child in node.children) {
-                scanNode(child, fn, loopStack + node, regexTypes, language, context, findings)
-            }
-            return
-        }
-
-        if (loopStack.isNotEmpty()) {
-            if (node is ObjectCreation && node.typeName in regexTypes) {
-                findings.add(buildFinding(node, loopStack, "new ${node.typeName}()"))
-            }
-            if (node is FunctionCall && hasConstantArgument(node)) {
-                val typeEnv = fn?.let { context.typeEnvironmentFor(it) }
-                if (isCompileCall(node, typeEnv, regexTypes)) {
-                    findings.add(buildFinding(node, loopStack, "${node.qualifiedTarget ?: "Pattern"}.${node.name}()"))
+            val regexTypes = context.registry.regexTypes(fileRoot.language)
+            fileRoot.walkLoopSites { node, fn, loopStack ->
+                if (node is ObjectCreation && node.typeName in regexTypes) {
+                    findings.add(buildFinding(node, loopStack, "new ${node.typeName}()"))
+                }
+                if (node is FunctionCall && hasConstantArgument(node)) {
+                    val typeEnv = fn?.let { context.typeEnvironmentFor(it) }
+                    if (isCompileCall(node, typeEnv, regexTypes)) {
+                        findings.add(buildFinding(node, loopStack, "${node.qualifiedTarget ?: "Pattern"}.${node.name}()"))
+                    }
                 }
             }
         }
-
-        for (child in node.children) {
-            scanNode(child, fn, loopStack, regexTypes, language, context, findings)
-        }
+        return findings
     }
 
     private fun buildFinding(

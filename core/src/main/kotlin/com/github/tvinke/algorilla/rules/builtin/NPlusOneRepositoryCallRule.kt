@@ -5,7 +5,6 @@ import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.FlowTarget
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
-import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LoopNode
 import com.github.tvinke.algorilla.model.Severity
@@ -24,6 +23,7 @@ import com.github.tvinke.algorilla.util.demoteIfAmbiguous
 import com.github.tvinke.algorilla.util.endsWithAtWordBoundary
 import com.github.tvinke.algorilla.util.matchesAnyTargetPattern
 import com.github.tvinke.algorilla.util.startsWithAtWordBoundary
+import com.github.tvinke.algorilla.util.walkLoopSites
 
 /**
  * Detects repository/DAO single-record fetch calls inside loops (N+1 problem).
@@ -43,35 +43,12 @@ public class NPlusOneRepositoryCallRule : Rule {
     override fun evaluate(context: AnalysisContext): List<Finding> {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
-            scanNode(fileRoot, null, emptyList(), fileRoot.language, context, findings)
+            val language = fileRoot.language
+            fileRoot.walkLoopSites { node, fn, loopStack ->
+                if (node is FunctionCall) checkCallInLoop(node, fn, loopStack, language, context, findings)
+            }
         }
         return findings
-    }
-
-    private fun scanNode(
-        node: IRNode,
-        enclosingFn: FunctionDecl?,
-        loopStack: List<LoopNode>,
-        language: Language,
-        context: AnalysisContext,
-        findings: MutableList<Finding>,
-    ) {
-        val fn = if (node is FunctionDecl) node else enclosingFn
-
-        if (node is LoopNode) {
-            for (child in node.children) {
-                scanNode(child, fn, loopStack + node, language, context, findings)
-            }
-            return
-        }
-
-        if (loopStack.isNotEmpty() && node is FunctionCall) {
-            checkCallInLoop(node, fn, loopStack, language, context, findings)
-        }
-
-        for (child in node.children) {
-            scanNode(child, fn, loopStack, language, context, findings)
-        }
     }
 
     private fun checkCallInLoop(
