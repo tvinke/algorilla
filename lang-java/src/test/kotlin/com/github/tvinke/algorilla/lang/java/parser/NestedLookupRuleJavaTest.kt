@@ -165,6 +165,14 @@ internal class NestedLookupRuleJavaTest {
             // will be resolved — so this should actually be HIGH now
             findings.first().confidence shouldBe Confidence.HIGH
         }
+
+        @Test
+        fun `should NOT be HIGH confidence when the only type signal is a name-suffix heuristic`() {
+            val findings = analyzeFixtureWithTypes("nested-lookup/regression/name-heuristic-list-not-confirmed.java")
+
+            findings shouldHaveSize 1
+            findings.first().confidence shouldBe Confidence.MEDIUM
+        }
     }
 
     private fun analyzeFixtureWithTypes(fixturePath: String): List<Finding> {
