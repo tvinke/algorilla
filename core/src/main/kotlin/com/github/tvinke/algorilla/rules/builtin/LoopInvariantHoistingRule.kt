@@ -45,8 +45,6 @@ public class LoopInvariantHoistingRule : Rule {
             val language = (fileRoot as? FileRoot)?.language ?: Language.JAVA
             val skipMethods = collectSkipMethods(language, context)
             for (fn in fileRoot.findDescendants<FunctionDecl>()) {
-                // enclosingFn is unused by checkLoopInvariant below, so the walker's own
-                // per-nested-FunctionDecl tracking (irrelevant here) is safe to ignore.
                 fn.walkLoopSites { node, _, loopStack ->
                     if (node is FunctionCall) checkLoopInvariant(node, loopStack, skipMethods, findings)
                 }

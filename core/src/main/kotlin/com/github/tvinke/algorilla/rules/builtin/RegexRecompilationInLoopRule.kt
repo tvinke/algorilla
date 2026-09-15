@@ -38,9 +38,8 @@ public class RegexRecompilationInLoopRule : Rule {
         for ((_, fileRoot) in context.irTrees) {
             val language = (fileRoot as? FileRoot)?.language
             val methods = language?.let { context.registry.regexRecompilationMethods(it) } ?: emptySet()
-            val registry = context.registry
             fileRoot.walkLoopSites { node, fn, loopStack ->
-                if (node is FunctionCall && isRegexRecompilationCall(node, fn, language, methods, registry)) {
+                if (node is FunctionCall && isRegexRecompilationCall(node, fn, language, methods, context.registry)) {
                     findings.add(buildFinding(node, loopStack))
                 }
             }
