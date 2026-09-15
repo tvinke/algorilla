@@ -15,7 +15,10 @@ import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
+import com.github.tvinke.algorilla.semantics.TypeEnvironment
+import com.github.tvinke.algorilla.util.containsAnyAtWordBoundary
 import com.github.tvinke.algorilla.util.findDescendants
+import com.github.tvinke.algorilla.util.startsWithAtWordBoundary
 
 /**
  * Detects potential JPA/Hibernate lazy-loading N+1 patterns: entity getter calls
@@ -65,7 +68,8 @@ public class LazyLoadingInLoopRule : Rule {
         findings: MutableList<Finding>,
     ) {
         // Step 1: find variables assigned from repository-like fetches
-        val entityVars = findEntityVariables(fn, repoPatterns, fetchPrefixes)
+        val typeEnv = context.typeEnvironmentFor(fn)
+        val entityVars = findEntityVariables(fn, repoPatterns, fetchPrefixes, typeEnv)
         if (entityVars.isEmpty()) return
 
         // Step 2: find loops and check for collection-getter calls on entity variables
@@ -91,26 +95,34 @@ public class LazyLoadingInLoopRule : Rule {
         fn: FunctionDecl,
         repoPatterns: Set<String>,
         fetchPrefixes: List<String>,
+        typeEnv: TypeEnvironment?,
     ): Set<String> {
         val vars = mutableSetOf<String>()
         for (varDecl in fn.findDescendants<VariableDecl>()) {
             val initCalls = varDecl.findDescendants<FunctionCall>()
-            if (initCalls.any { isRepositoryFetch(it, repoPatterns, fetchPrefixes) }) {
+            if (initCalls.any { isRepositoryFetch(it, repoPatterns, fetchPrefixes, typeEnv) }) {
                 vars.add(varDecl.name)
             }
         }
         return vars
     }
 
+    // Real repository/DAO/service classes are conventionally named to match repoPatterns
+    // themselves (OrderRepository, UserDao, PaymentService), so checking the receiver's
+    // declared type against the same set is a stronger version of the same signal, not a
+    // different one. A local variable merely NAMED "orderRepository" but declared as
+    // something unrelated (a mock, a DTO holder) would otherwise pass this check just by name.
     private fun isRepositoryFetch(
         call: FunctionCall,
         repoPatterns: Set<String>,
         fetchPrefixes: List<String>,
+        typeEnv: TypeEnvironment?,
     ): Boolean {
-        val target = call.qualifiedTarget?.lowercase() ?: return false
-        val isRepoTarget = repoPatterns.any { target.contains(it) }
+        val target = call.qualifiedTarget ?: return false
+        val declaredType = typeEnv?.declaredTypeName(target)
+        val isRepoTarget = containsAnyAtWordBoundary(declaredType ?: target, repoPatterns)
         if (!isRepoTarget) return false
-        return fetchPrefixes.any { call.name.startsWith(it, ignoreCase = true) }
+        return fetchPrefixes.any { startsWithAtWordBoundary(call.name, it) }
     }
 
     private fun isIteratingEntityCollection(
@@ -129,13 +141,15 @@ public class LazyLoadingInLoopRule : Rule {
     ): Boolean {
         val name = call.name
         // Must be a getter-style call
-        if (!name.startsWith("get") || name.length <= MIN_GETTER_LENGTH) return false
+        if (!startsWithAtWordBoundary(name, "get") || name.length <= MIN_GETTER_LENGTH) return false
         val property = name.removePrefix("get")
         val lower = property.lowercase()
-        // Strong signals: plural property names that suggest collections
+        // Strong signals: plural property names that suggest collections. containsAtWordBoundary
+        // reads the original-case property - lowercasing first would destroy the camelCase
+        // signal the boundary check needs.
         return lower.endsWith("s") &&
             !scalarSuffs.any { lower.endsWith(it) } ||
-            collGetterNames.any { lower.contains(it) }
+            containsAnyAtWordBoundary(property, collGetterNames)
     }
 
     private fun isCalledOnLoopEntity(

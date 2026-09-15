@@ -38,6 +38,13 @@ internal class UnmemoizedRecursionRuleKotlinTest {
 
             findings.shouldBeEmpty()
         }
+
+        @Test
+        fun `should not flag delegation to a differently named object as recursion`() {
+            val findings = analyzeFixture("unmemoized-recursion/negative/delegate-to-other-object.kt")
+
+            findings.shouldBeEmpty()
+        }
     }
 
     private fun analyzeFixture(fixturePath: String): List<Finding> {

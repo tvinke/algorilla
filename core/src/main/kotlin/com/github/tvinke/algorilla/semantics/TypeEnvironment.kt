@@ -67,16 +67,34 @@ public class TypeEnvironment private constructor(
 
     /**
      * Returns true if [variableName] is known to be a collection type (List, Set, Map, etc.).
-     * Also resolves through the class hierarchy (L3).
+     * Also resolves through the class hierarchy (L3). Like [isO1], excludes
+     * [TypeSource.NAME_HEURISTIC] — a variable whose only evidence is a method name ending
+     * in e.g. "Map" (`getWorkflowStateMap()`) is not proof it actually is one.
      */
     public fun isCollection(variableName: String): Boolean {
         val type = typeOf(variableName) ?: return false
+        if (type.source == TypeSource.NAME_HEURISTIC) return false
         if (registry.isCollectionType(language, type.simpleName)) return true
         return resolvesViaHierarchy(type.simpleName) { registry.isCollectionType(language, it) }
     }
 
     /** Returns true if [variableName] is initialized from a small constant-size collection factory. */
     public fun isBoundedSmallCollection(variableName: String): Boolean = variableName.removePrefix("this.") in boundedSmallCollections
+
+    /**
+     * Returns [variableName]'s declared type's simple name, or null when unresolved or only
+     * backed by a [TypeSource.NAME_HEURISTIC] guess - the same trust bar [isO1]/[isCollection]/
+     * [isList] already apply. For callers that need the type name itself (to check it against
+     * their own domain-specific pattern set - repository/regex/date/future naming, say) rather
+     * than one of the built-in yes/no classifications: `typeOf(x)?.simpleName` alone would let
+     * a low-confidence name-derived guess (`getOrderList()` inferring "List" from the method
+     * name suffix, nothing more) masquerade as a real declared type.
+     */
+    public fun declaredTypeName(variableName: String): String? {
+        val type = typeOf(variableName) ?: return null
+        if (type.source == TypeSource.NAME_HEURISTIC) return null
+        return type.simpleName
+    }
 
     /**
      * Walks the class hierarchy transitively to check if any supertype satisfies [predicate].
@@ -112,9 +130,12 @@ public class TypeEnvironment private constructor(
     /**
      * Returns true if [variableName] is known to be a List type (not Set/Map).
      * Useful for rules that only apply to ordered, shift-on-remove collections.
+     * Like [isO1], excludes [TypeSource.NAME_HEURISTIC] — a method name ending in "List"
+     * is not proof the value is actually one.
      */
     public fun isList(variableName: String): Boolean {
         val type = typeOf(variableName) ?: return false
+        if (type.source == TypeSource.NAME_HEURISTIC) return false
         val yamlListTypes = registry.extraSection(language, "list-types")
         return if (yamlListTypes.isNotEmpty()) {
             type.simpleName in yamlListTypes

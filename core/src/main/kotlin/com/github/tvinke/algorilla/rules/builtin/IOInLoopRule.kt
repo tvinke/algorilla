@@ -20,8 +20,12 @@ import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import com.github.tvinke.algorilla.util.ParameterFlowQuery
+import com.github.tvinke.algorilla.util.ResolutionConfidence
+import com.github.tvinke.algorilla.util.containsAnyAtWordBoundary
+import com.github.tvinke.algorilla.util.demoteIfAmbiguous
 import com.github.tvinke.algorilla.util.findDescendants
 import com.github.tvinke.algorilla.util.isFollowedByExit
+import com.github.tvinke.algorilla.util.matchesAnyTargetPattern
 
 /**
  * Detects IO operations (HTTP calls, database queries, file operations) inside loops.
@@ -164,6 +168,7 @@ public class IOInLoopRule : Rule {
                 call = call,
                 callerFn = callerFn,
                 symbolTable = context.symbolTable,
+                language = language,
                 maxDepth = context.config.maxCallDepth.coerceAtMost(2),
             ) { target ->
                 // Check if the terminal operation is a method call to an IO method
@@ -171,7 +176,7 @@ public class IOInLoopRule : Rule {
                     target.methodName in languageIoMethods
             }
         if (evidence != null) {
-            findings.add(buildCrossMethodFinding(call, evidence.paramName, loopStack))
+            findings.add(buildCrossMethodFinding(call, evidence.paramName, loopStack, evidence.resolutionConfidence))
         }
     }
 
@@ -213,6 +218,7 @@ public class IOInLoopRule : Rule {
         call: FunctionCall,
         paramName: String,
         loopStack: List<LoopNode>,
+        resolutionConfidence: ResolutionConfidence,
     ): Finding {
         val outerLoop = loopStack.first()
         val loopVar = outerLoop.iteratedVariable ?: "items"
@@ -220,6 +226,10 @@ public class IOInLoopRule : Rule {
             ruleId = id,
             ruleName = name,
             severity = severity,
+            // The flow chain that found this IO call may have crossed an ambiguous overload
+            // guess at some hop - never report higher than LOW on a guess, same discipline as
+            // HiddenNestedLoopRule/NestedLookupRule.
+            confidence = resolutionConfidence.demoteIfAmbiguous(Confidence.MEDIUM),
             location = call.location,
             message =
                 "Parameter '$paramName' flows through ${call.name}() into IO " +
@@ -332,7 +342,11 @@ private fun isStreamCopyLoop(loop: LoopNode): Boolean {
     return hasRead && hasWrite
 }
 
-/** Returns true if this call's target is a monadic single-item type (not a collection). */
+/**
+ * Returns true if this call's target is a monadic single-item type (not a collection).
+ * Reactive-factory-class detection (`ReactiveSecurityContextHolder.getContext()`) now lives
+ * in [LanguageSemanticsRegistry.isMonadicTarget] itself, shared with [CardinalityExplosionRule].
+ */
 private fun isMonadicTarget(
     call: FunctionCall,
     language: Language,
@@ -340,20 +354,7 @@ private fun isMonadicTarget(
 ): Boolean {
     val target = call.qualifiedTarget ?: return false
     return registry.isMonadicTarget(language, target) ||
-        isReactiveFactoryTarget(target, language, registry) ||
         isReactiveChainTarget(target, language, registry)
-}
-
-// ReactiveSecurityContextHolder.getContext().map(...).flatMap(...) — the class is a
-// reactive factory whose methods return Mono/Flux, not a collection to iterate.
-private fun isReactiveFactoryTarget(
-    target: String,
-    language: Language,
-    registry: LanguageSemanticsRegistry,
-): Boolean {
-    val factories = registry.extraSection(language, "monadic-factory-classes")
-    if (factories.isEmpty()) return false
-    return factories.any { target.contains(it) }
 }
 
 /**
@@ -369,7 +370,6 @@ private fun isReactiveChainTarget(
     if (!target.contains('(')) return false
     val dotIdx = target.indexOf('.')
     if (dotIdx < 0) return false
-    val receiver = target.substring(0, dotIdx).lowercase()
     val afterDot = target.substring(dotIdx + 1)
     val parenIdx = afterDot.indexOf('(')
     if (parenIdx < 0) return false
@@ -378,13 +378,7 @@ private fun isReactiveChainTarget(
     val ioCandidates = registry.ioMethodCandidates(language)
     val ioPatterns = registry.ioTargetPatterns(language)
     return (methodName in ioMethods || methodName in ioCandidates) &&
-        ioPatterns.any { pattern ->
-            if (pattern.startsWith("*")) {
-                receiver.contains(pattern.removePrefix("*"))
-            } else {
-                receiver.endsWith(pattern) || receiver == pattern
-            }
-        }
+        matchesIOTargetPatterns(target.substring(0, dotIdx), ioPatterns)
 }
 
 /** Returns true if the call target is a known in-memory buffer (not real IO). */
@@ -395,8 +389,10 @@ private fun isInMemoryTarget(
     registry: LanguageSemanticsRegistry,
 ): Boolean {
     val target = call.qualifiedTarget ?: return false
-    val lowered = target.lowercase()
-    if (registry.nonIoTargets(language).any { lowered.contains(it) }) return true
+    // Original case for the boundary check - lowercasing first would destroy the camelCase
+    // signal. "sb"/"buf" are short enough that "husband"/"crossbow"/"rebuffed" all contained
+    // them with no boundary at all.
+    if (containsAnyAtWordBoundary(target, registry.nonIoTargets(language))) return true
     return typeEnv?.let { env ->
         env.isO1(target) || env.isCollection(target) || env.isString(target)
     } == true
@@ -425,12 +421,20 @@ private fun matchesIOPattern(
     language: Language,
     registry: LanguageSemanticsRegistry,
 ): Boolean {
-    val t = target?.lowercase() ?: return false
-    return registry.ioTargetPatterns(language).any { pattern ->
-        if (pattern.startsWith("*")) {
-            t.contains(pattern.removePrefix("*"))
-        } else {
-            t.endsWith(pattern) || t == pattern
-        }
-    }
+    if (target == null) return false
+    return matchesIOTargetPatterns(target, registry.ioTargetPatterns(language))
 }
+
+/**
+ * Matches [target] (original case preserved) against [patterns]. A `*`-prefixed pattern
+ * matches anywhere (contains). A bare pattern matches only as a whole suffix — the
+ * character right before the match, if any, must not be a lowercase letter — so "writer"
+ * matches "hibernateSession"-style camelCase compounds and "writer" itself, but not
+ * "screenwriter"/"underwriter" where the match is buried inside an unrelated lowercase
+ * word. See [matchesAnyTargetPattern] (shared with NPlusOneRepositoryCallRule, which had
+ * this exact same pattern-matching logic duplicated verbatim).
+ */
+private fun matchesIOTargetPatterns(
+    target: String,
+    patterns: Set<String>,
+): Boolean = matchesAnyTargetPattern(target, patterns)

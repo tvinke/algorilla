@@ -359,6 +359,35 @@ o1-types:
   - SortedSet
   - SortedMap
 
+# Real types whose name happens to contain a collection-types entry at a camelCase
+# boundary without actually being that kind of collection (java.sql.ResultSet contains
+# "Set", java.io.*Stream types contain "Stream") - checked before the collection-types
+# match, not after, so these never get misclassified as iterable collections.
+non-collection-type-names:
+  - InputStream
+  - OutputStream
+  - PrintStream
+  - DataInputStream
+  - DataOutputStream
+  - BufferedInputStream
+  - BufferedOutputStream
+  - ByteArrayInputStream
+  - ByteArrayOutputStream
+  - FileInputStream
+  - FileOutputStream
+  - ObjectInputStream
+  - ObjectOutputStream
+
+# Real types whose name happens to contain an o1-types entry at a camelCase boundary
+# without actually being that kind of O(1) type (java.sql.ResultSet contains "Set" but
+# is a cursor, not a java.util.Set; android.graphics.Bitmap contains "Map" but is an
+# image buffer, not a java.util.Map).
+non-o1-type-names:
+  - ResultSet
+  - resultSet
+  - Bitmap
+  - bitmap
+
 # Method name prefixes for getter-pattern detection (shared across rules)
 getter-prefixes:
   - get
@@ -965,6 +994,7 @@ string-name-suffixes:
   - Text
   - text
   - Str
+  - str
   - String
   - string
   - Line

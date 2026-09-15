@@ -181,7 +181,16 @@ private fun markScalarLookupsInFunction(
             when {
                 type == null -> node
                 typeEnv.isO1(varName) -> node.copy(isO1 = true)
-                !typeEnv.isCollection(varName) -> node.copy(isScalar = true)
+                // isCollection() returning false means "can't confirm it's a collection" - it's
+                // also false for a NAME_HEURISTIC-sourced guess (e.g. "results" inferred as
+                // "List" purely from an initializer call named getOrderList()), which isn't proof
+                // the variable is scalar, just that we don't trust the type enough to call it a
+                // collection. declaredTypeName() applies the same NAME_HEURISTIC exclusion - same
+                // check CardinalityExplosionRule.classifyByDeclaredType already uses for this
+                // exact problem - so gating on it here means we only promote to isScalar when we
+                // have an actual declared type to confirm is not a collection, not merely an
+                // unconfirmed one.
+                typeEnv.declaredTypeName(varName) != null && !typeEnv.isCollection(varName) -> node.copy(isScalar = true)
                 else -> node
             }
         } else {

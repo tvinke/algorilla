@@ -461,6 +461,24 @@ o1-types:
   - WeakMap
   - Object
 
+# Empty for JS - no runtime/interop path to java.io.*Stream types the way Groovy/Kotlin
+# have via the JVM, and JS's own collection-types list has no "Stream"-shaped entry to
+# collide with in the first place. Present (not omitted) for section completeness across
+# the language YAMLs - see CODING_GUIDELINES.md.
+non-collection-type-names:
+
+# Same JVM-only collision as java.yml's non-o1-type-names - not JS-relevant on their own,
+# but isO1Type(typeName) with no language argument unions across every language's
+# o1-types list, so leaving these unguarded here would still leak through for a
+# Java/Kotlin/Groovy caller going through that path. "Object" itself is too generic a
+# suffix to build a reliable exclusion list for without real corpus data - left as a
+# documented gap rather than a guess.
+non-o1-type-names:
+  - ResultSet
+  - resultSet
+  - Bitmap
+  - bitmap
+
 # Method name prefixes for getter-pattern detection
 getter-prefixes:
   - get
@@ -1002,6 +1020,7 @@ string-name-suffixes:
   - Text
   - text
   - Str
+  - str
   - String
   - string
   - Line

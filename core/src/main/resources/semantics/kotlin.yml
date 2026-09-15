@@ -312,6 +312,31 @@ o1-types:
   - EnumMap
   - ArrayDeque
 
+# Same JVM-collision list as java.yml's non-collection-type-names (see there for why) -
+# Kotlin code sees java.io.*Stream types via JVM interop just as much as Java does.
+non-collection-type-names:
+  - InputStream
+  - OutputStream
+  - PrintStream
+  - DataInputStream
+  - DataOutputStream
+  - BufferedInputStream
+  - BufferedOutputStream
+  - ByteArrayInputStream
+  - ByteArrayOutputStream
+  - FileInputStream
+  - FileOutputStream
+  - ObjectInputStream
+  - ObjectOutputStream
+
+# Same JVM-collision list as java.yml's non-o1-type-names (see there for why) - applies
+# to Kotlin too via JVM interop.
+non-o1-type-names:
+  - ResultSet
+  - resultSet
+  - Bitmap
+  - bitmap
+
 getter-prefixes:
   - get
   - find
@@ -881,6 +906,7 @@ string-name-suffixes:
   - Text
   - text
   - Str
+  - str
   - String
   - string
   - Line

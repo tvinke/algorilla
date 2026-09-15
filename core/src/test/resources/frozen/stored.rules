@@ -1,0 +1,3 @@
+#
+#Mon Sep 14 19:35:42 CEST 2026
+classes\ that\ reside\ in\ a\ package\ 'com.github.tvinke.algorilla.rules.builtin'\ and\ have\ simple\ name\ ending\ with\ 'Rule'\ should\ call\ a\ TypeEnvironment\ method\ somewhere\ in\ the\ file\ when\ calling\ a\ word-boundary\ matcher=2f03dc9a-fbb0-43e4-b460-1ed26c9478f8
