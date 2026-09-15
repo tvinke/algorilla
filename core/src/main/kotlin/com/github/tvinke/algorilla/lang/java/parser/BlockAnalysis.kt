@@ -10,8 +10,9 @@ import org.antlr.v4.runtime.ParserRuleContext
  * ends with return/throw, the remaining statements become the implicit else branch
  * inside a [BranchNode].
  *
- * Shared by all language-specific visitors (Java, Kotlin, Groovy) since they all
- * use the same ANTLR Java grammar and [JavaParserBaseVisitor].
+ * Shared by the ANTLR-Java-grammar-based visitors (Java, Groovy) since they both
+ * use [JavaParserBaseVisitor]. Kotlin is parsed with tree-sitter instead, so it
+ * doesn't go through here.
  */
 public fun processBlockStatements(
     stmts: List<JavaParser.BlockStatementContext>,
