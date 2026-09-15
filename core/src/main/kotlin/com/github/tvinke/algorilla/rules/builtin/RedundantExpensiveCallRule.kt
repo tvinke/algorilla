@@ -19,6 +19,7 @@ import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.MethodPurity
 import com.github.tvinke.algorilla.util.findDescendantsWithBranchContext
 import com.github.tvinke.algorilla.util.maxCoExecutableSubset
+import com.github.tvinke.algorilla.util.startsWithAtWordBoundary
 
 /**
  * Detects the same parameterized call invoked multiple times with the same arguments
@@ -194,20 +195,27 @@ private fun isSideEffectCall(
         isBytecodeInstruction(call.name) ||
         MethodPurity.isSideEffect(call.name, call.qualifiedTarget, language)
 
+/**
+ * Returns true if [name] starts with [prefix] at a real camelCase word boundary
+ * (`readVarInt` for prefix `read`), not just a lowercase continuation (`reader`,
+ * `readable`) that happens to share the same leading characters. Delegates to the shared
+ * [startsWithAtWordBoundary] rather than reimplementing the same boundary check locally;
+ * case-sensitive to match this file's original behavior.
+ */
+private fun matchesCamelCasePrefix(
+    name: String,
+    prefix: String,
+): Boolean = startsWithAtWordBoundary(name, prefix, ignoreCase = false)
+
 private fun isTypeCheckPredicate(
     name: String,
     typeCheckPrefixes: Set<String>,
-): Boolean =
-    typeCheckPrefixes.any { prefix ->
-        name.length > prefix.length &&
-            name.startsWith(prefix) &&
-            name[prefix.length].isUpperCase()
-    }
+): Boolean = typeCheckPrefixes.any { matchesCamelCasePrefix(name, it) }
 
 private fun isSequentialReadPrefix(
     name: String,
     sequentialReadPrefixes: Set<String>,
-): Boolean = sequentialReadPrefixes.any { name.length > it.length && name.startsWith(it) }
+): Boolean = sequentialReadPrefixes.any { matchesCamelCasePrefix(name, it) }
 
 /** Underscore-prefixed ALL_CAPS methods are typically bytecode instructions (_ALOAD, _ISTORE). */
 private fun isBytecodeInstruction(name: String): Boolean = name.startsWith("_") && name.all { it == '_' || it.isUpperCase() }
@@ -216,11 +224,6 @@ private fun isBytecodeInstruction(name: String): Boolean = name.startsWith("_") 
  * Returns true if the method name matches a getter/accessor pattern (getX, isX, hasX, toX).
  * These are typically cheap O(1) field reads that don't warrant caching when called only twice.
  */
-private fun isGetterPattern(name: String): Boolean =
-    GETTER_PATTERN_PREFIXES.any { prefix ->
-        name.length > prefix.length &&
-            name.startsWith(prefix) &&
-            name[prefix.length].isUpperCase()
-    }
+private fun isGetterPattern(name: String): Boolean = GETTER_PATTERN_PREFIXES.any { matchesCamelCasePrefix(name, it) }
 
 private val GETTER_PATTERN_PREFIXES = listOf("get", "is", "has", "to")

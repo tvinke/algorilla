@@ -34,6 +34,8 @@ dependencies {
     testImplementation(platform("org.junit:junit-bom:5.11.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation("io.kotest:kotest-assertions-core:5.9.1")
+    testImplementation("io.kotest:kotest-property:5.9.1")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 

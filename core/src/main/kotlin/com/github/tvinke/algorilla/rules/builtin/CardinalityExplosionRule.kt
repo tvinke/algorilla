@@ -4,10 +4,12 @@ import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.FileRoot
 import com.github.tvinke.algorilla.model.FunctionCall
+import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LoopNode
 import com.github.tvinke.algorilla.model.Severity
+import com.github.tvinke.algorilla.model.VariableDecl
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.ComplexityModel
 import com.github.tvinke.algorilla.rules.Evidence
@@ -16,6 +18,11 @@ import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
+import com.github.tvinke.algorilla.semantics.TypeEnvironment
+import com.github.tvinke.algorilla.util.containsAnyAtWordBoundary
+import com.github.tvinke.algorilla.util.findDescendants
+import com.github.tvinke.algorilla.util.resolveInitializer
+import com.github.tvinke.algorilla.util.startsWithAtWordBoundary
 
 /**
  * Detects cardinality explosion patterns where the output grows as the
@@ -47,15 +54,24 @@ public class CardinalityExplosionRule : Rule {
             val mutationMethods = resolveMutationMethods(context, language)
             val langOrJava = language ?: Language.JAVA
             val mutationGroups = mutableMapOf<LoopPairKey, MutationGroup>()
-            scanNode(fileRoot, emptyList(), mutationMethods, langOrJava, context.registry, mutationGroups)
+            scanNode(fileRoot, null, emptyList(), emptyList(), mutationMethods, langOrJava, context.registry, mutationGroups)
             for ((_, group) in mutationGroups) {
-                val classified = group.calls.map { it to classifyMutation(it, langOrJava, context.registry) }
+                val typeEnv = group.enclosingFn?.let { context.typeEnvironmentFor(it) }
+                val classified = group.calls.map { it to classifyMutation(it, langOrJava, context.registry, typeEnv) }
                 if (classified.any { it.second == MutationType.COLLECTION_EXPANSION }) {
                     findings.add(buildGroupedCartesianFinding(group, langOrJava, context.registry, classified))
                 }
                 // All mutations are scalar/string/keyed → suppress entirely
             }
-            scanFlatMap(fileRoot, context.registry.streamEntryMethods(langOrJava), findings)
+            scanFlatMap(
+                fileRoot,
+                null,
+                emptyList(),
+                context.registry.streamEntryMethods(langOrJava),
+                langOrJava,
+                context.registry,
+                findings,
+            )
         }
         return findings
     }
@@ -75,9 +91,12 @@ public class CardinalityExplosionRule : Rule {
         call: FunctionCall,
         language: Language,
         registry: LanguageSemanticsRegistry,
+        typeEnv: TypeEnvironment?,
     ): MutationType {
         val methodName = call.name
-        val target = call.qualifiedTarget?.lowercase() ?: ""
+        // Original case - lowercasing first would destroy the camelCase signal the
+        // scalarHints boundary check below needs.
+        val target = call.qualifiedTarget ?: ""
 
         // Unambiguous scalar methods (subtract, multiply, incrementAndGet, etc.)
         if (methodName in registry.scalarAccumulationMethods(language)) return MutationType.SCALAR_ACCUMULATION
@@ -91,11 +110,17 @@ public class CardinalityExplosionRule : Rule {
 
         // Ambiguous `add` — check if receiver looks like a scalar accumulator.
         // List.add() grows a collection, but BigDecimal.add() accumulates a scalar.
-        // Use receiver name heuristics: scalar hint words, single-char variables,
-        // and absence of collection-like naming patterns.
         if (methodName == "add") {
+            // A declared type overrides the name hint either way — see classifyByDeclaredType below.
+            // Only when the type is unresolved do we fall back to name heuristics, same as
+            // before that check existed.
+            classifyByDeclaredType(typeEnv, target)?.let { return it }
+            // Use receiver name heuristics: scalar hint words, single-char variables,
+            // and absence of collection-like naming patterns.
             val scalarHints = registry.scalarReceiverHints(language)
-            if (scalarHints.any { target.contains(it) }) return MutationType.SCALAR_ACCUMULATION
+            // "sum"/"count"/"cost"/"amount" are short enough that "consumer"/"discount"/
+            // "costume"/"paramount" all satisfied a bare contains with no boundary at all.
+            if (containsAnyAtWordBoundary(target, scalarHints)) return MutationType.SCALAR_ACCUMULATION
             // Single-char variable names (w, x, n) are almost always scalars, never collections
             if (target.length == 1 && target[0].isLetter()) return MutationType.SCALAR_ACCUMULATION
         }
@@ -114,36 +139,48 @@ public class CardinalityExplosionRule : Rule {
         val outerLoop: LoopNode,
         val innerLoop: LoopNode,
         val loopStack: List<LoopNode>,
+        val enclosingFn: FunctionDecl?,
         val calls: MutableList<FunctionCall> = mutableListOf(),
     )
 
+    @Suppress("LongParameterList") // Threading the enclosing function (and its var-decl scope) through
     private fun scanNode(
         node: IRNode,
+        enclosingFn: FunctionDecl?,
+        scope: List<VariableDecl>,
         loopStack: List<LoopNode>,
         mutationMethods: Set<String>,
         language: Language,
         registry: LanguageSemanticsRegistry,
         mutationGroups: MutableMap<LoopPairKey, MutationGroup>,
     ) {
+        val fn = if (node is FunctionDecl) node else enclosingFn
+        // Computed once per function, not once per mutation call inside it - findDescendants
+        // walks the whole function body, and a function can contain many mutation calls
+        // sharing the same nested loops.
+        val fnScope = if (node is FunctionDecl) node.findDescendants<VariableDecl>() else scope
+
         if (node is LoopNode) {
             for (child in node.children) {
-                scanNode(child, loopStack + node, mutationMethods, language, registry, mutationGroups)
+                scanNode(child, fn, fnScope, loopStack + node, mutationMethods, language, registry, mutationGroups)
             }
             return
         }
 
         if (loopStack.size >= 2 && node is FunctionCall && node.name in mutationMethods) {
-            collectCartesianProduct(node, loopStack, language, registry, mutationGroups)
+            collectCartesianProduct(node, fn, fnScope, loopStack, language, registry, mutationGroups)
         }
 
         for (child in node.children) {
-            scanNode(child, loopStack, mutationMethods, language, registry, mutationGroups)
+            scanNode(child, fn, fnScope, loopStack, mutationMethods, language, registry, mutationGroups)
         }
     }
 
-    @Suppress("LongMethod") // Multi-step loop-pair classification with partitioned-iteration filtering
+    @Suppress("LongMethod", "LongParameterList") // Multi-step loop-pair classification with partitioned-iteration filtering
     private fun collectCartesianProduct(
         call: FunctionCall,
+        enclosingFn: FunctionDecl?,
+        scope: List<VariableDecl>,
         loopStack: List<LoopNode>,
         language: Language,
         registry: LanguageSemanticsRegistry,
@@ -159,14 +196,12 @@ public class CardinalityExplosionRule : Rule {
         // Inner loop exits after one iteration (break/throw/return) → output bounded by outer size
         if (innerLoop.isSingleIteration) return
 
-        if (outerVar != innerVar) {
-            if (isPartitionedIteration(outerVar, innerVar, language, registry)) return
-        }
+        if (outerVar != innerVar && isPartitionedIteration(outerVar, innerVar, language, registry, scope)) return
 
         val key = LoopPairKey(outerLoop.location.line, innerLoop.location.line)
         mutationGroups
             .getOrPut(key) {
-                MutationGroup(outerLoop, innerLoop, loopStack.toList())
+                MutationGroup(outerLoop, innerLoop, loopStack.toList(), enclosingFn)
             }.calls
             .add(call)
     }
@@ -206,6 +241,18 @@ public class CardinalityExplosionRule : Rule {
      * - Map entry unpacking: `map.entrySet()` → `entry.getValue()`
      * - Parent-child: `nodes` → `node.getChildren()`
      * - Enum values: `MyEnum.values()` → `type.getSubtypes()`
+     *
+     * [innerVar] (and, for the structural entrySet/keySet check in case 1 only, [outerVar])
+     * is resolved through [resolveExpressionText] first, so a value copied into a local
+     * before the loop (`var values = entry.getValue(); for (v : values)`) is recognized from
+     * what it was actually assigned, not from the copy's bare name — a local named `values`
+     * isn't a map's values just because it looks like one. Case 2's outer/inner name match is
+     * deliberately compared against [outerVar] unresolved: it's a naming convention between
+     * two independently-chosen identifiers ("departments" / "department"), not a structural
+     * check of what the collection actually is — resolving `departments` to its initializer
+     * (`service.getDepartments()`) would compare against the unrelated receiver `service`
+     * instead of the collection's own descriptive name, breaking a match that has nothing to
+     * do with where the collection came from.
      */
     @Suppress("ReturnCount") // Guard clauses with early returns — clearer than nested if/else
     private fun isPartitionedIteration(
@@ -213,10 +260,23 @@ public class CardinalityExplosionRule : Rule {
         innerVar: String,
         language: Language,
         registry: LanguageSemanticsRegistry,
+        scope: List<VariableDecl>,
     ): Boolean {
-        // Case 1: Map entry unpacking — outer is entrySet()/keySet(), inner accesses values
-        val outerIsEntrySet = outerVar.endsWith(".entrySet()") || outerVar.endsWith(".keySet()")
-        if (outerIsEntrySet && registry.mapValueAccessors(language).any { innerVar.contains(it) }) return true
+        val resolvedInnerVar = resolveExpressionText(innerVar, scope)
+
+        // Case 1: Map entry unpacking — outer is entrySet()/keySet(), inner accesses values.
+        // endsWith, not contains: a bare `contains` on the unanchored "values" entry matched
+        // "values" buried mid-identifier ("entry.getMetaValues()", "row.valuesCache" both
+        // contain "values" with no boundary at all - the same shape this whole batch fixes
+        // elsewhere), silently treating an unrelated getter as map-entry-value access. Every
+        // entry (".getValue()"/".values"/".value"/"values") already reads naturally as "the
+        // call/property this string names, in full" - endsWith enforces exactly that,
+        // without needing containsAtWordBoundary (which would still match "getMetaValues()"
+        // too, since its capitalized "Values" satisfies a real camelCase boundary the same
+        // way "ResultSet" does elsewhere in this campaign).
+        val resolvedOuterVar = resolveExpressionText(outerVar, scope)
+        val outerIsEntrySet = resolvedOuterVar.endsWith(".entrySet()") || resolvedOuterVar.endsWith(".keySet()")
+        if (outerIsEntrySet && registry.mapValueAccessors(language).any { resolvedInnerVar.endsWith(it) }) return true
 
         // Case 2: Inner iterates a property/method of the outer loop element.
         // The inner variable has a dotted path (method call on an element), suggesting it
@@ -224,14 +284,15 @@ public class CardinalityExplosionRule : Rule {
         // e.g., outer="this.relations", inner="relationship.getKeyMaps()"
         //       outer="departments", inner="department.getEmployees()"
         //       outer="clazz.getInterfaces()", inner="ifc.getMethods()"
-        val innerBase = innerVar.substringBefore(".")
-        if (innerBase.isNotEmpty() && innerBase != innerVar) {
+        val innerBase = resolvedInnerVar.substringBefore(".")
+        if (innerBase.isNotEmpty() && innerBase != resolvedInnerVar) {
             // Inner has a dotted path — it's calling a method on an element variable.
             // Check if the base could be the loop element from the outer collection.
+            // Uses the original outerVar, not a resolved one - see the class doc above.
             val outerBase = outerVar.substringBefore(".")
             val outerClean = outerBase.trimEnd('s', 'S')
             // Match: outer="departments" → outerClean="department", inner starts with "department"
-            if (outerClean.isNotEmpty() && innerBase.startsWith(outerClean, ignoreCase = true)) return true
+            if (outerClean.isNotEmpty() && matchesElementName(innerBase, outerClean)) return true
             // Match: outer collection has no plural suffix but inner base is a plausible element name.
             // If the outer collection is a method call like "getInterfaces()", the element is often
             // a shortened name like "ifc" — we can't match that. But if the inner is a getter
@@ -247,9 +308,12 @@ public class CardinalityExplosionRule : Rule {
         language: Language,
         registry: LanguageSemanticsRegistry,
     ): Severity {
-        val outerLower = outerVar.lowercase()
-        val innerLower = innerVar.lowercase()
-        if (registry.smallCollectionHints(language).any { it in outerLower || it in innerLower }) {
+        // Original case for the boundary check - lowercasing first would destroy the
+        // camelCase signal. "type" is short enough that "prototype"/"genotype"/"stereotype"/
+        // "phenotype"/"archetype" all satisfied it with no boundary at all, demoting a real
+        // Cartesian-product finding to INFO on an unrelated pair of variables.
+        val hints = registry.smallCollectionHints(language)
+        if (containsAnyAtWordBoundary(outerVar, hints) || containsAnyAtWordBoundary(innerVar, hints)) {
             return Severity.INFO
         }
         // Inner is a method call on an element variable (e.g., "ifc.getMethods()", "node.getChildren()").
@@ -377,20 +441,34 @@ public class CardinalityExplosionRule : Rule {
 
     // ── Pattern B: flatMap explosion ────────────────────────────
 
+    @Suppress("LongParameterList") // Threading enclosingFn/scope/language/registry through the recursive walk
     private fun scanFlatMap(
         node: IRNode,
+        enclosingFn: FunctionDecl?,
+        scope: List<VariableDecl>,
         streamEntryMethods: Set<String>,
+        language: Language,
+        registry: LanguageSemanticsRegistry,
         findings: MutableList<Finding>,
     ) {
+        // Scoped per enclosing function, not per file - same reasoning as scanNode's fnScope:
+        // a bare variable name should only resolve against declarations that could actually be
+        // in scope at the flatMap call site, not a same-named local from an unrelated function.
+        val fnScope = if (node is FunctionDecl) node.findDescendants<VariableDecl>() else scope
+
         if (node is FunctionCall && node.name == "flatMap") {
             val sourceVar = node.qualifiedTarget
             val innerIteration = findInnerIteration(node.children, streamEntryMethods)
-            if (sourceVar != null && innerIteration != null && sourceVar != innerIteration) {
+            if (sourceVar != null &&
+                innerIteration != null &&
+                isCrossCollectionFlatMap(sourceVar, innerIteration, language, registry, fnScope)
+            ) {
                 findings.add(buildFlatMapFinding(node, sourceVar, innerIteration))
             }
         }
+        val fn = if (node is FunctionDecl) node else enclosingFn
         for (child in node.children) {
-            scanFlatMap(child, streamEntryMethods, findings)
+            scanFlatMap(child, fn, fnScope, streamEntryMethods, language, registry, findings)
         }
     }
 
@@ -468,3 +546,80 @@ public class CardinalityExplosionRule : Rule {
         return (copyOnModify + context.registry.mutationMethods(langOrJava)) - nonGrowth
     }
 }
+
+/**
+ * Resolves [varName] to the expression it was actually assigned from, or returns [varName]
+ * unchanged when it isn't a bare local copy of some other call — either because it's already
+ * a dotted expression (e.g. `entry.getValue()`, which is never itself a [VariableDecl] name),
+ * or because [scope] has no declaration for it at all (a parameter, or a name from outside
+ * the resolvable scope).
+ *
+ * This is the piece that closes the gap [resolveInitializer] alone leaves open: a bare
+ * variable name only tells you what something is *called*, not what it *is*. Reconstructing
+ * `"receiver.method()"` from the resolved [FunctionCall] lets every downstream check keep
+ * working against the same shape of text it already expects, whether or not a copy sits
+ * between the loop/call site and the value's real origin.
+ */
+private fun resolveExpressionText(
+    varName: String,
+    scope: List<VariableDecl>,
+): String {
+    val initializer = resolveInitializer(varName, scope) ?: return varName
+    val target = initializer.qualifiedTarget ?: return varName
+    return "$target.${initializer.name}()"
+}
+
+/**
+ * True when a `flatMap` over [sourceVar] whose lambda iterates [innerIteration] is a genuine
+ * cross join: the two sides name different collections, and [sourceVar] doesn't resolve to an
+ * `Optional`/`Mono`-shaped source (cardinality ≤ 1, via [LanguageSemanticsRegistry.isMonadicTarget])
+ * that could never produce an O(n × m) result in the first place. Resolves [sourceVar] through
+ * [resolveExpressionText] first, so a source copied into a local before the `flatMap` call
+ * (`var maybe = repo.findOptional(); maybe.flatMap(...)`) is judged by what it was actually
+ * assigned, not by its bare name.
+ */
+private fun isCrossCollectionFlatMap(
+    sourceVar: String,
+    innerIteration: String,
+    language: Language,
+    registry: LanguageSemanticsRegistry,
+    scope: List<VariableDecl>,
+): Boolean = sourceVar != innerIteration && !registry.isMonadicTarget(language, resolveExpressionText(sourceVar, scope))
+
+/**
+ * A real collection type (`List<BigDecimal> totalAmounts`) is never a scalar just because
+ * it's named like one, and a real O(1)/String/other non-collection type definitely isn't a
+ * collection expansion either — a declared type wins over the name heuristic either way.
+ * Returns null when the receiver's type can't be resolved, so the caller falls back to the
+ * name-based heuristics.
+ */
+private fun classifyByDeclaredType(
+    typeEnv: TypeEnvironment?,
+    target: String,
+): CardinalityExplosionRule.MutationType? {
+    // declaredTypeName (not the raw typeOf) - a NAME_HEURISTIC-sourced guess (e.g. "results"
+    // inferred as "List" purely from an initializer call named getOrderList()) is exactly
+    // the kind of weak evidence this whole check exists to NOT trust; falling through to the
+    // name heuristics below is the correct behavior for that case, not isCollection's
+    // filtered-to-false verdict on it.
+    if (typeEnv?.declaredTypeName(target) == null) return null
+    return if (typeEnv.isCollection(target)) {
+        CardinalityExplosionRule.MutationType.COLLECTION_EXPANSION
+    } else {
+        CardinalityExplosionRule.MutationType.SCALAR_ACCUMULATION
+    }
+}
+
+/**
+ * Returns true if [innerBase] is exactly [outerClean] (ignoring case), or extends it at
+ * a real camelCase word boundary — "departmentHead" for "department" — but not a bare
+ * text prefix like "career"/"cargo" for "car". Plain `startsWith` had no such boundary:
+ * de-pluralizing "cars" to "car" then matched any inner name starting with "car",
+ * silently suppressing a genuine Cartesian product over unrelated collections. Delegates
+ * to the shared [startsWithAtWordBoundary] rather than reimplementing the same boundary
+ * check locally.
+ */
+private fun matchesElementName(
+    innerBase: String,
+    outerClean: String,
+): Boolean = startsWithAtWordBoundary(innerBase, outerClean)
