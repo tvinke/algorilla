@@ -7,7 +7,6 @@ import com.github.tvinke.algorilla.cache.CachedFinding
 import com.github.tvinke.algorilla.config.AnalysisConfig
 import com.github.tvinke.algorilla.graph.CallGraph
 import com.github.tvinke.algorilla.graph.CallGraphBuilder
-import com.github.tvinke.algorilla.graph.ComplexityAnnotator
 import com.github.tvinke.algorilla.graph.LoopBoundAnnotator
 import com.github.tvinke.algorilla.graph.ParameterFlowAnnotator
 import com.github.tvinke.algorilla.graph.PathContextAnnotator
@@ -27,14 +26,15 @@ import com.github.tvinke.algorilla.rules.SuggestionContext
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import com.github.tvinke.algorilla.util.findDescendants
+import com.github.tvinke.algorilla.util.isRecursive
 import io.github.oshai.kotlinlogging.KotlinLogging
 
 private val logger = KotlinLogging.logger {}
 
 /**
- * Orchestrates the four-pass analysis pipeline: parse, call graph construction,
- * complexity annotation, and rule evaluation. Supports incremental analysis
- * via file content hashing and an on-disk cache.
+ * Orchestrates the analysis pipeline: parse, call graph construction, IR annotation
+ * passes, and rule evaluation. Supports incremental analysis via file content hashing
+ * and an on-disk cache.
  */
 @Suppress("LargeClass", "TooManyFunctions") // Pipeline orchestrator — each analysis pass is a method
 public class AnalysisEngine(
@@ -73,9 +73,8 @@ public class AnalysisEngine(
         val callGraph = buildCallGraph(irTrees, symbolTable)
         val finalContexts = enrichFileContextsFromCallGraph(enrichedContexts, callGraph, irTrees)
         annotateLoopBounds(irTrees)
-        annotateRecursion(irTrees)
+        annotateRecursion(irTrees, symbolTable)
         annotateParameterFlows(irTrees, symbolTable)
-        annotateComplexity(symbolTable, callGraph)
         annotatePathContext(irTrees, callGraph)
         val rawFindings = evaluateRules(irTrees, symbolTable, callGraph, typeEnvironments, finalContexts)
         val deduplicated = applySubsumption(rawFindings, rules)
@@ -227,19 +226,15 @@ public class AnalysisEngine(
         ParameterFlowAnnotator(symbolTable).annotate(irTrees)
     }
 
-    private fun annotateRecursion(irTrees: Map<String, FileRoot>) {
+    private fun annotateRecursion(
+        irTrees: Map<String, FileRoot>,
+        symbolTable: SymbolTable,
+    ) {
         for ((_, root) in irTrees) {
             root.findDescendants<FunctionDecl>().forEach { fn ->
-                fn.isRecursive = fn.findDescendants<com.github.tvinke.algorilla.model.FunctionCall>().any { it.name == fn.name }
+                fn.isRecursive = fn.isRecursive(symbolTable)
             }
         }
-    }
-
-    private fun annotateComplexity(
-        symbolTable: SymbolTable,
-        callGraph: CallGraph,
-    ) {
-        ComplexityAnnotator(symbolTable, callGraph, config.maxCallDepth).annotate()
     }
 
     private fun annotatePathContext(

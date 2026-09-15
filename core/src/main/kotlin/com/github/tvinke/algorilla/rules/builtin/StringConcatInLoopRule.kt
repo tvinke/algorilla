@@ -4,7 +4,6 @@ import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
-import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LoopNode
 import com.github.tvinke.algorilla.model.Severity
@@ -14,6 +13,7 @@ import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
+import com.github.tvinke.algorilla.util.walkLoopSites
 
 /**
  * Detects String.concat() calls inside loops. Each concat() creates a new String object,
@@ -36,36 +36,13 @@ public class StringConcatInLoopRule : Rule {
         val findings = mutableListOf<Finding>()
         for ((_, fileRoot) in context.irTrees) {
             if (fileRoot.language !in languages) continue
-            scanNode(fileRoot, null, emptyList(), context, findings)
+            fileRoot.walkLoopSites { node, fn, loopStack ->
+                if (node is FunctionCall && isConcatCall(node) && !isNonStringReceiver(node.qualifiedTarget!!, fn, context)) {
+                    findings.add(buildFinding(node, loopStack))
+                }
+            }
         }
         return findings
-    }
-
-    private fun scanNode(
-        node: IRNode,
-        enclosingFn: FunctionDecl?,
-        loopStack: List<LoopNode>,
-        context: AnalysisContext,
-        findings: MutableList<Finding>,
-    ) {
-        val fn = if (node is FunctionDecl) node else enclosingFn
-
-        if (node is LoopNode) {
-            for (child in node.children) {
-                scanNode(child, fn, loopStack + node, context, findings)
-            }
-            return
-        }
-
-        if (loopStack.isNotEmpty() && node is FunctionCall) {
-            if (isConcatCall(node) && !isNonStringReceiver(node.qualifiedTarget!!, fn, context)) {
-                findings.add(buildFinding(node, loopStack))
-            }
-        }
-
-        for (child in node.children) {
-            scanNode(child, fn, loopStack, context, findings)
-        }
     }
 
     private fun isConcatCall(call: FunctionCall): Boolean = call.name == "concat" && call.qualifiedTarget != null

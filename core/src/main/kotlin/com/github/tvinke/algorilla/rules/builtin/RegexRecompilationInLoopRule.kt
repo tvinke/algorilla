@@ -5,11 +5,9 @@ import com.github.tvinke.algorilla.model.FileRoot
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.model.GenericNode
-import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LoopNode
 import com.github.tvinke.algorilla.model.Severity
-import com.github.tvinke.algorilla.model.VariableDecl
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Evidence
 import com.github.tvinke.algorilla.rules.Finding
@@ -17,8 +15,10 @@ import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
-import com.github.tvinke.algorilla.util.findDescendants
-import com.github.tvinke.algorilla.util.hasO1Type
+import com.github.tvinke.algorilla.util.containsAnyAtWordBoundary
+import com.github.tvinke.algorilla.util.declaredTypeOf
+import com.github.tvinke.algorilla.util.endsWithAtWordBoundary
+import com.github.tvinke.algorilla.util.walkLoopSites
 
 /**
  * Detects String methods that recompile a regex on every call when used inside loops.
@@ -38,36 +38,13 @@ public class RegexRecompilationInLoopRule : Rule {
         for ((_, fileRoot) in context.irTrees) {
             val language = (fileRoot as? FileRoot)?.language
             val methods = language?.let { context.registry.regexRecompilationMethods(it) } ?: emptySet()
-            scanNode(fileRoot, null, emptyList(), language, methods, context.registry, findings)
+            fileRoot.walkLoopSites { node, fn, loopStack ->
+                if (node is FunctionCall && isRegexRecompilationCall(node, fn, language, methods, context.registry)) {
+                    findings.add(buildFinding(node, loopStack))
+                }
+            }
         }
         return findings
-    }
-
-    private fun scanNode(
-        node: IRNode,
-        enclosingFn: FunctionDecl?,
-        loopStack: List<LoopNode>,
-        language: Language?,
-        regexMethods: Set<String>,
-        registry: LanguageSemanticsRegistry,
-        findings: MutableList<Finding>,
-    ) {
-        val fn = if (node is FunctionDecl) node else enclosingFn
-
-        if (node is LoopNode) {
-            for (child in node.children) {
-                scanNode(child, fn, loopStack + node, language, regexMethods, registry, findings)
-            }
-            return
-        }
-
-        if (loopStack.isNotEmpty() && node is FunctionCall && isRegexRecompilationCall(node, fn, language, regexMethods, registry)) {
-            findings.add(buildFinding(node, loopStack))
-        }
-
-        for (child in node.children) {
-            scanNode(child, fn, loopStack, language, regexMethods, registry, findings)
-        }
     }
 
     private fun buildFinding(
@@ -152,12 +129,12 @@ private fun isMapTarget(
     registry: LanguageSemanticsRegistry,
 ): Boolean {
     val target = call.qualifiedTarget ?: return false
-    // Type-aware: check if the target variable is declared as a Map/Set type
-    if (enclosingFn != null && enclosingFn.hasO1Type(target)) return true
-    // Name heuristic fallback for cases without type info
-    val lower = target.lowercase()
+    // Type-aware: a known declared type is authoritative, whether or not it turns out to be
+    // O(1) — only fall through to the name heuristic when the type is genuinely unresolved.
+    val declaredType = enclosingFn?.declaredTypeOf(target)
+    if (declaredType != null) return registry.isO1Type(declaredType)
     val mapNames = registry.nonListTargetsSuffixes(language)
-    return mapNames.any { lower.endsWith(it) || lower == it }
+    return mapNames.any { endsWithAtWordBoundary(target, it) }
 }
 
 /** Returns true if the call target is a Predicate/Pattern/Matcher type whose matches() is not regex. */
@@ -168,17 +145,14 @@ private fun isNonRegexMatchesTarget(
     registry: LanguageSemanticsRegistry,
 ): Boolean {
     val target = call.qualifiedTarget ?: return false
-    // Type-aware: check parameter/variable type declarations
+    // Type-aware: a known declared type is authoritative — see isMapTarget above for why
+    // we must not fall through to the name heuristic once the type is actually known.
     val nonRegexTypes = registry.nonRegexMatchesTargets(language)
-    if (enclosingFn != null) {
-        val paramType = enclosingFn.parameters.find { it.name == target }?.typeName
-        if (paramType != null && nonRegexTypes.any { paramType.contains(it) }) return true
-        val varType = enclosingFn.findDescendants<VariableDecl>().find { it.name == target }?.typeName
-        if (varType != null && nonRegexTypes.any { varType.contains(it) }) return true
-    }
-    // Name heuristic: variable names like "predicate", "matcher", "pattern"
-    val lower = target.lowercase()
-    return NON_REGEX_MATCHES_NAME_HINTS.any { lower.contains(it) }
+    val declaredType = enclosingFn?.declaredTypeOf(target)
+    if (declaredType != null) return containsAnyAtWordBoundary(declaredType, nonRegexTypes, ignoreCase = false)
+    // Name heuristic: variable names like "predicate", "matcher", "pattern". Original case
+    // for the boundary check - lowercasing first would destroy the camelCase signal.
+    return containsAnyAtWordBoundary(target, NON_REGEX_MATCHES_NAME_HINTS)
 }
 
 private val NON_REGEX_MATCHES_NAME_HINTS = setOf("predicate", "matcher")

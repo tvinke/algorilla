@@ -4,7 +4,6 @@ import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.FileRoot
 import com.github.tvinke.algorilla.model.FunctionCall
-import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LoopNode
 import com.github.tvinke.algorilla.model.Severity
@@ -14,6 +13,7 @@ import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
+import com.github.tvinke.algorilla.util.walkLoopSites
 
 /**
  * Detects patterns that repeatedly copy or rebuild collections inside loops:
@@ -36,31 +36,13 @@ public class InLoopCollectionBuildingRule : Rule {
         for ((_, fileRoot) in context.irTrees) {
             val language = (fileRoot as? FileRoot)?.language
             val methods = context.registry.copyOnModifyMethodsFor(language ?: Language.JAVA)
-            scanNode(fileRoot, emptyList(), methods, findings)
+            fileRoot.walkLoopSites { node, _, loopStack ->
+                if (node is FunctionCall && node.name in methods) {
+                    findings.add(buildFinding(node, loopStack))
+                }
+            }
         }
         return findings
-    }
-
-    private fun scanNode(
-        node: IRNode,
-        loopStack: List<LoopNode>,
-        copyOnModifyMethods: Set<String>,
-        findings: MutableList<Finding>,
-    ) {
-        if (node is LoopNode) {
-            for (child in node.children) {
-                scanNode(child, loopStack + node, copyOnModifyMethods, findings)
-            }
-            return
-        }
-
-        if (loopStack.isNotEmpty() && node is FunctionCall && node.name in copyOnModifyMethods) {
-            findings.add(buildFinding(node, loopStack))
-        }
-
-        for (child in node.children) {
-            scanNode(child, loopStack, copyOnModifyMethods, findings)
-        }
     }
 
     private fun buildFinding(

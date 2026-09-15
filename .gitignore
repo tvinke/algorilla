@@ -20,3 +20,6 @@ Thumbs.db
 # Logs
 *.log
 docs/site/
+
+# arcmutate-kotlin evaluation licence - per-machine, expires, never publish (public repo)
+arcmutate-licence.txt

@@ -48,6 +48,13 @@ internal class ChainedGettersRuleJavaTest {
 
             findings.shouldBeEmpty()
         }
+
+        @Test
+        fun `should not flag two independent lookups merged into one call as a chain`() {
+            val findings = analyzeFixture("chained-getters/negative/independent-lookups-merged-not-a-chain.java")
+
+            findings.shouldBeEmpty()
+        }
     }
 
     @Nested

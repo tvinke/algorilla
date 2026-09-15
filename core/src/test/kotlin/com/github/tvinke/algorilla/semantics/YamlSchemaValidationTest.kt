@@ -102,6 +102,8 @@ internal class YamlSchemaValidationTest {
             "lifecycle-interfaces",
             "request-handler-annotations",
             "controller-class-annotations",
+            "non-collection-type-names",
+            "non-o1-type-names",
         )
 
     @ParameterizedTest(name = "language file {0} has no unknown sections")
