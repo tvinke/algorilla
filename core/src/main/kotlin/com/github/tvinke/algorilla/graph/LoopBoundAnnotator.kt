@@ -199,6 +199,11 @@ public class LoopBoundAnnotator(
     /**
      * Checks whether the iterated variable was initialized from a bulk-load method
      * (e.g. findAll, getAll, queryAll — sourced from YAML `bulk-load-prefixes`).
+     *
+     * `bulk-load-prefixes` gets dedicated typed parsing (it's in `SemanticsYamlParser`'s
+     * `knownSections`), so it's read through `registry.bulkLoadPrefixes(language)` - not the
+     * generic `registry.extraSection(...)` catch-all, which deliberately excludes every
+     * known-section key and silently returns nothing for this one.
      */
     @Suppress("ReturnCount")
     private fun isLikelyLargeSource(
@@ -207,11 +212,15 @@ public class LoopBoundAnnotator(
         varDecls: List<VariableDecl>,
     ): Boolean {
         val iterVar = loop.iteratedVariable ?: return false
-        val bulkPrefixes = registry.extraSection(language, "bulk-load-prefixes")
+        val bulkPrefixes = registry.bulkLoadPrefixes(language)
         if (bulkPrefixes.isEmpty()) return false
 
-        // Direct method call in for-each: iteratedVariable contains the method name
-        if (bulkPrefixes.any { iterVar.contains(it, ignoreCase = true) }) return true
+        // Direct method call in for-each: iteratedVariable contains the method name.
+        // Word-boundary, not bare contains: "budgetAllocations" contains "getAll" mid-identifier
+        // with no boundary at all - the same bug class the word-boundary campaign already fixed
+        // across the rest of the codebase (this file already uses containsAnyAtWordBoundary for
+        // constant-bound-keywords above, just hadn't been applied here yet).
+        if (containsAnyAtWordBoundary(iterVar, bulkPrefixes)) return true
 
         // Variable-assigned: look up initializer
         val init = resolveInitializer(iterVar, varDecls) ?: return false

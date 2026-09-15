@@ -1,6 +1,7 @@
 package com.github.tvinke.algorilla.graph
 
 import com.github.tvinke.algorilla.model.BranchNode
+import com.github.tvinke.algorilla.model.CardinalityBucket
 import com.github.tvinke.algorilla.model.ControlFlowExit
 import com.github.tvinke.algorilla.model.ExitKind
 import com.github.tvinke.algorilla.model.FileRoot
@@ -11,6 +12,7 @@ import com.github.tvinke.algorilla.model.LoopKind
 import com.github.tvinke.algorilla.model.LoopNode
 import com.github.tvinke.algorilla.model.SourceLocation
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 
@@ -149,6 +151,30 @@ internal class LoopBoundAnnotatorTest {
             annotator.annotate(mapOf("Test.java" to root))
 
             l.isConstantBound shouldBe false
+        }
+    }
+
+    @Nested
+    inner class LikelyLargeSource {
+        @Test
+        fun `should mark loop over a bulk-load method call as likely large`() {
+            val l = loop("orderRepository.findAll()")
+            val root = fileRoot(Language.JAVA, l)
+            annotator.annotate(mapOf("Test.java" to root))
+
+            l.cardinalityBucket shouldBe CardinalityBucket.LIKELY_LARGE
+        }
+
+        @Test
+        fun `should not mark a variable whose name merely contains a bulk-load prefix as likely large`() {
+            // "budgetAllocations" contains "getAll" mid-identifier (budg-ET-ALL-ocations) with no
+            // word boundary at all - same bug class the word-boundary campaign already fixed
+            // elsewhere. Regression for the bare contains() this rule used before.
+            val l = loop("budgetAllocations")
+            val root = fileRoot(Language.JAVA, l)
+            annotator.annotate(mapOf("Test.java" to root))
+
+            l.cardinalityBucket shouldNotBe CardinalityBucket.LIKELY_LARGE
         }
     }
 
