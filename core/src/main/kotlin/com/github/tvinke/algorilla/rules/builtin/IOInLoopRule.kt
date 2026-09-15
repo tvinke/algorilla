@@ -342,7 +342,11 @@ private fun isStreamCopyLoop(loop: LoopNode): Boolean {
     return hasRead && hasWrite
 }
 
-/** Returns true if this call's target is a monadic single-item type (not a collection). */
+/**
+ * Returns true if this call's target is a monadic single-item type (not a collection).
+ * Reactive-factory-class detection (`ReactiveSecurityContextHolder.getContext()`) now lives
+ * in [LanguageSemanticsRegistry.isMonadicTarget] itself, shared with [CardinalityExplosionRule].
+ */
 private fun isMonadicTarget(
     call: FunctionCall,
     language: Language,
@@ -350,25 +354,7 @@ private fun isMonadicTarget(
 ): Boolean {
     val target = call.qualifiedTarget ?: return false
     return registry.isMonadicTarget(language, target) ||
-        isReactiveFactoryTarget(target, language, registry) ||
         isReactiveChainTarget(target, language, registry)
-}
-
-// ReactiveSecurityContextHolder.getContext().map(...).flatMap(...) — the class is a
-// reactive factory whose methods return Mono/Flux, not a collection to iterate. Boundary-
-// checked, not just a bare contains(), so an unrelated class merely containing one of these
-// names doesn't false-match - though a wrapper/adapter class like "LegacyServerRequestAdapter"
-// still would (its capitalized "Adapter" tail satisfies the trailing boundary the same way
-// "ResultSet"/"DateUtils" do elsewhere in this campaign); narrow enough that it's left as a
-// documented gap rather than a YAML exclusion list, same call as ExpensiveSortComparatorRule.
-private fun isReactiveFactoryTarget(
-    target: String,
-    language: Language,
-    registry: LanguageSemanticsRegistry,
-): Boolean {
-    val factories = registry.extraSection(language, "monadic-factory-classes")
-    if (factories.isEmpty()) return false
-    return containsAnyAtWordBoundary(target, factories)
 }
 
 /**
