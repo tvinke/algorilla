@@ -20,7 +20,11 @@ import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.Rule
 import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
+import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import com.github.tvinke.algorilla.util.CrossMethodResolver
+import com.github.tvinke.algorilla.util.ResolutionConfidence
+import com.github.tvinke.algorilla.util.demoteIfAmbiguous
+import com.github.tvinke.algorilla.util.endsWithAtWordBoundary
 import com.github.tvinke.algorilla.util.findDescendants
 
 /**
@@ -64,7 +68,7 @@ public class ExpensiveCallbackRule : Rule {
         if (fn == null || !fn.isRecursive) {
             val container = asCallbackContainer(node, context.registry.hofMethods(language))
             if (container != null) {
-                checkCallbackBody(container, language, context, findings)
+                checkCallbackBody(container, fn, language, context, findings)
             }
         }
         for (child in node.children) {
@@ -72,8 +76,10 @@ public class ExpensiveCallbackRule : Rule {
         }
     }
 
+    @Suppress("LongParameterList") // Threading the enclosing function through for TypeEnvironment lookups
     private fun checkCallbackBody(
         container: CallbackContainer,
+        enclosingFn: FunctionDecl?,
         language: Language,
         context: AnalysisContext,
         findings: MutableList<Finding>,
@@ -83,18 +89,19 @@ public class ExpensiveCallbackRule : Rule {
         val calls = body.filterIsInstance<FunctionCall>() + body.flatMap { it.findDescendants<FunctionCall>() }
         val lookups = body.filterIsInstance<LookupCall>() + body.flatMap { it.findDescendants<LookupCall>() }
         val nestedLoops = body.filterIsInstance<LoopNode>() + body.flatMap { it.findDescendants<LoopNode>() }
+        val typeEnv = enclosingFn?.let { context.typeEnvironmentFor(it) }
 
         for (creation in creations.filter { isDateType(it.typeName, language, context.registry) }) {
             findings.add(buildDateCreationFinding(container, creation))
         }
-        for (call in calls.filter { isDateParseCall(it, language, context.registry) }) {
+        for (call in calls.filter { isDateParseCall(it, language, context.registry, typeEnv) }) {
             findings.add(buildDateParseFinding(container, call))
         }
         val regexTypes = context.registry.regexTypes(language)
         for (creation in creations.filter { it.typeName in regexTypes }) {
             findings.add(buildRegexCreationFinding(container, creation))
         }
-        for (call in calls.filter { isCompileCall(it) }) {
+        for (call in calls.filter { isCompileCall(it, typeEnv, regexTypes) }) {
             findings.add(buildRegexCompileFinding(container, call))
         }
         for (lookup in lookups.filter { !it.isO1 && !it.isScalar }) {
@@ -104,7 +111,7 @@ public class ExpensiveCallbackRule : Rule {
             findings.add(buildNestedIterationFinding(container, nested))
         }
         checkHeavyweightCreations(container, creations, language, context, findings)
-        checkCrossMethod(container, calls, language, context, findings)
+        checkCrossMethod(container, calls, language, context, findings, typeEnv, regexTypes)
     }
 
     private fun checkHeavyweightCreations(
@@ -123,15 +130,22 @@ public class ExpensiveCallbackRule : Rule {
         }
     }
 
+    @Suppress("LongParameterList") // Threading the TypeEnvironment through for the isCompileCall type check
     private fun checkCrossMethod(
         container: CallbackContainer,
         calls: List<FunctionCall>,
         language: Language,
         context: AnalysisContext,
         findings: MutableList<Finding>,
+        typeEnv: TypeEnvironment?,
+        regexTypes: Set<String>,
     ) {
         val maxDepth = context.config.maxCallDepth.coerceAtMost(2)
-        for (call in calls.filter { !isDateParseCall(it, language, context.registry) && !isCompileCall(it) }) {
+        val candidates =
+            calls.filter {
+                !isDateParseCall(it, language, context.registry, typeEnv) && !isCompileCall(it, typeEnv, regexTypes)
+            }
+        for (call in candidates) {
             checkCrossMethodForCall(container, call, language, context, maxDepth, findings)
         }
     }
@@ -145,25 +159,25 @@ public class ExpensiveCallbackRule : Rule {
         findings: MutableList<Finding>,
     ) {
         val dateOp =
-            CrossMethodResolver.resolveAndFind<ObjectCreation>(
+            CrossMethodResolver.resolveAndFindWithConfidence<ObjectCreation>(
                 call,
                 context.symbolTable,
                 maxDepth = maxDepth,
                 language = language,
             ) { isDateType(it.typeName, language, context.registry) }
-        if (dateOp != null) {
-            findings.add(buildIndirectFinding(container, call, dateOp))
+        dateOp?.let { (node, confidence) ->
+            findings.add(buildIndirectFinding(container, call, node, confidence))
             return
         }
         val parseOp =
-            CrossMethodResolver.resolveAndFind<FunctionCall>(
+            CrossMethodResolver.resolveAndFindWithConfidence<FunctionCall>(
                 call,
                 context.symbolTable,
                 maxDepth = maxDepth,
                 language = language,
             ) { isDateParseCall(it, language, context.registry) }
-        if (parseOp != null) {
-            findings.add(buildIndirectFinding(container, call, parseOp))
+        parseOp?.let { (node, confidence) ->
+            findings.add(buildIndirectFinding(container, call, node, confidence))
         }
     }
 
@@ -320,10 +334,18 @@ public class ExpensiveCallbackRule : Rule {
         return makeFinding(container, creation.location, cx, inner, "Heavyweight ${creation.typeName} creation inside callback")
     }
 
+    /**
+     * Cross-method finding: the expensive operation lives inside a method resolved via
+     * [CrossMethodResolver.resolveAndFindWithConfidence], not directly in the callback body.
+     * [resolutionConfidence] floors the finding to LOW when that resolution was an ambiguous
+     * overload guess - see [NestedLookupRule]/[HiddenNestedLoopRule]/[IOInLoopRule] for the
+     * same treatment.
+     */
     private fun buildIndirectFinding(
         container: CallbackContainer,
         call: FunctionCall,
         innerNode: IRNode,
+        resolutionConfidence: ResolutionConfidence = ResolutionConfidence.EXACT,
     ): Finding {
         val cx = ComplexityModel.loopTimesCost(container.varName, "parse")
         val desc = describeNode(innerNode)
@@ -343,6 +365,7 @@ public class ExpensiveCallbackRule : Rule {
             ruleId = id,
             ruleName = name,
             severity = severity,
+            confidence = resolutionConfidence.demoteIfAmbiguous(Confidence.MEDIUM),
             location = innerNode.location,
             message = "Expensive operation inside ${call.name}() called from callback",
             suggestions = listOf(Suggestion.Freeform("Hoist expensive operation before the loop, or pre-compute values into a Map")),
@@ -419,9 +442,20 @@ private fun asCallbackContainer(
         else -> null
     }
 
-private fun isCompileCall(call: FunctionCall): Boolean =
-    call.name == "compile" &&
-        (
-            call.qualifiedTarget?.contains("Pattern") == true ||
-                call.qualifiedTarget?.contains("Regex") == true
-        )
+// "Pattern"/"Regex" must be the receiver's own (qualified) name, not merely a substring
+// somewhere in it — see RepeatedRegexInLoopRule.isCompileCall, the same check. When the
+// receiver's declared type is known, trust that over the name: a "userRegex" field typed
+// as a domain class with its own unrelated compile() method isn't a regex compilation just
+// because the name ends in "Regex", and conversely a plainly-named field declared as
+// Pattern/Regex is one even if it doesn't happen to look like it.
+private fun isCompileCall(
+    call: FunctionCall,
+    typeEnv: TypeEnvironment?,
+    regexTypes: Set<String>,
+): Boolean {
+    if (call.name != "compile") return false
+    val target = call.qualifiedTarget ?: return false
+    val declaredType = typeEnv?.declaredTypeName(target)
+    if (declaredType != null) return declaredType in regexTypes
+    return endsWithAtWordBoundary(target, "Pattern") || endsWithAtWordBoundary(target, "Regex")
+}

@@ -16,6 +16,7 @@ import com.github.tvinke.algorilla.rules.RuleCategory
 import com.github.tvinke.algorilla.rules.Suggestion
 import com.github.tvinke.algorilla.util.MemoizationDetector
 import com.github.tvinke.algorilla.util.findDescendants
+import com.github.tvinke.algorilla.util.isSelfCallOf
 
 /**
  * Detects recursive functions where the same subproblem may be solved multiple times
@@ -56,7 +57,7 @@ public class UnmemoizedRecursionRule : Rule {
         // Skip standard object methods — recursive by nature in entity hierarchies
         if (fn.name in context.registry.objectMethods(language)) return
 
-        val recursiveCalls = fn.findDescendants<FunctionCall>().filter { it.name == fn.name }
+        val recursiveCalls = fn.findDescendants<FunctionCall>().filter { it.isSelfCallOf(fn, context.symbolTable) }
         if (recursiveCalls.isEmpty()) return
 
         // Already memoized — skip

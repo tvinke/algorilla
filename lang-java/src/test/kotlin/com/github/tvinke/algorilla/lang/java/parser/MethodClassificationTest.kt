@@ -78,6 +78,59 @@ internal class MethodClassificationTest {
         fun `Set target should be O1`() {
             isO1Type("mySet") shouldBe true
         }
+
+        // isO1Type delegates to the registry's o1-types check, which used to be a bare
+        // contains() with no boundary at all - "java.sql.ResultSet" contains "Set" and
+        // "android.graphics.Bitmap" contains "Map", so both got misread as O(1) lookup
+        // types even though neither is really a java.util.Set/Map. Excluded explicitly via
+        // the registry's non-o1-type-names YAML list rather than by boundary logic alone,
+        // since "ResultSet" satisfies a real camelCase boundary the same way a genuine
+        // subclass name like "UserHashMap" does.
+        @Test
+        fun `ResultSet is not misread as a Set just because it contains one`() {
+            isO1Type("resultSet") shouldBe false
+            isO1Type("new ResultSet()") shouldBe false
+        }
+
+        @Test
+        fun `a genuine HashMap subclass name is still recognized as O1`() {
+            isO1Type("userHashMap") shouldBe true
+        }
+    }
+
+    @Nested
+    inner class StringTargetDetection {
+        // isStringTarget's suffix fallback used to be a bare endsWith - "id"/"key"/"path"/
+        // "line"/"value"/"field" are all real string-name-suffixes entries, so any name that
+        // merely ends in those letters (not just a real camelCase word) satisfied it too.
+        @Test
+        fun `a variable merely ending in a string-name-suffix without a real boundary is not a string target`() {
+            isStringTarget("monkey") shouldBe false // ends in "key"
+            isStringTarget("pipeline") shouldBe false // ends in "line"
+            isStringTarget("classpath") shouldBe false // ends in "path"
+            isStringTarget("minefield") shouldBe false // ends in "field"
+        }
+
+        @Test
+        fun `a variable ending in a string-name-suffix at a real camelCase boundary is still a string target`() {
+            isStringTarget("userId") shouldBe true
+            isStringTarget("cacheKey") shouldBe true
+            isStringTarget("filePath") shouldBe true
+        }
+
+        /**
+         * Documented gap, not fixed here: stringIndicators' "replace(" entry matches anywhere
+         * in the receiver chain's source text, not just its final segment. Map.replace(K, V)
+         * is a real method too - a chain like `map.replace(k, v).contains(x)` has targetText
+         * "map.replace(k, v)", which contains "replace(" even though the actual receiver of
+         * .contains() is V (the previous value replace() returned), not a String. Needs
+         * chain-aware parsing (only the last segment) to fix properly - see the doc comment on
+         * isStringTarget.
+         */
+        @Test
+        fun `a chain merely containing 'replace(' from an earlier Map#replace hop is still misread as a string target (documented gap)`() {
+            isStringTarget("map.replace(k, v)") shouldBe true
+        }
     }
 
     companion object {

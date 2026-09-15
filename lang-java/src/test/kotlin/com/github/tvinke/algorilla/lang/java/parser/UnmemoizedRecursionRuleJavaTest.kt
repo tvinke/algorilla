@@ -5,10 +5,12 @@ import com.github.tvinke.algorilla.engine.markScalarLookups
 import com.github.tvinke.algorilla.graph.CallGraph
 import com.github.tvinke.algorilla.graph.SymbolTable
 import com.github.tvinke.algorilla.model.Confidence
+import com.github.tvinke.algorilla.model.FunctionDecl
 import com.github.tvinke.algorilla.rules.AnalysisContext
 import com.github.tvinke.algorilla.rules.Finding
 import com.github.tvinke.algorilla.rules.builtin.UnmemoizedRecursionRule
 import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
+import com.github.tvinke.algorilla.util.findDescendants
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.shouldBe
@@ -57,6 +59,38 @@ internal class UnmemoizedRecursionRuleJavaTest {
 
             findings.shouldBeEmpty()
         }
+
+        @Test
+        fun `should not flag super call delegation as recursion`() {
+            val findings = analyzeFixture("unmemoized-recursion/negative/super-call-delegation.java")
+
+            findings.shouldBeEmpty()
+        }
+
+        @Test
+        fun `should not flag a same-arity sibling overload as recursion`() {
+            val findings = analyzeFixture("unmemoized-recursion/negative/sibling-overload-same-arity.java")
+
+            findings.shouldBeEmpty()
+        }
+
+        @Test
+        fun `should not flag delegation to a differently named object as recursion`() {
+            val findings = analyzeFixture("unmemoized-recursion/negative/delegate-to-other-object.java")
+
+            findings.shouldBeEmpty()
+        }
+    }
+
+    @Nested
+    inner class ArityGuardDoesNotSuppressRealRecursion {
+        @Test
+        fun `should still flag recursion when an unrelated different-arity overload exists`() {
+            val findings = analyzeFixture("unmemoized-recursion/positive/different-arity-overload-still-recursive.java")
+
+            findings.shouldNotBeEmpty()
+            findings.first().ruleId shouldBe "unmemoized-recursion"
+        }
     }
 
     private fun analyzeFixture(fixturePath: String): List<Finding> {
@@ -67,10 +101,12 @@ internal class UnmemoizedRecursionRuleJavaTest {
         val fileRoot = parser.parse(path)
         val registry = LanguageSemanticsRegistry.loadDefaults()
         val irTrees = markScalarLookups(mapOf(path to fileRoot), registry).irTrees
+        val symbolTable = SymbolTable()
+        fileRoot.findDescendants<FunctionDecl>().forEach { fn -> symbolTable.register(fn) }
         val context =
             AnalysisContext(
                 irTrees = irTrees,
-                symbolTable = SymbolTable(),
+                symbolTable = symbolTable,
                 callGraph = CallGraph(),
                 config = AnalysisConfig(),
                 registry = registry,

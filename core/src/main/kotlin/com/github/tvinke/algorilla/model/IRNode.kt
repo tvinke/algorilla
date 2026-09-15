@@ -96,7 +96,6 @@ public enum class SortKind(
  */
 public data class SortCall(
     val kind: SortKind,
-    val hasComparator: Boolean,
     val comparatorBody: List<IRNode>?,
     override val location: SourceLocation,
     override val children: List<IRNode>,
@@ -146,8 +145,6 @@ public data class FunctionDecl(
     val declaringClass: String? = null,
     /** Declared return type, e.g. "List", "Map", "void". Null when unresolvable (JS, Groovy dynamic). */
     val returnType: String? = null,
-    var estimatedComplexity: Complexity? = null,
-    var executionContext: ExecutionContext = ExecutionContext.SINGLE,
     var parameterFlows: List<ParameterFlow> = emptyList(),
     var isRecursive: Boolean = false,
     /** Architectural path context: REQUEST, LIFECYCLE, BATCH, MIXED, or null (unknown). */
@@ -242,8 +239,12 @@ public data class ClassNode(
 ) : IRNode
 
 /**
- * A type check expression, e.g. `x instanceof Set` (Java) or `x is Set` (Kotlin).
- * Used by flow typing (L5) to narrow variable types within branch scopes.
+ * A type check expression, e.g. `x instanceof Set` (Java) or `x is Set` (Kotlin). Not part of
+ * any flow-typing narrowing pipeline - type narrowing, where it happens, is supplied externally
+ * via [com.github.tvinke.algorilla.semantics.TypeContext.branchNarrowings], not derived from
+ * these nodes. [variableName] has a real, unrelated consumer instead: matched against by
+ * [com.github.tvinke.algorilla.util.referencesName] to check whether a node textually mentions
+ * a given variable.
  */
 public data class TypeCheck(
     val variableName: String,
@@ -264,14 +265,6 @@ public data class FileRoot(
 ) : IRNode
 
 /**
- * Estimated algorithmic complexity of a function or operation.
- */
-public data class Complexity(
-    val notation: String,
-    val description: String = "",
-)
-
-/**
  * Execution context label indicating how a node is reached at runtime.
  */
 public enum class ExecutionContext {
@@ -280,7 +273,4 @@ public enum class ExecutionContext {
 
     /** Directly inside a loop body. */
     INSIDE_LOOP,
-
-    /** Called from a function that is itself called from inside a loop. */
-    INSIDE_REPEATED_CALL_FROM_LOOP,
 }

@@ -62,6 +62,17 @@ internal class CardinalityExplosionRuleJavaTest {
             findings.first().message shouldContain "Cartesian product"
             findings.first().message shouldContain "add"
         }
+
+        @Test
+        fun `should detect Cartesian product when the inner collection is copied to an unrelated local first`() {
+            // "values" here comes from otherService.fetchAll(), not entry.getValue() - the
+            // name alone looks exactly like a map-value copy, but it isn't one.
+            val findings = analyzeFixture("cardinality-explosion/positive/cartesian-product-unrelated-copied-var.java")
+
+            val warnings = findings.filter { it.severity == Severity.WARNING }
+            warnings shouldHaveSize 1
+            warnings.first().message shouldContain "Cartesian product"
+        }
     }
 
     @Nested
@@ -96,6 +107,45 @@ internal class CardinalityExplosionRuleJavaTest {
 
             val warnings = findings.filter { it.severity == Severity.WARNING }
             warnings.shouldBeEmpty()
+        }
+
+        @Test
+        fun `should not flag map entry unpacking when the value is copied to a local first`() {
+            val findings = analyzeFixture("cardinality-explosion/negative/map-entry-unpacking-copied-value.java")
+
+            val warnings = findings.filter { it.severity == Severity.WARNING }
+            warnings.shouldBeEmpty()
+        }
+
+        @Test
+        fun `should not flag map entry unpacking when the entrySet itself is copied to a local first`() {
+            val findings = analyzeFixture("cardinality-explosion/negative/map-entry-unpacking-copied-collection.java")
+
+            findings.shouldBeEmpty()
+        }
+
+        @Test
+        fun `should not flag parent-child iteration when the parent collection is copied to a local first`() {
+            // The outer/inner name match here (departments/department) must be judged on the
+            // ORIGINAL collection name, not on service.getDepartments() - the receiver "service"
+            // has no naming relationship to "department" at all.
+            val findings = analyzeFixture("cardinality-explosion/negative/parent-child-copied-collection.java")
+
+            findings.shouldBeEmpty()
+        }
+
+        @Test
+        fun `should not flag flatMap over an Optional source`() {
+            val findings = analyzeFixture("cardinality-explosion/negative/flatmap-optional-source.java")
+
+            findings.shouldBeEmpty()
+        }
+
+        @Test
+        fun `should not flag flatMap over a Mono source`() {
+            val findings = analyzeFixture("cardinality-explosion/negative/flatmap-mono-source.java")
+
+            findings.shouldBeEmpty()
         }
 
         @Test
