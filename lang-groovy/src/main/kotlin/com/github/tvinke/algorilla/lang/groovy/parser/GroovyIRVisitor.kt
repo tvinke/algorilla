@@ -2,24 +2,30 @@ package com.github.tvinke.algorilla.lang.groovy.parser
 
 import com.github.tvinke.algorilla.lang.java.parser.JavaParser
 import com.github.tvinke.algorilla.lang.java.parser.JavaParserBaseVisitor
+import com.github.tvinke.algorilla.lang.java.parser.buildConstructorDecl
 import com.github.tvinke.algorilla.lang.java.parser.classifyChainedCall
 import com.github.tvinke.algorilla.lang.java.parser.classifyStandaloneCall
+import com.github.tvinke.algorilla.lang.java.parser.dedupedChainedLookupOrNull
 import com.github.tvinke.algorilla.lang.java.parser.extractLambdaParamNames
+import com.github.tvinke.algorilla.lang.java.parser.extractParameters
+import com.github.tvinke.algorilla.lang.java.parser.extractSupertypes
 import com.github.tvinke.algorilla.lang.java.parser.extractVariableName
+import com.github.tvinke.algorilla.lang.java.parser.handleForStatement
+import com.github.tvinke.algorilla.lang.java.parser.handleIfStatement
+import com.github.tvinke.algorilla.lang.java.parser.handleObjectCreation
 import com.github.tvinke.algorilla.lang.java.parser.handleTryCatchStatement
+import com.github.tvinke.algorilla.lang.java.parser.handleWhileStatement
+import com.github.tvinke.algorilla.lang.java.parser.lambdaParamCallOrNull
 import com.github.tvinke.algorilla.lang.java.parser.processBlockStatements
-import com.github.tvinke.algorilla.model.BranchNode
+import com.github.tvinke.algorilla.lang.java.parser.simplifyGenericType
+import com.github.tvinke.algorilla.lang.java.parser.visitArgNodes
+import com.github.tvinke.algorilla.lang.java.parser.withLambdaParams
 import com.github.tvinke.algorilla.model.ClassNode
-import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
-import com.github.tvinke.algorilla.model.GenericNode
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
-import com.github.tvinke.algorilla.model.LookupCall
 import com.github.tvinke.algorilla.model.LoopKind
 import com.github.tvinke.algorilla.model.LoopNode
-import com.github.tvinke.algorilla.model.ObjectCreation
-import com.github.tvinke.algorilla.model.Parameter
 import com.github.tvinke.algorilla.model.SourceLocation
 import com.github.tvinke.algorilla.model.TypeCheck
 import com.github.tvinke.algorilla.model.VariableDecl
@@ -61,21 +67,6 @@ internal class GroovyIRVisitor(
         )
     }
 
-    private fun extractSupertypes(ctx: JavaParser.ClassDeclarationContext): List<String> {
-        val supertypes = mutableListOf<String>()
-        ctx
-            .typeType()
-            ?.text
-            ?.simplifyGenericType()
-            ?.let { supertypes.add(it) }
-        for (typeList in ctx.typeList()) {
-            for (typeType in typeList.typeType()) {
-                supertypes.add(typeType.text.simplifyGenericType())
-            }
-        }
-        return supertypes
-    }
-
     override fun visitInstanceOfOperatorExpression(ctx: JavaParser.InstanceOfOperatorExpressionContext): List<IRNode> {
         val expr = ctx.expression() ?: return visitChildren(ctx)
         val varName = extractVariableName(expr.text, Language.GROOVY) ?: return visitChildren(ctx)
@@ -89,10 +80,9 @@ internal class GroovyIRVisitor(
 
     override fun visitLambdaExpression(ctx: JavaParser.LambdaExpressionContext): List<IRNode> {
         val params = extractLambdaParamNames(ctx.lambdaParameters())
-        lambdaParams.addAll(params)
-        val result = ctx.lambdaBody()?.let { visitChildren(it) } ?: emptyList()
-        lambdaParams.removeAll(params.toSet())
-        return result
+        return withLambdaParams(lambdaParams, params) {
+            ctx.lambdaBody()?.let { visitChildren(it) } ?: emptyList()
+        }
     }
 
     override fun visitMethodDeclaration(ctx: JavaParser.MethodDeclarationContext): List<IRNode> {
@@ -123,29 +113,13 @@ internal class GroovyIRVisitor(
         )
     }
 
-    override fun visitConstructorDeclaration(ctx: JavaParser.ConstructorDeclarationContext): List<IRNode> {
-        val name = ctx.identifier()?.text ?: "<init>"
-        val params = extractParameters(ctx.formalParameters())
-        val body = ctx.block()?.let { visitChildren(it) } ?: emptyList()
-        val qName = if (enclosingClass != null) "$enclosingClass.$name" else name
-
-        return listOf(
-            FunctionDecl(
-                name = name,
-                qualifiedName = qName,
-                parameters = params,
-                isConstructor = true,
-                declaringClass = enclosingClass,
-                location = locationOf(ctx),
-                children = body,
-            ),
-        )
-    }
+    override fun visitConstructorDeclaration(ctx: JavaParser.ConstructorDeclarationContext): List<IRNode> =
+        buildConstructorDecl(ctx, enclosingClass, this, ::locationOf)
 
     override fun visitStatement(ctx: JavaParser.StatementContext): List<IRNode> {
-        if (ctx.FOR() != null) return handleForStatement(ctx)
-        if (ctx.WHILE() != null || ctx.DO() != null) return handleWhileStatement(ctx)
-        if (ctx.IF() != null) return handleIfStatement(ctx)
+        if (ctx.FOR() != null) return handleForStatement(ctx, Language.GROOVY, this, ::locationOf)
+        if (ctx.WHILE() != null || ctx.DO() != null) return handleWhileStatement(ctx, this, ::locationOf)
+        if (ctx.IF() != null) return handleIfStatement(ctx, this, ::locationOf)
         if (ctx.TRY() != null) return handleTryStatement(ctx)
         return visitChildren(ctx)
     }
@@ -160,7 +134,7 @@ internal class GroovyIRVisitor(
                 ?: methodCall.SUPER()?.text
                 ?: return defaultResult()
         val loc = locationOf(ctx)
-        val argNodes = visitArgNodes(methodCall)
+        val argNodes = visitArgNodes(methodCall, this, ::locationOf)
 
         return classifyGroovyCall(name, argNodes, loc)
     }
@@ -177,19 +151,8 @@ internal class GroovyIRVisitor(
         return visitChildren(ctx)
     }
 
-    override fun visitObjectCreationExpression(ctx: JavaParser.ObjectCreationExpressionContext): List<IRNode> {
-        val creator = ctx.creator() ?: return visitChildren(ctx)
-        val typeName = creator.createdName()?.text ?: return visitChildren(ctx)
-        val loc = locationOf(ctx)
-        val argNodes =
-            creator
-                .classCreatorRest()
-                ?.arguments()
-                ?.expressionList()
-                ?.let { visitChildren(it) } ?: emptyList()
-
-        return listOf(ObjectCreation(typeName = typeName, location = loc, children = argNodes))
-    }
+    override fun visitObjectCreationExpression(ctx: JavaParser.ObjectCreationExpressionContext): List<IRNode> =
+        handleObjectCreation(ctx, this, ::locationOf)
 
     override fun visitLocalVariableDeclaration(ctx: JavaParser.LocalVariableDeclarationContext): List<IRNode> {
         val typeName = ctx.typeType()?.text
@@ -202,40 +165,6 @@ internal class GroovyIRVisitor(
         return results
     }
 
-    private fun handleIfStatement(ctx: JavaParser.StatementContext): List<IRNode> {
-        val conditionNodes = ctx.expression(0)?.let { visit(it) } ?: emptyList()
-        val thenBranch = ctx.statement(0)?.let { visitChildren(it) } ?: emptyList()
-        val elseBranch = ctx.statement(1)?.let { visitChildren(it) }
-        if (elseBranch != null) {
-            return conditionNodes + listOf(BranchNode(listOf(thenBranch, elseBranch), locationOf(ctx)))
-        }
-        return conditionNodes + thenBranch
-    }
-
-    private fun handleForStatement(ctx: JavaParser.StatementContext): List<IRNode> {
-        val enhancedFor = ctx.forControl()?.enhancedForControl()
-        val body = ctx.statement(0)?.let { visitChildren(it) } ?: emptyList()
-        return if (enhancedFor != null) {
-            val loopVarType = enhancedFor.typeType()?.text
-            val loopVarName = enhancedFor.variableDeclaratorId()?.text
-            val loopVarDecl =
-                if (loopVarType != null && loopVarName != null) {
-                    listOf(VariableDecl(loopVarName, loopVarType, null, locationOf(ctx), emptyList()))
-                } else {
-                    emptyList()
-                }
-            val iterVar = extractVariableName(enhancedFor.expression()?.text, Language.GROOVY)
-            listOf(LoopNode(LoopKind.FOR_EACH, iterVar, locationOf(ctx), loopVarDecl + body))
-        } else {
-            listOf(LoopNode(LoopKind.FOR, null, locationOf(ctx), body))
-        }
-    }
-
-    private fun handleWhileStatement(ctx: JavaParser.StatementContext): List<IRNode> {
-        val body = ctx.statement(0)?.let { visitChildren(it) } ?: emptyList()
-        return listOf(LoopNode(LoopKind.WHILE, null, locationOf(ctx), body))
-    }
-
     private fun handleChainedCall(
         methodName: String,
         targetText: String,
@@ -244,30 +173,15 @@ internal class GroovyIRVisitor(
         loc: SourceLocation,
     ): List<IRNode> {
         val groovyLoop = groovyLoopKindFor(methodName)
+        val targetVar = extractVariableName(targetText, Language.GROOVY)
+        val argNodes = visitArgNodes(methodCall, this, ::locationOf)
+        val targetChildren = visit(targetExpr)
         if (groovyLoop != null) {
-            val targetVar = extractVariableName(targetText, Language.GROOVY)
-            val argNodes = visitArgNodes(methodCall)
-            val targetChildren = visit(targetExpr)
             return targetChildren + listOf(LoopNode(groovyLoop, targetVar, loc, argNodes))
         }
-        val targetVar = extractVariableName(targetText, Language.GROOVY)
-        val argNodes = visitArgNodes(methodCall)
-        val targetChildren = visit(targetExpr)
-        if (targetVar != null && targetVar in lambdaParams) {
-            val call =
-                FunctionCall(
-                    name = methodName,
-                    qualifiedTarget = targetVar,
-                    arguments = argNodes,
-                    location = loc,
-                    children = argNodes,
-                )
-            return targetChildren + listOf(call)
-        }
+        lambdaParamCallOrNull(methodName, targetVar, argNodes, lambdaParams, loc)?.let { return targetChildren + listOf(it) }
         val node = classifyChainedCall(methodName, targetText, targetVar, argNodes, loc, Language.GROOVY)
-        if (node is LookupCall && targetChildren.any { it is LookupCall && (it as LookupCall).targetVariable == targetVar }) {
-            return targetChildren + argNodes
-        }
+        dedupedChainedLookupOrNull(node, targetChildren, targetVar, argNodes)?.let { return it }
         return targetChildren + listOf(node)
     }
 
@@ -283,31 +197,6 @@ internal class GroovyIRVisitor(
         return classifyStandaloneCall(name, loc, argNodes, Language.GROOVY)
     }
 
-    private fun extractParameters(ctx: JavaParser.FormalParametersContext?): List<Parameter> {
-        if (ctx == null) return emptyList()
-        val params = mutableListOf<Parameter>()
-        ctx.formalParameter()?.let { param ->
-            val name = param.variableDeclaratorId()?.text ?: return@let
-            params.add(Parameter(name, param.typeType()?.text))
-        }
-        for (paramList in ctx.formalParameterList()) {
-            for (param in paramList.formalParameter()) {
-                val name = param.variableDeclaratorId()?.text ?: continue
-                params.add(Parameter(name, param.typeType()?.text))
-            }
-        }
-        return params
-    }
-
-    private fun visitArgNodes(methodCall: JavaParser.MethodCallContext): List<IRNode> {
-        val expressions = methodCall.arguments()?.expressionList()?.expression() ?: return emptyList()
-        return expressions
-            .map { expr ->
-                val visited = visit(expr)
-                visited.ifEmpty { listOf(GenericNode(expr.text, locationOf(expr), emptyList())) }
-            }.flatten()
-    }
-
     private fun locationOf(ctx: ParserRuleContext): SourceLocation =
         SourceLocation(filePath, ctx.start.line, ctx.start.charPositionInLine + 1)
 }
@@ -318,6 +207,3 @@ private fun groovyLoopKindFor(methodName: String): LoopKind? =
         "collect", "collectEntries" -> LoopKind.HIGHER_ORDER
         else -> null
     }
-
-/** Strips generic type parameters: "List<Order>" → "List", "Map<String,Integer>" → "Map". */
-private fun String.simplifyGenericType(): String = substringBefore('<').substringAfterLast('.')
