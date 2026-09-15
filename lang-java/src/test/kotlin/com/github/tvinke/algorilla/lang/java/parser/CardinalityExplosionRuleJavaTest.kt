@@ -191,6 +191,28 @@ internal class CardinalityExplosionRuleJavaTest {
 
             findings.shouldBeEmpty()
         }
+
+        @Test
+        fun `should not flag a collection rebuilt fresh inside the outer loop as Cartesian`() {
+            // Regression for openmrs-core ConceptValidator false positive: a Set declared and
+            // repopulated INSIDE the outer loop body is a per-iteration accumulator, not a second
+            // independent dimension — total work is O(sum), not O(outer x inner).
+            val findings = analyzeFixture("cardinality-explosion/negative/rederived-per-outer-iteration.java")
+
+            val warnings = findings.filter { it.severity == Severity.WARNING }
+            warnings.shouldBeEmpty()
+        }
+
+        @Test
+        fun `should not flag a query result re-fetched fresh per outer element as Cartesian`() {
+            // Regression for openmrs-core DatabaseUpdater false positive: the inner collection is
+            // re-derived from a call inside the outer loop body (once per file name), so it is not
+            // the same collection reused across outer iterations — a flatten, not a cross product.
+            val findings = analyzeFixture("cardinality-explosion/negative/rederived-query-per-outer-iteration.java")
+
+            val warnings = findings.filter { it.severity == Severity.WARNING }
+            warnings.shouldBeEmpty()
+        }
     }
 
     @Nested

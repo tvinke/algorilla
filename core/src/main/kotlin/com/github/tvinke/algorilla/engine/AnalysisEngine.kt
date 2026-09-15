@@ -86,18 +86,26 @@ public class AnalysisEngine(
         val confidenceAdjusted = adjustConfidence(lifecycleDemoted, fileLanguages, ruleIndex)
         val suppressed = SuppressionFilter().filter(confidenceAdjusted, irTrees, aliasIndex)
         val pathContextEnriched = enrichPathContext(suppressed, irTrees)
-        val freshFindings = renderCodeSuggestions(pathContextEnriched, finalContexts, fileLanguages)
+        val cardinalityEnriched = enrichCardinality(pathContextEnriched, irTrees)
+        val freshFindings = renderCodeSuggestions(cardinalityEnriched, finalContexts, fileLanguages)
 
         val allFindings =
             (freshFindings + cachedFindings).distinctBy { finding ->
                 Baseline.fingerprintOf(finding).contentHash
             }
-        saveCache(sourceFiles, filesToParse, freshFindings, cachedEntries, finalContexts)
+
+        // Resolve enclosing methods for fresh findings (needed for cache + grouping)
+        val methodRangeIndex = buildMethodRangeIndex(irTrees)
+        saveCache(sourceFiles, filesToParse, freshFindings, cachedEntries, finalContexts, methodRangeIndex)
+
+        // Build method hint map: fresh findings from IR, cached findings from cache
+        val cachedMethodHints = buildCachedMethodHints(cachedEntries)
+        val issueGroups = groupFindings(allFindings, irTrees, callGraph, cachedMethodHints)
 
         val elapsed = System.currentTimeMillis() - startTime
-        logger.info { "Analysis complete: ${allFindings.size} findings in ${elapsed}ms" }
+        logger.info { "Analysis complete: ${allFindings.size} findings in ${elapsed}ms, ${issueGroups.size} issue groups" }
 
-        return buildResult(allFindings, sourceFiles.size, filesToParse.size, errors, elapsed)
+        return buildResult(allFindings, sourceFiles.size, filesToParse.size, errors, elapsed, issueGroups)
     }
 
     private fun buildResult(
@@ -106,14 +114,13 @@ public class AnalysisEngine(
         parsedFiles: Int,
         errors: List<AnalysisError>,
         elapsedMs: Long,
+        issueGroups: List<com.github.tvinke.algorilla.model.IssueGroup> = emptyList(),
     ): AnalysisResult {
         val sorted = allFindings.sortedWith(findingOrder)
         val unfilteredCounts = sorted.groupingBy { it.severity }.eachCount()
         val unfilteredConfidenceCounts = sorted.groupingBy { it.confidence }.eachCount()
-        val filtered =
-            sorted
-                .filter { it.severity >= config.minSeverity }
-                .filter { it.confidence >= config.minConfidence }
+        val filtered = sorted.filter { it.severity >= config.minSeverity && it.confidence >= config.minConfidence }
+        val filteredGroups = filterIssueGroups(issueGroups, filtered)
         return AnalysisResult(
             findings = filtered,
             filesAnalyzed = totalFiles,
@@ -122,7 +129,27 @@ public class AnalysisEngine(
             elapsedMs = elapsedMs,
             unfilteredCounts = unfilteredCounts,
             unfilteredConfidenceCounts = unfilteredConfidenceCounts,
+            issueGroups = filteredGroups,
         )
+    }
+
+    private fun filterIssueGroups(
+        groups: List<com.github.tvinke.algorilla.model.IssueGroup>,
+        visibleFindings: List<Finding>,
+    ): List<com.github.tvinke.algorilla.model.IssueGroup> {
+        val fingerprints = visibleFindings.map { Baseline.fingerprintOf(it).contentHash }.toSet()
+        return groups
+            .mapNotNull { group ->
+                val visible = group.contributingFindings.filter { Baseline.fingerprintOf(it).contentHash in fingerprints }
+                if (visible.isEmpty()) {
+                    null
+                } else {
+                    group.copy(contributingFindings = visible, representativeFinding = selectRepresentative(visible))
+                }
+                // Re-sorted below: filtering can change a group's representative finding (e.g. an
+                // ERROR gets filtered out, demoting the representative to WARNING), which changes
+                // where groupOrder would place it - the pre-filter position is stale otherwise.
+            }.sortedWith(groupOrder)
     }
 
     private fun partitionByCache(
@@ -145,12 +172,14 @@ public class AnalysisEngine(
         return Pair(filesToParse, cachedFindings)
     }
 
+    @Suppress("LongParameterList")
     private fun saveCache(
         allFiles: List<String>,
         freshFiles: List<String>,
         freshFindings: List<Finding>,
         previousCache: Map<String, CachedFileEntry>,
         fileContexts: Map<String, FileContext> = emptyMap(),
+        methodRangeIndex: Map<String, List<MethodRange>> = emptyMap(),
     ) {
         if (cache == null) return
 
@@ -159,10 +188,15 @@ public class AnalysisEngine(
         val entries =
             allFiles.map { file ->
                 if (file in freshSet) {
+                    val rangesInFile = methodRangeIndex[file] ?: emptyList()
                     CachedFileEntry(
                         filePath = file,
                         contentHash = AnalysisCache.hashFile(file),
-                        findings = (freshFindingsByFile[file] ?: emptyList()).map { CachedFinding.fromFinding(it) },
+                        findings =
+                            (freshFindingsByFile[file] ?: emptyList()).map { finding ->
+                                val method = findEnclosingMethod(rangesInFile, finding.location.line)
+                                CachedFinding.fromFinding(finding, enclosingMethod = method)
+                            },
                         fileContext = fileContexts[file],
                     )
                 } else {
@@ -174,6 +208,18 @@ public class AnalysisEngine(
                 }
             }
         cache.save(entries)
+    }
+
+    /** Builds a lookup from (file, line) → enclosingMethod from cached entries. */
+    private fun buildCachedMethodHints(cachedEntries: Map<String, CachedFileEntry>): Map<String, String?> {
+        val hints = mutableMapOf<String, String?>()
+        for ((_, entry) in cachedEntries) {
+            for (cf in entry.findings) {
+                val key = "${cf.file}:${cf.line}"
+                hints[key] = cf.enclosingMethod
+            }
+        }
+        return hints
     }
 
     private fun parseFiles(sourceFiles: List<String>): ParseResult {
@@ -423,6 +469,7 @@ public data class AnalysisResult(
     val projectRoot: java.io.File? = null,
     val acceptedCount: Int = 0,
     val baselinedCount: Int = 0,
+    val issueGroups: List<com.github.tvinke.algorilla.model.IssueGroup> = emptyList(),
 )
 
 /**

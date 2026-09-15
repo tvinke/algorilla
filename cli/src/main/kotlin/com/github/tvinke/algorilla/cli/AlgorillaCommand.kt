@@ -23,6 +23,7 @@ import kotlin.system.exitProcess
     description = ["Detects algorithmic complexity anti-patterns in source code."],
     subcommands = [InitCommand::class],
 )
+@Suppress("LargeClass") // CLI command — picocli options + orchestration
 internal class AlgorillaCommand :
     Callable<Int>,
     CommandLine.IVersionProvider {
@@ -168,6 +169,16 @@ internal class AlgorillaCommand :
     )
     private var limit: Int = 0
 
+    @Option(
+        names = ["--view"],
+        description = [
+            "Console display mode: findings (default leaf view), groups (issue group view). " +
+                "No effect on --format json/sarif — json always includes both.",
+        ],
+        defaultValue = "findings",
+    )
+    private var view: String = "findings"
+
     private var projectRoot: File = File(".")
     private var scanRoots: List<File> = emptyList()
 
@@ -188,7 +199,18 @@ internal class AlgorillaCommand :
         processAcceptHashes(result)
         val accepted = applyIgnoreList(baselined, projectRoot)
 
-        writeReport(accepted, format, outputFile, useColor, projectRoot, scanRoots, limit)
+        writeReport(
+            accepted,
+            ReportOptions(
+                format = format,
+                outputFile = outputFile,
+                useColor = useColor,
+                projectRoot = projectRoot,
+                scanRoots = scanRoots,
+                limit = limit,
+                view = view,
+            ),
+        )
         if (outputFile == null) printFrameworkCoverageNotice(scanRoots, useColor)
         return exitCodeFor(accepted, resolveFailOn(failOn))
     }

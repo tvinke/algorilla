@@ -108,4 +108,14 @@ monadic-types:
   - Uni
   - Multi
 
+request-handler-annotations:
+  - Path
+  - GET
+  - POST
+  - PUT
+  - DELETE
+
+batch-method-annotations:
+  - Scheduled
+
 non-repository-targets: []

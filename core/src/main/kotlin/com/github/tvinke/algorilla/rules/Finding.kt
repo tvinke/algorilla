@@ -1,5 +1,6 @@
 package com.github.tvinke.algorilla.rules
 
+import com.github.tvinke.algorilla.model.CardinalityBucket
 import com.github.tvinke.algorilla.model.Confidence
 import com.github.tvinke.algorilla.model.PathContext
 import com.github.tvinke.algorilla.model.Severity
@@ -41,6 +42,7 @@ public data class Finding(
     val category: RuleCategory? = null,
     val suggestedCode: CodeSuggestion? = null,
     val pathContext: PathContext? = null,
+    val cardinalityBucket: CardinalityBucket? = null,
 ) {
     /** Primary suggestion text for reporters that render a single string. */
     val suggestion: String get() = suggestions.firstOrNull()?.render() ?: ""

@@ -5,6 +5,7 @@ import com.github.tvinke.algorilla.model.ExecutionContext
 import com.github.tvinke.algorilla.model.FileRoot
 import com.github.tvinke.algorilla.model.FunctionCall
 import com.github.tvinke.algorilla.model.FunctionDecl
+import com.github.tvinke.algorilla.model.GenericNode
 import com.github.tvinke.algorilla.model.IRNode
 import com.github.tvinke.algorilla.model.Language
 import com.github.tvinke.algorilla.model.LoopNode
@@ -21,6 +22,7 @@ import com.github.tvinke.algorilla.semantics.LanguageSemanticsRegistry
 import com.github.tvinke.algorilla.semantics.TypeEnvironment
 import com.github.tvinke.algorilla.util.containsAnyAtWordBoundary
 import com.github.tvinke.algorilla.util.findDescendants
+import com.github.tvinke.algorilla.util.referencesName
 import com.github.tvinke.algorilla.util.resolveInitializer
 import com.github.tvinke.algorilla.util.startsWithAtWordBoundary
 
@@ -37,7 +39,7 @@ import com.github.tvinke.algorilla.util.startsWithAtWordBoundary
  * location, because this rule provides a more specific diagnosis
  * (cross-product vs. generic in-loop mutation).
  */
-@Suppress("LargeClass") // Cohesive rule: scan + classify + build findings for one anti-pattern
+@Suppress("LargeClass", "TooManyFunctions") // Cohesive rule: scan + classify + build findings for one anti-pattern
 public class CardinalityExplosionRule : Rule {
     override val id: String = "cardinality-explosion"
     override val name: String = "Cardinality Explosion"
@@ -176,7 +178,7 @@ public class CardinalityExplosionRule : Rule {
         }
     }
 
-    @Suppress("LongMethod", "LongParameterList") // Multi-step loop-pair classification with partitioned-iteration filtering
+    @Suppress("LongParameterList") // Threading the enclosing function/scope/loop context through
     private fun collectCartesianProduct(
         call: FunctionCall,
         enclosingFn: FunctionDecl?,
@@ -190,13 +192,7 @@ public class CardinalityExplosionRule : Rule {
         val innerLoop = loopStack.last()
         val outerVar = outerLoop.iteratedVariable ?: return
         val innerVar = innerLoop.iteratedVariable ?: return
-
-        // Constant-bound outer loop (enum, config list) → O(k*m) not O(n*m)
-        if (outerLoop.isConstantBound) return
-        // Inner loop exits after one iteration (break/throw/return) → output bounded by outer size
-        if (innerLoop.isSingleIteration) return
-
-        if (outerVar != innerVar && isPartitionedIteration(outerVar, innerVar, language, registry, scope)) return
+        if (!isEligibleCartesianPair(outerLoop, innerLoop, outerVar, innerVar, language, registry, scope)) return
 
         val key = LoopPairKey(outerLoop.location.line, innerLoop.location.line)
         mutationGroups
@@ -204,6 +200,35 @@ public class CardinalityExplosionRule : Rule {
                 MutationGroup(outerLoop, innerLoop, loopStack.toList(), enclosingFn)
             }.calls
             .add(call)
+    }
+
+    /**
+     * True when [outerLoop]/[innerLoop] form a genuine Cartesian-product risk worth recording -
+     * i.e. none of the known "not actually O(n×m)" shapes apply: a constant-bound outer loop,
+     * an inner loop that exits after one iteration, or (when the two loops iterate different
+     * collections) a partitioned/derived-per-element inner collection, naming-based or
+     * redeclaration-based.
+     */
+    @Suppress("LongParameterList", "ReturnCount") // Guard clauses with early returns — clearer than nested if/else
+    private fun isEligibleCartesianPair(
+        outerLoop: LoopNode,
+        innerLoop: LoopNode,
+        outerVar: String,
+        innerVar: String,
+        language: Language,
+        registry: LanguageSemanticsRegistry,
+        scope: List<VariableDecl>,
+    ): Boolean {
+        // Constant-bound outer loop (enum, config list) → O(k*m) not O(n*m)
+        if (outerLoop.isConstantBound) return false
+        // Inner loop exits after one iteration (break/throw/return) → output bounded by outer size
+        if (innerLoop.isSingleIteration) return false
+
+        if (outerVar != innerVar) {
+            if (isPartitionedIteration(outerVar, innerVar, language, registry, scope)) return false
+            if (isRederivedPerOuterIteration(outerVar, innerVar, outerLoop, innerLoop, scope)) return false
+        }
+        return true
     }
 
     private fun determineConfidence(
@@ -300,6 +325,55 @@ public class CardinalityExplosionRule : Rule {
         }
 
         return false
+    }
+
+    /**
+     * Detects the case where the inner loop's source collection is (re-)declared inside the
+     * outer loop's own body — i.e. before the inner loop starts, on every outer iteration —
+     * from a call that's actually derived FROM the outer element, not merely a same-named local
+     * rebound to something unrelated. Such a collection can't be the same instance across outer
+     * iterations, so growing it produces O(sum of per-iteration sizes) — a flatten/partition,
+     * not a Cartesian product.
+     *
+     * Covers cases `isPartitionedIteration` misses because the naming heuristic doesn't apply:
+     * a per-locale `Set` rebuilt each iteration (ConceptValidator), or a query result re-fetched
+     * fresh per outer element (DatabaseUpdater's `changeSets = getChangeSets(fileName)`).
+     *
+     * Deliberately requires the redeclaration's initializer to reference the outer loop's own
+     * per-element variable (`getNames(locale)`) rather than just matching on position and name -
+     * a same-named local re-fetched from a source that has nothing to do with the outer element
+     * (`values = otherService.fetchAll()`, returning the same full result every iteration) is
+     * still a genuine Cartesian product, just recomputed instead of cached. The parser doesn't
+     * expose the per-element loop variable itself (only [LoopNode.iteratedVariable], the
+     * collection being iterated) as a language-independent IR field, so - same as
+     * [isPartitionedIteration]'s case 2 - it's derived from [outerVar] by de-pluralizing:
+     * "locales" → "locale". Same known limitation as that sibling check: a collection name
+     * with no trailing 's' (`clientList`) won't match its element name (`client`).
+     */
+    private fun isRederivedPerOuterIteration(
+        outerVar: String,
+        innerVar: String,
+        outerLoop: LoopNode,
+        innerLoop: LoopNode,
+        scope: List<VariableDecl>,
+    ): Boolean {
+        val outerElementVar = outerVar.substringBefore(".").trimEnd('s', 'S')
+        if (outerElementVar.isEmpty()) return false
+        val redeclaration =
+            scope.firstOrNull { decl ->
+                decl.name == innerVar &&
+                    decl.location.line > outerLoop.location.line &&
+                    decl.location.line < innerLoop.location.line
+            } ?: return false
+        // Not redeclaration.initializer: the Kotlin parser never populates that field (it puts
+        // the initializer expression in children instead), so relying on it silently loses this
+        // check for Kotlin sources. Java populates both with the same content - children works
+        // for both.
+        val initializer = redeclaration.children.filterIsInstance<FunctionCall>().firstOrNull() ?: return false
+        return initializer.qualifiedTarget == outerElementVar ||
+            initializer.arguments.any {
+                it.referencesName(outerElementVar) || (it is GenericNode && it.nodeType == outerElementVar)
+            }
     }
 
     private fun determineEffectiveSeverity(

@@ -124,18 +124,58 @@ internal class CrossMethodResolverTest {
         )
     }
 
+    @Test
+    fun `resolveAndFind should not leak into an unrelated class's same-named method`() {
+        // Mirrors a real shape: two unrelated classes (ClassA, ClassB) both implement a
+        // shared Mapper interface and both declare merge(...) with identical arity.
+        // ClassA.convert() calls merge() with an implicit receiver (no qualifiedTarget).
+        // Only ClassA.merge() is actually reachable from the outer call — ClassB.merge()
+        // is a coincidental same-name/same-arity method on a completely different class.
+        val table = SymbolTable()
+
+        val repoACall = makeCall("getById", "repoA")
+        val repoBCall = makeCall("getBySku", "repoB")
+
+        val classAMerge =
+            makeDecl("merge", "ClassA.merge", "ClassA", paramCount = 4, children = listOf(repoACall))
+        val classBMerge =
+            makeDecl("merge", "ClassB.merge", "ClassB", paramCount = 4, children = listOf(repoBCall))
+        val implicitMergeCall = makeCall("merge", target = null, argCount = 4)
+        val classAConvert =
+            makeDecl("convert", "ClassA.convert", "ClassA", paramCount = 3, children = listOf(implicitMergeCall))
+
+        // Register ClassB's merge() first so an unguarded "first candidate wins"
+        // fallback would pick the wrong class if the enclosing-class context were lost.
+        table.register(classBMerge)
+        table.register(classAMerge)
+        table.register(classAConvert)
+        table.registerType("fieldA", "ClassA")
+
+        val outerCall = makeCall("convert", "fieldA", argCount = 3)
+
+        val found =
+            CrossMethodResolver.resolveAndFind<FunctionCall>(
+                outerCall,
+                table,
+                maxDepth = 2,
+            ) { it.qualifiedTarget != null && it.name.startsWith("get") }
+
+        found shouldBe repoACall
+    }
+
     private fun makeDecl(
         name: String,
         qualifiedName: String,
         declaringClass: String,
         paramCount: Int = 0,
+        children: List<IRNode> = emptyList(),
     ) = FunctionDecl(
         name = name,
         qualifiedName = qualifiedName,
         parameters = List(paramCount) { index -> Parameter(name = "p$index", typeName = "Any") },
         declaringClass = declaringClass,
         location = loc,
-        children = emptyList(),
+        children = children,
     )
 
     private fun makeCall(

@@ -354,6 +354,7 @@ o1-types:
   - ConcurrentLinkedQueue
   - ConcurrentLinkedDeque
   - ArrayDeque
+  - Deque
   - NavigableSet
   - NavigableMap
   - SortedSet
@@ -1701,6 +1702,12 @@ lifecycle-method-annotations:
 lifecycle-interfaces:
   - InitializingBean
   - DisposableBean
+  - CustomTaskChange
+
+# Annotations on methods that mark batch/scheduled execution (path context: BATCH).
+batch-method-annotations:
+  - Scheduled
+  - Schedules
 
 # Annotations on methods that mark HTTP/REST request handlers (path context: REQUEST).
 request-handler-annotations:

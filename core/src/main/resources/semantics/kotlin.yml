@@ -311,6 +311,7 @@ o1-types:
   - EnumSet
   - EnumMap
   - ArrayDeque
+  - Deque
 
 # Same JVM-collision list as java.yml's non-collection-type-names (see there for why) -
 # Kotlin code sees java.io.*Stream types via JVM interop just as much as Java does.

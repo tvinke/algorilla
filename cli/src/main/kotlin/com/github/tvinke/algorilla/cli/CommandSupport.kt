@@ -135,24 +135,40 @@ internal fun resolveFailOn(failOn: String): Severity =
         else -> Severity.INFO
     }
 
+internal data class ReportOptions(
+    val format: String = "console",
+    val outputFile: File? = null,
+    val useColor: Boolean = false,
+    val projectRoot: File = File("."),
+    val scanRoots: List<File> = emptyList(),
+    val limit: Int = 0,
+    val view: String = "findings",
+)
+
 internal fun writeReport(
     result: AnalysisResult,
-    format: String,
-    outputFile: File?,
-    useColor: Boolean,
-    projectRoot: File,
-    scanRoots: List<File> = emptyList(),
-    limit: Int = 0,
+    options: ReportOptions,
 ) {
-    val baseDir = projectRoot.absoluteFile.normalize().path
-    val sourceRootPaths = scanRoots.map { it.absoluteFile.normalize().path }
+    val baseDir =
+        options.projectRoot.absoluteFile
+            .normalize()
+            .path
+    val sourceRootPaths = options.scanRoots.map { it.absoluteFile.normalize().path }
+    val grouped = options.view.lowercase() == "groups"
     val reporter =
-        when (format.lowercase()) {
+        when (options.format.lowercase()) {
             "sarif" -> SarifReporter()
             "json" -> JsonReporter()
-            else -> ConsoleReporter(color = useColor, baseDir = baseDir, sourceRoots = sourceRootPaths, limit = limit)
+            else ->
+                ConsoleReporter(
+                    color = options.useColor,
+                    baseDir = baseDir,
+                    sourceRoots = sourceRootPaths,
+                    limit = options.limit,
+                    grouped = grouped,
+                )
         }
-    val output = outputFile?.bufferedWriter() ?: System.out.bufferedWriter()
+    val output = options.outputFile?.bufferedWriter() ?: System.out.bufferedWriter()
     output.use { reporter.report(result, it) }
 }
 
